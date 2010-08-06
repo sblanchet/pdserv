@@ -1,0 +1,9 @@
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O2")
+add_definitions(-DID=${Package_HG_ID})
+
+include_directories(${RTLAB_SOURCE_DIR}/include)
+
+add_library( rtlab SHARED
+    interface.cpp
+    )
+target_link_libraries(rtlab rt)
