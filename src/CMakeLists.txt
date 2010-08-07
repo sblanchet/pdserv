@@ -8,5 +8,6 @@ add_library( rtlab SHARED
     Main.cpp Main.h
     Variable.cpp Variable.h
     Signal.cpp Signal.h
+    Parameter.cpp Parameter.h
     )
 target_link_libraries(rtlab rt)

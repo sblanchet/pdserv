@@ -3,11 +3,12 @@
 
 #include <list>
 
-#include <rtlab/etl_data_info.h>
+#include <rtlab/rtlab.h>
 
 namespace HRTLab {
 
 class Signal;
+class Parameter;
 
 class Main {
     public:
@@ -15,6 +16,7 @@ class Main {
         ~Main();
 
         void update(int st);
+        int start();
 
         int newSignal(
                 unsigned int tid,
@@ -27,10 +29,28 @@ class Main {
                 const void *addr
                 );
 
+        int newParameter(
+                paramupdate_t paramupdate,
+                void *priv_data,
+                const char *path,
+                const char *alias,
+                enum si_datatype_t datatype,
+                unsigned int ndims,
+                const unsigned int dim[],
+                const void *addr
+                );
+
     private:
         const unsigned int nst;
 
+        int pid;
+
+        size_t shmem_len;
+        void *shmem;
+
         std::list<Signal*> signals;
+        std::list<Parameter*> parameters;
+
 };
 
 }

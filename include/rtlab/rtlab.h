@@ -1,4 +1,5 @@
 #include <rtlab/etl_data_info.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,16 +39,21 @@ int hrtlab_signal(
         const void *addr          /**< Signal address */
         );
 
-typedef int (*paramcheck_t)();
+typedef int (*paramupdate_t)(void *priv_data, const void *src, size_t len);
 
-/** Register a signal
+/** Register a parameter
  *
- * This call registers a signal, i.e. Variables that are calculated
+ * This call registers a parameter.
+ *
+ * Parameters are never written by the library, instead the client passes on a
+ * callback which is called when a new value for the parameter 
  */
 int hrtlab_parameter(
         struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
-        paramcheck_t paramcheck,
-        void *priv_data,
+        paramupdate_t paramupdate,/**< Callback for updating the parameter.
+                                   * If the callback is NULL, simple memcpy()
+                                   * is done with priv_data as the dest */
+        void *priv_data,          /**< Arbitrary pointer for callback */
         const char *path,         /**< Signal path */
         const char *alias,        /**< Signal alias */
         enum si_datatype_t datatype, /**< Signal data type */
