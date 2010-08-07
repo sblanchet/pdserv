@@ -5,5 +5,6 @@ include_directories(${RTLAB_SOURCE_DIR}/include)
 
 add_library( rtlab SHARED
     interface.cpp
+    Main.cpp Main.h
     )
 target_link_libraries(rtlab rt)
