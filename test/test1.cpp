@@ -1,6 +1,7 @@
 #include "rtlab/rtlab.h"
 #include <stdint.h>
 #include <cstring>
+#include <unistd.h>
 #include <sys/mman.h>
 
 uint16_t var1[2][3][4];
@@ -26,6 +27,7 @@ int main(int argc, const char *argv[])
     mlockall(MCL_CURRENT|MCL_FUTURE);
 
     while (1) {
+        sleep(1);
     }
 
     hrtlab_exit(hrtlab);

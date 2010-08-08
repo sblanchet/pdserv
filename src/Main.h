@@ -41,6 +41,7 @@ class Main {
                 );
 
     private:
+
         const unsigned int nst;
 
         int pid;
@@ -50,7 +51,6 @@ class Main {
 
         std::list<Signal*> signals;
         std::list<Parameter*> parameters;
-
 };
 
 }

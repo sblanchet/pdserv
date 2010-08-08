@@ -9,5 +9,6 @@ add_library( rtlab SHARED
     Variable.cpp Variable.h
     Signal.cpp Signal.h
     Parameter.cpp Parameter.h
+    TCPServer.cpp TCPServer.h
     )
-target_link_libraries(rtlab rt)
+target_link_libraries(rtlab rt ccext2)

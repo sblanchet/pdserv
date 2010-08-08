@@ -1,11 +1,19 @@
 #include "Main.h"
 #include "Signal.h"
 #include "Parameter.h"
+#include "TCPServer.h"
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <unistd.h>
 #include <sys/mman.h>
+
+#include <cc++/socketport.h> 
+
+#include <iostream>
+using std::cout;
+using std::cerr;
+using std::endl;
 
 using namespace HRTLab;
 
@@ -50,7 +58,10 @@ int Main::start()
         return 0;
     }
 
-    while (1) {
+    ost::SocketService svc;
+    ost::TCPSocket socket(ost::IPV4Address("0.0.0.0"), 4000);
+    while (true) {
+        new TCPServer(&svc, socket, this);
     }
 }
 
