@@ -2,6 +2,8 @@
 #define MAIN_H
 
 #include <list>
+#include <map>
+#include <string>
 
 #include <rtlab/rtlab.h>
 
@@ -9,10 +11,14 @@ namespace HRTLab {
 
 class Signal;
 class Parameter;
+class Variable;
 
 class Main {
     public:
-        Main(int argc, const char *argv[], unsigned int nst);
+        Main(int argc, const char *argv[],
+                const char *name, const char *version,
+                double baserate,
+                unsigned int nst, const unsigned int decimation[]);
         ~Main();
 
         void update(int st);
@@ -40,9 +46,13 @@ class Main {
                 const void *addr
                 );
 
-    private:
-
+        const std::string name;
+        const std::string version;
+        const double baserate;
         const unsigned int nst;
+        const unsigned int *decimation;
+
+    private:
 
         int pid;
 
@@ -51,6 +61,7 @@ class Main {
 
         std::list<Signal*> signals;
         std::list<Parameter*> parameters;
+        std::map<std::string,Variable*> variableMap;
 };
 
 }

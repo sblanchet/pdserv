@@ -1,9 +1,13 @@
 #include "rtlab/rtlab.h"
 #include "Main.h"
 
-struct hrtlab* hrtlab_init(int argc, const char *argv[], int nst)
+struct hrtlab* hrtlab_init(int argc, const char *argv[], 
+        const char *name, const char *version, 
+        double baserate, unsigned int nst, const unsigned int decimation[])
 {
-    return reinterpret_cast<struct hrtlab*>(new HRTLab::Main(argc, argv, nst));
+    return reinterpret_cast<struct hrtlab*>(
+            new HRTLab::Main(argc, argv, name, version, baserate, nst,
+                decimation));
 }
 
 void hrtlab_exit(struct hrtlab* hrtlab)

@@ -14,20 +14,27 @@ int copy_param(void *priv_data, const void* src, size_t len)
 
 int main(int argc, const char *argv[])
 {
-    struct hrtlab *hrtlab = hrtlab_init(argc, argv, 1);
+    struct hrtlab *hrtlab = hrtlab_init(argc, argv, argv[0], "1.0", 1.0, 1, 0);
     unsigned int var1_dims[] = {2,3,4};
+    int err;
 
-    hrtlab_signal(hrtlab, 1, 1, "/path/to/variable", "var1",
-            si_uint16_T, 3, var1_dims, &var1);
-    hrtlab_parameter(hrtlab, 0, &var1, "/path/to/variable", "var1",
-            si_uint16_T, 3, var1_dims, &var1);
+    if ((err = hrtlab_signal(hrtlab, 0, 1, "/path/to/variable", "var1",
+            si_uint16_T, 3, var1_dims, &var1)))
+        return err;
 
-    hrtlab_start(hrtlab);
+    if ((err = hrtlab_parameter(hrtlab, 0, &var1, "/path/to/param", "var1",
+            si_uint16_T, 3, var1_dims, &var1)))
+        return err;
 
-    mlockall(MCL_CURRENT|MCL_FUTURE);
+    if ((err = hrtlab_start(hrtlab)))
+        return err;
+
+    if ((err = mlockall(MCL_CURRENT|MCL_FUTURE)))
+        return err;
 
     while (1) {
         sleep(1);
+        hrtlab_update(hrtlab, 0);
     }
 
     hrtlab_exit(hrtlab);

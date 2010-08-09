@@ -19,7 +19,12 @@ struct hrtlab;
 struct hrtlab* hrtlab_init(
         int argc,               /**< Argument count */
         const char *argv[],     /**< Arguments */
-        int nst                 /**< Number of sample times */
+        const char *name,       /**< Name of the process */
+        const char *version,    /**< Version string */
+        double baserate,        /**< Sample time of tid0 */
+        unsigned int nst,       /**< Number of sample times */
+        const unsigned int decimation[] /**< Array of the decimations
+                                         * for tid1..tid<nst> */
         );
 
 /** Register a signal

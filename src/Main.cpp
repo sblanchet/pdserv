@@ -18,13 +18,21 @@ using std::endl;
 using namespace HRTLab;
 
 /////////////////////////////////////////////////////////////////////////////
-Main::Main(int argc, const char *argv[], unsigned int nst): nst(nst)
+Main::Main(int argc, const char *argv[],
+        const char *name, const char *version,
+        double baserate,
+        unsigned int nst, const unsigned int decimation[]):
+    name(name), version(version), baserate(baserate), nst(nst),
+    decimation(nst > 1 ? new unsigned int [nst] : 0)
 {
+    if (nst > 1)
+        memcpy((void*)this->decimation, decimation, sizeof(unsigned int [nst]));
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
+    delete decimation;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -80,9 +88,13 @@ int Main::newSignal(
     if (tid >= nst)
         return -EINVAL;
 
+    if (variableMap.find(path) != variableMap.end())
+        return -EEXIST;
+
     signals.push_back(
             new Signal(tid, decimation, path, alias, datatype, ndims, dim, addr)
             );
+    variableMap[path] = parameters.back();
 
     return 0;
 }
@@ -99,9 +111,13 @@ int Main::newParameter(
         const void *addr
         )
 {
+    if (variableMap.find(path) != variableMap.end())
+        return -EEXIST;
+
     parameters.push_back(
             new Parameter(paramupdate, priv_data, path, alias, datatype, ndims, dim, addr)
             );
+    variableMap[path] = parameters.back();
 
     return 0;
 }
