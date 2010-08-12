@@ -20,8 +20,8 @@ Signal::Signal( unsigned int tid,
         unsigned int ndims,
         const size_t *dim,
         const void *addr):
-    Variable(path, alias, dtype, ndims, dim, addr),
-    tid(tid), signalDecimation(decimation)
+    Variable(path, alias, dtype, ndims, dim, decimation, addr),
+    tid(tid)
 {
     cout << __func__ << endl;
 }

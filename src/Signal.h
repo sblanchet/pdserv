@@ -22,10 +22,6 @@ class Signal: public Variable {
 
         const unsigned int tid;
 
-        /** Decimation with respect to the task sample time with which
-         * the signal is calculated. */
-        const int signalDecimation;
-
 //        void log(
 //                /** Signal decimation with which this signal will be logged.
 //                 * Decimation is with respect to the signal sample time,

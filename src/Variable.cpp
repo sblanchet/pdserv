@@ -19,11 +19,12 @@ Variable::Variable(
                 enum si_datatype_t dtype,
                 unsigned int ndims,
                 const size_t dim[],
+                unsigned int decimation,
                 const void *addr):
     width(getDTypeSize(dtype)),
     memSize(getMemSize(dtype, ndims, dim)),
     path(path), alias(alias), dtype(dtype), dim(dim, dim+ndims), 
-    addr(addr)
+    decimation(decimation), addr(addr)
 {
     cout << __func__ << endl;
 }

@@ -36,6 +36,24 @@ Main::~Main()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+const std::list<Signal*>& Main::getSignals() const
+{
+    return signals;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const std::list<Parameter*>& Main::getParameters() const
+{
+    return parameters;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const std::map<std::string,Variable*>& Main::getVariableMap() const
+{
+    return variableMap;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Main::update(int st)
 {
 }
@@ -94,7 +112,7 @@ int Main::newSignal(
     signals.push_back(
             new Signal(tid, decimation, path, alias, datatype, ndims, dim, addr)
             );
-    variableMap[path] = parameters.back();
+    variableMap[path] = signals.back();
 
     return 0;
 }

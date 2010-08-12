@@ -21,7 +21,7 @@ Parameter::Parameter(
         unsigned int ndims,
         const size_t dim[],
         const void *addr):
-    Variable(path, alias, dtype, ndims, dim, addr),
+    Variable(path, alias, dtype, ndims, dim, 0, addr),
     paramupdate(paramupdate), priv_data(priv_data)
 {
 }

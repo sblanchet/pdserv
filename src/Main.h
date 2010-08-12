@@ -52,6 +52,10 @@ class Main {
         const unsigned int nst;
         const unsigned int *decimation;
 
+        const std::list<Signal*>& getSignals() const;
+        const std::list<Parameter*>& getParameters() const;
+        const std::map<std::string,Variable*>& getVariableMap() const;
+
     private:
 
         int pid;

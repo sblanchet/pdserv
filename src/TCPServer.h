@@ -6,8 +6,10 @@
 #define TCPSERVER
 
 #include <cc++/socketport.h> 
-#include <streambuf>
+#include <iosfwd>
 #include <string>
+#include <libxml/tree.h>
+
 
 namespace HRTLab {
 
@@ -25,7 +27,19 @@ class TCPServer: public ost::SocketPort, private std::streambuf {
         const Main *main;
 
         std::string buf;
+        std::string inbuf;
         const std::string crlf;
+
+        enum Instruction_value {
+            LS,
+        };
+        void ParseInstruction(std::istream&);
+        void list();
+
+        xmlChar *xmlchar;
+        int xmlcharlen;
+        xmlChar *utf8(const std::string& s);
+        xmlCharEncodingHandlerPtr encoding;
 
         // Reimplemented from streambuf
         int sync();
