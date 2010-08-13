@@ -13,6 +13,7 @@ namespace HRTLab {
 class Parameter: public Variable {
     public:
         Parameter (
+                unsigned int index,
                 paramupdate_t paramupdate,
                 void *priv_data,
                 const char *path,

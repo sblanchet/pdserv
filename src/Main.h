@@ -1,7 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include <list>
+#include <vector>
 #include <map>
 #include <string>
 
@@ -15,6 +15,11 @@ class Variable;
 
 class Main {
     public:
+        enum Instruction {Restart = 1,
+            Subscribe, Unsubscribe, SetValue,
+            NewSubscriberList,
+        };
+
         Main(int argc, const char *argv[],
                 const char *name, const char *version,
                 double baserate,
@@ -52,20 +57,35 @@ class Main {
         const unsigned int nst;
         const unsigned int *decimation;
 
-        const std::list<Signal*>& getSignals() const;
-        const std::list<Parameter*>& getParameters() const;
+        const std::vector<Signal*>& getSignals() const;
+        const std::vector<Parameter*>& getParameters() const;
         const std::map<std::string,Variable*>& getVariableMap() const;
+
+        void subscribe(const std::string& path);
+
+        unsigned int *getSignalPtrStart() const;
 
     private:
 
         int pid;
 
         size_t shmem_len;
-        void *shmem;
+        char *shmem;
 
-        std::list<Signal*> signals;
-        std::list<Parameter*> parameters;
-        std::map<std::string,Variable*> variableMap;
+        unsigned int *instruction_block_begin;
+        unsigned int *instruction_ptr;
+        unsigned int *instruction_ptr_end;
+
+        unsigned int *signal_ptr_start, *signal_ptr_end;
+        unsigned int *signal_ptr;
+
+        std::vector<Signal*> signals;
+        std::vector<Parameter*> parameters;
+        typedef std::map<std::string,Variable*> VariableMap;
+        VariableMap variableMap;
+
+        std::vector<std::vector<unsigned int> > subscribers;
+        std::vector<size_t> blockLength;
 };
 
 }

@@ -27,6 +27,8 @@ Main::Main(int argc, const char *argv[],
 {
     if (nst > 1)
         memcpy((void*)this->decimation, decimation, sizeof(unsigned int [nst]));
+    subscribers.resize(nst);
+    blockLength.resize(nst);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -36,13 +38,19 @@ Main::~Main()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const std::list<Signal*>& Main::getSignals() const
+unsigned int *Main::getSignalPtrStart() const
+{
+    return signal_ptr_start;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const std::vector<Signal*>& Main::getSignals() const
 {
     return signals;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const std::list<Parameter*>& Main::getParameters() const
+const std::vector<Parameter*>& Main::getParameters() const
 {
     return parameters;
 }
@@ -56,6 +64,86 @@ const std::map<std::string,Variable*>& Main::getVariableMap() const
 /////////////////////////////////////////////////////////////////////////////
 void Main::update(int st)
 {
+    bool dirty[nst];
+    memset(dirty, 0, sizeof(dirty));
+
+    // Check for instructions in the inbox
+    while (*instruction_ptr) {
+        switch (*instruction_ptr++) {
+            case Restart:
+                instruction_ptr = instruction_block_begin;
+                break;
+
+            case Subscribe:
+                {
+                    unsigned int index = *instruction_ptr++;
+                    Signal *s = signals[index];
+
+                    s->subscriptionIndex = subscribers[s->tid].size();
+                    subscribers[s->tid].push_back(index);
+                    dirty[s->tid] = true;
+                    blockLength[s->tid] += s->memSize;
+                }
+                break;
+
+            case Unsubscribe:
+                {
+                    unsigned int index = *instruction_ptr++;
+                    Signal *s = signals[index];
+
+                    subscribers[s->tid].erase(
+                            subscribers[s->tid].begin() + s->subscriptionIndex);
+                    dirty[s->tid] = true;
+                    blockLength[s->tid] -= s->memSize;
+                }
+                break;
+
+            case SetValue:
+                break;
+        }
+    }
+
+    // Copy new signal lists to outbox
+    for (unsigned int tid = 0; tid < nst; tid++) {
+        if (!dirty[tid])
+            continue;
+
+        unsigned int *block_start = signal_ptr++;
+        unsigned int n = subscribers[tid].size();
+
+        if (signal_ptr + n + 3 >= signal_ptr_end) {
+            *signal_ptr_start = 0;
+            *block_start = Restart;
+            signal_ptr = signal_ptr_start;
+            block_start = signal_ptr++;
+        }
+
+        *signal_ptr++ = tid;
+        *signal_ptr++ = n;
+
+        std::copy(signal_ptr, signal_ptr+n, subscribers[tid].begin());
+        signal_ptr += n;
+
+        *signal_ptr = 0;
+        *block_start = NewSubscriberList;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::subscribe(const std::string &path)
+{
+    VariableMap::iterator it = variableMap.find(path);
+    if (it == variableMap.end() or !it->second->decimation)
+        return;
+
+    if (instruction_ptr + 2 >= instruction_ptr_end) {
+        *instruction_ptr = Restart;
+        instruction_ptr = instruction_block_begin;
+    }
+
+    instruction_ptr[1] = it->second->index;
+    instruction_ptr[2] = 0;
+    instruction_ptr[0] = Subscribe;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -63,7 +151,7 @@ int Main::start()
 {
     shmem_len = 1000000;
 
-    shmem = ::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
+    shmem = (char*)::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
             MAP_SHARED | MAP_ANON, -1, 0);
     if (MAP_FAILED == shmem) {
         // log(LOGCRIT, "could not mmap
@@ -72,6 +160,15 @@ int Main::start()
         return -errno;
     }
     ::memset(shmem, 0, shmem_len);
+
+    instruction_block_begin = reinterpret_cast<unsigned int*>(shmem);
+    instruction_ptr     = instruction_block_begin;
+    instruction_ptr_end = instruction_block_begin + 1024;
+    *instruction_block_begin = 0;
+
+    signal_ptr_start = instruction_ptr_end + 1;
+    signal_ptr = signal_ptr_start;
+    signal_ptr_end = reinterpret_cast<unsigned int*>(shmem+shmem_len);
 
     pid = ::fork();
     if (pid < 0) {
@@ -110,9 +207,11 @@ int Main::newSignal(
         return -EEXIST;
 
     signals.push_back(
-            new Signal(tid, decimation, path, alias, datatype, ndims, dim, addr)
+            new Signal(signals.size(), tid, decimation, path, alias,
+                datatype, ndims, dim, addr)
             );
     variableMap[path] = signals.back();
+    subscribers[tid].resize(subscribers[tid].size() + 1);
 
     return 0;
 }
@@ -133,7 +232,8 @@ int Main::newParameter(
         return -EEXIST;
 
     parameters.push_back(
-            new Parameter(paramupdate, priv_data, path, alias, datatype, ndims, dim, addr)
+            new Parameter(parameters.size(), paramupdate, priv_data, path,
+                alias, datatype, ndims, dim, addr)
             );
     variableMap[path] = parameters.back();
 

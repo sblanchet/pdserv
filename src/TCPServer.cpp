@@ -19,7 +19,8 @@ using namespace HRTLab;
 /////////////////////////////////////////////////////////////////////////////
 TCPServer::TCPServer( ost::SocketService *ss,
         ost::TCPSocket &socket, Main *main):
-    SocketPort(0, socket), main(main), crlf("\r\n")
+    SocketPort(0, socket), main(main), crlf("\r\n"),
+    signal_ptr_start(main->getSignalPtrStart())
 {
     std::ostream s(this);
     setCompletion(false);
@@ -37,12 +38,15 @@ TCPServer::TCPServer( ost::SocketService *ss,
     }
     s << crlf << std::flush;
 
+    setTimer(1000);
     attach(ss);
 
     xmlchar = 0;
     xmlcharlen = 0;
     encoding = xmlFindCharEncodingHandler("ISO-8859-1");
 
+    signal_ptr = signal_ptr_start;
+    subscribers.resize(main->nst);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -71,6 +75,28 @@ void TCPServer::expired()
 {
     cout << __func__ << endl;
     setTimer(1000);
+
+    while (*signal_ptr) {
+        switch (*signal_ptr++) {
+            case Main::Restart:
+                signal_ptr = signal_ptr_start;
+                break;
+
+            case Main::NewSubscriberList:
+                {
+                    unsigned int tid = *signal_ptr++;
+                    unsigned int count = *signal_ptr++;
+
+                    subscribers[tid].resize(count);
+                    std::copy(subscribers[tid].begin(), subscribers[tid].end(),
+                            signal_ptr);
+                    signal_ptr += count;
+
+                    cout << "Hurrah " << __func__ << endl;
+                }
+                break;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -86,33 +112,64 @@ void TCPServer::pending()
     }
 
     inbuf.append(buf,n);
-    std::istringstream is(inbuf);
+    size_t bufptr = 0;
+    bool cont = true;
 
-    while (is and is.tellg() != inbuf.length())
-        ParseInstruction(is);
+    while (cont) {
+        cout << "Command " << inbuf.substr(bufptr)  << endl;
+        switch (state) {
+            case Idle:
+                {
+                    size_t eol = inbuf.find('\n', bufptr);
 
-    inbuf.erase(0,is.tellg());
+                    if (eol == inbuf.npos) {
+                        cont = false;
+                    }
+                    else {
+                        std::string instruction(inbuf, bufptr, eol - bufptr);
+                        state = ParseInstruction(instruction);
+                        bufptr = eol + 1;
+                    }
 
-    cout << "Command3 " << inbuf << endl;
+                    break;
+                }
+        }
+    }
+
+    inbuf.erase(0,bufptr);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TCPServer::ParseInstruction(std::istream& is)
+TCPServer::ParseState_t TCPServer::ParseInstruction(const std::string& s)
 {
+    std::istringstream is(s);
     std::string instruction;
 
     is >> instruction;
 
-    cout << "Instyructuion " << instruction << endl;
-
     if (!instruction.compare("ls")) {
         list();
     }
-    else if (!instruction.compare("login")) {
-        //login(is);
+    else if (!instruction.compare("subscribe")) {
+        unsigned int decimation;
+        std::string path;
+
+        is >> decimation;
+        while (isspace(is.peek()))
+            is.ignore(1);
+
+        std::getline(is, path);
+
+        if (!is.fail())
+            main->subscribe(path);
     }
 
-    is.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+    return Idle;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void TCPServer::subscribe(const std::string& path, unsigned int decimation)
+{
 }
 
 /////////////////////////////////////////////////////////////////////////////

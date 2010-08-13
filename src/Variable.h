@@ -16,6 +16,7 @@ namespace HRTLab {
 class Variable {
     public:
         Variable(
+                unsigned int index,
                 const char *path,
                 const char *alias,
                 enum si_datatype_t dtype,
@@ -24,6 +25,7 @@ class Variable {
                 unsigned int decimation,
                 const void *addr);
 
+        const unsigned int index;
         const size_t width;
         const size_t memSize;
         const std::string path;

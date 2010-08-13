@@ -14,6 +14,7 @@ using namespace HRTLab;
 
 //////////////////////////////////////////////////////////////////////
 Variable::Variable(
+                unsigned int index,
                 const char *path,
                 const char *alias,
                 enum si_datatype_t dtype,
@@ -21,6 +22,7 @@ Variable::Variable(
                 const size_t dim[],
                 unsigned int decimation,
                 const void *addr):
+    index(index),
     width(getDTypeSize(dtype)),
     memSize(getMemSize(dtype, ndims, dim)),
     path(path), alias(alias), dtype(dtype), dim(dim, dim+ndims), 

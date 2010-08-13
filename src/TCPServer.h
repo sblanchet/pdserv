@@ -8,6 +8,7 @@
 #include <cc++/socketport.h> 
 #include <iosfwd>
 #include <string>
+#include <vector>
 #include <libxml/tree.h>
 
 
@@ -24,17 +25,22 @@ class TCPServer: public ost::SocketPort, private std::streambuf {
 
     private:
 
-        const Main *main;
+        Main * const main;
 
         std::string buf;
         std::string inbuf;
         const std::string crlf;
 
-        enum Instruction_value {
-            LS,
-        };
-        void ParseInstruction(std::istream&);
+        std::vector<std::vector<unsigned int> > subscribers;
+        unsigned int * const signal_ptr_start;
+        unsigned int *signal_ptr;
+
+        enum ParseState_t {
+            Idle,
+        } state;
+        ParseState_t ParseInstruction(const std::string&);
         void list();
+        void subscribe(const std::string& path, unsigned int decimation);
 
         xmlChar *xmlchar;
         int xmlcharlen;

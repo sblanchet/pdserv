@@ -13,6 +13,7 @@ using namespace HRTLab;
 
 //////////////////////////////////////////////////////////////////////
 Signal::Signal( unsigned int tid,
+        unsigned int index,
         unsigned int decimation,
         const char *path,
         const char *alias,
@@ -20,7 +21,8 @@ Signal::Signal( unsigned int tid,
         unsigned int ndims,
         const size_t *dim,
         const void *addr):
-    Variable(path, alias, dtype, ndims, dim, decimation, addr),
+    Variable(index, path, alias, dtype, ndims, dim,
+            decimation ? decimation : 1, addr),
     tid(tid)
 {
     cout << __func__ << endl;
