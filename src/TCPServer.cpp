@@ -38,7 +38,6 @@ TCPServer::TCPServer( ost::SocketService *ss,
     }
     s << crlf << std::flush;
 
-    setTimer(1000);
     attach(ss);
 
     xmlchar = 0;
@@ -47,7 +46,8 @@ TCPServer::TCPServer( ost::SocketService *ss,
 
     signal_ptr = signal_ptr_start;
     subscribers.resize(main->nst);
-    main->subscribe(std::string());
+
+    expired();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -75,7 +75,7 @@ std::streamsize TCPServer::xsputn ( const char * s, std::streamsize n )
 void TCPServer::expired()
 {
     cout << __func__ << endl;
-    setTimer(1000);
+    setTimer(100);
 
     while (*signal_ptr) {
         switch (*signal_ptr++) {
