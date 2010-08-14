@@ -35,8 +35,9 @@ int main(int argc, const char *argv[])
     //assert(!mlockall(MCL_CURRENT|MCL_FUTURE));
 
     while (1) {
-        sleep(1);
-        hrtlab_update(hrtlab, 0);
+        //sleep(1);
+        usleep(100000);
+        hrtlab_update(hrtlab, 0, 0);
     }
 
     hrtlab_exit(hrtlab);

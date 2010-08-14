@@ -13,11 +13,18 @@ class Signal;
 class Parameter;
 class Variable;
 
+template <class T1>
+    T1 align(unsigned int n)
+    {
+        T1 mask = sizeof(T1) - 1;
+        return (n + mask) & ~mask;
+    }
+
 class Main {
     public:
         enum Instruction {Restart = 1,
-            Subscribe, Unsubscribe, SetValue,
-            NewSubscriberList,
+            SubscriptionList, Subscribe, Unsubscribe, SetValue,
+            NewSubscriberList, SubscriptionData
         };
 
         Main(int argc, const char *argv[],
@@ -26,7 +33,7 @@ class Main {
                 unsigned int nst, const unsigned int decimation[]);
         ~Main();
 
-        void update(int st);
+        void update(int st, const struct timespec *time);
         int start();
 
         int newSignal(
@@ -55,7 +62,7 @@ class Main {
         const std::string version;
         const double baserate;
         const unsigned int nst;
-        const unsigned int *decimation;
+        unsigned int * const decimation;
 
         const std::vector<Signal*>& getSignals() const;
         const std::vector<Parameter*>& getParameters() const;
@@ -84,8 +91,9 @@ class Main {
         typedef std::map<std::string,Variable*> VariableMap;
         VariableMap variableMap;
 
-        std::vector<std::vector<unsigned int> > subscribers;
+        std::vector<std::vector<Signal*> > subscribers;
         std::vector<size_t> blockLength;
+        std::vector<unsigned int> iterationNo;
 };
 
 }

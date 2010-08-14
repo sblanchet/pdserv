@@ -26,9 +26,11 @@ Main::Main(int argc, const char *argv[],
     decimation(nst > 1 ? new unsigned int [nst] : 0)
 {
     if (nst > 1)
-        memcpy((void*)this->decimation, decimation, sizeof(unsigned int [nst]));
+        std::copy(decimation, decimation + nst, this->decimation);
     subscribers.resize(nst);
     blockLength.resize(nst);
+    iterationNo.resize(nst);
+    std::fill_n(blockLength.begin(), nst, sizeof(struct timespec));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -62,10 +64,10 @@ const std::map<std::string,Variable*>& Main::getVariableMap() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::update(int st)
+void Main::update(int st, const struct timespec *time)
 {
     bool dirty[nst];
-    memset(dirty, 0, sizeof(dirty));
+    std::fill_n(dirty, nst, false);
 
     // Check for instructions in the inbox
     while (*instruction_ptr) {
@@ -74,13 +76,17 @@ void Main::update(int st)
                 instruction_ptr = instruction_block_begin;
                 break;
 
+            case SubscriptionList:
+                std::fill_n(dirty, nst, true);
+                break;
+
             case Subscribe:
                 {
                     unsigned int index = *instruction_ptr++;
                     Signal *s = signals[index];
 
                     s->subscriptionIndex = subscribers[s->tid].size();
-                    subscribers[s->tid].push_back(index);
+                    subscribers[s->tid].push_back(s);
                     dirty[s->tid] = true;
                     blockLength[s->tid] += s->memSize;
                 }
@@ -118,32 +124,74 @@ void Main::update(int st)
             block_start = signal_ptr++;
         }
 
-        *signal_ptr++ = tid;
-        *signal_ptr++ = n;
+        *signal_ptr++ = n;      // Block size in (unsigned int)
+        *signal_ptr++ = tid;    // Task ID
 
-        std::copy(signal_ptr, signal_ptr+n, subscribers[tid].begin());
+        for (unsigned int i = 0; i < n; i++)
+            signal_ptr[i] = subscribers[tid][i]->index;
         signal_ptr += n;
 
         *signal_ptr = 0;
         *block_start = NewSubscriberList;
     }
+
+    // Copy signals over
+    //if (!subscribers[st].empty()) {
+        unsigned int *block_start = signal_ptr++;
+        size_t n =
+            (blockLength[st] + sizeof(unsigned int) - 1)
+            / sizeof(unsigned int);
+
+        if (block_start + n + 4 >= signal_ptr_end) {
+            *signal_ptr_start = 0;
+            *block_start = Restart;
+            signal_ptr = signal_ptr_start;
+            block_start = signal_ptr++;
+        }
+
+        *signal_ptr++ = n;                  // Block size in (unsigned int)
+        *signal_ptr++ = st;                 // Task Id
+        *signal_ptr++ = iterationNo[st]++;  // Iteration number
+        char *dataPtr = reinterpret_cast<char*>(signal_ptr);
+        if (time)
+            *reinterpret_cast<struct timespec*>(dataPtr) = *time;
+        else
+            std::fill_n(dataPtr, sizeof(struct timespec), 0);
+        dataPtr += sizeof(struct timespec);                 // TimeSpec
+        for (std::vector<Signal*>::iterator it = subscribers[st].begin();
+                it != subscribers[st].end(); it++) {
+            memcpy(dataPtr, (*it)->addr, (*it)->memSize);
+            dataPtr += (*it)->memSize;
+        }
+        signal_ptr += n;
+        *signal_ptr = 0;
+        *block_start = SubscriptionData;
+    //}
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::subscribe(const std::string &path)
 {
     VariableMap::iterator it = variableMap.find(path);
-    if (it == variableMap.end() or !it->second->decimation)
+    if (!path.empty()
+            and (it == variableMap.end() or !it->second->decimation))
         return;
 
     if (instruction_ptr + 2 >= instruction_ptr_end) {
+        *instruction_block_begin = 0;
         *instruction_ptr = Restart;
         instruction_ptr = instruction_block_begin;
     }
 
-    instruction_ptr[1] = it->second->index;
-    instruction_ptr[2] = 0;
-    instruction_ptr[0] = Subscribe;
+    if (path.empty()) {
+        instruction_ptr[1] = 0;
+        instruction_ptr[0] = SubscriptionList;
+    }
+    else {
+        instruction_ptr[1] = it->second->index;
+        instruction_ptr[2] = 0;
+        instruction_ptr[0] = Subscribe;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -211,7 +259,7 @@ int Main::newSignal(
                 datatype, ndims, dim, addr)
             );
     variableMap[path] = signals.back();
-    subscribers[tid].resize(subscribers[tid].size() + 1);
+    subscribers.reserve(signals.size());
 
     return 0;
 }

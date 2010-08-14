@@ -47,6 +47,7 @@ TCPServer::TCPServer( ost::SocketService *ss,
 
     signal_ptr = signal_ptr_start;
     subscribers.resize(main->nst);
+    main->subscribe(std::string());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -84,8 +85,8 @@ void TCPServer::expired()
 
             case Main::NewSubscriberList:
                 {
-                    unsigned int tid = *signal_ptr++;
                     unsigned int count = *signal_ptr++;
+                    unsigned int tid = *signal_ptr++;
 
                     subscribers[tid].resize(count);
                     std::copy(subscribers[tid].begin(), subscribers[tid].end(),
@@ -94,6 +95,25 @@ void TCPServer::expired()
 
                     cout << "Hurrah " << __func__ << endl;
                 }
+                break;
+
+            case Main::SubscriptionData:
+                {
+                    cout << signal_ptr-1 << " + " << *signal_ptr << endl;
+                    unsigned int n           = *signal_ptr++;
+                    unsigned int st          = *signal_ptr++;
+                    unsigned int iterationNo = *signal_ptr++;
+                    char *dataPtr = reinterpret_cast<char*>(signal_ptr);
+                    struct timespec time =
+                        *reinterpret_cast<struct timespec*>(dataPtr);
+                    signal_ptr += n;
+                    //if (signal_ptr >= signal_ptr_end)
+                    //    signal_ptr = signal_ptr_start;
+                }
+                break;
+
+            default:
+                signal_ptr = signal_ptr_start;
                 break;
         }
     }

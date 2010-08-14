@@ -82,8 +82,10 @@ int hrtlab_start(
  * variables
  */
 void hrtlab_update(
-        struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
-        int st                  /**< Sample task id to update */
+        struct hrtlab* hrtlab,  /**< Pointer to hrtlab structure */
+        int st,                 /**< Sample task id to update */
+        const struct timespec *t /**< Current model time.
+                                  * If NULL, zero is assumed */
         );
 
 /** Cleanup hrtlab */

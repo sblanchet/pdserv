@@ -15,9 +15,9 @@ void hrtlab_exit(struct hrtlab* hrtlab)
     delete reinterpret_cast<HRTLab::Main*>(hrtlab);
 }
 
-void hrtlab_update(struct hrtlab* hrtlab, int st)
+void hrtlab_update(struct hrtlab* hrtlab, int st, const struct timespec *t)
 {
-    reinterpret_cast<HRTLab::Main*>(hrtlab)->update(st);
+    reinterpret_cast<HRTLab::Main*>(hrtlab)->update(st, t);
 }
 
 int hrtlab_signal(
