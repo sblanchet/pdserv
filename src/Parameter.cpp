@@ -21,7 +21,7 @@ Parameter::Parameter(
         enum si_datatype_t dtype,
         unsigned int ndims,
         const size_t dim[],
-        const void *addr):
+        const char *addr):
     Variable(index, path, alias, dtype, ndims, dim, 0, addr),
     paramupdate(paramupdate), priv_data(priv_data)
 {

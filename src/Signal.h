@@ -19,7 +19,7 @@ class Signal: public Variable {
                 enum si_datatype_t dtype,
                 unsigned int ndims,
                 const size_t *dim,
-                const void *addr);
+                const char *addr);
 
         const unsigned int tid;
 

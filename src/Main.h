@@ -44,7 +44,7 @@ class Main {
                 enum si_datatype_t datatype,
                 unsigned int ndims,
                 const unsigned int dim[],
-                const void *addr
+                const char *addr
                 );
 
         int newParameter(
@@ -55,7 +55,7 @@ class Main {
                 enum si_datatype_t datatype,
                 unsigned int ndims,
                 const unsigned int dim[],
-                const void *addr
+                const char *addr
                 );
 
         const std::string name;

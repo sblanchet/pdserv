@@ -164,14 +164,16 @@ void Main::update(int st, const struct timespec *time)
         signal_ptr[2] = st;                 // Task Id
         signal_ptr[3] = iterationNo[st]++;  // Iteration number
         char *dataPtr = reinterpret_cast<char*>(&signal_ptr[headerLen]);
+
         if (time)
             *reinterpret_cast<struct timespec*>(dataPtr) = *time;
         else
             std::fill_n(dataPtr, sizeof(struct timespec), 0);
         dataPtr += sizeof(struct timespec);                 // TimeSpec
+
         for (std::vector<Signal*>::iterator it = subscribers[st].begin();
                 it != subscribers[st].end(); it++) {
-            memcpy(dataPtr, (*it)->addr, (*it)->memSize);
+            std::copy((*it)->addr, (*it)->addr + (*it)->memSize, dataPtr);
             dataPtr += (*it)->memSize;
         }
         signal_ptr[n + headerLen] = 0;
@@ -260,7 +262,7 @@ int Main::newSignal(
         enum si_datatype_t datatype,
         unsigned int ndims,
         const size_t dim[],
-        const void *addr
+        const char *addr
         )
 {
     if (tid >= nst)
@@ -288,7 +290,7 @@ int Main::newParameter(
         enum si_datatype_t datatype,
         unsigned int ndims,
         const size_t dim[],
-        const void *addr
+        const char *addr
         )
 {
     if (variableMap.find(path) != variableMap.end())

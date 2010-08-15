@@ -23,7 +23,7 @@ class Variable {
                 unsigned int ndims,
                 const size_t dim[],
                 unsigned int decimation,
-                const void *addr);
+                const char *addr);
 
         const unsigned int index;
         const size_t width;
@@ -33,7 +33,7 @@ class Variable {
         const enum si_datatype_t dtype;
         const std::vector<size_t> dim;
         const unsigned int decimation;
-        const void * const addr;
+        const char * const addr;
 
     private:
 

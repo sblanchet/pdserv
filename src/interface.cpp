@@ -33,7 +33,8 @@ int hrtlab_signal(
         )
 {
     return reinterpret_cast<HRTLab::Main*>(hrtlab)->newSignal(
-            tid, decimation, path, alias, datatype, ndims, dim, addr
+            tid, decimation, path, alias, datatype, ndims, dim,
+            reinterpret_cast<const char*>(addr)
             );
 }
 
@@ -50,7 +51,8 @@ int hrtlab_parameter(
         )
 {
     return reinterpret_cast<HRTLab::Main*>(hrtlab)->newParameter(
-            paramupdate, priv_data, path, alias, datatype, ndims, dim, addr
+            paramupdate, priv_data, path, alias, datatype, ndims, dim,
+            reinterpret_cast<const char*>(addr)
             );
 }
 

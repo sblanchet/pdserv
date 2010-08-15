@@ -21,7 +21,7 @@ Variable::Variable(
                 unsigned int ndims,
                 const size_t dim[],
                 unsigned int decimation,
-                const void *addr):
+                const char *addr):
     index(index),
     width(getDTypeSize(dtype)),
     memSize(getMemSize(dtype, ndims, dim)),

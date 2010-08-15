@@ -21,7 +21,7 @@ class Parameter: public Variable {
                 enum si_datatype_t dtype,
                 unsigned int ndims,
                 const size_t dim[],
-                const void *addr);
+                const char *addr);
 
         const paramupdate_t paramupdate;
         void * const priv_data;

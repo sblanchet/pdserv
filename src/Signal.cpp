@@ -20,7 +20,7 @@ Signal::Signal( unsigned int tid,
         enum si_datatype_t dtype,
         unsigned int ndims,
         const size_t *dim,
-        const void *addr):
+        const char *addr):
     Variable(index, path, alias, dtype, ndims, dim,
             decimation ? decimation : 1, addr),
     tid(tid)
