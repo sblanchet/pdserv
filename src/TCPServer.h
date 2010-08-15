@@ -11,6 +11,7 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <functional>
 #include <libxml/tree.h>
 
 
@@ -39,6 +40,8 @@ class TCPServer: public ost::SocketPort, private std::streambuf {
         std::map<Signal*,std::set<size_t> > subscribed;
         std::vector<std::vector<Signal*> > signalList;
         std::vector<size_t> dataOffset;
+        std::vector<std::map<unsigned int, unsigned int,
+            std::greater<unsigned int> > > decimation;
         unsigned int * const signal_ptr_start;
         unsigned int *signal_ptr;
 

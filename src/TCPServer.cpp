@@ -26,7 +26,7 @@ TCPServer::TCPServer( ost::SocketService *ss,
 {
     std::ostream s(this);
     setCompletion(false);
-    sputn("Welcome\n", 8);
+
     s << "Welcome" << crlf
         << "Name: " << main->name << crlf
         << "Version: " << main->version << crlf
@@ -49,6 +49,10 @@ TCPServer::TCPServer( ost::SocketService *ss,
     signal_ptr = signal_ptr_start;
     signalList.resize(main->nst);
     dataOffset.resize(signals.size());
+    decimation.resize(signals.size());
+    for (unsigned int i = 0; i < main->nst; i++) {
+        decimation[i][1] = 0;
+    }
     //subscribers.resize(main->nst);
 
     expired();
@@ -82,17 +86,18 @@ void TCPServer::expired()
     setTimer(100);
 
     while (*signal_ptr) {
-        switch (*signal_ptr) {
-            case Main::Restart:
-                {
-                    signal_ptr = signal_ptr_start;
-                }
-                break;
+        if (*signal_ptr == Main::Restart) {
+            signal_ptr = signal_ptr_start;
+            continue;
+        }
 
+        const size_t blockLen = signal_ptr[1];
+
+        switch (*signal_ptr) {
             case Main::NewSubscriberList:
                 {
                     size_t headerLen = 4;
-                    size_t n = signal_ptr[1];
+                    size_t n = blockLen - headerLen;
                     unsigned int tid = signal_ptr[2];
                     //unsigned int decimation = signal_ptr[3];
                     size_t offset = 0;
@@ -107,15 +112,11 @@ void TCPServer::expired()
 
                         signalList[tid][i] = s;
                     }
-
-                    signal_ptr += n + headerLen;
                 }
                 break;
 
             case Main::SubscriptionData:
                 {
-                    size_t headerLen = 4;
-                    unsigned int n = signal_ptr[1];
                     unsigned int tid = signal_ptr[2];
                     //unsigned int iterationNo = signal_ptr[3];
                     char *dataPtr = reinterpret_cast<char*>(&signal_ptr[4]);
@@ -126,17 +127,11 @@ void TCPServer::expired()
 
                     for (unsigned int i = 0; i < signalList[tid].size(); i++) {
                     }
-
-                    signal_ptr += n + headerLen;
-                    //if (signal_ptr >= signal_ptr_end)
-                    //    signal_ptr = signal_ptr_start;
                 }
                 break;
-
-            default:
-                signal_ptr = signal_ptr_start;
-                break;
         }
+
+        signal_ptr += blockLen;
     }
 }
 
@@ -192,10 +187,10 @@ TCPServer::ParseState_t TCPServer::ParseInstruction(const std::string& s)
         list();
     }
     else if (!instruction.compare("subscribe")) {
-        unsigned int decimation;
+        unsigned int n;
         std::string path;
 
-        is >> decimation;
+        is >> n;
         while (isspace(is.peek()))
             is.ignore(1);
 
@@ -205,7 +200,21 @@ TCPServer::ParseState_t TCPServer::ParseInstruction(const std::string& s)
             size_t sigIdx = main->subscribe(path);
             if (sigIdx != ~0U) {
                 Signal *signal = (main->getSignals())[sigIdx];
-                subscribed[signal].insert(decimation);
+                unsigned int tid = signal[sigIdx].tid;
+                subscribed[signal].insert(n);
+
+                if (decimation[tid].find(n) == decimation[tid].end()) {
+                    std::map<unsigned int, unsigned int>::iterator
+                        maxTid = decimation[tid].begin();
+
+                    // Note, have to use temporary variable here, otherwise
+                    // the algorithm does not work!
+                    unsigned int x = maxTid->first > n
+                        ? (maxTid->second / n) : maxTid->second;
+
+                    decimation[tid][n] = x;
+                    cout << (~0U % 7) << endl;
+                }
             }
         }
     }

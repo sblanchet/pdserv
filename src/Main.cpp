@@ -133,9 +133,9 @@ void Main::update(int st, const struct timespec *time)
             signal_ptr = signal_ptr_start;
         }
 
-        signal_ptr[1] = n;      // Block size in (unsigned int)
-        signal_ptr[2] = tid;    // Task Id
-        signal_ptr[3] = 1;      // Transmission decimation
+        signal_ptr[1] = n + headerLen;  // Block size in (unsigned int)
+        signal_ptr[2] = tid;            // Task Id
+        signal_ptr[3] = 1;              // Transmission decimation
 
         for (unsigned int i = 0; i < n; i++)
             signal_ptr[i + headerLen] = subscribers[tid][i]->index;
@@ -160,7 +160,7 @@ void Main::update(int st, const struct timespec *time)
             signal_ptr = signal_ptr_start;
         }
 
-        signal_ptr[1] = n;                  // Block size in (unsigned int)
+        signal_ptr[1] = n + headerLen;      // Block size in (unsigned int)
         signal_ptr[2] = st;                 // Task Id
         signal_ptr[3] = iterationNo[st]++;  // Iteration number
         char *dataPtr = reinterpret_cast<char*>(&signal_ptr[headerLen]);
