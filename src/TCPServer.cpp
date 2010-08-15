@@ -5,6 +5,7 @@
 #include "TCPServer.h"
 #include "Main.h"
 #include "Variable.h"
+#include "Signal.h"
 
 #include <iostream>
 #include <limits>
@@ -19,7 +20,8 @@ using namespace HRTLab;
 /////////////////////////////////////////////////////////////////////////////
 TCPServer::TCPServer( ost::SocketService *ss,
         ost::TCPSocket &socket, Main *main):
-    SocketPort(0, socket), main(main), crlf("\r\n"),
+    SocketPort(0, socket), main(main),
+    signals(main->getSignals()), crlf("\r\n"),
     signal_ptr_start(main->getSignalPtrStart())
 {
     std::ostream s(this);
@@ -45,7 +47,9 @@ TCPServer::TCPServer( ost::SocketService *ss,
     encoding = xmlFindCharEncodingHandler("ISO-8859-1");
 
     signal_ptr = signal_ptr_start;
-    subscribers.resize(main->nst);
+    signalList.resize(main->nst);
+    dataOffset.resize(signals.size());
+    //subscribers.resize(main->nst);
 
     expired();
 }
@@ -74,39 +78,56 @@ std::streamsize TCPServer::xsputn ( const char * s, std::streamsize n )
 /////////////////////////////////////////////////////////////////////////////
 void TCPServer::expired()
 {
-    cout << __func__ << endl;
+    cout << __func__ << __LINE__ << endl;
     setTimer(100);
 
     while (*signal_ptr) {
-        switch (*signal_ptr++) {
+        switch (*signal_ptr) {
             case Main::Restart:
-                signal_ptr = signal_ptr_start;
+                {
+                    signal_ptr = signal_ptr_start;
+                }
                 break;
 
             case Main::NewSubscriberList:
                 {
-                    unsigned int count = *signal_ptr++;
-                    unsigned int tid = *signal_ptr++;
+                    size_t headerLen = 4;
+                    size_t n = signal_ptr[1];
+                    unsigned int tid = signal_ptr[2];
+                    //unsigned int decimation = signal_ptr[3];
+                    size_t offset = 0;
 
-                    subscribers[tid].resize(count);
-                    std::copy(subscribers[tid].begin(), subscribers[tid].end(),
-                            signal_ptr);
-                    signal_ptr += count;
+                    signalList[tid].resize(n);
+                    for (unsigned int i = 0; i < n; i++) {
+                        size_t sigIdx = signal_ptr[i + headerLen];
+                        Signal *s = signals[sigIdx];
 
-                    cout << "Hurrah " << __func__ << endl;
+                        offset += s->memSize;
+                        dataOffset[sigIdx] = offset;
+
+                        signalList[tid][i] = s;
+                    }
+
+                    signal_ptr += n + headerLen;
                 }
                 break;
 
             case Main::SubscriptionData:
                 {
-                    cout << signal_ptr-1 << " + " << *signal_ptr << endl;
-                    unsigned int n           = *signal_ptr++;
-                    unsigned int st          = *signal_ptr++;
-                    unsigned int iterationNo = *signal_ptr++;
-                    char *dataPtr = reinterpret_cast<char*>(signal_ptr);
+                    size_t headerLen = 4;
+                    unsigned int n = signal_ptr[1];
+                    unsigned int tid = signal_ptr[2];
+                    //unsigned int iterationNo = signal_ptr[3];
+                    char *dataPtr = reinterpret_cast<char*>(&signal_ptr[4]);
+
                     struct timespec time =
                         *reinterpret_cast<struct timespec*>(dataPtr);
-                    signal_ptr += n;
+                    dataPtr += sizeof(struct timespec);
+
+                    for (unsigned int i = 0; i < signalList[tid].size(); i++) {
+                    }
+
+                    signal_ptr += n + headerLen;
                     //if (signal_ptr >= signal_ptr_end)
                     //    signal_ptr = signal_ptr_start;
                 }
@@ -180,8 +201,13 @@ TCPServer::ParseState_t TCPServer::ParseInstruction(const std::string& s)
 
         std::getline(is, path);
 
-        if (!is.fail())
-            main->subscribe(path);
+        if (!is.fail()) {
+            size_t sigIdx = main->subscribe(path);
+            if (sigIdx != ~0U) {
+                Signal *signal = (main->getSignals())[sigIdx];
+                subscribed[signal].insert(decimation);
+            }
+        }
     }
 
     return Idle;

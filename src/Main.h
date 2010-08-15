@@ -68,7 +68,7 @@ class Main {
         const std::vector<Parameter*>& getParameters() const;
         const std::map<std::string,Variable*>& getVariableMap() const;
 
-        void subscribe(const std::string& path);
+        unsigned int subscribe(const std::string& path);
 
         unsigned int *getSignalPtrStart() const;
 
@@ -93,7 +93,9 @@ class Main {
 
         std::vector<std::vector<Signal*> > subscribers;
         std::vector<size_t> blockLength;
-        std::vector<unsigned int> iterationNo;
+        std::vector<size_t> iterationNo;
+        std::vector<bool> subscribed;
+        std::vector<size_t> subscriptionIndex;
 };
 
 }

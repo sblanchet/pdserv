@@ -9,12 +9,15 @@
 #include <iosfwd>
 #include <string>
 #include <vector>
+#include <set>
+#include <map>
 #include <libxml/tree.h>
 
 
 namespace HRTLab {
 
 class Main;
+class Signal;
 
 class TCPServer: public ost::SocketPort, private std::streambuf {
     public:
@@ -26,12 +29,16 @@ class TCPServer: public ost::SocketPort, private std::streambuf {
     private:
 
         Main * const main;
+        const std::vector<Signal*>& signals;
 
         std::string buf;
         std::string inbuf;
         const std::string crlf;
 
-        std::vector<std::vector<unsigned int> > subscribers;
+        // Map a signal to a set of subscription decimations
+        std::map<Signal*,std::set<size_t> > subscribed;
+        std::vector<std::vector<Signal*> > signalList;
+        std::vector<size_t> dataOffset;
         unsigned int * const signal_ptr_start;
         unsigned int *signal_ptr;
 

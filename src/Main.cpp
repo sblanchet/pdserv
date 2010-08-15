@@ -30,6 +30,8 @@ Main::Main(int argc, const char *argv[],
     subscribers.resize(nst);
     blockLength.resize(nst);
     iterationNo.resize(nst);
+    subscribed.resize(nst);
+    subscriptionIndex.resize(nst);
     std::fill_n(blockLength.begin(), nst, sizeof(struct timespec));
 }
 
@@ -85,7 +87,11 @@ void Main::update(int st, const struct timespec *time)
                     unsigned int index = *instruction_ptr++;
                     Signal *s = signals[index];
 
-                    s->subscriptionIndex = subscribers[s->tid].size();
+                    if (subscribed[index])
+                        break;
+
+                    subscribed[index] = true;
+                    subscriptionIndex[index] = subscribers[s->tid].size();
                     subscribers[s->tid].push_back(s);
                     dirty[s->tid] = true;
                     blockLength[s->tid] += s->memSize;
@@ -97,10 +103,14 @@ void Main::update(int st, const struct timespec *time)
                     unsigned int index = *instruction_ptr++;
                     Signal *s = signals[index];
 
-                    subscribers[s->tid].erase(
-                            subscribers[s->tid].begin() + s->subscriptionIndex);
-                    dirty[s->tid] = true;
-                    blockLength[s->tid] -= s->memSize;
+                    if (subscribed[index]) {
+                        subscribers[s->tid].erase(
+                                subscribers[s->tid].begin()
+                                + subscriptionIndex[index]);
+                        dirty[s->tid] = true;
+                        blockLength[s->tid] -= s->memSize;
+                        subscribed[index] = false;
+                    }
                 }
                 break;
 
@@ -114,45 +124,46 @@ void Main::update(int st, const struct timespec *time)
         if (!dirty[tid])
             continue;
 
-        unsigned int *block_start = signal_ptr++;
-        unsigned int n = subscribers[tid].size();
+        size_t n = subscribers[tid].size();
+        size_t headerLen = 4;
 
-        if (signal_ptr + n + 3 >= signal_ptr_end) {
+        if (signal_ptr + n + headerLen >= signal_ptr_end) {
             *signal_ptr_start = 0;
-            *block_start = Restart;
+            signal_ptr[0] = Restart;
             signal_ptr = signal_ptr_start;
-            block_start = signal_ptr++;
         }
 
-        *signal_ptr++ = n;      // Block size in (unsigned int)
-        *signal_ptr++ = tid;    // Task ID
+        signal_ptr[1] = n;      // Block size in (unsigned int)
+        signal_ptr[2] = tid;    // Task Id
+        signal_ptr[3] = 1;      // Transmission decimation
 
         for (unsigned int i = 0; i < n; i++)
-            signal_ptr[i] = subscribers[tid][i]->index;
-        signal_ptr += n;
+            signal_ptr[i + headerLen] = subscribers[tid][i]->index;
 
-        *signal_ptr = 0;
-        *block_start = NewSubscriberList;
+        signal_ptr[n + headerLen] = 0;
+        signal_ptr[0] = NewSubscriberList;
+
+        signal_ptr += n + headerLen;
     }
 
     // Copy signals over
-    //if (!subscribers[st].empty()) {
-        unsigned int *block_start = signal_ptr++;
+    //if (!subscribers[st].empty())
+    {
+        size_t headerLen = 4;
         size_t n =
             (blockLength[st] + sizeof(unsigned int) - 1)
             / sizeof(unsigned int);
 
-        if (block_start + n + 4 >= signal_ptr_end) {
+        if (signal_ptr + n + headerLen >= signal_ptr_end) {
             *signal_ptr_start = 0;
-            *block_start = Restart;
+            signal_ptr[0] = Restart;
             signal_ptr = signal_ptr_start;
-            block_start = signal_ptr++;
         }
 
-        *signal_ptr++ = n;                  // Block size in (unsigned int)
-        *signal_ptr++ = st;                 // Task Id
-        *signal_ptr++ = iterationNo[st]++;  // Iteration number
-        char *dataPtr = reinterpret_cast<char*>(signal_ptr);
+        signal_ptr[1] = n;                  // Block size in (unsigned int)
+        signal_ptr[2] = st;                 // Task Id
+        signal_ptr[3] = iterationNo[st]++;  // Iteration number
+        char *dataPtr = reinterpret_cast<char*>(&signal_ptr[headerLen]);
         if (time)
             *reinterpret_cast<struct timespec*>(dataPtr) = *time;
         else
@@ -163,19 +174,19 @@ void Main::update(int st, const struct timespec *time)
             memcpy(dataPtr, (*it)->addr, (*it)->memSize);
             dataPtr += (*it)->memSize;
         }
-        signal_ptr += n;
-        *signal_ptr = 0;
-        *block_start = SubscriptionData;
-    //}
+        signal_ptr[n + headerLen] = 0;
+        signal_ptr[0] = SubscriptionData;
+        signal_ptr += n + headerLen;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::subscribe(const std::string &path)
+unsigned int Main::subscribe(const std::string &path)
 {
     VariableMap::iterator it = variableMap.find(path);
     if (!path.empty()
             and (it == variableMap.end() or !it->second->decimation))
-        return;
+        return ~0U;
 
     if (instruction_ptr + 2 >= instruction_ptr_end) {
         *instruction_block_begin = 0;
@@ -191,7 +202,11 @@ void Main::subscribe(const std::string &path)
         instruction_ptr[1] = it->second->index;
         instruction_ptr[2] = 0;
         instruction_ptr[0] = Subscribe;
+
+        return it->second->index;
     }
+
+    return ~0U;
 }
 
 /////////////////////////////////////////////////////////////////////////////

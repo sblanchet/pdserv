@@ -22,7 +22,6 @@ class Signal: public Variable {
                 const void *addr);
 
         const unsigned int tid;
-        unsigned int subscriptionIndex;
 
 //        void log(
 //                /** Signal decimation with which this signal will be logged.
