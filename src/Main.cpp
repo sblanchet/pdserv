@@ -32,7 +32,25 @@ Main::Main(int argc, const char *argv[],
     iterationNo.resize(nst);
     subscribed.resize(nst);
     subscriptionIndex.resize(nst);
+    subscriptionMap.resize(nst);
+
+    // the blockLength is at least the size of timespec
     std::fill_n(blockLength.begin(), nst, sizeof(struct timespec));
+
+    std::vector<std::map<uint8_t, size_t> > signalCount;
+    signalCount.resize(nst);
+    for (std::vector<Signal*>::iterator it = signals.begin();
+            it != signals.end(); it++) {
+        signalCount[(*it)->tid][(*it)->width]++;
+    }
+
+    for (unsigned int i = 0; i < nst; i++) {
+        for (std::map<uint8_t, size_t>::iterator it = signalCount[i].begin();
+                it != signalCount[i].end(); it++)
+            subscriptionMap[i][it->first].reserve(it->second);
+    }
+
+    subscribers.reserve(signals.size());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -75,24 +93,40 @@ void Main::update(int st, const struct timespec *time)
     while (*instruction_ptr) {
         switch (*instruction_ptr++) {
             case Restart:
-                instruction_ptr = instruction_block_begin;
+                {
+                    instruction_ptr = instruction_block_begin;
+                }
                 break;
 
             case SubscriptionList:
-                std::fill_n(dirty, nst, true);
+                {
+                    std::fill_n(dirty, nst, true);
+                }
                 break;
 
             case Subscribe:
                 {
                     unsigned int index = *instruction_ptr++;
+                    unsigned int i = 0;
                     Signal *s = signals[index];
 
                     if (subscribed[index])
                         break;
 
                     subscribed[index] = true;
-                    subscriptionIndex[index] = subscribers[s->tid].size();
-                    subscribers[s->tid].push_back(s);
+                    subscribers[s->tid].resize(subscribers[s->tid].size() + 1);
+
+                    subscriptionIndex[index] =
+                        subscriptionMap[s->tid][s->width].size();
+                    subscriptionMap[s->tid][s->width].push_back(s);
+                    for (SignalWidthMap::iterator it = subscriptionMap[s->tid].begin();
+                            it != subscriptionMap[s->tid].end(); it++) {
+                        for (std::vector<Signal*>::iterator it2 = it->second.begin();
+                                it2 != it->second.end(); it2++) {
+                            subscribers[s->tid][i] = *it2;
+                            i++;
+                        }
+                    }
                     dirty[s->tid] = true;
                     blockLength[s->tid] += s->memSize;
                 }
@@ -107,6 +141,12 @@ void Main::update(int st, const struct timespec *time)
                         subscribers[s->tid].erase(
                                 subscribers[s->tid].begin()
                                 + subscriptionIndex[index]);
+
+                        std::vector<Signal*>::iterator it = 
+                            subscriptionMap[s->tid][s->width].begin()
+                            + subscriptionIndex[index];
+                        subscriptionMap[s->tid][s->width].erase(it);
+
                         dirty[s->tid] = true;
                         blockLength[s->tid] -= s->memSize;
                         subscribed[index] = false;
@@ -271,12 +311,10 @@ int Main::newSignal(
     if (variableMap.find(path) != variableMap.end())
         return -EEXIST;
 
-    signals.push_back(
-            new Signal(signals.size(), tid, decimation, path, alias,
-                datatype, ndims, dim, addr)
-            );
-    variableMap[path] = signals.back();
-    subscribers.reserve(signals.size());
+    Signal *s = new Signal(signals.size(), tid, decimation, path, alias,
+                datatype, ndims, dim, addr);
+    signals.push_back(s);
+    variableMap[path] = s;
 
     return 0;
 }

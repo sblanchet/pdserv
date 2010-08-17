@@ -3,7 +3,10 @@
 
 #include <vector>
 #include <map>
+#include <set>
+#include <algorithm>
 #include <string>
+#include <stdint.h>
 
 #include <rtlab/rtlab.h>
 
@@ -96,6 +99,9 @@ class Main {
         std::vector<size_t> iterationNo;
         std::vector<bool> subscribed;
         std::vector<size_t> subscriptionIndex;
+        typedef std::map<uint8_t, std::vector<Signal*>, std::greater<uint8_t> >
+            SignalWidthMap;
+        std::vector<SignalWidthMap> subscriptionMap;
 };
 
 }
