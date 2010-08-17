@@ -47,7 +47,7 @@ TCPServer::TCPServer( ost::SocketService *ss,
     encoding = xmlFindCharEncodingHandler("ISO-8859-1");
 
     signal_ptr = signal_ptr_start;
-    signalList.resize(main->nst);
+    subscribed.resize(main->nst);
     dataOffset.resize(signals.size());
     decimation.resize(signals.size());
     for (unsigned int i = 0; i < main->nst; i++) {
@@ -92,6 +92,7 @@ void TCPServer::expired()
         }
 
         const size_t blockLen = signal_ptr[1];
+        std::ostream s(this);
 
         switch (*signal_ptr) {
             case Main::NewSubscriberList:
@@ -102,15 +103,19 @@ void TCPServer::expired()
                     //unsigned int decimation = signal_ptr[3];
                     size_t offset = 0;
 
-                    signalList[tid].resize(n);
+                    cout << "Main::NewSubscriberList " << tid << ' ' << n << endl;
+
                     for (unsigned int i = 0; i < n; i++) {
                         size_t sigIdx = signal_ptr[i + headerLen];
                         Signal *s = signals[sigIdx];
 
-                        offset += s->memSize;
                         dataOffset[sigIdx] = offset;
+                        offset += s->memSize;
 
-                        signalList[tid][i] = s;
+                        for (std::set<size_t>::iterator it = signalDecimation[s].begin();
+                                it != signalDecimation[s].end(); it++) {
+                            subscribed[tid][*it].insert(s);
+                        }
                     }
                 }
                 break;
@@ -125,7 +130,22 @@ void TCPServer::expired()
                         *reinterpret_cast<struct timespec*>(dataPtr);
                     dataPtr += sizeof(struct timespec);
 
-                    for (unsigned int i = 0; i < signalList[tid].size(); i++) {
+                    cout << "Main::SubscriptionData " << tid << endl;
+
+                    for (DecimationMap::iterator it = decimation[tid].begin();
+                            it != decimation[tid].end(); it++) {
+                        if (--it->second)
+                            continue;
+
+                        it->second = it->first;
+
+                        for (std::set<Signal*>::iterator it2 =
+                                subscribed[tid][it->first].begin();
+                                it2 != subscribed[tid][it->first].end();
+                                it2++) {
+                            s << "Send " << (*it2)->path << ' '
+                                << dataOffset[(*it2)->index] << endl;
+                        }
                     }
                 }
                 break;
@@ -201,19 +221,12 @@ TCPServer::ParseState_t TCPServer::ParseInstruction(const std::string& s)
             if (sigIdx != ~0U) {
                 Signal *signal = (main->getSignals())[sigIdx];
                 unsigned int tid = signal[sigIdx].tid;
-                subscribed[signal].insert(n);
+                signalDecimation[signal].insert(n);
 
                 if (decimation[tid].find(n) == decimation[tid].end()) {
-                    std::map<unsigned int, unsigned int>::iterator
-                        maxTid = decimation[tid].begin();
-
-                    // Note, have to use temporary variable here, otherwise
-                    // the algorithm does not work!
-                    unsigned int x = maxTid->first > n
-                        ? (maxTid->second / n) : maxTid->second;
-
-                    decimation[tid][n] = x;
-                    cout << (~0U % 7) << endl;
+                    // FIXME: This has to be reworked to fit into the the
+                    // other decimations sometime ;)
+                    decimation[tid][n] = 1;
                 }
             }
         }

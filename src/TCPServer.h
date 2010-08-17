@@ -9,8 +9,8 @@
 #include <iosfwd>
 #include <string>
 #include <vector>
-#include <set>
 #include <map>
+#include <set>
 #include <functional>
 #include <libxml/tree.h>
 
@@ -37,11 +37,12 @@ class TCPServer: public ost::SocketPort, private std::streambuf {
         const std::string crlf;
 
         // Map a signal to a set of subscription decimations
-        std::map<Signal*,std::set<size_t> > subscribed;
-        std::vector<std::vector<Signal*> > signalList;
+        std::vector<std::map<size_t, std::set<Signal*> > > subscribed;
+        std::map<Signal*, std::set<size_t> > signalDecimation;
         std::vector<size_t> dataOffset;
-        std::vector<std::map<unsigned int, unsigned int,
-            std::greater<unsigned int> > > decimation;
+        typedef std::map<unsigned int, unsigned int,
+            std::greater<unsigned int> > DecimationMap;
+        std::vector<DecimationMap> decimation;
         unsigned int * const signal_ptr_start;
         unsigned int *signal_ptr;
 
