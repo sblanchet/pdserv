@@ -2,6 +2,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -O2 -I/usr/include/libxml2")
 add_definitions(-DPKGID=${Package_HG_ID})
 
 include_directories(${RTLAB_SOURCE_DIR}/include)
+include_directories(msrproto)
+include_directories(.)
 
 add_library( rtlab SHARED
     interface.cpp
@@ -10,5 +12,6 @@ add_library( rtlab SHARED
     Signal.cpp Signal.h
     Parameter.cpp Parameter.h
     TCPServer.cpp TCPServer.h
+    msrproto/TCPServer.cpp msrproto/TCPServer.h
     )
-target_link_libraries(rtlab rt ccext2 xml2)
+target_link_libraries(rtlab ccext2 xml2)

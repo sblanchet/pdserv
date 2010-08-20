@@ -27,16 +27,13 @@ TCPServer::TCPServer( ost::SocketService *ss,
     std::ostream s(this);
     setCompletion(false);
 
-    s << "Welcome" << crlf
+    s << "PdCom Server v1.0" << crlf
         << "Name: " << main->name << crlf
         << "Version: " << main->version << crlf
         << "Sampletime: " << main->baserate << crlf
-        << "NumSt: "  << main->nst << crlf
-        << "Decimations: ";
+        << "TaskDecimations: 1";
     for (unsigned int i = 0; i < main->nst - 1; i++) {
-        if (i)
-            s << ",";
-        s << main->decimation[i];
+        s << "," << main->decimation[i];
     }
     s << crlf << std::flush;
 
@@ -159,7 +156,8 @@ void TCPServer::expired()
                                 }
                                 sent[v] = true;
 
-                                s << ' ' << getDTypeName(v->dtype)
+                                s << ' ' << v->decimation
+                                    << ' ' << getDTypeName(v->dtype)
                                     << ' ' << v->ndims;
 
                                 const size_t *dim = v->getDim();
@@ -249,6 +247,8 @@ TCPServer::ParseState_t TCPServer::ParseInstruction(const std::string& s)
 
     if (!instruction.compare("ls")) {
         list();
+    }
+    else if (!instruction.compare("set")) {
     }
     else if (!instruction.compare("subscribe")) {
         unsigned int n;
