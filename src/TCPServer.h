@@ -14,11 +14,14 @@
 #include <functional>
 #include <libxml/tree.h>
 
+#include "rtlab/etl_data_info.h"
+
 
 namespace HRTLab {
 
 class Main;
 class Signal;
+class Variable;
 
 class TCPServer: public ost::SocketPort, private std::streambuf {
     public:
@@ -38,7 +41,9 @@ class TCPServer: public ost::SocketPort, private std::streambuf {
 
         // Map a signal to a set of subscription decimations
         std::vector<std::map<size_t, std::set<Signal*> > > subscribed;
+        std::vector<std::map<size_t, bool> > dirty;
         std::map<Signal*, std::set<size_t> > signalDecimation;
+        std::map<Variable*, bool> sent;
         std::vector<size_t> dataOffset;
         typedef std::map<unsigned int, unsigned int,
             std::greater<unsigned int> > DecimationMap;
@@ -46,6 +51,9 @@ class TCPServer: public ost::SocketPort, private std::streambuf {
         unsigned int * const signal_ptr_start;
         unsigned int *signal_ptr;
 
+        static const char *getDTypeName(const enum si_datatype_t&);
+
+        void printVariable(std::streambuf *, Variable*, const char*);
         enum ParseState_t {
             Idle,
         } state;

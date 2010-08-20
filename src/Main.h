@@ -50,14 +50,15 @@ class Main {
                 );
 
         int newParameter(
-                paramupdate_t paramupdate,
-                void *priv_data,
                 const char *path,
                 const char *alias,
                 enum si_datatype_t datatype,
                 unsigned int ndims,
                 const unsigned int dim[],
-                const char *addr
+                char *addr,
+                paramupdate_t paramcheck,
+                paramupdate_t paramupdate,
+                void *priv_data
                 );
 
         const std::string name;

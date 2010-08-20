@@ -14,19 +14,23 @@ class Parameter: public Variable {
     public:
         Parameter (
                 unsigned int index,
-                paramupdate_t paramupdate,
-                void *priv_data,
                 const char *path,
                 const char *alias,
                 enum si_datatype_t dtype,
                 unsigned int ndims,
                 const size_t dim[],
-                const char *addr);
+                char *addr,
+                paramupdate_t paramcheck,
+                paramupdate_t paramupdate,
+                void *priv_data);
 
+        const paramupdate_t paramcheck;
         const paramupdate_t paramupdate;
         void * const priv_data;
 
     private:
+
+        char * const addr;
 
 };
 

@@ -50,9 +50,7 @@ TCPServer::TCPServer( ost::SocketService *ss,
     subscribed.resize(main->nst);
     dataOffset.resize(signals.size());
     decimation.resize(signals.size());
-    for (unsigned int i = 0; i < main->nst; i++) {
-        decimation[i][1] = 0;
-    }
+    dirty.resize(main->nst);
     //subscribers.resize(main->nst);
 
     expired();
@@ -61,7 +59,8 @@ TCPServer::TCPServer( ost::SocketService *ss,
 /////////////////////////////////////////////////////////////////////////////
 int TCPServer::sync()
 {
-    setDetectOutput(true);
+    if (!buf.empty())
+        setDetectOutput(true);
     return 0;
 }
 
@@ -83,16 +82,15 @@ std::streamsize TCPServer::xsputn ( const char * s, std::streamsize n )
 void TCPServer::expired()
 {
     cout << __func__ << __LINE__ << endl;
-    setTimer(100);
 
     while (*signal_ptr) {
+        cout << __func__ << ' ' << *signal_ptr << endl;
         if (*signal_ptr == Main::Restart) {
             signal_ptr = signal_ptr_start;
             continue;
         }
 
         const size_t blockLen = signal_ptr[1];
-        std::ostream s(this);
 
         switch (*signal_ptr) {
             case Main::NewSubscriberList:
@@ -115,6 +113,7 @@ void TCPServer::expired()
                         for (std::set<size_t>::iterator it = signalDecimation[s].begin();
                                 it != signalDecimation[s].end(); it++) {
                             subscribed[tid][*it].insert(s);
+                            dirty[tid][*it] = true;
                         }
                     }
                 }
@@ -134,17 +133,59 @@ void TCPServer::expired()
 
                     for (DecimationMap::iterator it = decimation[tid].begin();
                             it != decimation[tid].end(); it++) {
+                        cout << tid << ' ' << it->first << ' ' << it->second << endl;
                         if (--it->second)
                             continue;
 
                         it->second = it->first;
 
+                        std::ostream s(this);
+
+                        if (dirty[tid][it->first]) {
+                            s << "VARIABLELIST " << tid
+                                << ' ' << it->first
+                                << ' ' << subscribed[tid][it->first].size()
+                                << crlf;
+                            for (std::set<Signal*>::iterator it2 =
+                                    subscribed[tid][it->first].begin();
+                                    it2 != subscribed[tid][it->first].end();
+                                    it2++) {
+                                Variable *v = *it2;
+
+                                s << v->index;
+                                if (sent[v]) {
+                                    s << crlf;
+                                    continue;
+                                }
+                                sent[v] = true;
+
+                                s << ' ' << getDTypeName(v->dtype)
+                                    << ' ' << v->ndims;
+
+                                const size_t *dim = v->getDim();
+                                for (size_t i = 0; i < v->ndims; i++) {
+                                    s << ' ' << dim[i];
+                                }
+                                s << ' ' << v->alias
+                                    << ' ' << v->path
+                                    << crlf;
+
+                            }
+                            dirty[tid][it->first] = false;
+                        }
+
+                        s << "TID " << tid
+                            << ' ' << it->first
+                            << ' ' << time.tv_sec
+                            << ' ' << time.tv_nsec
+                            << crlf << std::flush;
+
                         for (std::set<Signal*>::iterator it2 =
                                 subscribed[tid][it->first].begin();
                                 it2 != subscribed[tid][it->first].end();
                                 it2++) {
-                            s << "Send " << (*it2)->path << ' '
-                                << dataOffset[(*it2)->index] << endl;
+                            printVariable(this, *it2,
+                                    dataPtr + dataOffset[(*it2)->index]);
                         }
                     }
                 }
@@ -153,6 +194,9 @@ void TCPServer::expired()
 
         signal_ptr += blockLen;
     }
+
+    sync();
+    setTimer(100);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -287,29 +331,15 @@ void TCPServer::list()
         TESTOUT(xmlNewProp(node, BAD_CAST "alias", utf8(v->alias)));
         TESTOUT(xmlNewProp(node, BAD_CAST "unit",  BAD_CAST ""));
 
-        const char* dtype;
-        switch (v->dtype) {
-            case si_boolean_T: dtype = "BOOL";   break;
-            case si_uint8_T:   dtype = "UINT8";   break;
-            case si_sint8_T:   dtype = "INT8";    break;
-            case si_uint16_T:  dtype = "UINT16";  break;
-            case si_sint16_T:  dtype = "INT16";   break;
-            case si_uint32_T:  dtype = "UINT32";  break;
-            case si_sint32_T:  dtype = "INT32";   break;
-            case si_uint64_T:  dtype = "UINT64";  break;
-            case si_sint64_T:  dtype = "INT64";   break;
-            case si_single_T:  dtype = "FLOAT32"; break;
-            case si_double_T:  dtype = "FLOAT64"; break;
-            default:           dtype = "";        break;
-        }
         TESTOUT(xmlNewProp(node,
-                    BAD_CAST "datatype", BAD_CAST dtype));
+                    BAD_CAST "datatype", BAD_CAST getDTypeName(v->dtype)));
 
         std::ostringstream d;
-        for (size_t i = 0; i < v->dim.size(); i++) {
+        const size_t *dim = v->getDim();
+        for (size_t i = 0; i < v->ndims; i++) {
             if (i)
                 d << ',';
-            d << v->dim[i];
+            d << dim[i];
         }
         TESTOUT(xmlNewProp(node,
                     BAD_CAST "dimension", BAD_CAST d.str().c_str()));
@@ -352,8 +382,151 @@ void TCPServer::output()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void TCPServer::printVariable(std::streambuf *sb,
+        Variable *v, const char *dataPtr)
+{
+    std::ostream s(sb);
+    const char punct = ';';
+
+    switch (v->dtype) {
+        case si_double_T:
+            {
+                const double *ptr = reinterpret_cast<const double*>(dataPtr);
+                const double *end = ptr + v->nelem;
+                s << *ptr++;
+                while (ptr < end)
+                    s << punct << *ptr++;
+            }
+            break;
+
+        case si_single_T:
+            {
+                const float *ptr = reinterpret_cast<const float*>(dataPtr);
+                const float *end = ptr + v->nelem;
+                s << *ptr++;
+                while (ptr < end)
+                    s << punct << *ptr++;
+            }
+            break;
+
+        case si_uint8_T:
+            {
+                const uint8_t *ptr = reinterpret_cast<const uint8_t*>(dataPtr);
+                const uint8_t *end = ptr + v->nelem;
+                s << *ptr++;
+                while (ptr < end)
+                    s << punct << *ptr++;
+            }
+            break;
+
+        case si_sint8_T:
+            {
+                const int8_t *ptr = reinterpret_cast<const int8_t*>(dataPtr);
+                const int8_t *end = ptr + v->nelem;
+                s << *ptr++;
+                while (ptr < end)
+                    s << punct << *ptr++;
+            }
+            break;
+
+        case si_uint16_T:
+            {
+                const uint16_t *ptr = reinterpret_cast<const uint16_t*>(dataPtr);
+                const uint16_t *end = ptr + v->nelem;
+                s << *ptr++;
+                while (ptr < end)
+                    s << punct << *ptr++;
+            }
+            break;
+
+        case si_sint16_T:
+            {
+                const int16_t *ptr = reinterpret_cast<const int16_t*>(dataPtr);
+                const int16_t *end = ptr + v->nelem;
+                s << *ptr++;
+                while (ptr < end)
+                    s << punct << *ptr++;
+            }
+            break;
+
+        case si_uint32_T:
+            {
+                const uint32_t *ptr = reinterpret_cast<const uint32_t*>(dataPtr);
+                const uint32_t *end = ptr + v->nelem;
+                s << *ptr++;
+                while (ptr < end)
+                    s << punct << *ptr++;
+            }
+            break;
+
+        case si_sint32_T:
+            {
+                const int32_t *ptr = reinterpret_cast<const int32_t*>(dataPtr);
+                const int32_t *end = ptr + v->nelem;
+                s << *ptr++;
+                while (ptr < end)
+                    s << punct << *ptr++;
+            }
+            break;
+
+        case si_uint64_T:
+            {
+                const uint64_t *ptr = reinterpret_cast<const uint64_t*>(dataPtr);
+                const uint64_t *end = ptr + v->nelem;
+                s << *ptr++;
+                while (ptr < end)
+                    s << punct << *ptr++;
+            }
+            break;
+
+        case si_sint64_T:
+            {
+                const int64_t *ptr = reinterpret_cast<const int64_t*>(dataPtr);
+                const int64_t *end = ptr + v->nelem;
+                s << *ptr++;
+                while (ptr < end)
+                    s << punct << *ptr++;
+            }
+            break;
+
+
+        case si_boolean_T:
+            {
+                const bool *ptr = reinterpret_cast<const bool*>(dataPtr);
+                const bool *end = ptr + v->nelem;
+                s << *ptr++;
+                while (ptr < end)
+                    s << punct << *ptr++;
+            }
+            break;
+        default:
+            break;
+    }
+    s << crlf;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void TCPServer::disconnect()
 {
     cout << __func__ << endl;
     delete this;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const char *TCPServer::getDTypeName(const enum si_datatype_t& t)
+{
+    switch (t) {
+        case si_boolean_T: return "BOOL";
+        case si_uint8_T:   return "UINT8";
+        case si_sint8_T:   return "INT8";
+        case si_uint16_T:  return "UINT16";
+        case si_sint16_T:  return "INT16";
+        case si_uint32_T:  return "UINT32";
+        case si_sint32_T:  return "INT32";
+        case si_uint64_T:  return "UINT64";
+        case si_sint64_T:  return "INT64";
+        case si_single_T:  return "FLOAT32";
+        case si_double_T:  return "FLOAT64";
+        default:           return "";
+    }
 }

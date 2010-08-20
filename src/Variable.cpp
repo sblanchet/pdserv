@@ -23,13 +23,30 @@ Variable::Variable(
                 unsigned int decimation,
                 const char *addr):
     index(index),
+    path(path), alias(alias), dtype(dtype),
+    ndims(ndims),
     width(getDTypeSize(dtype)),
-    memSize(getMemSize(dtype, ndims, dim)),
-    path(path), alias(alias), dtype(dtype), dim(dim, dim+ndims), 
-    decimation(decimation), addr(addr)
+    nelem(getNElem(ndims, dim)),
+    memSize(nelem * width),
+    decimation(decimation), addr(addr),
+    dim(new size_t[nelem])
 {
+    std::copy(dim, dim+ndims, this->dim);
     cout << __func__ << endl;
 }
+
+//////////////////////////////////////////////////////////////////////
+Variable::~Variable()
+{
+    delete[] dim;
+}
+
+//////////////////////////////////////////////////////////////////////
+const size_t *Variable::getDim() const
+{
+    return dim;
+}
+
 
 //////////////////////////////////////////////////////////////////////
 size_t Variable::getDTypeSize(enum si_datatype_t dtype)
@@ -74,13 +91,17 @@ size_t Variable::getDTypeSize(enum si_datatype_t dtype)
 }
 
 //////////////////////////////////////////////////////////////////////
-size_t Variable::getMemSize(enum si_datatype_t dtype,
-        unsigned int ndims, const size_t dim[])
+size_t Variable::getNElem( unsigned int ndims, const size_t dim[])
 {
-    size_t n = getDTypeSize(dtype);
+    if (dim) {
+        size_t n = 1;
 
-    for (size_t i = 0; i < ndims; i++)
-        n *= dim[i];
+        for (size_t i = 0; i < ndims; i++)
+            n *= dim[i];
 
-    return n;
+        return n;
+    }
+    else {
+        return ndims;
+    }
 }

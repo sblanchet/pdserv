@@ -30,6 +30,22 @@ struct hrtlab* hrtlab_init(
 /** Register a signal
  *
  * This call registers a signal, i.e. Variables that are calculated
+ *
+ * Parameters @n and @dim are used to specify the shape:
+ * For scalars:
+ *    @n = 1
+ *    @dim = NULL
+ *
+ * For vectors length x
+ *    @n = x
+ *    @dim = NULL
+ *
+ * For arrays
+ *   int ary[2][3][4]
+ *
+ *   @n = 3;
+ *   @dim = {2,3,4}
+ *   
  */
 int hrtlab_signal(
         struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
@@ -37,34 +53,68 @@ int hrtlab_signal(
         unsigned int decimation,  /**< Decimation with which the signal is
                                    * calculated */
         const char *path,         /**< Signal path */
-        const char *alias,        /**< Signal alias */
+        const char *alias,        /**< Signal alias. No whitespace allowed */
         enum si_datatype_t datatype, /**< Signal data type */
-        unsigned int ndims,       /**< Number of dimensions */
-        const unsigned int dim[], /**< Dimensions */
+        size_t n,                 /**< Element count.
+                                   * If @dim != NULL, this is the number
+                                   * elements in @dim */
+        const size_t dim[],       /**< Dimensions. If NULL, consider the
+                                   * parameter to be a vector of length @n */
         const void *addr          /**< Signal address */
         );
 
-typedef int (*paramupdate_t)(void *priv_data, const void *src, size_t len);
+/** Callback on a parameter update event
+ *
+ * See \hrtlab_parameter
+ */
+typedef int (*paramupdate_t)(
+        void *dst,              /**< Destination address @addr */
+        const void *src,        /**< Data source */
+        size_t len,             /**< Data length in bytes */
+        void *priv_data         /**< Optional user varialbe */
+        );
 
 /** Register a parameter
  *
- * This call registers a parameter.
+ * This call registers a parameter. See @hrtlab_signal for the description of
+ * similar function arguments.
  *
- * Parameters are never written by the library, instead the client passes on a
- * callback which is called when a new value for the parameter 
+ * During the registration of a parameter, the caller has the chance to
+ * register callback functions which are called inside (@paramupdate) and
+ * outside (@paramcheck) of real time context when a parameter is updated.  The
+ * function is responsible for copying, and optionally modifying, data from
+ * @src to @dst.  The value of @priv_data will be passed to the callback
+ * function.
+ *
+ * By default @memcpy will be used automatically for an unspecified callback.
+ *
+ * Outside real time context, the function can for example check the incoming
+ * values.  Since it is not in real time context, timing is irrelevant. If the
+ * function returns a ZERO, the library will transmit the data in @dst to real
+ * time context. Non-zero return values will cause a failed parameter write to
+ * be reported. Typically, negative error numbers should be returned.
+ *
+ * Inside real time context, the function not only has the chance to modify the
+ * data while copying from @src to @dst, it also has the chance to trigger
+ * events at the same time for example. Incidentally @dst is the address
+ * specified by @addr during registration. The return value is ignored.
  */
 int hrtlab_parameter(
         struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
-        paramupdate_t paramupdate,/**< Callback for updating the parameter.
-                                   * If the callback is NULL, simple memcpy()
-                                   * is done with priv_data as the dest */
-        void *priv_data,          /**< Arbitrary pointer for callback */
         const char *path,         /**< Signal path */
         const char *alias,        /**< Signal alias */
         enum si_datatype_t datatype, /**< Signal data type */
-        unsigned int ndims,       /**< Number of dimensions */
-        const unsigned int dim[], /**< Dimensions */
-        const void *addr          /**< Signal address */
+        size_t n,                 /**< Element count.  If @dim != NULL, this
+                                   * is the number elements in * @dim */
+        const size_t dim[],       /**< Dimensions. If NULL, consider the
+                                   * parameter to be a vector of length @n */
+        void *addr,               /**< Signal address */
+
+        paramupdate_t paramcheck, /**< Callback for updating the parameter
+                                   * outside real time context. */
+        paramupdate_t paramupdate,/**< Callback for updating the parameter
+                                   * inside real time context */
+        void *priv_data           /**< Arbitrary pointer for callback */
         );
 
 /** Finish initialisation

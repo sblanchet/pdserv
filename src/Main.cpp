@@ -88,6 +88,7 @@ void Main::update(int st, const struct timespec *time)
 {
     bool dirty[nst];
     std::fill_n(dirty, nst, false);
+    cout << __func__ << endl;
 
     // Check for instructions in the inbox
     while (*instruction_ptr) {
@@ -321,23 +322,24 @@ int Main::newSignal(
 
 /////////////////////////////////////////////////////////////////////////////
 int Main::newParameter(
-        paramupdate_t paramupdate,
-        void *priv_data,
         const char *path,
         const char *alias,
         enum si_datatype_t datatype,
         unsigned int ndims,
         const size_t dim[],
-        const char *addr
+        char *addr,
+        paramupdate_t paramcheck,
+        paramupdate_t paramupdate,
+        void *priv_data
         )
 {
     if (variableMap.find(path) != variableMap.end())
         return -EEXIST;
 
     parameters.push_back(
-            new Parameter(parameters.size(), paramupdate, priv_data, path,
-                alias, datatype, ndims, dim, addr)
-            );
+            new Parameter( parameters.size(),
+                path, alias, datatype, ndims, dim, addr,
+                paramcheck, paramupdate, priv_data));
     variableMap[path] = parameters.back();
 
     return 0;

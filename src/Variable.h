@@ -9,7 +9,6 @@
 
 #include <cstddef>
 #include <string>
-#include <vector>
 
 namespace HRTLab {
 
@@ -25,21 +24,27 @@ class Variable {
                 unsigned int decimation,
                 const char *addr);
 
+        ~Variable();
+
         const unsigned int index;
-        const size_t width;
-        const size_t memSize;
         const std::string path;
         const std::string alias;
         const enum si_datatype_t dtype;
-        const std::vector<size_t> dim;
+        const size_t ndims;
+        const size_t width;
+        const size_t nelem;
+        const size_t memSize;
         const unsigned int decimation;
         const char * const addr;
 
+        const size_t *getDim() const;
+
     private:
+        size_t * const dim;
 
         static size_t getDTypeSize(enum si_datatype_t dtype);
-        static size_t getMemSize(enum si_datatype_t dtype, 
-                unsigned int dims, const size_t dim[]);
+        static size_t getNElem( unsigned int dims, const size_t dim[]);
+
 };
 
 }

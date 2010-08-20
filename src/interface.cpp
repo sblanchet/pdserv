@@ -27,33 +27,36 @@ int hrtlab_signal(
         const char *path,
         const char *alias,
         enum si_datatype_t datatype,
-        unsigned int ndims,
-        const unsigned int dim[],
+        size_t n,
+        const size_t dim[],
         const void *addr
         )
 {
     return reinterpret_cast<HRTLab::Main*>(hrtlab)->newSignal(
-            tid, decimation, path, alias, datatype, ndims, dim,
+            tid, decimation, path, alias, datatype,
+            dim ? n : 1, dim ? dim : &n,
             reinterpret_cast<const char*>(addr)
             );
 }
 
 int hrtlab_parameter(
         struct hrtlab* hrtlab,
-        paramupdate_t paramupdate,
-        void *priv_data,
         const char *path,
         const char *alias,
         enum si_datatype_t datatype,
-        unsigned int ndims,
-        const unsigned int dim[],
-        const void *addr
+        size_t n,
+        const size_t dim[],
+        void *addr,
+
+        paramupdate_t paramcheck,
+        paramupdate_t paramupdate,
+        void *priv_data
         )
 {
     return reinterpret_cast<HRTLab::Main*>(hrtlab)->newParameter(
-            paramupdate, priv_data, path, alias, datatype, ndims, dim,
-            reinterpret_cast<const char*>(addr)
-            );
+            path, alias, datatype, dim ? n : 1, dim ? dim : &n,
+            reinterpret_cast<char*>(addr),
+            paramcheck, paramupdate, priv_data);
 }
 
 int hrtlab_start(struct hrtlab* hrtlab)
