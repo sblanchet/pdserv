@@ -1,0 +1,7 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// Repository Version
+#define PKGID @Package_HG_ID@
+
+#endif //CONFIG_H

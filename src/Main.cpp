@@ -1,14 +1,13 @@
 #include "Main.h"
 #include "Signal.h"
 #include "Parameter.h"
-#include "TCPServer.h"
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <unistd.h>
 #include <sys/mman.h>
 
-#include <cc++/socketport.h> 
+#include "etlproto/Server.h"
 
 #include <iostream>
 using std::cout;
@@ -287,11 +286,12 @@ int Main::start()
         return 0;
     }
 
-    ost::SocketService svc;
-    ost::TCPSocket socket(ost::IPV4Address("0.0.0.0"), 4000);
-    while (true) {
-        new TCPServer(&svc, socket, this);
-    }
+    EtlProto::Server etlproto(this);
+    etlproto.start();
+
+    etlproto.join();
+
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -2,7 +2,7 @@
  * $Id$
  *****************************************************************************/
 
-#include "TCPServer.h"
+#include "Session.h"
 #include "Main.h"
 #include "Variable.h"
 #include "Signal.h"
@@ -15,11 +15,11 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-using namespace HRTLab;
+using namespace EtlProto;
 
 /////////////////////////////////////////////////////////////////////////////
-TCPServer::TCPServer( ost::SocketService *ss,
-        ost::TCPSocket &socket, Main *main):
+Session::Session( ost::SocketService *ss,
+        ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), main(main),
     signals(main->getSignals()), crlf("\r\n"),
     signal_ptr_start(main->getSignalPtrStart())
@@ -54,7 +54,7 @@ TCPServer::TCPServer( ost::SocketService *ss,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int TCPServer::sync()
+int Session::sync()
 {
     if (!buf.empty())
         setDetectOutput(true);
@@ -62,27 +62,27 @@ int TCPServer::sync()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int TCPServer::overflow(int c)
+int Session::overflow(int c)
 {
     buf.append(1,c);
     return c;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::streamsize TCPServer::xsputn ( const char * s, std::streamsize n )
+std::streamsize Session::xsputn ( const char * s, std::streamsize n )
 {
     buf.append(s,n);
     return n;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TCPServer::expired()
+void Session::expired()
 {
     cout << __func__ << __LINE__ << endl;
 
     while (*signal_ptr) {
         cout << __func__ << ' ' << *signal_ptr << endl;
-        if (*signal_ptr == Main::Restart) {
+        if (*signal_ptr == HRTLab::Main::Restart) {
             signal_ptr = signal_ptr_start;
             continue;
         }
@@ -90,7 +90,7 @@ void TCPServer::expired()
         const size_t blockLen = signal_ptr[1];
 
         switch (*signal_ptr) {
-            case Main::NewSubscriberList:
+            case HRTLab::Main::NewSubscriberList:
                 {
                     size_t headerLen = 4;
                     size_t n = blockLen - headerLen;
@@ -102,7 +102,7 @@ void TCPServer::expired()
 
                     for (unsigned int i = 0; i < n; i++) {
                         size_t sigIdx = signal_ptr[i + headerLen];
-                        Signal *s = signals[sigIdx];
+                        HRTLab::Signal *s = signals[sigIdx];
 
                         dataOffset[sigIdx] = offset;
                         offset += s->memSize;
@@ -116,7 +116,7 @@ void TCPServer::expired()
                 }
                 break;
 
-            case Main::SubscriptionData:
+            case HRTLab::Main::SubscriptionData:
                 {
                     unsigned int tid = signal_ptr[2];
                     //unsigned int iterationNo = signal_ptr[3];
@@ -143,11 +143,11 @@ void TCPServer::expired()
                                 << ' ' << it->first
                                 << ' ' << subscribed[tid][it->first].size()
                                 << crlf;
-                            for (std::set<Signal*>::iterator it2 =
+                            for (std::set<HRTLab::Signal*>::iterator it2 =
                                     subscribed[tid][it->first].begin();
                                     it2 != subscribed[tid][it->first].end();
                                     it2++) {
-                                Variable *v = *it2;
+                                HRTLab::Variable *v = *it2;
 
                                 s << v->index;
                                 if (sent[v]) {
@@ -178,7 +178,7 @@ void TCPServer::expired()
                             << ' ' << time.tv_nsec
                             << crlf << std::flush;
 
-                        for (std::set<Signal*>::iterator it2 =
+                        for (std::set<HRTLab::Signal*>::iterator it2 =
                                 subscribed[tid][it->first].begin();
                                 it2 != subscribed[tid][it->first].end();
                                 it2++) {
@@ -198,7 +198,7 @@ void TCPServer::expired()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TCPServer::pending()
+void Session::pending()
 {
     cout << __func__ << endl;
     char buf[1024];
@@ -238,7 +238,7 @@ void TCPServer::pending()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-TCPServer::ParseState_t TCPServer::ParseInstruction(const std::string& s)
+Session::ParseState_t Session::ParseInstruction(const std::string& s)
 {
     std::istringstream is(s);
     std::string instruction;
@@ -263,7 +263,7 @@ TCPServer::ParseState_t TCPServer::ParseInstruction(const std::string& s)
         if (!is.fail()) {
             size_t sigIdx = main->subscribe(path);
             if (sigIdx != ~0U) {
-                Signal *signal = (main->getSignals())[sigIdx];
+                HRTLab::Signal *signal = (main->getSignals())[sigIdx];
                 unsigned int tid = signal[sigIdx].tid;
                 signalDecimation[signal].insert(n);
 
@@ -280,12 +280,12 @@ TCPServer::ParseState_t TCPServer::ParseInstruction(const std::string& s)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TCPServer::subscribe(const std::string& path, unsigned int decimation)
+void Session::subscribe(const std::string& path, unsigned int decimation)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-xmlChar* TCPServer::utf8(const std::string &s)
+xmlChar* Session::utf8(const std::string &s)
 {
     int inlen, outlen;
 
@@ -306,23 +306,23 @@ xmlChar* TCPServer::utf8(const std::string &s)
 
 /////////////////////////////////////////////////////////////////////////////
 #define TESTOUT(t) if(!(t)) goto out;
-void TCPServer::list()
+void Session::list()
 {
     int size;
     xmlChar *mem = 0;
     xmlDocPtr xmldoc;
     xmlNodePtr root, node;
 
-    const std::map<std::string,Variable*>& variables = main->getVariableMap();
+    const std::map<std::string,HRTLab::Variable*>& variables = main->getVariableMap();
 
     TESTOUT(xmldoc = xmlNewDoc(BAD_CAST "1.0"));
 
     TESTOUT(root = xmlNewNode(NULL,(xmlChar*)"signals"));
     xmlDocSetRootElement(xmldoc,root);
 
-    for (std::map<std::string,Variable*>::const_iterator it = variables.begin();
+    for (std::map<std::string,HRTLab::Variable*>::const_iterator it = variables.begin();
             it != variables.end(); it++) {
-        Variable *v = it->second;
+        HRTLab::Variable *v = it->second;
 
         TESTOUT(node = xmlNewNode(NULL,(xmlChar*)"signal"));
         xmlAddChild(root, node);
@@ -366,7 +366,7 @@ out:
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TCPServer::output()
+void Session::output()
 {
     cout << __func__ << endl;
     ssize_t n = send(buf.c_str(), buf.length());
@@ -382,8 +382,8 @@ void TCPServer::output()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TCPServer::printVariable(std::streambuf *sb,
-        Variable *v, const char *dataPtr)
+void Session::printVariable(std::streambuf *sb,
+        HRTLab::Variable *v, const char *dataPtr)
 {
     std::ostream s(sb);
     const char punct = ';';
@@ -506,14 +506,14 @@ void TCPServer::printVariable(std::streambuf *sb,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TCPServer::disconnect()
+void Session::disconnect()
 {
     cout << __func__ << endl;
     delete this;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const char *TCPServer::getDTypeName(const enum si_datatype_t& t)
+const char *Session::getDTypeName(const enum si_datatype_t& t)
 {
     switch (t) {
         case si_boolean_T: return "BOOL";

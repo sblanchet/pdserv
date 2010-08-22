@@ -2,8 +2,8 @@
  * $Id$
  *****************************************************************************/
 
-#ifndef TCPSERVER
-#define TCPSERVER
+#ifndef ETLSESSION
+#define ETLSESSION
 
 #include <cc++/socketport.h> 
 #include <iosfwd>
@@ -16,34 +16,35 @@
 
 #include "rtlab/etl_data_info.h"
 
-
 namespace HRTLab {
+    class Main;
+    class Signal;
+    class Variable;
+}
 
-class Main;
-class Signal;
-class Variable;
+namespace EtlProto {
 
-class TCPServer: public ost::SocketPort, private std::streambuf {
+class Session: public ost::SocketPort, private std::streambuf {
     public:
-        TCPServer(
+        Session(
                 ost::SocketService *ss,
                 ost::TCPSocket &socket,
-                Main *main);
+                HRTLab::Main *main);
 
     private:
 
-        Main * const main;
-        const std::vector<Signal*>& signals;
+        HRTLab::Main * const main;
+        const std::vector<HRTLab::Signal*>& signals;
 
         std::string buf;
         std::string inbuf;
         const std::string crlf;
 
         // Map a signal to a set of subscription decimations
-        std::vector<std::map<size_t, std::set<Signal*> > > subscribed;
+        std::vector<std::map<size_t, std::set<HRTLab::Signal*> > > subscribed;
         std::vector<std::map<size_t, bool> > dirty;
-        std::map<Signal*, std::set<size_t> > signalDecimation;
-        std::map<Variable*, bool> sent;
+        std::map<HRTLab::Signal*, std::set<size_t> > signalDecimation;
+        std::map<HRTLab::Variable*, bool> sent;
         std::vector<size_t> dataOffset;
         typedef std::map<unsigned int, unsigned int,
             std::greater<unsigned int> > DecimationMap;
@@ -53,7 +54,7 @@ class TCPServer: public ost::SocketPort, private std::streambuf {
 
         static const char *getDTypeName(const enum si_datatype_t&);
 
-        void printVariable(std::streambuf *, Variable*, const char*);
+        void printVariable(std::streambuf *, HRTLab::Variable*, const char*);
         enum ParseState_t {
             Idle,
         } state;
@@ -79,4 +80,4 @@ class TCPServer: public ost::SocketPort, private std::streambuf {
 };
 
 }
-#endif //TCPSERVER
+#endif //ETLSESSION

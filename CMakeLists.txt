@@ -11,3 +11,9 @@ mercurial_hg_info(${PROJECT_SOURCE_DIR} Package)
 
 add_subdirectory(src)
 add_subdirectory(test)
+
+configure_file (
+    "${PROJECT_SOURCE_DIR}/config.h.in"
+    "${PROJECT_BINARY_DIR}/config.h"
+    )
+

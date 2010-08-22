@@ -12,3 +12,4 @@ src/librtlab.*
 install_manifest.txt
 rtlab-*-Linux*
 test/test1
+config.h
