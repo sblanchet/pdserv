@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 
 #include "etlproto/Server.h"
+#include "MsrServer.h"
 
 #include <iostream>
 using std::cout;
@@ -286,10 +287,13 @@ int Main::start()
         return 0;
     }
 
-    EtlProto::Server etlproto(this);
-    etlproto.start();
+    MsrProto::Server msrproto(this);
+//    EtlProto::Server etlproto(this);
+//    etlproto.start();
+    msrproto.start();
 
-    etlproto.join();
+//    etlproto.join();
+    msrproto.join();
 
     return 0;
 }

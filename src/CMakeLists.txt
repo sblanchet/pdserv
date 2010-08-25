@@ -12,6 +12,9 @@ add_library( rtlab SHARED
     Parameter.cpp Parameter.h
     etlproto/Server.cpp etlproto/Server.h
     etlproto/Session.cpp etlproto/Session.h
+    MsrServer.cpp MsrServer.h
+    MsrSession.cpp MsrSession.h
+    XmlDoc.cpp XmlDoc.h
     )
 
-target_link_libraries(rtlab ccext2 xml2)
+target_link_libraries(rtlab ccext2 xml2 xerces-c)
