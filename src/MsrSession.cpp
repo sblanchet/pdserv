@@ -27,6 +27,10 @@ Session::Session( ost::SocketService *ss,
     SocketPort(0, socket), std::ostream(this),
     main(main), signal_ptr_start(main->getSignalPtrStart())
 {
+    cout << __LINE__ << __func__ << endl;
+    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+    attach(ss);
+
     if (commandMap.empty()) {
         commandMap["ping"] = &Session::pingCmd;
         commandMap["rp"] = &Session::readParameterCmd;
@@ -66,11 +70,16 @@ Session::Session( ost::SocketService *ss,
 
     *this << greeting << std::flush;
 
-    attach(ss);
 
     signal_ptr = signal_ptr_start;
 
     expired();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Session::~Session()
+{
+    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -98,6 +107,10 @@ std::streamsize Session::xsputn ( const char * s, std::streamsize n )
 /////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
+    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+    setTimer(100);
+    return;
+
     while (*signal_ptr) {
         if (*signal_ptr == HRTLab::Main::Restart) {
             signal_ptr = signal_ptr_start;
@@ -217,6 +230,7 @@ void Session::expired()
 /////////////////////////////////////////////////////////////////////////////
 void Session::pending()
 {
+    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     char buf[1024];
 
     ssize_t n = receive(buf, sizeof(buf));
@@ -323,7 +337,7 @@ bool Session::evalExpression(const char* &pptr, const char *eptr)
     // Return the id sent previously
     if (!id.empty()) {
         MsrXml::Element ack("ack");
-        ack.setAttribute("id", id.c_str());
+        ack.setAttribute("id", id);
         *this << ack << std::flush;
     }
 
@@ -344,6 +358,7 @@ bool Session::evalAttribute(const char* &pptr, const char *eptr,
         return false;
     }
 
+//    cout << __LINE__ << __func__ << std::string(pptr, eptr-pptr) << endl;
     start = pptr;
     if (evalIdentifier(pptr, eptr))
         return true;
@@ -352,19 +367,25 @@ bool Session::evalAttribute(const char* &pptr, const char *eptr,
     if (eptr - pptr < 3)
         return true;
 
+//    cout << __LINE__ << __func__ << std::string(pptr, eptr-pptr) << endl;
     char quote = pptr[1];
     if (pptr[0] != '=' or (quote != '"' and quote != '\''))
         return false;
     name = std::string(start, pptr - start);
 
     pptr += 2;
+//    cout << __LINE__ << __func__ << std::string(pptr, eptr-pptr) << endl;
     size_t len = 0;
     while (pptr[len] != quote) {
-        if (pptr+++len == eptr)
+//    cout << __LINE__ << __func__ << std::string(pptr, eptr-pptr) << endl;
+        if (pptr + ++len == eptr)
             return true;
     }
+//    cout << __LINE__ << __func__ << std::string(pptr, eptr-pptr) << ' ' << len << endl;
     value = std::string(pptr, len);
     pptr += len + 1;
+//    cout << __LINE__ << __func__ << ' ' << 
+//        name << '=' << value << std::string(pptr, eptr-pptr) << endl;
 
     return false;
 }
@@ -404,8 +425,10 @@ void Session::readParameterCmd(const AttributeMap &attributes)
     const HRTLab::Main::ParameterList& pl = main->getParameters();
 
     if ((it = attributes.find("short"))!= attributes.end()) {
+        cout << __LINE__ << " " << it->second.c_str() << endl;
         shortReply = atoi(it->second.c_str());
     }
+    cout << __LINE__ << " " << shortReply << endl;
 
     if ((it = attributes.find("name")) != attributes.end()) {
         const HRTLab::Main::VariableMap& m = main->getVariableMap();
@@ -440,7 +463,6 @@ void Session::readParameterCmd(const AttributeMap &attributes)
         }
         *this << parameters << std::flush;
     }
-    return;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -453,29 +475,29 @@ void Session::setParameterAttributes(MsrXml::Element *e,
     // name=
     // value=
     // index=
-    e->setAttribute("name", p->path.c_str());
+    e->setAttribute("name", p->path);
     e->setAttribute("index", p->index);
-    e->setAttribute("value", "");
+    e->setAttribute("value", p, p->Variable::addr);
     if (shortReply)
         return;
 
     // datasize=
-    // flags=
+    // flags= Add 0x100 for dependent variables
     // mtime=
     // typ=
     e->setAttribute("datasize", p->width);
-    e->setAttribute("flags", "259");
-    e->setAttribute("mtime", "0.0");
+    e->setAttribute("flags", "3");
+    e->setAttribute("mtime", p->getMtime());
     e->setAttribute("typ", getDTypeName(p));
 
     // unit=
     if (p->unit.size()) {
-        e->setAttribute("unit", p->unit.c_str());
+        e->setAttribute("unit", p->unit);
     }
 
     // text=
     if (p->comment.size()) {
-        e->setAttribute("text", p->comment.c_str());
+        e->setAttribute("text", p->comment);
     }
 
     // For vectors:
@@ -562,6 +584,7 @@ void Session::broadcastCmd(const AttributeMap &attributes)
 /////////////////////////////////////////////////////////////////////////////
 void Session::output()
 {
+    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     ssize_t n = send(buf.c_str(), buf.length());
     if (n > 0)
         buf.erase(0,n);
@@ -577,7 +600,7 @@ void Session::output()
 /////////////////////////////////////////////////////////////////////////////
 void Session::disconnect()
 {
-    cout << __func__ << endl;
+    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     delete this;
 }
 

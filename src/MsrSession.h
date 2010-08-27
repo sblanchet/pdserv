@@ -60,6 +60,7 @@ class Session: public ost::SocketPort,
                 ost::SocketService *ss,
                 ost::TCPSocket &socket,
                 HRTLab::Main *main);
+        ~Session();
 
     private:
 

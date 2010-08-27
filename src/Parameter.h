@@ -5,6 +5,7 @@
 #ifndef PARAMETER
 #define PARAMETER
 
+#include <ctime>
 #include "Variable.h"
 #include "rtlab/rtlab.h"
 
@@ -28,9 +29,12 @@ class Parameter: public Variable {
         const paramupdate_t paramupdate;
         void * const priv_data;
 
+        const struct timespec& getMtime() const;
+
     private:
 
         char * const addr;
+        struct timespec mtime;
 
 };
 

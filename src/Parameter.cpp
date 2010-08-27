@@ -2,6 +2,9 @@
  * $Id$
  *****************************************************************************/
 
+#include <sys/time.h>
+#include <ctime>
+
 #include "Parameter.h"
 
 //#include <iostream>
@@ -29,4 +32,15 @@ Parameter::Parameter(
     priv_data(priv_data),
     addr(addr)
 {
+    struct timeval t;
+    if (!gettimeofday(&t, 0)) {
+        mtime.tv_sec = t.tv_sec;
+        mtime.tv_nsec = t.tv_usec * 1000;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////
+const timespec& Parameter::getMtime() const
+{
+    return mtime;
 }

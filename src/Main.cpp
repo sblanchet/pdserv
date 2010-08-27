@@ -88,7 +88,6 @@ void Main::update(int st, const struct timespec *time)
 {
     bool dirty[nst];
     std::fill_n(dirty, nst, false);
-    cout << __func__ << endl;
 
     // Check for instructions in the inbox
     while (*instruction_ptr) {
