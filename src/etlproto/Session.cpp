@@ -313,7 +313,7 @@ void Session::list()
     xmlDocPtr xmldoc;
     xmlNodePtr root, node;
 
-    const std::map<std::string,HRTLab::Variable*>& variables = main->getVariableMap();
+    const HRTLab::Main::VariableMap& variables = main->getVariableMap();
 
     TESTOUT(xmldoc = xmlNewDoc(BAD_CAST "1.0"));
 

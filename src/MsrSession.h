@@ -44,6 +44,11 @@ namespace HRTLab {
     class Main;
     class Signal;
     class Variable;
+    class Parameter;
+}
+
+namespace MsrXml {
+    class Element;
 }
 
 namespace MsrProto {
@@ -75,7 +80,7 @@ class Session: public ost::SocketPort,
         unsigned int * const signal_ptr_start;
         unsigned int *signal_ptr;
 //
-        static const char *getDTypeName(const enum si_datatype_t&);
+        static const char *getDTypeName(const HRTLab::Variable*);
 //
 //        void printVariable(std::streambuf *, HRTLab::Variable*, const char*);
 //        enum ParseState_t {
@@ -90,13 +95,6 @@ class Session: public ost::SocketPort,
 //        xmlChar *utf8(const std::string& s);
 //        xmlCharEncodingHandlerPtr encoding;
 
-        typedef struct {
-            const char *name;
-            size_t nameLen;
-            const char *value;
-            size_t valueLen;
-        } AttributeTuple;
-
         // Parser routines
         // Returning true within these routines will interrupt parsing
         // and wait for more characters
@@ -104,14 +102,24 @@ class Session: public ost::SocketPort,
         bool evalExpression(const char* &pos, const char *end);
         bool evalIdentifier(const char* &pos, const char *end);
         bool evalAttribute(const char* &pos, const char *end,
-                AttributeTuple &a);
+                std::string &name, std::string &value);
         bool evalReadParameter(const char* &pos, const char *end);
 
-        typedef std::list<AttributeTuple> AttributeList;
+        typedef std::map<const std::string, std::string> AttributeMap;
         typedef std::map<const std::string,
-                void (Session::*)(const AttributeList&)> CommandMap;
+                void (Session::*)(const AttributeMap&)> CommandMap;
         static CommandMap commandMap;
-        void evalPing(const AttributeList &attributes);
+        void pingCmd(const AttributeMap &attributes);
+        void readParameterCmd(const AttributeMap &attributes);
+        void readParamValuesCmd(const AttributeMap &attributes);
+        void writeParameterCmd(const AttributeMap &attributes);
+        void readChannelsCmd(const AttributeMap &attributes);
+        void xsadCmd(const AttributeMap &attributes);
+        void xsodCmd(const AttributeMap &attributes);
+        void remoteHostCmd(const AttributeMap &attributes);
+        void broadcastCmd(const AttributeMap &attributes);
+        void setParameterAttributes(MsrXml::Element *e,
+                const HRTLab::Parameter *p, bool shortReply);
 
         // Reimplemented from streambuf
         int sync();

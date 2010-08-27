@@ -34,6 +34,13 @@ void Element::setAttribute(const char *a, const char *v, size_t n)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Element::setAttribute(const char *a, const std::string &v)
+{
+    // FIXME: Check for escaped characters
+    attr[a] = v;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 std::ostream& MsrXml::operator<<(std::ostream& os, const Element& el)
 {
     os << std::string(el.indent, ' ') << '<' << el.name;

@@ -78,7 +78,7 @@ const std::vector<Parameter*>& Main::getParameters() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const std::map<std::string,Variable*>& Main::getVariableMap() const
+const Main::VariableMap& Main::getVariableMap() const
 {
     return variableMap;
 }

@@ -68,8 +68,12 @@ class Main {
         unsigned int * const decimation;
 
         const std::vector<Signal*>& getSignals() const;
-        const std::vector<Parameter*>& getParameters() const;
-        const std::map<std::string,Variable*>& getVariableMap() const;
+
+        typedef std::vector<Parameter*> ParameterList;
+        const ParameterList& getParameters() const;
+
+        typedef std::map<const std::string,Variable*> VariableMap;
+        const VariableMap& getVariableMap() const;
 
         unsigned int subscribe(const std::string& path);
 
@@ -90,8 +94,7 @@ class Main {
         unsigned int *signal_ptr;
 
         std::vector<Signal*> signals;
-        std::vector<Parameter*> parameters;
-        typedef std::map<std::string,Variable*> VariableMap;
+        ParameterList parameters;
         VariableMap variableMap;
 
         std::vector<std::vector<Signal*> > subscribers;

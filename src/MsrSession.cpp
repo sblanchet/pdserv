@@ -5,6 +5,7 @@
 #include "MsrSession.h"
 #include "Main.h"
 #include "Variable.h"
+#include "Parameter.h"
 #include "Signal.h"
 #include "XmlDoc.h"
 
@@ -27,32 +28,41 @@ Session::Session( ost::SocketService *ss,
     main(main), signal_ptr_start(main->getSignalPtrStart())
 {
     if (commandMap.empty()) {
-        commandMap["ping"] = &Session::evalPing;
-        commandMap["rp"] = &Session::evalPing;
-        commandMap["read_parameter"] = &Session::evalPing;
-        commandMap["read_param_values"] = &Session::evalPing;
-        commandMap["wp"] = &Session::evalPing;
-        commandMap["write_parameter"] = &Session::evalPing;
-        commandMap["rk"] = &Session::evalPing;
-        commandMap["read_kanaele"] = &Session::evalPing;
-        commandMap["xsad"] = &Session::evalPing;
-        commandMap["xsod"] = &Session::evalPing;
-        commandMap["remote_host"] = &Session::evalPing;
-        commandMap["broadcast"] = &Session::evalPing;
+        commandMap["ping"] = &Session::pingCmd;
+        commandMap["rp"] = &Session::readParameterCmd;
+        commandMap["read_parameter"] = &Session::readParameterCmd;
+
+        commandMap["read_param_values"] = &Session::readParamValuesCmd;
+        commandMap["rpv"] = &Session::readParamValuesCmd;
+        commandMap["wp"] = &Session::writeParameterCmd;
+        commandMap["write_parameter"] = &Session::writeParameterCmd;
+        commandMap["rk"] = &Session::readChannelsCmd;
+        commandMap["rc"] = &Session::readChannelsCmd;
+        commandMap["read_kanaele"] = &Session::readChannelsCmd;
+        commandMap["start_data"] = &Session::xsadCmd;
+        commandMap["stop_data"] = &Session::xsadCmd;
+        commandMap["sad"] = &Session::xsadCmd;
+        commandMap["sod"] = &Session::xsodCmd;
+        commandMap["xsad"] = &Session::xsadCmd;
+        commandMap["xsod"] = &Session::xsodCmd;
+        commandMap["remote_host"] = &Session::remoteHostCmd;
+        commandMap["broadcast"] = &Session::broadcastCmd;
+        commandMap["echo"] = &Session::broadcastCmd;
+        commandMap["read_statics"] = &Session::broadcastCmd;
+        commandMap["rs"] = &Session::broadcastCmd;
+        commandMap["te"] = &Session::broadcastCmd; //triggerevents
     }
+
 
     setCompletion(false);
 
     MsrXml::Element greeting("connected");
 
-    std::ostringstream ver;
-    ver << MSR_VERSION;
-
     greeting.setAttribute("name", "MSR");
     greeting.setAttribute("host", "localhost");
-    greeting.setAttribute("version", ver.str().c_str());
+    greeting.setAttribute("version", MSR_VERSION);
     greeting.setAttribute("features", MSR_FEATURES);
-    greeting.setAttribute("recievebufsize", "10000000");
+    greeting.setAttribute("recievebufsize", "100000000");
 
     *this << greeting << std::flush;
 
@@ -264,21 +274,23 @@ bool Session::evalExpression(const char* &pptr, const char *eptr)
         return true;
 
     const size_t cmdLen = pptr - cmd;
-    std::list<AttributeTuple> attributes;
+    AttributeMap attributes;
 
     std::string id;
     while (true) {
-        AttributeTuple a;
-        if (evalAttribute(pptr, eptr, a))
+        std::string name;
+        std::string value;
+
+        if (evalAttribute(pptr, eptr, name, value))
             return true;
 
-        if (!a.name)
+        if (name.empty())
             break;
 
-        if (!strncmp("id", a.name, a.nameLen))
-            id = std::string(a.value, a.valueLen);
+        if (name == "id")
+            id = value;
 
-        attributes.push_back(a);
+        attributes[name] = value;
     }
 
     // Skip whitespace
@@ -295,13 +307,7 @@ bool Session::evalExpression(const char* &pptr, const char *eptr)
         return false;
 
     CommandMap::const_iterator it = commandMap.find(std::string(cmd,cmdLen));
-    if (it != commandMap.end()) {
-        (this->*(it->second))(attributes);
-    }
-    else if (!strncmp(cmd, "ping", cmdLen)) {
-        evalPing(attributes);
-    }
-    else {
+    if (it == commandMap.end()) {
         MsrXml::Element warn("warn");
         warn.setAttribute("num","1000");
         warn.setAttribute("text", "unknown command");
@@ -310,6 +316,9 @@ bool Session::evalExpression(const char* &pptr, const char *eptr)
 
         return false;
     }
+
+    // Execute the desired command
+    (this->*(it->second))(attributes);
 
     // Return the id sent previously
     if (!id.empty()) {
@@ -323,55 +332,40 @@ bool Session::evalExpression(const char* &pptr, const char *eptr)
 
 /////////////////////////////////////////////////////////////////////////////
 bool Session::evalAttribute(const char* &pptr, const char *eptr,
-        AttributeTuple &a)
+        std::string &name, std::string &value)
 {
-    cout << __LINE__ << __func__ << endl;
-    a.name = 0;
-
     const char *start = pptr;
     while (isspace(*pptr)) 
         if (++pptr == eptr)
             return true;
-    cout << __LINE__ << __func__ << endl;
 
     if (pptr == start) {
         // No whitespace found
         return false;
     }
-    cout << __LINE__ << __func__ << endl;
 
     start = pptr;
     if (evalIdentifier(pptr, eptr))
         return true;
-    cout << __LINE__ << __func__ << endl;
 
+    // At the end of the identifier, need at least 3 more chars ( ="" )
     if (eptr - pptr < 3)
         return true;
-    cout << __LINE__ << __func__ << endl;
 
-    a.nameLen = pptr - start;
-    if (*pptr++ != '=' or *pptr++ != '"')
+    char quote = pptr[1];
+    if (pptr[0] != '=' or (quote != '"' and quote != '\''))
         return false;
+    name = std::string(start, pptr - start);
 
-    cout << __LINE__ << __func__ << endl;
-    a.name = start;
-
-    cout << __LINE__ << __func__ << endl;
-    a.value = pptr;
-    while (true) {
-    cout << __LINE__ << __func__ << endl;
-        if (pptr >= eptr)
+    pptr += 2;
+    size_t len = 0;
+    while (pptr[len] != quote) {
+        if (pptr+++len == eptr)
             return true;
-        if (*pptr == '\\') {
-            pptr += 2;
-            continue;
-        }
-        if (*pptr++ == '"')
-            break;
     }
-    cout << __LINE__ << __func__ << endl;
+    value = std::string(pptr, len);
+    pptr += len + 1;
 
-    a.valueLen = pptr - a.value - 1;
     return false;
 }
 
@@ -390,17 +384,179 @@ bool Session::evalIdentifier(const char* &pptr, const char *eptr)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::evalPing(const std::list<AttributeTuple> &attributes)
+void Session::pingCmd(const AttributeMap &attributes)
 {
     MsrXml::Element ping("ping");
-    for (AttributeList::const_iterator it = attributes.begin();
-            it != attributes.end(); it++) {
-        if (!strncmp("id", (*it).name, (*it).nameLen)) {
-            ping.setAttribute("id", (*it).value, (*it).valueLen);
-            break;
-        }
-    }
+
+    AttributeMap::const_iterator it = attributes.find("id");
+    if (it != attributes.end())
+        ping.setAttribute("id", it->second);
+
     *this << ping << std::flush;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::readParameterCmd(const AttributeMap &attributes)
+{
+    AttributeMap::const_iterator it;
+    HRTLab::Parameter *parameter = 0;
+    bool shortReply = false;
+    const HRTLab::Main::ParameterList& pl = main->getParameters();
+
+    if ((it = attributes.find("short"))!= attributes.end()) {
+        shortReply = atoi(it->second.c_str());
+    }
+
+    if ((it = attributes.find("name")) != attributes.end()) {
+        const HRTLab::Main::VariableMap& m = main->getVariableMap();
+        HRTLab::Main::VariableMap::const_iterator vit = m.find(it->second);
+
+        if (vit == m.end() or vit->second->index >= pl.size()
+                or pl[vit->second->index]->path != it->second)
+            return;
+
+        parameter = pl[vit->second->index];
+    }
+    else if ((it = attributes.find("index")) != attributes.end()) {
+        unsigned int index = atoi(it->second.c_str());
+
+        if (index >= pl.size())
+            return;
+
+        parameter = pl[index];
+    }
+    
+    if (parameter) {
+        MsrXml::Element p("parameter");
+        setParameterAttributes(&p, parameter, shortReply);
+        *this << p << std::flush;
+    }
+    else {
+        MsrXml::Element parameters("parameters");
+        for (HRTLab::Main::ParameterList::const_iterator it = pl.begin();
+                it != pl.end(); it++) {
+            MsrXml::Element *p = parameters.createChild("parameter");
+            setParameterAttributes(p, *it, shortReply);
+        }
+        *this << parameters << std::flush;
+    }
+    return;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::setParameterAttributes(MsrXml::Element *e,
+        const HRTLab::Parameter *p, bool shortReply)
+{
+
+    // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
+    //            index="30" value="0"/>
+    // name=
+    // value=
+    // index=
+    e->setAttribute("name", p->path.c_str());
+    e->setAttribute("index", p->index);
+    e->setAttribute("value", "");
+    if (shortReply)
+        return;
+
+    // datasize=
+    // flags=
+    // mtime=
+    // typ=
+    e->setAttribute("datasize", p->width);
+    e->setAttribute("flags", "259");
+    e->setAttribute("mtime", "0.0");
+    e->setAttribute("typ", getDTypeName(p));
+
+    // unit=
+    if (p->unit.size()) {
+        e->setAttribute("unit", p->unit.c_str());
+    }
+
+    // text=
+    if (p->comment.size()) {
+        e->setAttribute("text", p->comment.c_str());
+    }
+
+    // For vectors:
+    // anz=
+    // cnum=
+    // rnum=
+    // orientation=
+    if (p->nelem > 1) {
+        e->setAttribute("anz",p->nelem);
+        const char *orientation;
+        size_t cnum, rnum;
+        switch (p->ndims) {
+            case 1:
+                {
+                    cnum = p->nelem;
+                    rnum = 1;
+                    orientation = "VECTOR";
+                }
+                break;
+
+            case 2:
+                {
+                    const size_t *dim = p->getDim();
+                    cnum = dim[1];
+                    rnum = dim[0];
+                    orientation = "MATRIX_ROW_MAJOR";
+                }
+                break;
+
+            default:
+                {
+                    const size_t *dim = p->getDim();
+                    cnum = dim[p->ndims - 1];
+                    rnum = p->nelem / cnum;
+                    orientation = "MATRIX_ROW_MAJOR";
+                }
+                break;
+        }
+        e->setAttribute("cnum", cnum);
+        e->setAttribute("rnum", rnum);
+        e->setAttribute("orientation", orientation);
+    }
+
+    // hide=
+    // unhide=
+    // persistent=
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::readParamValuesCmd(const AttributeMap &attributes)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::writeParameterCmd(const AttributeMap &attributes)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::readChannelsCmd(const AttributeMap &attributes)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::xsadCmd(const AttributeMap &attributes)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::xsodCmd(const AttributeMap &attributes)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::remoteHostCmd(const AttributeMap &attributes)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::broadcastCmd(const AttributeMap &attributes)
+{
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -426,20 +582,20 @@ void Session::disconnect()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const char *Session::getDTypeName(const enum si_datatype_t& t)
+const char *Session::getDTypeName(const HRTLab::Variable *v)
 {
-    switch (t) {
-        case si_boolean_T: return "BOOL";
-        case si_uint8_T:   return "UINT8";
-        case si_sint8_T:   return "INT8";
-        case si_uint16_T:  return "UINT16";
-        case si_sint16_T:  return "INT16";
-        case si_uint32_T:  return "UINT32";
-        case si_sint32_T:  return "INT32";
-        case si_uint64_T:  return "UINT64";
-        case si_sint64_T:  return "INT64";
-        case si_single_T:  return "FLOAT32";
-        case si_double_T:  return "FLOAT64";
+    switch (v->dtype) {
+        case si_boolean_T: return "TCHAR";
+        case si_uint8_T:   return "TUCHAR";
+        case si_sint8_T:   return "TCHAR";
+        case si_uint16_T:  return "TUSHORT";
+        case si_sint16_T:  return "TSHORT";
+        case si_uint32_T:  return "TUINT";
+        case si_sint32_T:  return "TINT";
+        case si_uint64_T:  return "TULINT";
+        case si_sint64_T:  return "TLINT";
+        case si_single_T:  return "TDBL";
+        case si_double_T:  return "TFLT";
         default:           return "";
     }
 }

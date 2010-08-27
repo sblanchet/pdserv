@@ -29,6 +29,8 @@ class Variable {
         const unsigned int index;
         const std::string path;
         const std::string alias;
+        const std::string unit;
+        const std::string comment;
         const enum si_datatype_t dtype;
         const size_t ndims;
         const size_t width;

@@ -1,6 +1,7 @@
 #ifndef XMLDOC_H
 #define XMLDOC_H
 
+#include <sstream>
 #include <ostream>
 #include <string>
 #include <map>
@@ -15,6 +16,9 @@ class Element {
 
         Element* createChild(const char *name);
         void setAttribute(const char *name, const char *value, size_t n = 0);
+        void setAttribute(const char *name, const std::string& value);
+        template<class T>
+            void setAttribute(const char *name, const T& value);
 
         friend std::ostream& operator<<(std::ostream& os, const Element& el);
 
@@ -29,6 +33,14 @@ class Element {
 };
 
 std::ostream& operator<<(std::ostream& os, const Element& el);
+
+template <class T>
+void Element::setAttribute(const char *name, const T& value)
+{
+    std::ostringstream o;
+    o << value;
+    attr[name] = o.str();
+}
 
 }
 
