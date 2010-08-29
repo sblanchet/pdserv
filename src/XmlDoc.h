@@ -23,8 +23,6 @@ class Element {
         void setAttribute(const char *name, const char *value, size_t n = 0);
         void setAttribute(const char *name, const struct timespec&);
         void setAttribute(const char *name, const std::string& value);
-        void setAttribute(const char *a,
-                const HRTLab::Variable *v, const char* data);
         template<class T>
             void setAttribute(const char *name, const T& value);
 

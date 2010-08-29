@@ -13,10 +13,15 @@ namespace HRTLab {
 
 namespace MsrProto {
 
+class Session;
+
 class Server:public ost::Thread {
     public:
         Server(HRTLab::Main *main);
         ~Server();
+
+        void broadcast(Session *s,
+                const std::string *action, const std::string *text);
 
     private:
 

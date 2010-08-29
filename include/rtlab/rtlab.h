@@ -23,8 +23,14 @@ struct hrtlab* hrtlab_init(
         const char *version,    /**< Version string */
         double baserate,        /**< Sample time of tid0 */
         unsigned int nst,       /**< Number of sample times */
-        const unsigned int decimation[] /**< Array of the decimations
-                                         * for tid1..tid<nst> */
+        const unsigned int decimation[],   /**< Array of the decimations
+                                            * for tid1..tid<nst> */
+        int (*gettime)(struct timespec*)   /**< Function used by the library
+                                            * when the system time is required.
+                                            * Essentially, this function
+                                            * should call clock_gettime().
+                                            * If NULL, gettimeofday() is
+                                            * used */
         );
 
 /** Register a signal
@@ -120,7 +126,13 @@ int hrtlab_parameter(
 /** Finish initialisation
  *
  * This function is called after registering all variables and parameters,
- * just before going into cyclic real time
+ * just before going into cyclic real time. This will fork off the process
+ * that communicates with the rest of the world.
+ *
+ * Since the new process lives in a separate memory space, all parameters must
+ * have been initialised beforehand. After calling @hrtlab_start, parameters
+ * should not be changed any more. They can only be updated though a call by
+ * the library.
  */
 int hrtlab_start(
         struct hrtlab* hrtlab     /**< Pointer to hrtlab structure */

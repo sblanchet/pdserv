@@ -53,18 +53,24 @@ namespace MsrXml {
 
 namespace MsrProto {
 
+class Server;
+
 class Session: public ost::SocketPort,
     private std::streambuf, private std::ostream {
     public:
         Session(
+                Server *s,
                 ost::SocketService *ss,
                 ost::TCPSocket &socket,
                 HRTLab::Main *main);
         ~Session();
 
+        void broadcast(Session *s, const struct timespec &t,
+                const std::string *action, const std::string *text);
     private:
 
         HRTLab::Main * const main;
+        Server * const server;
 
         std::string buf;
         std::string inbuf;
@@ -119,8 +125,17 @@ class Session: public ost::SocketPort,
         void xsodCmd(const AttributeMap &attributes);
         void remoteHostCmd(const AttributeMap &attributes);
         void broadcastCmd(const AttributeMap &attributes);
+        void readStatisticsCmd(const AttributeMap &attributes);
+        void nullCmd(const AttributeMap &attributes);
+
+        void printValues(std::string& s,
+                const HRTLab::Variable *v, const char* data);
+        std::string printHexValues(const HRTLab::Variable *v,
+                const char* data);
         void setParameterAttributes(MsrXml::Element *e,
-                const HRTLab::Parameter *p, bool shortReply);
+                const HRTLab::Parameter *p, bool shortReply, bool hex);
+
+        static const char *hexValue[256];
 
         // Reimplemented from streambuf
         int sync();

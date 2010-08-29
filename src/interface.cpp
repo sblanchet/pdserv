@@ -3,11 +3,12 @@
 
 struct hrtlab* hrtlab_init(int argc, const char *argv[], 
         const char *name, const char *version, 
-        double baserate, unsigned int nst, const unsigned int decimation[])
+        double baserate, unsigned int nst, const unsigned int decimation[],
+        int (*gettime)(struct timespec*))
 {
     return reinterpret_cast<struct hrtlab*>(
             new HRTLab::Main(argc, argv, name, version, baserate, nst,
-                decimation));
+                decimation, gettime));
 }
 
 void hrtlab_exit(struct hrtlab* hrtlab)

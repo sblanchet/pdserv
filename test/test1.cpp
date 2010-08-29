@@ -10,7 +10,9 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-uint16_t var1[2][3][4];
+uint16_t var1[2][3][4] = {
+    { {1,2,3,4}, {5,6,7}, },
+};
 
 int copy_param(void *priv_data, void* dst, const void* src, size_t nelem,
         enum si_datatype_t datatype, size_t ndims, const size_t dim[])
@@ -19,9 +21,15 @@ int copy_param(void *priv_data, void* dst, const void* src, size_t nelem,
     return 0;
 }
 
+int gettime(struct timespec *t)
+{
+    return clock_gettime(CLOCK_REALTIME, t);
+}
+
 int main(int argc, const char *argv[])
 {
-    struct hrtlab *hrtlab = hrtlab_init(argc, argv, argv[0], "1.0", 1.0, 1, 0);
+    struct hrtlab *hrtlab = hrtlab_init(argc, argv, argv[0], "1.0", 1.0, 1, 0,
+            gettime);
     unsigned int var1_dims[] = {2,3,4};
     struct timespec time;
 

@@ -21,9 +21,11 @@ using namespace HRTLab;
 Main::Main(int argc, const char *argv[],
         const char *name, const char *version,
         double baserate,
-        unsigned int nst, const unsigned int decimation[]):
+        unsigned int nst, const unsigned int decimation[],
+        int (*gettime)(struct timespec*)):
     name(name), version(version), baserate(baserate), nst(nst),
-    decimation(nst > 1 ? new unsigned int [nst] : 0)
+    decimation(nst > 1 ? new unsigned int [nst] : 0),
+    gettime(gettime)
 {
     if (nst > 1)
         std::copy(decimation, decimation + nst, this->decimation);

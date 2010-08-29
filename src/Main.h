@@ -32,7 +32,8 @@ class Main {
         Main(int argc, const char *argv[],
                 const char *name, const char *version,
                 double baserate,
-                unsigned int nst, const unsigned int decimation[]);
+                unsigned int nst, const unsigned int decimation[],
+                int (*gettime)(struct timespec*));
         ~Main();
 
         void update(int st, const struct timespec *time);
@@ -66,6 +67,7 @@ class Main {
         const double baserate;
         const unsigned int nst;
         unsigned int * const decimation;
+        int (* const gettime)(struct timespec*);
 
         const std::vector<Signal*>& getSignals() const;
 

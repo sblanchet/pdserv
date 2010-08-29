@@ -7,6 +7,7 @@
 #include "Variable.h"
 #include "Parameter.h"
 #include "Signal.h"
+#include "MsrServer.h"
 #include "XmlDoc.h"
 
 #include <iostream>
@@ -21,11 +22,39 @@ using namespace MsrProto;
 
 Session::CommandMap Session::commandMap;
 
+const char *Session::hexValue[256] = {
+    "00","01","02","03","04","05","06","07","08","09",
+    "0A","0B","0C","0D","0E","0F","10","11","12","13",
+    "14","15","16","17","18","19","1A","1B","1C","1D",
+    "1E","1F","20","21","22","23","24","25","26","27",
+    "28","29","2A","2B","2C","2D","2E","2F","30","31",
+    "32","33","34","35","36","37","38","39","3A","3B",
+    "3C","3D","3E","3F","40","41","42","43","44","45",
+    "46","47","48","49","4A","4B","4C","4D","4E","4F",
+    "50","51","52","53","54","55","56","57","58","59",
+    "5A","5B","5C","5D","5E","5F","60","61","62","63",
+    "64","65","66","67","68","69","6A","6B","6C","6D",
+    "6E","6F","70","71","72","73","74","75","76","77",
+    "78","79","7A","7B","7C","7D","7E","7F","80","81",
+    "82","83","84","85","86","87","88","89","8A","8B",
+    "8C","8D","8E","8F","90","91","92","93","94","95",
+    "96","97","98","99","9A","9B","9C","9D","9E","9F",
+    "A0","A1","A2","A3","A4","A5","A6","A7","A8","A9",
+    "AA","AB","AC","AD","AE","AF","B0","B1","B2","B3",
+    "B4","B5","B6","B7","B8","B9","BA","BB","BC","BD",
+    "BE","BF","C0","C1","C2","C3","C4","C5","C6","C7",
+    "C8","C9","CA","CB","CC","CD","CE","CF","D0","D1",
+    "D2","D3","D4","D5","D6","D7","D8","D9","DA","DB",
+    "DC","DD","DE","DF","E0","E1","E2","E3","E4","E5",
+    "E6","E7","E8","E9","EA","EB","EC","ED","EE","EF",
+    "F0","F1","F2","F3","F4","F5","F6","F7","F8","F9",
+    "FA","FB","FC","FD","FE","FF"};
+
 /////////////////////////////////////////////////////////////////////////////
-Session::Session( ost::SocketService *ss,
+Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), std::ostream(this),
-    main(main), signal_ptr_start(main->getSignalPtrStart())
+    main(main), server(s), signal_ptr_start(main->getSignalPtrStart())
 {
     cout << __LINE__ << __func__ << endl;
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
@@ -35,13 +64,14 @@ Session::Session( ost::SocketService *ss,
         commandMap["ping"] = &Session::pingCmd;
         commandMap["rp"] = &Session::readParameterCmd;
         commandMap["read_parameter"] = &Session::readParameterCmd;
-
+        commandMap["broadcast"] = &Session::broadcastCmd;
         commandMap["read_param_values"] = &Session::readParamValuesCmd;
         commandMap["rpv"] = &Session::readParamValuesCmd;
-        commandMap["wp"] = &Session::writeParameterCmd;
-        commandMap["write_parameter"] = &Session::writeParameterCmd;
         commandMap["rk"] = &Session::readChannelsCmd;
         commandMap["rc"] = &Session::readChannelsCmd;
+
+        commandMap["wp"] = &Session::writeParameterCmd;
+        commandMap["write_parameter"] = &Session::writeParameterCmd;
         commandMap["read_kanaele"] = &Session::readChannelsCmd;
         commandMap["start_data"] = &Session::xsadCmd;
         commandMap["stop_data"] = &Session::xsadCmd;
@@ -50,10 +80,10 @@ Session::Session( ost::SocketService *ss,
         commandMap["xsad"] = &Session::xsadCmd;
         commandMap["xsod"] = &Session::xsodCmd;
         commandMap["remote_host"] = &Session::remoteHostCmd;
-        commandMap["broadcast"] = &Session::broadcastCmd;
         commandMap["echo"] = &Session::broadcastCmd;
-        commandMap["read_statics"] = &Session::broadcastCmd;
-        commandMap["rs"] = &Session::broadcastCmd;
+        commandMap["read_statics"] = &Session::readStatisticsCmd;
+        commandMap["read_statistics"] = &Session::readStatisticsCmd;
+        commandMap["rs"] = &Session::readStatisticsCmd;
         commandMap["te"] = &Session::broadcastCmd; //triggerevents
     }
 
@@ -108,8 +138,6 @@ std::streamsize Session::xsputn ( const char * s, std::streamsize n )
 void Session::expired()
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
-    setTimer(100);
-    return;
 
     while (*signal_ptr) {
         if (*signal_ptr == HRTLab::Main::Restart) {
@@ -119,111 +147,110 @@ void Session::expired()
 
         const size_t blockLen = signal_ptr[1];
 
-        switch (*signal_ptr) {
-            case HRTLab::Main::NewSubscriberList:
-                {
-                    size_t headerLen = 4;
-                    size_t n = blockLen - headerLen;
-                    unsigned int tid = signal_ptr[2];
-                    //unsigned int decimation = signal_ptr[3];
-//                    size_t offset = 0;
-
-                    cout << "Main::NewSubscriberList " << tid << ' ' << n << endl;
-
-                    for (unsigned int i = 0; i < n; i++) {
-//                        size_t sigIdx = signal_ptr[i + headerLen];
-//                        HRTLab::Signal *s = signals[sigIdx];
-//
-//                        dataOffset[sigIdx] = offset;
-//                        offset += s->memSize;
-//
-//                        for (std::set<size_t>::iterator it = signalDecimation[s].begin();
-//                                it != signalDecimation[s].end(); it++) {
-//                            subscribed[tid][*it].insert(s);
-//                            dirty[tid][*it] = true;
-//                        }
-                    }
-                }
-                break;
-
-            case HRTLab::Main::SubscriptionData:
-                {
-//                    unsigned int tid = signal_ptr[2];
-//                    //unsigned int iterationNo = signal_ptr[3];
-//                    char *dataPtr = reinterpret_cast<char*>(&signal_ptr[4]);
-//
-//                    struct timespec time =
-//                        *reinterpret_cast<struct timespec*>(dataPtr);
-//                    dataPtr += sizeof(struct timespec);
-//
-//                    cout << "Main::SubscriptionData " << tid << endl;
-//
-//                    for (DecimationMap::iterator it = decimation[tid].begin();
-//                            it != decimation[tid].end(); it++) {
-//                        cout << tid << ' ' << it->first << ' ' << it->second << endl;
-//                        if (--it->second)
-//                            continue;
-//
-//                        it->second = it->first;
-//
-//                        std::ostream s(this);
-//
-//                        if (dirty[tid][it->first]) {
-//                            s << "VARIABLELIST " << tid
-//                                << ' ' << it->first
-//                                << ' ' << subscribed[tid][it->first].size()
-//                                << crlf;
-//                            for (std::set<HRTLab::Signal*>::iterator it2 =
-//                                    subscribed[tid][it->first].begin();
-//                                    it2 != subscribed[tid][it->first].end();
-//                                    it2++) {
-//                                HRTLab::Variable *v = *it2;
-//
-//                                s << v->index;
-//                                if (sent[v]) {
-//                                    s << crlf;
-//                                    continue;
-//                                }
-//                                sent[v] = true;
-//
-//                                s << ' ' << v->decimation
-//                                    << ' ' << getDTypeName(v->dtype)
-//                                    << ' ' << v->ndims;
-//
-//                                const size_t *dim = v->getDim();
-//                                for (size_t i = 0; i < v->ndims; i++) {
-//                                    s << ' ' << dim[i];
-//                                }
-//                                s << ' ' << v->alias
-//                                    << ' ' << v->path
-//                                    << crlf;
-//
-//                            }
-//                            dirty[tid][it->first] = false;
-//                        }
-//
-//                        s << "TID " << tid
-//                            << ' ' << it->first
-//                            << ' ' << time.tv_sec
-//                            << ' ' << time.tv_nsec
-//                            << crlf << std::flush;
-//
-//                        for (std::set<HRTLab::Signal*>::iterator it2 =
-//                                subscribed[tid][it->first].begin();
-//                                it2 != subscribed[tid][it->first].end();
-//                                it2++) {
-//                            printVariable(this, *it2,
-//                                    dataPtr + dataOffset[(*it2)->index]);
-//                        }
-//                    }
-                }
-                break;
-        }
+//         switch (*signal_ptr) {
+//             case HRTLab::Main::NewSubscriberList:
+//                 {
+//                     size_t headerLen = 4;
+//                     size_t n = blockLen - headerLen;
+//                     unsigned int tid = signal_ptr[2];
+//                     //unsigned int decimation = signal_ptr[3];
+// //                    size_t offset = 0;
+// 
+//                     cout << "Main::NewSubscriberList " << tid << ' ' << n << endl;
+// 
+//                     for (unsigned int i = 0; i < n; i++) {
+// //                        size_t sigIdx = signal_ptr[i + headerLen];
+// //                        HRTLab::Signal *s = signals[sigIdx];
+// //
+// //                        dataOffset[sigIdx] = offset;
+// //                        offset += s->memSize;
+// //
+// //                        for (std::set<size_t>::iterator it = signalDecimation[s].begin();
+// //                                it != signalDecimation[s].end(); it++) {
+// //                            subscribed[tid][*it].insert(s);
+// //                            dirty[tid][*it] = true;
+// //                        }
+//                     }
+//                 }
+//                 break;
+// 
+//             case HRTLab::Main::SubscriptionData:
+//                 {
+//                     unsigned int tid = signal_ptr[2];
+//                     //unsigned int iterationNo = signal_ptr[3];
+//                     char *dataPtr = reinterpret_cast<char*>(&signal_ptr[4]);
+// 
+//                     struct timespec time =
+//                         *reinterpret_cast<struct timespec*>(dataPtr);
+//                     dataPtr += sizeof(struct timespec);
+// 
+//                     cout << "Main::SubscriptionData " << tid << endl;
+// 
+// //                    for (DecimationMap::iterator it = decimation[tid].begin();
+// //                            it != decimation[tid].end(); it++) {
+// //                        cout << tid << ' ' << it->first << ' ' << it->second << endl;
+// //                        if (--it->second)
+// //                            continue;
+// //
+// //                        it->second = it->first;
+// //
+// //                        std::ostream s(this);
+// //
+// //                        if (dirty[tid][it->first]) {
+// //                            s << "VARIABLELIST " << tid
+// //                                << ' ' << it->first
+// //                                << ' ' << subscribed[tid][it->first].size()
+// //                                << crlf;
+// //                            for (std::set<HRTLab::Signal*>::iterator it2 =
+// //                                    subscribed[tid][it->first].begin();
+// //                                    it2 != subscribed[tid][it->first].end();
+// //                                    it2++) {
+// //                                HRTLab::Variable *v = *it2;
+// //
+// //                                s << v->index;
+// //                                if (sent[v]) {
+// //                                    s << crlf;
+// //                                    continue;
+// //                                }
+// //                                sent[v] = true;
+// //
+// //                                s << ' ' << v->decimation
+// //                                    << ' ' << getDTypeName(v->dtype)
+// //                                    << ' ' << v->ndims;
+// //
+// //                                const size_t *dim = v->getDim();
+// //                                for (size_t i = 0; i < v->ndims; i++) {
+// //                                    s << ' ' << dim[i];
+// //                                }
+// //                                s << ' ' << v->alias
+// //                                    << ' ' << v->path
+// //                                    << crlf;
+// //
+// //                            }
+// //                            dirty[tid][it->first] = false;
+// //                        }
+// //
+// //                        s << "TID " << tid
+// //                            << ' ' << it->first
+// //                            << ' ' << time.tv_sec
+// //                            << ' ' << time.tv_nsec
+// //                            << crlf << std::flush;
+// //
+// //                        for (std::set<HRTLab::Signal*>::iterator it2 =
+// //                                subscribed[tid][it->first].begin();
+// //                                it2 != subscribed[tid][it->first].end();
+// //                                it2++) {
+// //                            printVariable(this, *it2,
+// //                                    dataPtr + dataOffset[(*it2)->index]);
+// //                        }
+// //                    }
+//                 }
+//                 break;
+//         }
 
         signal_ptr += blockLen;
     }
 
-    sync();
     setTimer(100);
 }
 
@@ -298,8 +325,10 @@ bool Session::evalExpression(const char* &pptr, const char *eptr)
         if (evalAttribute(pptr, eptr, name, value))
             return true;
 
-        if (name.empty())
+        if (name.empty()) {
+            // No attributes any more
             break;
+        }
 
         if (name == "id")
             id = value;
@@ -358,7 +387,6 @@ bool Session::evalAttribute(const char* &pptr, const char *eptr,
         return false;
     }
 
-//    cout << __LINE__ << __func__ << std::string(pptr, eptr-pptr) << endl;
     start = pptr;
     if (evalIdentifier(pptr, eptr))
         return true;
@@ -367,25 +395,20 @@ bool Session::evalAttribute(const char* &pptr, const char *eptr,
     if (eptr - pptr < 3)
         return true;
 
-//    cout << __LINE__ << __func__ << std::string(pptr, eptr-pptr) << endl;
     char quote = pptr[1];
     if (pptr[0] != '=' or (quote != '"' and quote != '\''))
         return false;
     name = std::string(start, pptr - start);
 
     pptr += 2;
-//    cout << __LINE__ << __func__ << std::string(pptr, eptr-pptr) << endl;
     size_t len = 0;
     while (pptr[len] != quote) {
-//    cout << __LINE__ << __func__ << std::string(pptr, eptr-pptr) << endl;
         if (pptr + ++len == eptr)
             return true;
     }
-//    cout << __LINE__ << __func__ << std::string(pptr, eptr-pptr) << ' ' << len << endl;
     value = std::string(pptr, len);
-    pptr += len + 1;
-//    cout << __LINE__ << __func__ << ' ' << 
-//        name << '=' << value << std::string(pptr, eptr-pptr) << endl;
+
+    pptr += len + 1;            // Skip the quote
 
     return false;
 }
@@ -422,13 +445,16 @@ void Session::readParameterCmd(const AttributeMap &attributes)
     AttributeMap::const_iterator it;
     HRTLab::Parameter *parameter = 0;
     bool shortReply = false;
+    bool hex = false;
     const HRTLab::Main::ParameterList& pl = main->getParameters();
 
     if ((it = attributes.find("short"))!= attributes.end()) {
-        cout << __LINE__ << " " << it->second.c_str() << endl;
         shortReply = atoi(it->second.c_str());
     }
-    cout << __LINE__ << " " << shortReply << endl;
+
+    if ((it = attributes.find("hex"))!= attributes.end()) {
+        hex = atoi(it->second.c_str());
+    }
 
     if ((it = attributes.find("name")) != attributes.end()) {
         const HRTLab::Main::VariableMap& m = main->getVariableMap();
@@ -451,7 +477,7 @@ void Session::readParameterCmd(const AttributeMap &attributes)
     
     if (parameter) {
         MsrXml::Element p("parameter");
-        setParameterAttributes(&p, parameter, shortReply);
+        setParameterAttributes(&p, parameter, shortReply, hex);
         *this << p << std::flush;
     }
     else {
@@ -459,7 +485,7 @@ void Session::readParameterCmd(const AttributeMap &attributes)
         for (HRTLab::Main::ParameterList::const_iterator it = pl.begin();
                 it != pl.end(); it++) {
             MsrXml::Element *p = parameters.createChild("parameter");
-            setParameterAttributes(p, *it, shortReply);
+            setParameterAttributes(p, *it, shortReply, hex);
         }
         *this << parameters << std::flush;
     }
@@ -467,7 +493,7 @@ void Session::readParameterCmd(const AttributeMap &attributes)
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::setParameterAttributes(MsrXml::Element *e,
-        const HRTLab::Parameter *p, bool shortReply)
+        const HRTLab::Parameter *p, bool shortReply, bool hex)
 {
 
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
@@ -477,7 +503,14 @@ void Session::setParameterAttributes(MsrXml::Element *e,
     // index=
     e->setAttribute("name", p->path);
     e->setAttribute("index", p->index);
-    e->setAttribute("value", p, p->Variable::addr);
+    if (hex) {
+        e->setAttribute("hexvalue", printHexValues(p, p->Variable::addr));
+    }
+    else {
+        std::string s;
+        printValues(s, p, p->Variable::addr);
+        e->setAttribute("value", s);
+    }
     if (shortReply)
         return;
 
@@ -549,6 +582,21 @@ void Session::setParameterAttributes(MsrXml::Element *e,
 /////////////////////////////////////////////////////////////////////////////
 void Session::readParamValuesCmd(const AttributeMap &attributes)
 {
+    MsrXml::Element param_values("param_values");
+    std::string v;
+    bool separator = false;
+    const HRTLab::Main::ParameterList& pl = main->getParameters();
+
+    for (HRTLab::Main::ParameterList::const_iterator it = pl.begin();
+            it != pl.end(); it++) {
+        if (separator) v.append(1,'|');
+        printValues(v, *it, (*it)->Variable::addr);
+        separator = true;
+    }
+
+    param_values.setAttribute("value", v);
+
+    *this << param_values << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -577,8 +625,54 @@ void Session::remoteHostCmd(const AttributeMap &attributes)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::readStatisticsCmd(const AttributeMap &attributes)
+{
+    // <clients>
+    //   <client index="0" name="lansim"
+    //           apname="Persistent Manager, Version: 0.3.1"
+    //           countin="19908501" countout="27337577"
+    //           connectedtime="1282151176.659208"/>
+    //   <client index="1" .../>
+    // </clients>
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::nullCmd(const AttributeMap &attributes)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::broadcastCmd(const AttributeMap &attributes)
 {
+    AttributeMap::const_iterator it;
+    const std::string *action = 0, *text = 0;
+
+    if ((it = attributes.find("action"))!= attributes.end()) {
+        action = &(it->second);
+    }
+
+    if ((it = attributes.find("text"))!= attributes.end()) {
+        text = &(it->second);
+    }
+    server->broadcast(this, action, text);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::broadcast(Session *s, const struct timespec &t,
+        const std::string *action, const std::string *text)
+{
+    MsrXml::Element broadcast("broadcast");
+    broadcast.setAttribute("time", t);
+
+    if (action) {
+        broadcast.setAttribute("action", *action);
+    }
+
+    if (text) {
+        broadcast.setAttribute("text", *text);
+    }
+
+    *this << broadcast << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -622,3 +716,141 @@ const char *Session::getDTypeName(const HRTLab::Variable *v)
         default:           return "";
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////
+std::string Session::printHexValues(
+        const HRTLab::Variable *v, const char* data)
+{
+    std::string s;
+    s.reserve(v->memSize*2 + 1);
+
+    for (size_t i = 0; i < v->memSize; i++)
+        s.append(hexValue[static_cast<unsigned char>(data[i])], 2);
+
+    return s;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::printValues( std::string &s,
+        const HRTLab::Variable *v, const char* data)
+{
+    std::ostringstream os;
+
+    switch (v->dtype) {
+        case si_boolean_T:
+            {
+                for ( size_t i = 0; i < v->nelem; i++) {
+                    if (i)
+                        os << ',';
+                    os << reinterpret_cast<const bool*>(data)[i];
+                }
+            }
+            break;
+
+        case si_uint8_T:
+            {
+                for ( size_t i = 0; i < v->nelem; i++) {
+                    if (i)
+                        os << ',';
+                    os << reinterpret_cast<const uint8_t*>(data)[i];
+                }
+            }
+            break;
+
+        case si_sint8_T:
+            {
+                for ( size_t i = 0; i < v->nelem; i++) {
+                    if (i)
+                        os << ',';
+                    os << reinterpret_cast<const int8_t*>(data)[i];
+                }
+            }
+            break;
+
+        case si_uint16_T:
+            {
+                for ( size_t i = 0; i < v->nelem; i++) {
+                    if (i)
+                        os << ',';
+                    os << reinterpret_cast<const uint16_t*>(data)[i];
+                }
+            }
+            break;
+
+        case si_sint16_T:
+            {
+                for ( size_t i = 0; i < v->nelem; i++) {
+                    if (i)
+                        os << ',';
+                    os << reinterpret_cast<const int16_t*>(data)[i];
+                }
+            }
+            break;
+
+        case si_uint32_T:
+            {
+                for ( size_t i = 0; i < v->nelem; i++) {
+                    if (i)
+                        os << ',';
+                    os << reinterpret_cast<const uint32_t*>(data)[i];
+                }
+            }
+            break;
+
+        case si_sint32_T:
+            {
+                for ( size_t i = 0; i < v->nelem; i++) {
+                    if (i)
+                        os << ',';
+                    os << reinterpret_cast<const int32_t*>(data)[i];
+                }
+            }
+            break;
+
+        case si_uint64_T:
+            {
+                for ( size_t i = 0; i < v->nelem; i++) {
+                    if (i)
+                        os << ',';
+                    os << reinterpret_cast<const uint64_t*>(data)[i];
+                }
+            }
+            break;
+
+        case si_sint64_T:
+            {
+                for ( size_t i = 0; i < v->nelem; i++) {
+                    if (i)
+                        os << ',';
+                    os << reinterpret_cast<const int64_t*>(data)[i];
+                }
+            }
+            break;
+
+        case si_single_T:
+            {
+                for ( size_t i = 0; i < v->nelem; i++) {
+                    if (i)
+                        os << ',';
+                    os << reinterpret_cast<const float*>(data)[i];
+                }
+            }
+            break;
+
+        case si_double_T:
+            {
+                for ( size_t i = 0; i < v->nelem; i++) {
+                    if (i)
+                        os << ',';
+                    os << reinterpret_cast<const double*>(data)[i];
+                }
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    s.append(os.str());
+}
+
