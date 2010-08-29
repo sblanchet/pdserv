@@ -72,6 +72,8 @@ class Session: public ost::SocketPort,
         HRTLab::Main * const main;
         Server * const server;
 
+        bool writeAccess;
+
         std::string buf;
         std::string inbuf;
 
@@ -113,8 +115,8 @@ class Session: public ost::SocketPort,
         bool evalReadParameter(const char* &pos, const char *end);
 
         typedef std::map<const std::string, std::string> AttributeMap;
-        typedef std::map<const std::string,
-                void (Session::*)(const AttributeMap&)> CommandMap;
+        typedef void (Session::*CmdFunc)(const AttributeMap&);
+        typedef std::map<const std::string, CmdFunc> CommandMap;
         static CommandMap commandMap;
         void pingCmd(const AttributeMap &attributes);
         void readParameterCmd(const AttributeMap &attributes);
@@ -134,6 +136,8 @@ class Session: public ost::SocketPort,
                 const char* data);
         void setParameterAttributes(MsrXml::Element *e,
                 const HRTLab::Parameter *p, bool shortReply, bool hex);
+        void setChannelAttributes(MsrXml::Element *e,
+                const HRTLab::Signal *s, bool shortReply);
 
         static const char *hexValue[256];
 

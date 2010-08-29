@@ -11,9 +11,12 @@
 
 namespace HRTLab {
 
+class Main;
+
 class Parameter: public Variable {
     public:
         Parameter (
+                Main *main,
                 unsigned int index,
                 const char *path,
                 const char *alias,
@@ -25,17 +28,22 @@ class Parameter: public Variable {
                 paramupdate_t paramupdate,
                 void *priv_data);
 
+        const struct timespec& getMtime() const;
+
+        void setValue(const char *valbuf,
+                size_t valbuflen = 0, size_t offset = 0);
+
+    private:
+
+        Main * const main;
         const paramupdate_t paramcheck;
         const paramupdate_t paramupdate;
         void * const priv_data;
 
-        const struct timespec& getMtime() const;
-
-    private:
-
         char * const addr;
         struct timespec mtime;
 
+        static int copy(void *dst, const void *src, size_t len, void *);
 };
 
 }

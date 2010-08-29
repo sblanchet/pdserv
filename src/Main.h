@@ -69,10 +69,11 @@ class Main {
         unsigned int * const decimation;
         int (* const gettime)(struct timespec*);
 
-        const std::vector<Signal*>& getSignals() const;
-
         typedef std::vector<Parameter*> ParameterList;
         const ParameterList& getParameters() const;
+
+        typedef std::vector<Signal*> SignalList;
+        const SignalList& getSignals() const;
 
         typedef std::map<const std::string,Variable*> VariableMap;
         const VariableMap& getVariableMap() const;
@@ -80,6 +81,8 @@ class Main {
         unsigned int subscribe(const std::string& path);
 
         unsigned int *getSignalPtrStart() const;
+
+        void writeParameter(Parameter *);
 
     private:
 
@@ -95,7 +98,7 @@ class Main {
         unsigned int *signal_ptr_start, *signal_ptr_end;
         unsigned int *signal_ptr;
 
-        std::vector<Signal*> signals;
+        SignalList signals;
         ParameterList parameters;
         VariableMap variableMap;
 
@@ -107,6 +110,12 @@ class Main {
         typedef std::map<uint8_t, std::vector<Signal*>, std::greater<uint8_t> >
             SignalWidthMap;
         std::vector<SignalWidthMap> subscriptionMap;
+
+        void post(Instruction, unsigned int param,
+                const char* buf = 0, size_t len = 0);
+        void post(Instruction);
+
+        static int localtime(struct timespec *);
 };
 
 }

@@ -6,6 +6,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 
 #include "etlproto/Server.h"
 #include "MsrServer.h"
@@ -25,7 +26,7 @@ Main::Main(int argc, const char *argv[],
         int (*gettime)(struct timespec*)):
     name(name), version(version), baserate(baserate), nst(nst),
     decimation(nst > 1 ? new unsigned int [nst] : 0),
-    gettime(gettime)
+    gettime(gettime ? gettime : localtime)
 {
     if (nst > 1)
         std::copy(decimation, decimation + nst, this->decimation);
@@ -62,19 +63,75 @@ Main::~Main()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+int Main::localtime(struct timespec* t)
+{
+    struct timeval tv;
+
+    if (gettimeofday(&tv, 0))
+        return errno;
+    t->tv_sec = tv.tv_sec;
+    t->tv_nsec = tv.tv_usec * 1000;
+
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 unsigned int *Main::getSignalPtrStart() const
 {
     return signal_ptr_start;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const std::vector<Signal*>& Main::getSignals() const
+void Main::post(Instruction instr)
+{
+    if (instruction_ptr + 1 >= instruction_ptr_end) {
+        *instruction_block_begin = 0;
+        *instruction_ptr = Restart;
+        instruction_ptr = instruction_block_begin;
+    }
+
+    instruction_ptr[1] = 0;
+    instruction_ptr[0] = instr;
+    instruction_ptr += 1;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::post(Instruction instr, unsigned int param,
+        const char *buf, size_t len)
+{
+    size_t n = (len + sizeof(*instruction_ptr) - 1)
+        / sizeof(*instruction_ptr)
+        + 2;
+
+    if (instruction_ptr + n >= instruction_ptr_end) {
+        *instruction_block_begin = 0;
+        *instruction_ptr = Restart;
+        instruction_ptr = instruction_block_begin;
+    }
+
+    instruction_ptr[1] = param;
+    std::copy(buf, buf + len, reinterpret_cast<char*>(instruction_ptr+2));
+
+    instruction_ptr[n] = 0;
+    instruction_ptr[0] = instr;
+    instruction_ptr += n;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::writeParameter(Parameter *p)
+{
+    post(SetValue, p->index, p->Variable::addr, p->memSize);
+    // FIXME: servers->parameterChanged(p)
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Main::SignalList& Main::getSignals() const
 {
     return signals;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const std::vector<Parameter*>& Main::getParameters() const
+const Main::ParameterList& Main::getParameters() const
 {
     return parameters;
 }
@@ -157,6 +214,14 @@ void Main::update(int st, const struct timespec *time)
                 break;
 
             case SetValue:
+                {
+                    unsigned int index = *instruction_ptr++;
+                    Parameter *p = parameters[index];
+
+                    p->setValue(
+                            reinterpret_cast<const char*>(instruction_ptr));
+
+                }
                 break;
         }
     }
@@ -232,20 +297,11 @@ unsigned int Main::subscribe(const std::string &path)
             and (it == variableMap.end() or !it->second->decimation))
         return ~0U;
 
-    if (instruction_ptr + 2 >= instruction_ptr_end) {
-        *instruction_block_begin = 0;
-        *instruction_ptr = Restart;
-        instruction_ptr = instruction_block_begin;
-    }
-
     if (path.empty()) {
-        instruction_ptr[1] = 0;
-        instruction_ptr[0] = SubscriptionList;
+        post(SubscriptionList);
     }
     else {
-        instruction_ptr[1] = it->second->index;
-        instruction_ptr[2] = 0;
-        instruction_ptr[0] = Subscribe;
+        post(Subscribe, it->second->index);
 
         return it->second->index;
     }
@@ -342,7 +398,7 @@ int Main::newParameter(
         return -EEXIST;
 
     parameters.push_back(
-            new Parameter( parameters.size(),
+            new Parameter( this, parameters.size(),
                 path, alias, datatype, ndims, dim, addr,
                 paramcheck, paramupdate, priv_data));
     variableMap[path] = parameters.back();

@@ -56,9 +56,10 @@ Session::Session( Server *s, ost::SocketService *ss,
     SocketPort(0, socket), std::ostream(this),
     main(main), server(s), signal_ptr_start(main->getSignalPtrStart())
 {
-    cout << __LINE__ << __func__ << endl;
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     attach(ss);
+
+    writeAccess = false;
 
     if (commandMap.empty()) {
         commandMap["ping"] = &Session::pingCmd;
@@ -69,10 +70,10 @@ Session::Session( Server *s, ost::SocketService *ss,
         commandMap["rpv"] = &Session::readParamValuesCmd;
         commandMap["rk"] = &Session::readChannelsCmd;
         commandMap["rc"] = &Session::readChannelsCmd;
-
+        commandMap["read_kanaele"] = &Session::readChannelsCmd;
         commandMap["wp"] = &Session::writeParameterCmd;
         commandMap["write_parameter"] = &Session::writeParameterCmd;
-        commandMap["read_kanaele"] = &Session::readChannelsCmd;
+
         commandMap["start_data"] = &Session::xsadCmd;
         commandMap["stop_data"] = &Session::xsadCmd;
         commandMap["sad"] = &Session::xsadCmd;
@@ -580,6 +581,89 @@ void Session::setParameterAttributes(MsrXml::Element *e,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::setChannelAttributes(MsrXml::Element *e,
+        const HRTLab::Signal *s, bool shortReply)
+{
+    // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
+    //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
+    //
+    // name=
+    // value=
+    // index=
+    e->setAttribute("name", s->path);
+    e->setAttribute("index", s->index);
+    std::string value;
+    printValues(value, s, s->addr);
+    e->setAttribute("value", value);
+    if (shortReply)
+        return;
+
+    // datasize=
+    // typ=
+    // bufsize=
+    e->setAttribute("datasize", s->width);
+    e->setAttribute("typ", getDTypeName(s));
+    e->setAttribute("bufsize", 1000000);
+    e->setAttribute("HZ", main->baserate / s->decimation
+            / (main->decimation ? main->decimation[s->tid] : 1));
+
+    // unit=
+    if (s->unit.size()) {
+        e->setAttribute("unit", s->unit);
+    }
+
+    // text=
+    if (s->comment.size()) {
+        e->setAttribute("text", s->comment);
+    }
+
+    // For vectors:
+    // anz=
+    // cnum=
+    // rnum=
+    // orientation=
+    if (s->nelem > 1) {
+        e->setAttribute("anz",s->nelem);
+        const char *orientation;
+        size_t cnum, rnum;
+        switch (s->ndims) {
+            case 1:
+                {
+                    cnum = s->nelem;
+                    rnum = 1;
+                    orientation = "VECTOR";
+                }
+                break;
+
+            case 2:
+                {
+                    const size_t *dim = s->getDim();
+                    cnum = dim[1];
+                    rnum = dim[0];
+                    orientation = "MATRIX_ROW_MAJOR";
+                }
+                break;
+
+            default:
+                {
+                    const size_t *dim = s->getDim();
+                    cnum = dim[s->ndims - 1];
+                    rnum = s->nelem / cnum;
+                    orientation = "MATRIX_ROW_MAJOR";
+                }
+                break;
+        }
+        e->setAttribute("cnum", cnum);
+        e->setAttribute("rnum", rnum);
+        e->setAttribute("orientation", orientation);
+    }
+
+    // hide=
+    // unhide=
+    // persistent=
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::readParamValuesCmd(const AttributeMap &attributes)
 {
     MsrXml::Element param_values("param_values");
@@ -602,11 +686,166 @@ void Session::readParamValuesCmd(const AttributeMap &attributes)
 /////////////////////////////////////////////////////////////////////////////
 void Session::writeParameterCmd(const AttributeMap &attributes)
 {
+    if (!writeAccess) {
+        MsrXml::Element warn("warn");
+        warn.setAttribute("text", "No write access");
+        *this << warn << std::flush;
+//        return;
+    }
+
+    AttributeMap::const_iterator it;
+    HRTLab::Parameter *parameter;
+    size_t startindex = 0;
+    const HRTLab::Main::ParameterList& pl = main->getParameters();
+
+    if ((it = attributes.find("name")) != attributes.end()) {
+        const HRTLab::Main::VariableMap& m = main->getVariableMap();
+        HRTLab::Main::VariableMap::const_iterator vit = m.find(it->second);
+
+        if (vit == m.end() or vit->second->index >= pl.size()
+                or pl[vit->second->index]->path != it->second)
+            return;
+
+        parameter = pl[vit->second->index];
+    }
+    else if ((it = attributes.find("index")) != attributes.end()) {
+        unsigned int index = atoi(it->second.c_str());
+
+        if (index >= pl.size())
+            return;
+
+        parameter = pl[index];
+    }
+    else {
+        return;
+    }
+
+    if ((it = attributes.find("startindex")) != attributes.end()) {
+        startindex = atoi(it->second.c_str());
+    }
+
+    char valbuf[parameter->memSize];
+    size_t validx = 0;
+    if ((it = attributes.find("hexvalue")) != attributes.end()) {
+        const std::string &s = it->second;
+        char hexNum[] = {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
+            0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+            0,10,11,12,13,14,15
+        };
+
+        for (validx = 0;
+                validx < std::min(parameter->memSize, s.size() / 2);
+                validx++) {
+            unsigned char c1 = s[validx*2] - '0';
+            unsigned char c2 = s[validx*2 + 1] - '0';
+            if (c1 > 'f' - '0' or c2 > 'f' - '0')
+                return;
+            valbuf[validx] = hexNum[c1] << 4 | hexNum[c2];
+        }
+    }
+    else if ((it = attributes.find("value")) != attributes.end()) {
+        std::istringstream is(it->second);
+        double v;
+        char c;
+
+        for (validx = 0; validx < parameter->nelem; validx++) {
+            is >> v;
+
+            if (!is)
+                break;
+
+            switch (parameter->dtype) {
+                case si_boolean_T:
+                    reinterpret_cast<bool*>(valbuf)[validx] = v; break;
+
+                case si_uint8_T:
+                    reinterpret_cast<uint8_t*>(valbuf)[validx] = v; break;
+
+                case si_sint8_T:
+                    reinterpret_cast<int8_t*>(valbuf)[validx] = v; break;
+
+                case si_uint16_T:
+                    reinterpret_cast<uint16_t*>(valbuf)[validx] = v; break;
+
+                case si_sint16_T:
+                    reinterpret_cast<int16_t*>(valbuf)[validx] = v; break;
+
+                case si_uint32_T:
+                    reinterpret_cast<uint32_t*>(valbuf)[validx] = v; break;
+
+                case si_sint32_T:
+                    reinterpret_cast<int32_t*>(valbuf)[validx] = v; break;
+
+                case si_uint64_T:
+                    reinterpret_cast<uint64_t*>(valbuf)[validx] = v; break;
+
+                case si_sint64_T:
+                    reinterpret_cast<int64_t*>(valbuf)[validx] = v; break;
+
+                case si_single_T:
+                    reinterpret_cast<float*>(valbuf)[validx] = v; break;
+
+                case si_double_T:
+                    reinterpret_cast<double*>(valbuf)[validx] = v; break;
+
+                default:
+                    break;
+            }
+
+            is >> c;
+        }
+    }
+
+    parameter->setValue(valbuf, validx*parameter->width, startindex);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::readChannelsCmd(const AttributeMap &attributes)
 {
+    AttributeMap::const_iterator it;
+    HRTLab::Signal *signal = 0;
+    bool shortReply = false;
+    const HRTLab::Main::SignalList& sl = main->getSignals();
+
+    if ((it = attributes.find("short"))!= attributes.end()) {
+        shortReply = atoi(it->second.c_str());
+    }
+
+    if ((it = attributes.find("name")) != attributes.end()) {
+        const HRTLab::Main::VariableMap& m = main->getVariableMap();
+        HRTLab::Main::VariableMap::const_iterator vit = m.find(it->second);
+
+        if (vit == m.end() or vit->second->index >= sl.size()
+                or sl[vit->second->index]->path != it->second)
+            return;
+
+        signal = sl[vit->second->index];
+    }
+    else if ((it = attributes.find("index")) != attributes.end()) {
+        unsigned int index = atoi(it->second.c_str());
+
+        if (index >= sl.size())
+            return;
+
+        signal = sl[index];
+    }
+    
+    if (signal) {
+        MsrXml::Element channel("channel");
+        setChannelAttributes(&channel, signal, shortReply);
+        *this << channel << std::flush;
+    }
+    else {
+        MsrXml::Element channels("channels");
+        for (HRTLab::Main::SignalList::const_iterator it = sl.begin();
+                it != sl.end(); it++) {
+            MsrXml::Element *channel = channels.createChild("channel");
+            setChannelAttributes(channel, *it, shortReply);
+        }
+        *this << channels << std::flush;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
