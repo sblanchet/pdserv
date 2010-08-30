@@ -59,7 +59,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     attach(ss);
 
-    writeAccess = false;
+    writeAccess = true;
 
     if (commandMap.empty()) {
         commandMap["ping"] = &Session::pingCmd;
@@ -111,6 +111,7 @@ Session::Session( Server *s, ost::SocketService *ss,
 Session::~Session()
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+    server->sessionClosed(this);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -581,6 +582,15 @@ void Session::setParameterAttributes(MsrXml::Element *e,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::parameterChanged(const HRTLab::Parameter *p)
+{
+    MsrXml::Element pu("pu");
+    pu.setAttribute("index", p->index);
+
+    *this << pu << std::flush;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::setChannelAttributes(MsrXml::Element *e,
         const HRTLab::Signal *s, bool shortReply)
 {
@@ -690,7 +700,7 @@ void Session::writeParameterCmd(const AttributeMap &attributes)
         MsrXml::Element warn("warn");
         warn.setAttribute("text", "No write access");
         *this << warn << std::flush;
-//        return;
+        return;
     }
 
     AttributeMap::const_iterator it;
@@ -752,6 +762,7 @@ void Session::writeParameterCmd(const AttributeMap &attributes)
 
         for (validx = 0; validx < parameter->nelem; validx++) {
             is >> v;
+            cout << "value = " << v << endl;
 
             if (!is)
                 break;
@@ -798,7 +809,7 @@ void Session::writeParameterCmd(const AttributeMap &attributes)
         }
     }
 
-    parameter->setValue(valbuf, validx*parameter->width, startindex);
+    parameter->setValue(valbuf, validx, startindex);
 }
 
 /////////////////////////////////////////////////////////////////////////////

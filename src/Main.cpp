@@ -26,7 +26,7 @@ Main::Main(int argc, const char *argv[],
         int (*gettime)(struct timespec*)):
     name(name), version(version), baserate(baserate), nst(nst),
     decimation(nst > 1 ? new unsigned int [nst] : 0),
-    gettime(gettime ? gettime : localtime)
+    gettime(gettime ? gettime : localtime), mutex(1)
 {
     if (nst > 1)
         std::copy(decimation, decimation + nst, this->decimation);
@@ -84,6 +84,8 @@ unsigned int *Main::getSignalPtrStart() const
 /////////////////////////////////////////////////////////////////////////////
 void Main::post(Instruction instr)
 {
+    ost::SemaphoreLock lock(mutex);
+
     if (instruction_ptr + 1 >= instruction_ptr_end) {
         *instruction_block_begin = 0;
         *instruction_ptr = Restart;
@@ -99,6 +101,8 @@ void Main::post(Instruction instr)
 void Main::post(Instruction instr, unsigned int param,
         const char *buf, size_t len)
 {
+    ost::SemaphoreLock lock(mutex);
+
     size_t n = (len + sizeof(*instruction_ptr) - 1)
         / sizeof(*instruction_ptr)
         + 2;
@@ -121,7 +125,8 @@ void Main::post(Instruction instr, unsigned int param,
 void Main::writeParameter(Parameter *p)
 {
     post(SetValue, p->index, p->Variable::addr, p->memSize);
-    // FIXME: servers->parameterChanged(p)
+
+    msrproto->parameterChanged(p);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -221,6 +226,10 @@ void Main::update(int st, const struct timespec *time)
                     p->setValue(
                             reinterpret_cast<const char*>(instruction_ptr));
 
+                    // Skip over the block with parameter data
+                    instruction_ptr +=
+                        (p->memSize + sizeof(*instruction_ptr) - 1)
+                        / sizeof(*instruction_ptr);
                 }
                 break;
         }
@@ -257,17 +266,17 @@ void Main::update(int st, const struct timespec *time)
     //if (!subscribers[st].empty())
     {
         size_t headerLen = 4;
-        size_t n =
-            (blockLength[st] + sizeof(unsigned int) - 1)
-            / sizeof(unsigned int);
+        size_t blockLen = headerLen +
+            (blockLength[st] + sizeof(*signal_ptr) - 1)
+            / sizeof(*signal_ptr);
 
-        if (signal_ptr + n + headerLen >= signal_ptr_end) {
+        if (signal_ptr + blockLen >= signal_ptr_end) {
             *signal_ptr_start = 0;
             signal_ptr[0] = Restart;
             signal_ptr = signal_ptr_start;
         }
 
-        signal_ptr[1] = n + headerLen;      // Block size in (unsigned int)
+        signal_ptr[1] = blockLen;           // Block size in (unsigned int)
         signal_ptr[2] = st;                 // Task Id
         signal_ptr[3] = iterationNo[st]++;  // Iteration number
         char *dataPtr = reinterpret_cast<char*>(&signal_ptr[headerLen]);
@@ -283,9 +292,9 @@ void Main::update(int st, const struct timespec *time)
             std::copy((*it)->addr, (*it)->addr + (*it)->memSize, dataPtr);
             dataPtr += (*it)->memSize;
         }
-        signal_ptr[n + headerLen] = 0;
+        signal_ptr[blockLen] = 0;
         signal_ptr[0] = SubscriptionData;
-        signal_ptr += n + headerLen;
+        signal_ptr += blockLen;
     }
 }
 
@@ -344,13 +353,13 @@ int Main::start()
         return 0;
     }
 
-    MsrProto::Server msrproto(this);
+    msrproto = new MsrProto::Server(this);
 //    EtlProto::Server etlproto(this);
 //    etlproto.start();
-    msrproto.start();
+    msrproto->start();
 
 //    etlproto.join();
-    msrproto.join();
+    msrproto->join();
 
     return 0;
 }

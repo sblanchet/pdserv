@@ -8,6 +8,11 @@
 #include <stdint.h>
 
 #include <rtlab/rtlab.h>
+#include <cc++/thread.h>
+
+namespace MsrProto {
+    class Server;
+}
 
 namespace HRTLab {
 
@@ -85,6 +90,10 @@ class Main {
         void writeParameter(Parameter *);
 
     private:
+
+        mutable ost::Semaphore mutex;
+        MsrProto::Server *msrproto;
+//    EtlProto::Server etlproto(this);
 
         int pid;
 

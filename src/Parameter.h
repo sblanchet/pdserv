@@ -6,6 +6,7 @@
 #define PARAMETER
 
 #include <ctime>
+#include <cc++/thread.h>
 #include "Variable.h"
 #include "rtlab/rtlab.h"
 
@@ -24,14 +25,14 @@ class Parameter: public Variable {
                 unsigned int ndims,
                 const size_t dim[],
                 char *addr,
-                paramupdate_t paramcheck,
-                paramupdate_t paramupdate,
-                void *priv_data);
+                paramupdate_t paramcheck = copy,
+                paramupdate_t paramupdate = copy,
+                void *priv_data = 0);
 
-        const struct timespec& getMtime() const;
+        struct timespec getMtime() const;
 
         void setValue(const char *valbuf,
-                size_t valbuflen = 0, size_t offset = 0);
+                size_t nelem = 0, size_t offset = 0);
 
     private:
 
@@ -43,6 +44,10 @@ class Parameter: public Variable {
         char * const addr;
         struct timespec mtime;
 
+        mutable ost::Semaphore mutex;
+
+        // A default function used when paramcheck or paramupdate are not
+        // specified by the user
         static int copy(void *dst, const void *src, size_t len, void *);
 };
 

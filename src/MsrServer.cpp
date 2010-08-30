@@ -12,7 +12,7 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Server::Server(HRTLab::Main *main): main(main)
+Server::Server(HRTLab::Main *main): main(main), mutex(1)
 {
 }
 
@@ -27,7 +27,10 @@ void Server::run()
     ost::SocketService svc;
     ost::TCPSocket socket(ost::IPV4Address("0.0.0.0"), 2345);
     while (true) {
-        new Session(this, &svc, socket, main);
+        Session *s = new Session(this, &svc, socket, main);
+
+        ost::SemaphoreLock lock(mutex);
+        sessions.insert(s);
     }
 }
 
@@ -38,5 +41,24 @@ void Server::broadcast(Session *s,
     struct timespec ts;
     main->gettime(&ts);
 
-    s->broadcast(s, ts, action, text);
+    ost::SemaphoreLock lock(mutex);
+    for (std::set<Session*>::iterator it = sessions.begin();
+            it != sessions.end(); it++)
+        (*it)->broadcast(s, ts, action, text);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Server::sessionClosed(Session *s)
+{
+    ost::SemaphoreLock lock(mutex);
+    sessions.erase(s);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Server::parameterChanged(const HRTLab::Parameter *p)
+{
+    ost::SemaphoreLock lock(mutex);
+    for (std::set<Session*>::iterator it = sessions.begin();
+            it != sessions.end(); it++)
+        (*it)->parameterChanged(p);
 }

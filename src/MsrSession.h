@@ -67,6 +67,9 @@ class Session: public ost::SocketPort,
 
         void broadcast(Session *s, const struct timespec &t,
                 const std::string *action, const std::string *text);
+
+        void parameterChanged(const HRTLab::Parameter*);
+
     private:
 
         HRTLab::Main * const main;

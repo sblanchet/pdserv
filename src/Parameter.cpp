@@ -2,7 +2,6 @@
  * $Id$
  *****************************************************************************/
 
-#include <sys/time.h>
 #include <ctime>
 #include <algorithm>
 
@@ -33,10 +32,8 @@ Parameter::Parameter(
     main(main),
     paramcheck(paramcheck ? paramcheck : copy),
     paramupdate(paramupdate ? paramupdate : copy),
-    priv_data(priv_data),
-    addr(addr)
+    priv_data(priv_data), addr(addr), mutex(1)
 {
-
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -49,19 +46,27 @@ int Parameter::copy(void *dst, const void *src, size_t len, void *)
 }
 
 //////////////////////////////////////////////////////////////////////
-const timespec& Parameter::getMtime() const
+struct timespec Parameter::getMtime() const
 {
+    ost::SemaphoreLock wait(mutex);
     return mtime;
 }
 
 //////////////////////////////////////////////////////////////////////
-void Parameter::setValue(const char *valbuf, size_t buflen, size_t offset)
+void Parameter::setValue(const char *valbuf, size_t nelem, size_t offset)
 {
+    size_t buflen = nelem * width;
+
+    // If nelem == 0, this method was called from inside the real-time thread.
+    // In this case, call the paramupdate callback which copies the parameter
+    // from shared memory to the process.
     if (!buflen) {
         paramupdate(addr, valbuf, memSize, priv_data);
         return;
     }
-    
+
+    ost::SemaphoreLock wait(mutex);
+
     char buf[memSize];
 
     if (offset or buflen != memSize) {
