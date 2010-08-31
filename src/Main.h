@@ -30,8 +30,10 @@ template <class T1>
 class Main {
     public:
         enum Instruction {Restart = 1,
-            SubscriptionList, Subscribe, Unsubscribe, SetValue,
-            NewSubscriberList, SubscriptionData
+            GetSubscriptionList, Subscribe, Unsubscribe, SetValue,
+            GetSingleValue,
+
+            SubscriptionList, SubscriptionData,
         };
 
         Main(int argc, const char *argv[],

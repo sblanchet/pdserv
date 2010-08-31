@@ -162,9 +162,14 @@ void Main::update(int st, const struct timespec *time)
                 }
                 break;
 
-            case SubscriptionList:
+            case GetSubscriptionList:
                 {
                     std::fill_n(dirty, nst, true);
+                }
+                break;
+
+            case GetSingleValue:
+                {
                 }
                 break;
 
@@ -257,7 +262,7 @@ void Main::update(int st, const struct timespec *time)
             signal_ptr[i + headerLen] = subscribers[tid][i]->index;
 
         signal_ptr[n + headerLen] = 0;
-        signal_ptr[0] = NewSubscriberList;
+        signal_ptr[0] = SubscriptionList;
 
         signal_ptr += n + headerLen;
     }
@@ -307,7 +312,7 @@ unsigned int Main::subscribe(const std::string &path)
         return ~0U;
 
     if (path.empty()) {
-        post(SubscriptionList);
+        post(GetSubscriptionList);
     }
     else {
         post(Subscribe, it->second->index);

@@ -90,7 +90,7 @@ void Session::expired()
         const size_t blockLen = signal_ptr[1];
 
         switch (*signal_ptr) {
-            case HRTLab::Main::NewSubscriberList:
+            case HRTLab::Main::SubscriptionList:
                 {
                     size_t headerLen = 4;
                     size_t n = blockLen - headerLen;
@@ -98,7 +98,7 @@ void Session::expired()
                     //unsigned int decimation = signal_ptr[3];
                     size_t offset = 0;
 
-                    cout << "Main::NewSubscriberList " << tid << ' ' << n << endl;
+                    cout << "Main::SubscriptionList " << tid << ' ' << n << endl;
 
                     for (unsigned int i = 0; i < n; i++) {
                         size_t sigIdx = signal_ptr[i + headerLen];

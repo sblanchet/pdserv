@@ -133,16 +133,14 @@ class Session: public ost::SocketPort,
         void readStatisticsCmd(const AttributeMap &attributes);
         void nullCmd(const AttributeMap &attributes);
 
-        void printValues(std::string& s,
+        static std::string toCSV(
                 const HRTLab::Variable *v, const char* data);
-        std::string printHexValues(const HRTLab::Variable *v,
-                const char* data);
+        static std::string toHexDec(
+                const HRTLab::Variable *v, const char* data);
         void setParameterAttributes(MsrXml::Element *e,
                 const HRTLab::Parameter *p, bool shortReply, bool hex);
         void setChannelAttributes(MsrXml::Element *e,
                 const HRTLab::Signal *s, bool shortReply);
-
-        static const char *hexValue[256];
 
         // Reimplemented from streambuf
         int sync();

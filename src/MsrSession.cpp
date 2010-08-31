@@ -22,34 +22,6 @@ using namespace MsrProto;
 
 Session::CommandMap Session::commandMap;
 
-const char *Session::hexValue[256] = {
-    "00","01","02","03","04","05","06","07","08","09",
-    "0A","0B","0C","0D","0E","0F","10","11","12","13",
-    "14","15","16","17","18","19","1A","1B","1C","1D",
-    "1E","1F","20","21","22","23","24","25","26","27",
-    "28","29","2A","2B","2C","2D","2E","2F","30","31",
-    "32","33","34","35","36","37","38","39","3A","3B",
-    "3C","3D","3E","3F","40","41","42","43","44","45",
-    "46","47","48","49","4A","4B","4C","4D","4E","4F",
-    "50","51","52","53","54","55","56","57","58","59",
-    "5A","5B","5C","5D","5E","5F","60","61","62","63",
-    "64","65","66","67","68","69","6A","6B","6C","6D",
-    "6E","6F","70","71","72","73","74","75","76","77",
-    "78","79","7A","7B","7C","7D","7E","7F","80","81",
-    "82","83","84","85","86","87","88","89","8A","8B",
-    "8C","8D","8E","8F","90","91","92","93","94","95",
-    "96","97","98","99","9A","9B","9C","9D","9E","9F",
-    "A0","A1","A2","A3","A4","A5","A6","A7","A8","A9",
-    "AA","AB","AC","AD","AE","AF","B0","B1","B2","B3",
-    "B4","B5","B6","B7","B8","B9","BA","BB","BC","BD",
-    "BE","BF","C0","C1","C2","C3","C4","C5","C6","C7",
-    "C8","C9","CA","CB","CC","CD","CE","CF","D0","D1",
-    "D2","D3","D4","D5","D6","D7","D8","D9","DA","DB",
-    "DC","DD","DE","DF","E0","E1","E2","E3","E4","E5",
-    "E6","E7","E8","E9","EA","EB","EC","ED","EE","EF",
-    "F0","F1","F2","F3","F4","F5","F6","F7","F8","F9",
-    "FA","FB","FC","FD","FE","FF"};
-
 /////////////////////////////////////////////////////////////////////////////
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
@@ -98,6 +70,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     greeting.setAttribute("version", MSR_VERSION);
     greeting.setAttribute("features", MSR_FEATURES);
     greeting.setAttribute("recievebufsize", "100000000");
+    //greeting.setAttribute("receivebufsize", "100000000");
 
     *this << greeting << std::flush;
 
@@ -506,12 +479,10 @@ void Session::setParameterAttributes(MsrXml::Element *e,
     e->setAttribute("name", p->path);
     e->setAttribute("index", p->index);
     if (hex) {
-        e->setAttribute("hexvalue", printHexValues(p, p->Variable::addr));
+        e->setAttribute("hexvalue", toHexDec(p, p->Variable::addr));
     }
     else {
-        std::string s;
-        printValues(s, p, p->Variable::addr);
-        e->setAttribute("value", s);
+        e->setAttribute("value", toCSV(p, p->Variable::addr));
     }
     if (shortReply)
         return;
@@ -602,9 +573,7 @@ void Session::setChannelAttributes(MsrXml::Element *e,
     // index=
     e->setAttribute("name", s->path);
     e->setAttribute("index", s->index);
-    std::string value;
-    printValues(value, s, s->addr);
-    e->setAttribute("value", value);
+    e->setAttribute("value", toCSV(s, s->addr));
     if (shortReply)
         return;
 
@@ -684,7 +653,7 @@ void Session::readParamValuesCmd(const AttributeMap &attributes)
     for (HRTLab::Main::ParameterList::const_iterator it = pl.begin();
             it != pl.end(); it++) {
         if (separator) v.append(1,'|');
-        printValues(v, *it, (*it)->Variable::addr);
+        v.append(toCSV(*it, (*it)->Variable::addr));
         separator = true;
     }
 
@@ -738,7 +707,7 @@ void Session::writeParameterCmd(const AttributeMap &attributes)
     size_t validx = 0;
     if ((it = attributes.find("hexvalue")) != attributes.end()) {
         const std::string &s = it->second;
-        char hexNum[] = {
+        const char hexNum[] = {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
             0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
@@ -756,9 +725,11 @@ void Session::writeParameterCmd(const AttributeMap &attributes)
         }
     }
     else if ((it = attributes.find("value")) != attributes.end()) {
-        std::istringstream is(it->second);
         double v;
         char c;
+        std::istringstream is(it->second);
+
+        is.imbue(std::locale::classic());
 
         for (validx = 0; validx < parameter->nelem; validx++) {
             is >> v;
@@ -968,10 +939,38 @@ const char *Session::getDTypeName(const HRTLab::Variable *v)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string Session::printHexValues(
+std::string Session::toHexDec(
         const HRTLab::Variable *v, const char* data)
 {
     std::string s;
+    const char *hexValue[256] = {
+        "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", 
+        "0A", "0B", "0C", "0D", "0E", "0F", "10", "11", "12", "13", 
+        "14", "15", "16", "17", "18", "19", "1A", "1B", "1C", "1D", 
+        "1E", "1F", "20", "21", "22", "23", "24", "25", "26", "27", 
+        "28", "29", "2A", "2B", "2C", "2D", "2E", "2F", "30", "31", 
+        "32", "33", "34", "35", "36", "37", "38", "39", "3A", "3B", 
+        "3C", "3D", "3E", "3F", "40", "41", "42", "43", "44", "45", 
+        "46", "47", "48", "49", "4A", "4B", "4C", "4D", "4E", "4F", 
+        "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", 
+        "5A", "5B", "5C", "5D", "5E", "5F", "60", "61", "62", "63", 
+        "64", "65", "66", "67", "68", "69", "6A", "6B", "6C", "6D", 
+        "6E", "6F", "70", "71", "72", "73", "74", "75", "76", "77", 
+        "78", "79", "7A", "7B", "7C", "7D", "7E", "7F", "80", "81", 
+        "82", "83", "84", "85", "86", "87", "88", "89", "8A", "8B", 
+        "8C", "8D", "8E", "8F", "90", "91", "92", "93", "94", "95", 
+        "96", "97", "98", "99", "9A", "9B", "9C", "9D", "9E", "9F", 
+        "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", 
+        "AA", "AB", "AC", "AD", "AE", "AF", "B0", "B1", "B2", "B3", 
+        "B4", "B5", "B6", "B7", "B8", "B9", "BA", "BB", "BC", "BD", 
+        "BE", "BF", "C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", 
+        "C8", "C9", "CA", "CB", "CC", "CD", "CE", "CF", "D0", "D1", 
+        "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "DA", "DB", 
+        "DC", "DD", "DE", "DF", "E0", "E1", "E2", "E3", "E4", "E5", 
+        "E6", "E7", "E8", "E9", "EA", "EB", "EC", "ED", "EE", "EF", 
+        "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", 
+        "FA", "FB", "FC", "FD", "FE", "FF"};
+
     s.reserve(v->memSize*2 + 1);
 
     for (size_t i = 0; i < v->memSize; i++)
@@ -981,126 +980,82 @@ std::string Session::printHexValues(
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::printValues( std::string &s,
-        const HRTLab::Variable *v, const char* data)
+std::string Session::toCSV( const HRTLab::Variable *v, const char* data)
 {
     std::ostringstream os;
+    os.imbue(std::locale::classic());
 
     switch (v->dtype) {
         case si_boolean_T:
-            {
-                for ( size_t i = 0; i < v->nelem; i++) {
-                    if (i)
-                        os << ',';
-                    os << reinterpret_cast<const bool*>(data)[i];
-                }
-            }
+            os << reinterpret_cast<const bool*>(data)[0];
+            for ( size_t i = 1; i < v->nelem; i++)
+                os << ',' << reinterpret_cast<const bool*>(data)[i];
             break;
 
         case si_uint8_T:
-            {
-                for ( size_t i = 0; i < v->nelem; i++) {
-                    if (i)
-                        os << ',';
-                    os << reinterpret_cast<const uint8_t*>(data)[i];
-                }
-            }
+            os << reinterpret_cast<const uint8_t*>(data)[0];
+            for ( size_t i = 1; i < v->nelem; i++)
+                os << ',' << reinterpret_cast<const uint8_t*>(data)[i];
             break;
 
         case si_sint8_T:
-            {
-                for ( size_t i = 0; i < v->nelem; i++) {
-                    if (i)
-                        os << ',';
-                    os << reinterpret_cast<const int8_t*>(data)[i];
-                }
-            }
+            os << reinterpret_cast<const int8_t*>(data)[0];
+            for ( size_t i = 1; i < v->nelem; i++)
+                os << ',' << reinterpret_cast<const int8_t*>(data)[i];
             break;
 
         case si_uint16_T:
-            {
-                for ( size_t i = 0; i < v->nelem; i++) {
-                    if (i)
-                        os << ',';
-                    os << reinterpret_cast<const uint16_t*>(data)[i];
-                }
-            }
+            os << reinterpret_cast<const uint16_t*>(data)[0];
+            for ( size_t i = 1; i < v->nelem; i++)
+                os << ',' << reinterpret_cast<const uint16_t*>(data)[i];
             break;
 
         case si_sint16_T:
-            {
-                for ( size_t i = 0; i < v->nelem; i++) {
-                    if (i)
-                        os << ',';
-                    os << reinterpret_cast<const int16_t*>(data)[i];
-                }
-            }
+            os << reinterpret_cast<const int16_t*>(data)[0];
+            for ( size_t i = 1; i < v->nelem; i++)
+                os << ',' << reinterpret_cast<const int16_t*>(data)[i];
             break;
 
         case si_uint32_T:
-            {
-                for ( size_t i = 0; i < v->nelem; i++) {
-                    if (i)
-                        os << ',';
-                    os << reinterpret_cast<const uint32_t*>(data)[i];
-                }
-            }
+            os << reinterpret_cast<const uint32_t*>(data)[0];
+            for ( size_t i = 1; i < v->nelem; i++)
+                os << ',' << reinterpret_cast<const uint32_t*>(data)[i];
             break;
 
         case si_sint32_T:
-            {
-                for ( size_t i = 0; i < v->nelem; i++) {
-                    if (i)
-                        os << ',';
-                    os << reinterpret_cast<const int32_t*>(data)[i];
-                }
-            }
+            os << reinterpret_cast<const int32_t*>(data)[0];
+            for ( size_t i = 1; i < v->nelem; i++)
+                os << ',' << reinterpret_cast<const int32_t*>(data)[i];
             break;
 
         case si_uint64_T:
-            {
-                for ( size_t i = 0; i < v->nelem; i++) {
-                    if (i)
-                        os << ',';
-                    os << reinterpret_cast<const uint64_t*>(data)[i];
-                }
-            }
+            os << reinterpret_cast<const uint64_t*>(data)[0];
+            for ( size_t i = 1; i < v->nelem; i++)
+                os << ',' << reinterpret_cast<const uint64_t*>(data)[i];
             break;
 
         case si_sint64_T:
-            {
-                for ( size_t i = 0; i < v->nelem; i++) {
-                    if (i)
-                        os << ',';
-                    os << reinterpret_cast<const int64_t*>(data)[i];
-                }
-            }
+            os << reinterpret_cast<const int64_t*>(data)[0];
+            for ( size_t i = 1; i < v->nelem; i++)
+                os << ',' << reinterpret_cast<const int64_t*>(data)[i];
             break;
 
         case si_single_T:
-            {
-                for ( size_t i = 0; i < v->nelem; i++) {
-                    if (i)
-                        os << ',';
-                    os << reinterpret_cast<const float*>(data)[i];
-                }
-            }
+            os << reinterpret_cast<const float*>(data)[0];
+            for ( size_t i = 1; i < v->nelem; i++)
+                os << ',' << reinterpret_cast<const float*>(data)[i];
             break;
 
         case si_double_T:
-            {
-                for ( size_t i = 0; i < v->nelem; i++) {
-                    if (i)
-                        os << ',';
-                    os << reinterpret_cast<const double*>(data)[i];
-                }
-            }
+            os << reinterpret_cast<const double*>(data)[0];
+            for ( size_t i = 1; i < v->nelem; i++)
+                os << ',' << reinterpret_cast<const double*>(data)[i];
             break;
 
         default:
             break;
     }
 
-    s.append(os.str());
+    return os.str();
 }
 
