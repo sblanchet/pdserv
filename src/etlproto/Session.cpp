@@ -261,18 +261,18 @@ Session::ParseState_t Session::ParseInstruction(const std::string& s)
         std::getline(is, path);
 
         if (!is.fail()) {
-            size_t sigIdx = main->subscribe(path);
-            if (sigIdx != ~0U) {
-                HRTLab::Signal *signal = (main->getSignals())[sigIdx];
-                unsigned int tid = signal[sigIdx].tid;
-                signalDecimation[signal].insert(n);
-
-                if (decimation[tid].find(n) == decimation[tid].end()) {
-                    // FIXME: This has to be reworked to fit into the the
-                    // other decimations sometime ;)
-                    decimation[tid][n] = 1;
-                }
-            }
+//            size_t sigIdx = main->subscribe(path);
+//            if (sigIdx != ~0U) {
+//                HRTLab::Signal *signal = (main->getSignals())[sigIdx];
+//                unsigned int tid = signal[sigIdx].tid;
+//                signalDecimation[signal].insert(n);
+//
+//                if (decimation[tid].find(n) == decimation[tid].end()) {
+//                    // FIXME: This has to be reworked to fit into the the
+//                    // other decimations sometime ;)
+//                    decimation[tid][n] = 1;
+//                }
+//            }
         }
     }
 

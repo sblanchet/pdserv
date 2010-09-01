@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
+#include <list>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/time.h>
@@ -103,9 +104,7 @@ void Main::post(Instruction instr, unsigned int param,
 {
     ost::SemaphoreLock lock(mutex);
 
-    size_t n = (len + sizeof(*instruction_ptr) - 1)
-        / sizeof(*instruction_ptr)
-        + 2;
+    size_t n = 2 + element_count_uint(len);
 
     if (instruction_ptr + n >= instruction_ptr_end) {
         *instruction_block_begin = 0;
@@ -148,6 +147,134 @@ const Main::VariableMap& Main::getVariableMap() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Main::processPollSignal(const struct timespec *time)
+{
+    // PollSignal
+    // Receive:
+    //          [0]: PollSignal
+    //          [1]: The number of signals being polled (n)
+    //          [2]: Number of bytes that the signals will use - this must be
+    //               calculated a priori by the clients - the real-time
+    //               process relies on this value
+    //          [3 .. 3+n]: Index numbers of the signals
+    //
+    // Send
+    //  [0]: PollSignal
+    //  [1]: Size in integers of the answer (m)
+    //  [2]: Task id of the reply - unused
+    //  [3]: Number of signals (n)
+    //  [4 .. 4+n]: Index numbers of the signals
+    //  [5+n .. m]: struct timeval; Signal data
+
+    size_t signal_count = *instruction_ptr++;
+    unsigned int blockLen =
+        4 + element_count_uint(*instruction_ptr++);
+
+    // Make sure the answer will fit
+    if (signal_ptr + blockLen >= signal_ptr_end) {
+        *signal_ptr_start = 0;
+        *signal_ptr = Restart;
+        signal_ptr = signal_ptr_start;
+    }
+
+    // The header
+    signal_ptr[1] = blockLen;
+    signal_ptr[2] = 0;  // tid
+    signal_ptr[3] = signal_count;
+
+    // The signal list
+    std::copy(instruction_ptr, instruction_ptr + signal_count,
+            signal_ptr + 4);
+    char *p =
+        reinterpret_cast<char*>(signal_ptr + 4 + signal_count);
+
+    // struct timeval
+    if (time)
+        *reinterpret_cast<struct timespec*>(p) = *time;
+    else
+        std::fill_n(p, sizeof(struct timespec), 0);
+    p += sizeof(*time);
+
+    // Signal data
+    while (signal_count--) {
+        const Signal *s = signals[*instruction_ptr++];
+        std::copy(s->addr, s->addr + s->memSize, p);
+        p += s->memSize;
+    }
+
+    // Complete the message
+    signal_ptr[blockLen] = 0;
+    signal_ptr[0] = PollSignal;
+    signal_ptr += blockLen;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::processSubscribe(bool *dirty)
+{
+    unsigned int signal_count = *instruction_ptr++;
+
+    for (unsigned int i = 0; i < signal_count; i++) {
+        Signal *s = signals[*instruction_ptr++];
+
+        if (subscribed[s->index])
+            continue;
+
+        subscribed[s->index] = true;
+        subscribers[s->tid].resize(subscribers[s->tid].size() + 1);
+
+        subscriptionIndex[s->index] =
+            subscriptionMap[s->tid][s->width].size();
+        subscriptionMap[s->tid][s->width].push_back(s);
+        for (SignalWidthMap::iterator it = subscriptionMap[s->tid].begin();
+                it != subscriptionMap[s->tid].end(); it++) {
+            for (std::vector<Signal*>::iterator it2 = it->second.begin();
+                    it2 != it->second.end(); it2++) {
+                subscribers[s->tid][i] = *it2;
+                i++;
+            }
+        }
+        dirty[s->tid] = true;
+        blockLength[s->tid] += s->memSize;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::processUnsubscribe(bool *dirty)
+{
+    unsigned int index = *instruction_ptr++;
+    Signal *s = signals[index];
+
+    if (subscribed[index]) {
+        subscribers[s->tid].erase(
+                subscribers[s->tid].begin()
+                + subscriptionIndex[index]);
+
+        std::vector<Signal*>::iterator it = 
+            subscriptionMap[s->tid][s->width].begin()
+            + subscriptionIndex[index];
+        subscriptionMap[s->tid][s->width].erase(it);
+
+        dirty[s->tid] = true;
+        blockLength[s->tid] -= s->memSize;
+        subscribed[index] = false;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::processSetValue()
+{
+    unsigned int index = *instruction_ptr++;
+    Parameter *p = parameters[index];
+    const char *data = 
+        reinterpret_cast<const char*>(instruction_ptr);
+
+    p->setValue(data);
+
+    // Skip over the block with parameter data
+    instruction_ptr += element_count_uint(p->memSize);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Main::update(int st, const struct timespec *time)
 {
     bool dirty[nst];
@@ -157,90 +284,38 @@ void Main::update(int st, const struct timespec *time)
     while (*instruction_ptr) {
         switch (*instruction_ptr++) {
             case Restart:
-                {
-                    instruction_ptr = instruction_block_begin;
-                }
+                instruction_ptr = instruction_block_begin;
                 break;
 
             case GetSubscriptionList:
-                {
-                    std::fill_n(dirty, nst, true);
-                }
+                std::fill_n(dirty, nst, true);
                 break;
 
-            case GetSingleValue:
-                {
-                }
+            case PollSignal:
+                processPollSignal(time);
                 break;
 
             case Subscribe:
-                {
-                    unsigned int index = *instruction_ptr++;
-                    unsigned int i = 0;
-                    Signal *s = signals[index];
-
-                    if (subscribed[index])
-                        break;
-
-                    subscribed[index] = true;
-                    subscribers[s->tid].resize(subscribers[s->tid].size() + 1);
-
-                    subscriptionIndex[index] =
-                        subscriptionMap[s->tid][s->width].size();
-                    subscriptionMap[s->tid][s->width].push_back(s);
-                    for (SignalWidthMap::iterator it = subscriptionMap[s->tid].begin();
-                            it != subscriptionMap[s->tid].end(); it++) {
-                        for (std::vector<Signal*>::iterator it2 = it->second.begin();
-                                it2 != it->second.end(); it2++) {
-                            subscribers[s->tid][i] = *it2;
-                            i++;
-                        }
-                    }
-                    dirty[s->tid] = true;
-                    blockLength[s->tid] += s->memSize;
-                }
+                processSubscribe(dirty);
                 break;
 
             case Unsubscribe:
-                {
-                    unsigned int index = *instruction_ptr++;
-                    Signal *s = signals[index];
-
-                    if (subscribed[index]) {
-                        subscribers[s->tid].erase(
-                                subscribers[s->tid].begin()
-                                + subscriptionIndex[index]);
-
-                        std::vector<Signal*>::iterator it = 
-                            subscriptionMap[s->tid][s->width].begin()
-                            + subscriptionIndex[index];
-                        subscriptionMap[s->tid][s->width].erase(it);
-
-                        dirty[s->tid] = true;
-                        blockLength[s->tid] -= s->memSize;
-                        subscribed[index] = false;
-                    }
-                }
+                processUnsubscribe(dirty);
                 break;
 
             case SetValue:
-                {
-                    unsigned int index = *instruction_ptr++;
-                    Parameter *p = parameters[index];
-
-                    p->setValue(
-                            reinterpret_cast<const char*>(instruction_ptr));
-
-                    // Skip over the block with parameter data
-                    instruction_ptr +=
-                        (p->memSize + sizeof(*instruction_ptr) - 1)
-                        / sizeof(*instruction_ptr);
-                }
+                processSetValue();
                 break;
         }
     }
 
     // Copy new signal lists to outbox
+    // If the signal list changed, write the following:
+    // [0]: SubscriptionList
+    // [1]: Size of this block
+    // [2]: Task id
+    // [3]: Decimation of the block
+    // [4..]: Signal index of subscribed signals
     for (unsigned int tid = 0; tid < nst; tid++) {
         if (!dirty[tid])
             continue;
@@ -271,9 +346,7 @@ void Main::update(int st, const struct timespec *time)
     //if (!subscribers[st].empty())
     {
         size_t headerLen = 4;
-        size_t blockLen = headerLen +
-            (blockLength[st] + sizeof(*signal_ptr) - 1)
-            / sizeof(*signal_ptr);
+        size_t blockLen = headerLen + element_count_uint(blockLength[st]);
 
         if (signal_ptr + blockLen >= signal_ptr_end) {
             *signal_ptr_start = 0;
@@ -304,23 +377,56 @@ void Main::update(int st, const struct timespec *time)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-unsigned int Main::subscribe(const std::string &path)
+void Main::poll(const SignalList &s)
 {
-    VariableMap::iterator it = variableMap.find(path);
-    if (!path.empty()
-            and (it == variableMap.end() or !it->second->decimation))
-        return ~0U;
+    typedef std::map<size_t, std::list<unsigned int> > OrderedMap;
+    OrderedMap orderedMap;
+    size_t replyBlocklen = sizeof(struct timeval);
 
-    if (path.empty()) {
-        post(GetSubscriptionList);
-    }
-    else {
-        post(Subscribe, it->second->index);
-
-        return it->second->index;
+    // Sport the signals into a map so that they can be retrieved
+    // according to the width of a single element
+    for (SignalList::const_iterator it = s.begin(); it != s.end(); it++) {
+        orderedMap[(*it)->width].push_back((*it)->index);
+        replyBlocklen += (*it)->memSize;
     }
 
-    return ~0U;
+    unsigned int blockLen = 3 + s.size();
+
+    ost::SemaphoreLock lock(mutex);
+    if (instruction_ptr + blockLen >= instruction_ptr_end) {
+        *instruction_block_begin = 0;
+        *instruction_ptr = Restart;
+        instruction_ptr = instruction_block_begin;
+    }
+
+    instruction_ptr[1] = s.size();
+    instruction_ptr[2] = replyBlocklen;
+    unsigned int *ptr = instruction_ptr + 3;
+    for (OrderedMap::const_reverse_iterator it = orderedMap.rbegin();
+            it != orderedMap.rend(); it++) {
+        std::copy(it->second.begin(), it->second.end(), ptr);
+        ptr += it->second.size();
+    }
+    instruction_ptr[blockLen] = 0;
+    instruction_ptr[0] = PollSignal;
+    instruction_ptr += blockLen;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::subscriptionList()
+{
+    post(GetSubscriptionList);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::subscribe(const Signal **signal, size_t nelem)
+{
+    unsigned int sigIdx[nelem];
+    for (size_t i = 0; i < nelem; i++)
+        sigIdx[i] = signal[i]->index;
+
+    post(Subscribe, nelem,
+            reinterpret_cast<const char*>(sigIdx), sizeof(sigIdx));
 }
 
 /////////////////////////////////////////////////////////////////////////////

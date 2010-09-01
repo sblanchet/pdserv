@@ -21,6 +21,17 @@ class Parameter;
 class Variable;
 
 template <class T1>
+    inline size_t element_count(size_t n)
+    {
+        return (n + sizeof(T1) - 1) / sizeof(T1);
+    }
+
+inline size_t element_count_uint(size_t n)
+{
+    return element_count<unsigned int>(n);
+}
+
+template <class T1>
     T1 align(unsigned int n)
     {
         T1 mask = sizeof(T1) - 1;
@@ -31,7 +42,7 @@ class Main {
     public:
         enum Instruction {Restart = 1,
             GetSubscriptionList, Subscribe, Unsubscribe, SetValue,
-            GetSingleValue,
+            PollSignal,
 
             SubscriptionList, SubscriptionData,
         };
@@ -85,11 +96,15 @@ class Main {
         typedef std::map<const std::string,Variable*> VariableMap;
         const VariableMap& getVariableMap() const;
 
-        unsigned int subscribe(const std::string& path);
 
         unsigned int *getSignalPtrStart() const;
 
+        // Methods used by the clients to post instructions to the real-time
+        // process
         void writeParameter(Parameter *);
+        void poll(const SignalList&);
+        void subscribe(const Signal **s, size_t nelem);
+        void subscriptionList();
 
     private:
 
@@ -125,6 +140,13 @@ class Main {
         void post(Instruction, unsigned int param,
                 const char* buf = 0, size_t len = 0);
         void post(Instruction);
+
+        // Methods used by the real-time process to interpret inbox
+        // instructions from the clients
+        void processPollSignal(const struct timespec *time);
+        void processSubscribe(bool*);
+        void processUnsubscribe(bool*);
+        void processSetValue();
 
         static int localtime(struct timespec *);
 };

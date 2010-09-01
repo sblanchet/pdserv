@@ -122,7 +122,46 @@ void Session::expired()
 
         const size_t blockLen = signal_ptr[1];
 
-//         switch (*signal_ptr) {
+//    if (signal) {
+//    }
+//    else {
+//        MsrXml::Element channels("channels");
+//        for (HRTLab::Main::SignalList::const_iterator it = sl.begin();
+//                it != sl.end(); it++) {
+//            MsrXml::Element *channel = channels.createChild("channel");
+//            setChannelAttributes(channel, *it, shortReply);
+//        }
+//        *this << channels << std::flush;
+//    }
+
+        switch (*signal_ptr) {
+            case HRTLab::Main::PollSignal:
+                {
+                    //size_t tid = signal_ptr[2];
+                    const size_t signal_count = signal_ptr[3];
+                    const HRTLab::Main::SignalList& signals =
+                        main->getSignals();
+
+                    char *data =
+                        reinterpret_cast<char*>(signal_ptr + 4 + signal_count)
+                        + sizeof(struct timeval);
+
+                    for (unsigned int *sigIdx = signal_ptr + 4;
+                            sigIdx < signal_ptr + 4 + signal_count;
+                            sigIdx++) {
+                        HRTLab::Signal *s = signals[*sigIdx];
+
+                        if (readChannel.find(s) != readChannel.end()) {
+                            MsrXml::Element channel("channel");
+                            setChannelAttributes(&channel, s, 0, data);
+                            *this << channel;
+                            readChannel.erase(readChannel.find(s));
+                        }
+                        data += s->memSize;
+                    }
+                    *this << std::flush;
+                }
+                break;
 //             case HRTLab::Main::NewSubscriberList:
 //                 {
 //                     size_t headerLen = 4;
@@ -221,7 +260,7 @@ void Session::expired()
 // //                    }
 //                 }
 //                 break;
-//         }
+         }
 
         signal_ptr += blockLen;
     }
@@ -563,7 +602,7 @@ void Session::parameterChanged(const HRTLab::Parameter *p)
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::setChannelAttributes(MsrXml::Element *e,
-        const HRTLab::Signal *s, bool shortReply)
+        const HRTLab::Signal *s, bool shortReply, const char *data)
 {
     // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
     //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
@@ -573,7 +612,7 @@ void Session::setChannelAttributes(MsrXml::Element *e,
     // index=
     e->setAttribute("name", s->path);
     e->setAttribute("index", s->index);
-    e->setAttribute("value", toCSV(s, s->addr));
+    e->setAttribute("value", toCSV(s, data));
     if (shortReply)
         return;
 
@@ -814,20 +853,10 @@ void Session::readChannelsCmd(const AttributeMap &attributes)
         signal = sl[index];
     }
     
-    if (signal) {
-        MsrXml::Element channel("channel");
-        setChannelAttributes(&channel, signal, shortReply);
-        *this << channel << std::flush;
-    }
-    else {
-        MsrXml::Element channels("channels");
-        for (HRTLab::Main::SignalList::const_iterator it = sl.begin();
-                it != sl.end(); it++) {
-            MsrXml::Element *channel = channels.createChild("channel");
-            setChannelAttributes(channel, *it, shortReply);
-        }
-        *this << channels << std::flush;
-    }
+    HRTLab::Main::SignalList s;
+    s.push_back(signal);
+    readChannel.insert(signal);
+    main->poll(s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
