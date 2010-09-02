@@ -13,6 +13,10 @@ namespace HRTLab {
     class Parameter;
 }
 
+namespace MsrXml {
+    class Element;
+}
+
 namespace MsrProto {
 
 class Session;
@@ -22,12 +26,13 @@ class Server:public ost::Thread {
         Server(HRTLab::Main *main);
         ~Server();
 
-        void broadcast(Session *s,
-                const std::string *action, const std::string *text);
+        void broadcast(Session *s, const MsrXml::Element&);
 
         void parameterChanged(const HRTLab::Parameter*);
 
         void sessionClosed(Session *s);
+
+        void getTime(struct timespec& ts) const;
 
     private:
 

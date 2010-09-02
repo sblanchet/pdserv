@@ -31,7 +31,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     attach(ss);
 
-    writeAccess = true;
+    writeAccess = false;
     echo = false;
 
     if (commandMap.empty()) {
@@ -47,6 +47,7 @@ Session::Session( Server *s, ost::SocketService *ss,
         commandMap["wp"] = &Session::writeParameterCmd;
         commandMap["write_parameter"] = &Session::writeParameterCmd;
         commandMap["echo"] = &Session::echoCmd;
+        commandMap["remote_host"] = &Session::remoteHostCmd;
 
         commandMap["start_data"] = &Session::xsadCmd;
         commandMap["stop_data"] = &Session::xsadCmd;
@@ -54,7 +55,6 @@ Session::Session( Server *s, ost::SocketService *ss,
         commandMap["sod"] = &Session::xsodCmd;
         commandMap["xsad"] = &Session::xsadCmd;
         commandMap["xsod"] = &Session::xsodCmd;
-        commandMap["remote_host"] = &Session::remoteHostCmd;
         commandMap["read_statics"] = &Session::readStatisticsCmd;
         commandMap["read_statistics"] = &Session::readStatisticsCmd;
         commandMap["rs"] = &Session::readStatisticsCmd;
@@ -413,7 +413,7 @@ bool Session::evalIdentifier(const char* &pptr, const char *eptr)
     if (!isalpha(*pptr))
         return false;
 
-    while (isalnum(*pptr)) {
+    while (isalnum(*pptr) or *pptr == '_') {
         if (++pptr == eptr)
             return true;
     }
@@ -882,6 +882,35 @@ void Session::xsodCmd(const AttributeMap &attributes)
 /////////////////////////////////////////////////////////////////////////////
 void Session::remoteHostCmd(const AttributeMap &attributes)
 {
+    AttributeMap::const_iterator it;
+
+    if ((it = attributes.find("name")) != attributes.end()) {
+        remote = it->second;
+    }
+
+    if ((it = attributes.find("applicationname")) != attributes.end()) {
+        applicationname = it->second;
+    }
+
+    if ((it = attributes.find("access")) != attributes.end()) {
+        writeAccess = it->second == "allow";
+
+        if (writeAccess
+                and (it = attributes.find("isadmin"))!= attributes.end()) {
+            if (it->second == "true") {
+                struct timespec ts;
+                std::ostringstream os;
+                server->getTime(ts);
+
+                os << "Adminmode filp: " << so; // so is the fd and comes from
+                                                // ost::Socket
+                MsrXml::Element info("info");
+                info.setAttribute("time", ts);
+                info.setAttribute("text", os.str());
+                server->broadcast(this, info);
+            }
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -906,7 +935,7 @@ void Session::echoCmd(const AttributeMap &attributes)
 {
     AttributeMap::const_iterator it;
 
-    if ((it = attributes.find("value"))!= attributes.end()) {
+    if ((it = attributes.find("value")) != attributes.end()) {
         echo = it->second == "on";
     }
 }
@@ -914,35 +943,28 @@ void Session::echoCmd(const AttributeMap &attributes)
 /////////////////////////////////////////////////////////////////////////////
 void Session::broadcastCmd(const AttributeMap &attributes)
 {
+    MsrXml::Element broadcast("broadcast");
     AttributeMap::const_iterator it;
-    const std::string *action = 0, *text = 0;
+    struct timespec ts;
+
+    server->getTime(ts);
+
+    broadcast.setAttribute("time", ts);
 
     if ((it = attributes.find("action"))!= attributes.end()) {
-        action = &(it->second);
+        broadcast.setAttribute("action", it->second);
     }
 
     if ((it = attributes.find("text"))!= attributes.end()) {
-        text = &(it->second);
+        broadcast.setAttribute("text", it->second);
     }
-    server->broadcast(this, action, text);
+    server->broadcast(this, broadcast);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::broadcast(Session *s, const struct timespec &t,
-        const std::string *action, const std::string *text)
+void Session::broadcast(Session *s, const MsrXml::Element &element)
 {
-    MsrXml::Element broadcast("broadcast");
-    broadcast.setAttribute("time", t);
-
-    if (action) {
-        broadcast.setAttribute("action", *action);
-    }
-
-    if (text) {
-        broadcast.setAttribute("text", *text);
-    }
-
-    *this << broadcast << std::flush;
+    *this << element << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////

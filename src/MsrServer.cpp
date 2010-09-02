@@ -35,8 +35,13 @@ void Server::run()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::broadcast(Session *s,
-        const std::string *action, const std::string *text)
+void Server::getTime(struct timespec& ts) const
+{
+    main->gettime(&ts);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Server::broadcast(Session *s, const MsrXml::Element &element)
 {
     struct timespec ts;
     main->gettime(&ts);
@@ -44,7 +49,7 @@ void Server::broadcast(Session *s,
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
-        (*it)->broadcast(s, ts, action, text);
+        (*it)->broadcast(s, element);
 }
 
 /////////////////////////////////////////////////////////////////////////////

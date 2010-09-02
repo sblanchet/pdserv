@@ -65,8 +65,7 @@ class Session: public ost::SocketPort,
                 HRTLab::Main *main);
         ~Session();
 
-        void broadcast(Session *s, const struct timespec &t,
-                const std::string *action, const std::string *text);
+        void broadcast(Session *s, const MsrXml::Element &element);
 
         void parameterChanged(const HRTLab::Parameter*);
 
@@ -76,11 +75,13 @@ class Session: public ost::SocketPort,
         Server * const server;
 
         bool writeAccess;
+        bool echo;
+        std::string remote;
+        std::string applicationname;
 
         std::string buf;
         std::string inbuf;
 
-        bool echo;
 
 //        // Map a signal to a set of subscription decimations
 //        std::vector<std::map<size_t, std::set<HRTLab::Signal*> > > subscribed;
