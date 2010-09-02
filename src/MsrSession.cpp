@@ -32,6 +32,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     attach(ss);
 
     writeAccess = true;
+    echo = false;
 
     if (commandMap.empty()) {
         commandMap["ping"] = &Session::pingCmd;
@@ -45,6 +46,7 @@ Session::Session( Server *s, ost::SocketService *ss,
         commandMap["read_kanaele"] = &Session::readChannelsCmd;
         commandMap["wp"] = &Session::writeParameterCmd;
         commandMap["write_parameter"] = &Session::writeParameterCmd;
+        commandMap["echo"] = &Session::echoCmd;
 
         commandMap["start_data"] = &Session::xsadCmd;
         commandMap["stop_data"] = &Session::xsadCmd;
@@ -53,7 +55,6 @@ Session::Session( Server *s, ost::SocketService *ss,
         commandMap["xsad"] = &Session::xsadCmd;
         commandMap["xsod"] = &Session::xsodCmd;
         commandMap["remote_host"] = &Session::remoteHostCmd;
-        commandMap["echo"] = &Session::broadcastCmd;
         commandMap["read_statics"] = &Session::readStatisticsCmd;
         commandMap["read_statistics"] = &Session::readStatisticsCmd;
         commandMap["rs"] = &Session::readStatisticsCmd;
@@ -294,6 +295,8 @@ bool Session::search(char c, const char* &pptr, const char *eptr)
 /////////////////////////////////////////////////////////////////////////////
 bool Session::evalExpression(const char* &pptr, const char *eptr)
 {
+    const char *start = pptr;
+
     if (*pptr++ != '<')
         return false;
 
@@ -335,6 +338,10 @@ bool Session::evalExpression(const char* &pptr, const char *eptr)
 
     if (*pptr++ != '>')
         return false;
+
+    if (echo) {
+        *this << std::string(start, pptr - start) << "\r\n" << std::flush;
+    }
 
     CommandMap::const_iterator it = commandMap.find(std::string(cmd,cmdLen));
     if (it == commandMap.end()) {
@@ -892,6 +899,16 @@ void Session::readStatisticsCmd(const AttributeMap &attributes)
 /////////////////////////////////////////////////////////////////////////////
 void Session::nullCmd(const AttributeMap &attributes)
 {
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::echoCmd(const AttributeMap &attributes)
+{
+    AttributeMap::const_iterator it;
+
+    if ((it = attributes.find("value"))!= attributes.end()) {
+        echo = it->second == "on";
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////

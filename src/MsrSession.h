@@ -80,6 +80,8 @@ class Session: public ost::SocketPort,
         std::string buf;
         std::string inbuf;
 
+        bool echo;
+
 //        // Map a signal to a set of subscription decimations
 //        std::vector<std::map<size_t, std::set<HRTLab::Signal*> > > subscribed;
 //        std::vector<std::map<size_t, bool> > dirty;
@@ -130,6 +132,7 @@ class Session: public ost::SocketPort,
         void xsodCmd(const AttributeMap &attributes);
         void remoteHostCmd(const AttributeMap &attributes);
         void broadcastCmd(const AttributeMap &attributes);
+        void echoCmd(const AttributeMap &attributes);
         void readStatisticsCmd(const AttributeMap &attributes);
         void nullCmd(const AttributeMap &attributes);
 
