@@ -27,7 +27,7 @@ Main::Main(int argc, const char *argv[],
         int (*gettime)(struct timespec*)):
     name(name), version(version), baserate(baserate), nst(nst),
     decimation(nst > 1 ? new unsigned int [nst] : 0),
-    gettime(gettime ? gettime : localtime), mutex(1)
+    gettime(gettime ? gettime : localtime), mutex(1), pollMutex(1)
 {
     if (nst > 1)
         std::copy(decimation, decimation + nst, this->decimation);
@@ -153,40 +153,13 @@ void Main::processPollSignal(const struct timespec *time)
     // Receive:
     //          [0]: PollSignal
     //          [1]: The number of signals being polled (n)
-    //          [2]: Number of bytes that the signals will use - this must be
-    //               calculated a priori by the clients - the real-time
-    //               process relies on this value
-    //          [3 .. 3+n]: Index numbers of the signals
+    //          [2 .. 2+n]: Index numbers of the signals
     //
-    // Send
-    //  [0]: PollSignal
-    //  [1]: Size in integers of the answer (m)
-    //  [2]: Task id of the reply - unused
-    //  [3]: Number of signals (n)
-    //  [4 .. 4+n]: Index numbers of the signals
-    //  [5+n .. m]: struct timeval; Signal data
+    // The reply is in the poll area
 
     size_t signal_count = *instruction_ptr++;
-    unsigned int blockLen =
-        4 + element_count_uint(*instruction_ptr++);
 
-    // Make sure the answer will fit
-    if (signal_ptr + blockLen >= signal_ptr_end) {
-        *signal_ptr_start = 0;
-        *signal_ptr = Restart;
-        signal_ptr = signal_ptr_start;
-    }
-
-    // The header
-    signal_ptr[1] = blockLen;
-    signal_ptr[2] = 0;  // tid
-    signal_ptr[3] = signal_count;
-
-    // The signal list
-    std::copy(instruction_ptr, instruction_ptr + signal_count,
-            signal_ptr + 4);
-    char *p =
-        reinterpret_cast<char*>(signal_ptr + 4 + signal_count);
+    char *p = reinterpret_cast<char*>(pollId + 1);
 
     // struct timeval
     if (time)
@@ -203,9 +176,7 @@ void Main::processPollSignal(const struct timespec *time)
     }
 
     // Complete the message
-    signal_ptr[blockLen] = 0;
-    signal_ptr[0] = PollSignal;
-    signal_ptr += blockLen;
+    (*pollId)++;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -377,39 +348,44 @@ void Main::update(int st, const struct timespec *time)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::poll(const SignalList &s)
+void Main::poll(Signal **s, size_t nelem, char *buf)
 {
-    typedef std::map<size_t, std::list<unsigned int> > OrderedMap;
-    OrderedMap orderedMap;
-    size_t replyBlocklen = sizeof(struct timeval);
+    ost::SemaphoreLock lock(pollMutex);
+    unsigned int id = *pollId;
+    {
+        ost::SemaphoreLock globallock(mutex);
+        const size_t blockLen = nelem + 2;
 
-    // Sport the signals into a map so that they can be retrieved
-    // according to the width of a single element
-    for (SignalList::const_iterator it = s.begin(); it != s.end(); it++) {
-        orderedMap[(*it)->width].push_back((*it)->index);
-        replyBlocklen += (*it)->memSize;
+        if (instruction_ptr + blockLen >= instruction_ptr_end) {
+            *instruction_block_begin = 0;
+            *instruction_ptr = Restart;
+            instruction_ptr = instruction_block_begin;
+        }
+
+        instruction_ptr[1] = nelem;
+        for (size_t i = 0; i < nelem; i++)
+            instruction_ptr[i+2] = s[i]->index;
+
+        instruction_ptr[blockLen] = 0;
+        instruction_ptr[0] = PollSignal;
+        instruction_ptr += blockLen;
     }
 
-    unsigned int blockLen = 3 + s.size();
+    do {
+        ost::Thread::sleep(100);
+    } while (*pollId == id);
 
-    ost::SemaphoreLock lock(mutex);
-    if (instruction_ptr + blockLen >= instruction_ptr_end) {
-        *instruction_block_begin = 0;
-        *instruction_ptr = Restart;
-        instruction_ptr = instruction_block_begin;
-    }
+    const char *p = reinterpret_cast<const char*>(pollId + 1);
 
-    instruction_ptr[1] = s.size();
-    instruction_ptr[2] = replyBlocklen;
-    unsigned int *ptr = instruction_ptr + 3;
-    for (OrderedMap::const_reverse_iterator it = orderedMap.rbegin();
-            it != orderedMap.rend(); it++) {
-        std::copy(it->second.begin(), it->second.end(), ptr);
-        ptr += it->second.size();
+    p += sizeof(struct timeval);
+    while (nelem--) {
+        size_t len = (*s)->memSize;
+
+        std::copy(p, p + len, buf);
+        p += len;
+        buf += len;
+        s++;
     }
-    instruction_ptr[blockLen] = 0;
-    instruction_ptr[0] = PollSignal;
-    instruction_ptr += blockLen;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -444,7 +420,9 @@ int Main::start()
     }
     ::memset(shmem, 0, shmem_len);
 
-    instruction_block_begin = reinterpret_cast<unsigned int*>(shmem);
+    pollId = reinterpret_cast<unsigned int*>(shmem);
+
+    instruction_block_begin = pollId + 100;
     instruction_ptr     = instruction_block_begin;
     instruction_ptr_end = instruction_block_begin + 1024;
     *instruction_block_begin = 0;

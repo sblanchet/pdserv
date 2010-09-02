@@ -102,13 +102,14 @@ class Main {
         // Methods used by the clients to post instructions to the real-time
         // process
         void writeParameter(Parameter *);
-        void poll(const SignalList&);
+        void poll(Signal **s, size_t nelem, char *buf);
         void subscribe(const Signal **s, size_t nelem);
         void subscriptionList();
 
     private:
 
         mutable ost::Semaphore mutex;
+        mutable ost::Semaphore pollMutex;
         MsrProto::Server *msrproto;
 //    EtlProto::Server etlproto(this);
 
@@ -123,6 +124,8 @@ class Main {
 
         unsigned int *signal_ptr_start, *signal_ptr_end;
         unsigned int *signal_ptr;
+
+        unsigned int *pollId;
 
         SignalList signals;
         ParameterList parameters;
