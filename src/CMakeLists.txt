@@ -6,7 +6,7 @@ include_directories(.)
 
 add_library( rtlab SHARED
     interface.cpp
-    Main.cpp Main.h
+    MainTask.cpp Main.cpp Main.h
     Variable.cpp Variable.h
     Signal.cpp Signal.h
     Parameter.cpp Parameter.h

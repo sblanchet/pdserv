@@ -33,6 +33,7 @@ Session::Session( Server *s, ost::SocketService *ss,
 
     writeAccess = false;
     echo = false;
+    startData = true;
 
     if (commandMap.empty()) {
         commandMap["ping"] = &Session::pingCmd;
@@ -49,16 +50,17 @@ Session::Session( Server *s, ost::SocketService *ss,
         commandMap["echo"] = &Session::echoCmd;
         commandMap["remote_host"] = &Session::remoteHostCmd;
 
-        commandMap["start_data"] = &Session::xsadCmd;
-        commandMap["stop_data"] = &Session::xsadCmd;
-        commandMap["sad"] = &Session::xsadCmd;
-        commandMap["sod"] = &Session::xsodCmd;
         commandMap["xsad"] = &Session::xsadCmd;
         commandMap["xsod"] = &Session::xsodCmd;
         commandMap["read_statics"] = &Session::readStatisticsCmd;
         commandMap["read_statistics"] = &Session::readStatisticsCmd;
         commandMap["rs"] = &Session::readStatisticsCmd;
         commandMap["te"] = &Session::broadcastCmd; //triggerevents
+
+        //commandMap["start_data"] = &Session::xsadCmd;
+        //commandMap["stop_data"] = &Session::xsadCmd;
+        //commandMap["sad"] = &Session::xsadCmd;
+        //commandMap["sod"] = &Session::xsodCmd;
     }
 
 
@@ -113,8 +115,6 @@ std::streamsize Session::xsputn ( const char * s, std::streamsize n )
 /////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
-    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
-
     while (*signal_ptr) {
         if (*signal_ptr == HRTLab::Main::Restart) {
             signal_ptr = signal_ptr_start;
@@ -123,57 +123,44 @@ void Session::expired()
 
         const size_t blockLen = signal_ptr[1];
 
-//    if (signal) {
-//    }
-//    else {
-//        MsrXml::Element channels("channels");
-//        for (HRTLab::Main::SignalList::const_iterator it = sl.begin();
-//                it != sl.end(); it++) {
-//            MsrXml::Element *channel = channels.createChild("channel");
-//            setChannelAttributes(channel, *it, shortReply);
-//        }
-//        *this << channels << std::flush;
-//    }
-
         switch (*signal_ptr) {
-//             case HRTLab::Main::NewSubscriberList:
-//                 {
-//                     size_t headerLen = 4;
-//                     size_t n = blockLen - headerLen;
-//                     unsigned int tid = signal_ptr[2];
-//                     //unsigned int decimation = signal_ptr[3];
-// //                    size_t offset = 0;
-// 
-//                     cout << "Main::NewSubscriberList " << tid << ' ' << n << endl;
-// 
-//                     for (unsigned int i = 0; i < n; i++) {
-// //                        size_t sigIdx = signal_ptr[i + headerLen];
-// //                        HRTLab::Signal *s = signals[sigIdx];
-// //
-// //                        dataOffset[sigIdx] = offset;
-// //                        offset += s->memSize;
-// //
-// //                        for (std::set<size_t>::iterator it = signalDecimation[s].begin();
-// //                                it != signalDecimation[s].end(); it++) {
-// //                            subscribed[tid][*it].insert(s);
-// //                            dirty[tid][*it] = true;
-// //                        }
-//                     }
-//                 }
-//                 break;
-// 
-//             case HRTLab::Main::SubscriptionData:
-//                 {
-//                     unsigned int tid = signal_ptr[2];
-//                     //unsigned int iterationNo = signal_ptr[3];
-//                     char *dataPtr = reinterpret_cast<char*>(&signal_ptr[4]);
-// 
-//                     struct timespec time =
-//                         *reinterpret_cast<struct timespec*>(dataPtr);
-//                     dataPtr += sizeof(struct timespec);
-// 
-//                     cout << "Main::SubscriptionData " << tid << endl;
-// 
+            case HRTLab::Main::SubscriptionList:
+                {
+                    size_t headerLen = 4;
+                    size_t n = blockLen - headerLen;
+                    unsigned int tid = signal_ptr[2];
+                     //unsigned int decimation = signal_ptr[3];
+//                    size_t offset = 0;
+ 
+                    for (unsigned int *index = signal_ptr + headerLen;
+                            index < signal_ptr + blockLen; index++) {
+//                        size_t sigIdx = signal_ptr[i + headerLen];
+//                        HRTLab::Signal *s = signals[sigIdx];
+//
+//                        dataOffset[sigIdx] = offset;
+//                        offset += s->memSize;
+//
+//                        for (std::set<size_t>::iterator it = signalDecimation[s].begin();
+//                                it != signalDecimation[s].end(); it++) {
+//                            subscribed[tid][*it].insert(s);
+//                            dirty[tid][*it] = true;
+//                        }
+                    }
+                }
+                break;
+
+            case HRTLab::Main::SubscriptionData:
+                {
+                    unsigned int tid = signal_ptr[2];
+                    //unsigned int iterationNo = signal_ptr[3];
+                    char *dataPtr = reinterpret_cast<char*>(&signal_ptr[4]);
+
+                    struct timespec time =
+                        *reinterpret_cast<struct timespec*>(dataPtr);
+                    dataPtr += sizeof(struct timespec);
+
+                    cout << "Main::SubscriptionData " << tid << endl;
+
 // //                    for (DecimationMap::iterator it = decimation[tid].begin();
 // //                            it != decimation[tid].end(); it++) {
 // //                        cout << tid << ' ' << it->first << ' ' << it->second << endl;
@@ -232,9 +219,9 @@ void Session::expired()
 // //                                    dataPtr + dataOffset[(*it2)->index]);
 // //                        }
 // //                    }
-//                 }
-//                 break;
-         }
+                }
+                break;
+        }
 
         signal_ptr += blockLen;
     }
@@ -872,6 +859,60 @@ void Session::readChannelsCmd(const AttributeMap &attributes)
 /////////////////////////////////////////////////////////////////////////////
 void Session::xsadCmd(const AttributeMap &attributes)
 {
+    AttributeMap::const_iterator it;
+    std::list<HRTLab::Signal*> channelList;
+    unsigned int reduction, blocksize, precision;
+    bool base64 = false;
+    const HRTLab::Main::SignalList& sl = main->getSignals();
+
+    if ((it = attributes.find("channels")) != attributes.end()) {
+        std::istringstream is(it->second);
+        while (is) {
+            unsigned int index;
+            char comma;
+
+            is >> index >> comma;
+            if (index < sl.size())
+                channelList.push_back(sl[index]);
+        }
+    }
+
+    if ((it = attributes.find("reduction")) != attributes.end()) {
+        reduction = atoi(it->second.c_str());
+    }
+    else {
+        reduction = 1 / main->baserate;
+    }
+
+    if ((it = attributes.find("blocksize")) != attributes.end()) {
+        blocksize = atoi(it->second.c_str());
+    }
+    else {
+        blocksize = main->baserate;
+    }
+
+    if ((it = attributes.find("coding")) != attributes.end()) {
+        if (it->second == "base64")
+            base64 = true;
+    }
+
+    if ((it = attributes.find("precision")) != attributes.end()) {
+        precision = atoi(it->second.c_str());
+    }
+
+    if ((it = attributes.find("sync")) != attributes.end()) {
+        startData = true;
+    }
+
+    if ((it = attributes.find("quiet")) != attributes.end()) {
+        startData = false;
+    }
+
+    const HRTLab::Signal *signals[channelList.size()];
+    std::copy(channelList.begin(), channelList.end(), signals);
+
+    main->subscribe(signals, channelList.size());
+
 }
 
 /////////////////////////////////////////////////////////////////////////////

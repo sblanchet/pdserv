@@ -75,6 +75,7 @@ class Session: public ost::SocketPort,
         Server * const server;
 
         bool writeAccess;
+        bool startData;
         bool echo;
         std::string remote;
         std::string applicationname;

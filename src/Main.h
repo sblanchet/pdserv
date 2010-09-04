@@ -41,7 +41,7 @@ template <class T1>
 class Main {
     public:
         enum Instruction {Restart = 1,
-            GetSubscriptionList, Subscribe, Unsubscribe, SetValue,
+            Subscribe, Unsubscribe, SetValue,
             PollSignal,
 
             SubscriptionList, SubscriptionData,
@@ -131,14 +131,40 @@ class Main {
         ParameterList parameters;
         VariableMap variableMap;
 
-        std::vector<std::vector<Signal*> > subscribers;
-        std::vector<size_t> blockLength;
-        std::vector<size_t> iterationNo;
-        std::vector<bool> subscribed;
-        std::vector<size_t> subscriptionIndex;
-        typedef std::map<uint8_t, std::vector<Signal*>, std::greater<uint8_t> >
-            SignalWidthMap;
-        std::vector<SignalWidthMap> subscriptionMap;
+        class Task {
+            public:
+                Task(Main *main, unsigned int tid);
+                ~Task();
+
+                void unsubscribe(unsigned int index);
+                void subscribe(unsigned int index);
+                void update(const struct timespec *time);
+
+                struct CopyList {
+                    const char *begin;
+                    const char *end;
+                    size_t len;
+                    unsigned int sigIdx;
+                };
+
+            private:
+                Main * const main;
+                const unsigned int tid;
+
+                static const size_t dtype_idx[8];
+
+                bool dirty;
+                CopyList *copyList, *copyListEnd;
+
+                size_t subscriptionIndex[4];
+                size_t blockLengthBytes;
+                size_t blockLength;
+                size_t iterationNo;
+        };
+
+        std::vector<Task*> task;
+
+        Task::CopyList **subscriptionPtr;
 
         void post(Instruction, unsigned int param,
                 const char* buf = 0, size_t len = 0);
@@ -147,8 +173,8 @@ class Main {
         // Methods used by the real-time process to interpret inbox
         // instructions from the clients
         void processPollSignal(const struct timespec *time);
-        void processSubscribe(bool*);
-        void processUnsubscribe(bool*);
+        void processSubscribe();
+        void processUnsubscribe();
         void processSetValue();
 
         static int localtime(struct timespec *);
