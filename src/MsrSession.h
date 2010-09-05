@@ -33,6 +33,7 @@
 #include <iosfwd>
 #include <string>
 #include <vector>
+#include <list>
 #include <map>
 #include <set>
 #include <list>
@@ -75,13 +76,50 @@ class Session: public ost::SocketPort,
         Server * const server;
 
         bool writeAccess;
-        bool startData;
+        bool quiet;
         bool echo;
         std::string remote;
         std::string applicationname;
 
         std::string buf;
         std::string inbuf;
+
+        void newValue(const HRTLab::Signal *s, const char *dataPtr,
+                struct timespec &t);
+
+        class Task {
+            public:
+                Task(Session *);
+                ~Task();
+
+                void addSignal(const HRTLab::Signal *s,
+                        unsigned int decimation, size_t blocksize);
+                void newList(unsigned int *tasks, size_t n);
+                void newValues(const char*);
+
+            private:
+                Session * const session;
+                bool quiet;
+
+                struct SignalData {
+                    const HRTLab::Signal *signal;
+                    unsigned int decimation;
+                    unsigned int trigger;
+                    size_t sigMemSize;
+                    char *data_bptr;
+                    char *data_pptr;
+                    char *data_eptr;
+                    size_t offset;
+                };
+
+                typedef std::list<SignalData> SignalList;
+                SignalList signals;
+
+                typedef std::map<unsigned int, SignalData> SubscribedSet;
+                SubscribedSet subscribedSet;
+        };
+
+        std::vector<Task*> task;
 
 
 //        // Map a signal to a set of subscription decimations

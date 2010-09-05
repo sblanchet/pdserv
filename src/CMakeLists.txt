@@ -13,7 +13,7 @@ add_library( rtlab SHARED
     etlproto/Server.cpp etlproto/Server.h
     etlproto/Session.cpp etlproto/Session.h
     MsrServer.cpp MsrServer.h
-    MsrSession.cpp MsrSession.h
+    MsrSessionTask.cpp MsrSession.cpp MsrSession.h
     XmlDoc.cpp XmlDoc.h
     )
 

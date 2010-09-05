@@ -26,14 +26,19 @@ Session::CommandMap Session::commandMap;
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), std::ostream(this),
-    main(main), server(s), signal_ptr_start(main->getSignalPtrStart())
+    main(main), server(s), task(main->nst),
+    signal_ptr_start(main->getSignalPtrStart())
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     attach(ss);
 
     writeAccess = false;
     echo = false;
-    startData = true;
+    quiet = false;
+    for (size_t i = 0; i < main->nst; i++) {
+        task[i] = new Task(this);
+    }
+    signal_ptr = signal_ptr_start;
 
     if (commandMap.empty()) {
         commandMap["ping"] = &Session::pingCmd;
@@ -73,12 +78,8 @@ Session::Session( Server *s, ost::SocketService *ss,
     greeting.setAttribute("version", MSR_VERSION);
     greeting.setAttribute("features", MSR_FEATURES);
     greeting.setAttribute("recievebufsize", "100000000");
-    //greeting.setAttribute("receivebufsize", "100000000");
 
     *this << greeting << std::flush;
-
-
-    signal_ptr = signal_ptr_start;
 
     expired();
 }
@@ -88,6 +89,9 @@ Session::~Session()
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     server->sessionClosed(this);
+    for (size_t i = 0; i < main->nst; i++) {
+        delete task[i];
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -113,6 +117,13 @@ std::streamsize Session::xsputn ( const char * s, std::streamsize n )
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::newValue(const HRTLab::Signal *s, const char *dataPtr,
+                struct timespec &t)
+{
+    *this << "Newvalue for " << s->path << endl << std::flush;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
     while (*signal_ptr) {
@@ -127,25 +138,10 @@ void Session::expired()
             case HRTLab::Main::SubscriptionList:
                 {
                     size_t headerLen = 4;
-                    size_t n = blockLen - headerLen;
                     unsigned int tid = signal_ptr[2];
-                     //unsigned int decimation = signal_ptr[3];
-//                    size_t offset = 0;
+                    //unsigned int decimation = signal_ptr[3];
  
-                    for (unsigned int *index = signal_ptr + headerLen;
-                            index < signal_ptr + blockLen; index++) {
-//                        size_t sigIdx = signal_ptr[i + headerLen];
-//                        HRTLab::Signal *s = signals[sigIdx];
-//
-//                        dataOffset[sigIdx] = offset;
-//                        offset += s->memSize;
-//
-//                        for (std::set<size_t>::iterator it = signalDecimation[s].begin();
-//                                it != signalDecimation[s].end(); it++) {
-//                            subscribed[tid][*it].insert(s);
-//                            dirty[tid][*it] = true;
-//                        }
-                    }
+                    task[tid]->newList(signal_ptr + 4, blockLen - headerLen);
                 }
                 break;
 
@@ -155,70 +151,9 @@ void Session::expired()
                     //unsigned int iterationNo = signal_ptr[3];
                     char *dataPtr = reinterpret_cast<char*>(&signal_ptr[4]);
 
-                    struct timespec time =
-                        *reinterpret_cast<struct timespec*>(dataPtr);
-                    dataPtr += sizeof(struct timespec);
-
                     cout << "Main::SubscriptionData " << tid << endl;
 
-// //                    for (DecimationMap::iterator it = decimation[tid].begin();
-// //                            it != decimation[tid].end(); it++) {
-// //                        cout << tid << ' ' << it->first << ' ' << it->second << endl;
-// //                        if (--it->second)
-// //                            continue;
-// //
-// //                        it->second = it->first;
-// //
-// //                        std::ostream s(this);
-// //
-// //                        if (dirty[tid][it->first]) {
-// //                            s << "VARIABLELIST " << tid
-// //                                << ' ' << it->first
-// //                                << ' ' << subscribed[tid][it->first].size()
-// //                                << crlf;
-// //                            for (std::set<HRTLab::Signal*>::iterator it2 =
-// //                                    subscribed[tid][it->first].begin();
-// //                                    it2 != subscribed[tid][it->first].end();
-// //                                    it2++) {
-// //                                HRTLab::Variable *v = *it2;
-// //
-// //                                s << v->index;
-// //                                if (sent[v]) {
-// //                                    s << crlf;
-// //                                    continue;
-// //                                }
-// //                                sent[v] = true;
-// //
-// //                                s << ' ' << v->decimation
-// //                                    << ' ' << getDTypeName(v->dtype)
-// //                                    << ' ' << v->ndims;
-// //
-// //                                const size_t *dim = v->getDim();
-// //                                for (size_t i = 0; i < v->ndims; i++) {
-// //                                    s << ' ' << dim[i];
-// //                                }
-// //                                s << ' ' << v->alias
-// //                                    << ' ' << v->path
-// //                                    << crlf;
-// //
-// //                            }
-// //                            dirty[tid][it->first] = false;
-// //                        }
-// //
-// //                        s << "TID " << tid
-// //                            << ' ' << it->first
-// //                            << ' ' << time.tv_sec
-// //                            << ' ' << time.tv_nsec
-// //                            << crlf << std::flush;
-// //
-// //                        for (std::set<HRTLab::Signal*>::iterator it2 =
-// //                                subscribed[tid][it->first].begin();
-// //                                it2 != subscribed[tid][it->first].end();
-// //                                it2++) {
-// //                            printVariable(this, *it2,
-// //                                    dataPtr + dataOffset[(*it2)->index]);
-// //                        }
-// //                    }
+                    task[tid]->newValues(dataPtr);
                 }
                 break;
         }
@@ -901,15 +836,19 @@ void Session::xsadCmd(const AttributeMap &attributes)
     }
 
     if ((it = attributes.find("sync")) != attributes.end()) {
-        startData = true;
+        quiet = false;
     }
 
     if ((it = attributes.find("quiet")) != attributes.end()) {
-        startData = false;
+        quiet = true;
     }
 
     const HRTLab::Signal *signals[channelList.size()];
     std::copy(channelList.begin(), channelList.end(), signals);
+    for (const HRTLab::Signal **sp = signals;
+            sp != signals + channelList.size(); sp++) {
+        task[(*sp)->tid]->addSignal(*sp, reduction, blocksize);
+    }
 
     main->subscribe(signals, channelList.size());
 
