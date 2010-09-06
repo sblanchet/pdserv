@@ -117,13 +117,6 @@ std::streamsize Session::xsputn ( const char * s, std::streamsize n )
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newValue(const HRTLab::Signal *s, const char *dataPtr,
-                struct timespec &t)
-{
-    *this << "Newvalue for " << s->path << endl << std::flush;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
     while (*signal_ptr) {
@@ -151,9 +144,22 @@ void Session::expired()
                     //unsigned int iterationNo = signal_ptr[3];
                     char *dataPtr = reinterpret_cast<char*>(&signal_ptr[4]);
 
+                    struct timespec time =
+                        *reinterpret_cast<const struct timespec *>(dataPtr);
+                    dataPtr += sizeof(struct timespec);
+
                     cout << "Main::SubscriptionData " << tid << endl;
 
-                    task[tid]->newValues(dataPtr);
+                    MsrXml::Element data("data");
+                    data.setAttribute("level", 0);
+                    data.setAttribute("time", time);
+
+                    task[tid]->newValues(&data, dataPtr);
+
+                    if (data.hasChildren())
+                        *this << data << std::flush;
+
+                    data.releaseChildren();
                 }
                 break;
         }
@@ -796,7 +802,7 @@ void Session::xsadCmd(const AttributeMap &attributes)
 {
     AttributeMap::const_iterator it;
     std::list<HRTLab::Signal*> channelList;
-    unsigned int reduction, blocksize, precision;
+    unsigned int reduction, blocksize, precision = 10;
     bool base64 = false;
     const HRTLab::Main::SignalList& sl = main->getSignals();
 
@@ -827,12 +833,15 @@ void Session::xsadCmd(const AttributeMap &attributes)
     }
 
     if ((it = attributes.find("coding")) != attributes.end()) {
-        if (it->second == "base64")
+        if (it->second == "Base64")
             base64 = true;
     }
 
     if ((it = attributes.find("precision")) != attributes.end()) {
         precision = atoi(it->second.c_str());
+    }
+    else {
+        precision = 10;
     }
 
     if ((it = attributes.find("sync")) != attributes.end()) {
@@ -847,7 +856,7 @@ void Session::xsadCmd(const AttributeMap &attributes)
     std::copy(channelList.begin(), channelList.end(), signals);
     for (const HRTLab::Signal **sp = signals;
             sp != signals + channelList.size(); sp++) {
-        task[(*sp)->tid]->addSignal(*sp, reduction, blocksize);
+        task[(*sp)->tid]->addSignal(*sp, reduction, blocksize, base64, precision);
     }
 
     main->subscribe(signals, channelList.size());
@@ -990,8 +999,8 @@ const char *Session::getDTypeName(const HRTLab::Variable *v)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string Session::toHexDec(
-        const HRTLab::Variable *v, const char* data)
+std::string Session::toHexDec( const HRTLab::Variable *v,
+        const char* data, size_t precision, size_t n)
 {
     std::string s;
     const char *hexValue[256] = {
@@ -1024,82 +1033,92 @@ std::string Session::toHexDec(
 
     s.reserve(v->memSize*2 + 1);
 
-    for (size_t i = 0; i < v->memSize; i++)
+    for (size_t i = 0; i < v->memSize * n; i++)
         s.append(hexValue[static_cast<unsigned char>(data[i])], 2);
 
     return s;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string Session::toCSV( const HRTLab::Variable *v, const char* data)
+std::string Session::toBase64( const HRTLab::Variable *v,
+        const char* data, size_t precision, size_t n)
+{
+    return "";
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::string Session::toCSV( const HRTLab::Variable *v,
+        const char* data, size_t precision, size_t n)
 {
     std::ostringstream os;
     os.imbue(std::locale::classic());
+    os.precision(precision);
+    size_t count = v->nelem * n;
 
     switch (v->dtype) {
         case si_boolean_T:
             os << reinterpret_cast<const bool*>(data)[0];
-            for ( size_t i = 1; i < v->nelem; i++)
+            for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const bool*>(data)[i];
             break;
 
         case si_uint8_T:
             os << reinterpret_cast<const uint8_t*>(data)[0];
-            for ( size_t i = 1; i < v->nelem; i++)
+            for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const uint8_t*>(data)[i];
             break;
 
         case si_sint8_T:
             os << reinterpret_cast<const int8_t*>(data)[0];
-            for ( size_t i = 1; i < v->nelem; i++)
+            for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const int8_t*>(data)[i];
             break;
 
         case si_uint16_T:
             os << reinterpret_cast<const uint16_t*>(data)[0];
-            for ( size_t i = 1; i < v->nelem; i++)
+            for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const uint16_t*>(data)[i];
             break;
 
         case si_sint16_T:
             os << reinterpret_cast<const int16_t*>(data)[0];
-            for ( size_t i = 1; i < v->nelem; i++)
+            for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const int16_t*>(data)[i];
             break;
 
         case si_uint32_T:
             os << reinterpret_cast<const uint32_t*>(data)[0];
-            for ( size_t i = 1; i < v->nelem; i++)
+            for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const uint32_t*>(data)[i];
             break;
 
         case si_sint32_T:
             os << reinterpret_cast<const int32_t*>(data)[0];
-            for ( size_t i = 1; i < v->nelem; i++)
+            for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const int32_t*>(data)[i];
             break;
 
         case si_uint64_T:
             os << reinterpret_cast<const uint64_t*>(data)[0];
-            for ( size_t i = 1; i < v->nelem; i++)
+            for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const uint64_t*>(data)[i];
             break;
 
         case si_sint64_T:
             os << reinterpret_cast<const int64_t*>(data)[0];
-            for ( size_t i = 1; i < v->nelem; i++)
+            for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const int64_t*>(data)[i];
             break;
 
         case si_single_T:
             os << reinterpret_cast<const float*>(data)[0];
-            for ( size_t i = 1; i < v->nelem; i++)
+            for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const float*>(data)[i];
             break;
 
         case si_double_T:
             os << reinterpret_cast<const double*>(data)[0];
-            for ( size_t i = 1; i < v->nelem; i++)
+            for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const double*>(data)[i];
             break;
 

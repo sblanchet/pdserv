@@ -84,18 +84,16 @@ class Session: public ost::SocketPort,
         std::string buf;
         std::string inbuf;
 
-        void newValue(const HRTLab::Signal *s, const char *dataPtr,
-                struct timespec &t);
-
         class Task {
             public:
                 Task(Session *);
                 ~Task();
 
                 void addSignal(const HRTLab::Signal *s,
-                        unsigned int decimation, size_t blocksize);
+                        unsigned int decimation, size_t blocksize,
+                        bool base64, size_t precision);
                 void newList(unsigned int *tasks, size_t n);
-                void newValues(const char*);
+                void newValues(MsrXml::Element *, const char*);
 
             private:
                 Session * const session;
@@ -103,9 +101,14 @@ class Session: public ost::SocketPort,
 
                 struct SignalData {
                     const HRTLab::Signal *signal;
+                    MsrXml::Element *element;
                     unsigned int decimation;
                     unsigned int trigger;
+                    size_t blocksize;
                     size_t sigMemSize;
+                    std::string (*print)(const HRTLab::Variable *v,
+                            const char* data, size_t precision, size_t n);
+                    size_t precision;
                     char *data_bptr;
                     char *data_pptr;
                     char *data_eptr;
@@ -121,33 +124,10 @@ class Session: public ost::SocketPort,
 
         std::vector<Task*> task;
 
-
-//        // Map a signal to a set of subscription decimations
-//        std::vector<std::map<size_t, std::set<HRTLab::Signal*> > > subscribed;
-//        std::vector<std::map<size_t, bool> > dirty;
-//        std::map<HRTLab::Signal*, std::set<size_t> > signalDecimation;
-//        std::map<HRTLab::Variable*, bool> sent;
-//        std::vector<size_t> dataOffset;
-//        typedef std::map<unsigned int, unsigned int,
-//            std::greater<unsigned int> > DecimationMap;
-//        std::vector<DecimationMap> decimation;
         unsigned int * const signal_ptr_start;
         unsigned int *signal_ptr;
-//
+
         static const char *getDTypeName(const HRTLab::Variable*);
-//
-//        void printVariable(std::streambuf *, HRTLab::Variable*, const char*);
-//        enum ParseState_t {
-//            Idle,
-//        } state;
-//        ParseState_t ParseInstruction(const std::string&);
-//        void list();
-//        void subscribe(const std::string& path, unsigned int decimation);
-//
-//        xmlChar *xmlchar;
-//        int xmlcharlen;
-//        xmlChar *utf8(const std::string& s);
-//        xmlCharEncodingHandlerPtr encoding;
 
         // Parser routines
         // Returning true within these routines will interrupt parsing
@@ -176,10 +156,12 @@ class Session: public ost::SocketPort,
         void readStatisticsCmd(const AttributeMap &attributes);
         void nullCmd(const AttributeMap &attributes);
 
-        static std::string toCSV(
-                const HRTLab::Variable *v, const char* data);
-        static std::string toHexDec(
-                const HRTLab::Variable *v, const char* data);
+        static std::string toCSV( const HRTLab::Variable *v,
+                const char* data, size_t precision = 10, size_t n = 1);
+        static std::string toHexDec( const HRTLab::Variable *v,
+                const char* data, size_t precision = 10, size_t n = 1);
+        static std::string toBase64( const HRTLab::Variable *v,
+                const char* data, size_t precision = 10, size_t n = 1);
         void setParameterAttributes(MsrXml::Element *e,
                 const HRTLab::Parameter *p, bool shortReply, bool hex);
         void setChannelAttributes(MsrXml::Element *e,

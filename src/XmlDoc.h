@@ -20,6 +20,10 @@ class Element {
         ~Element();
 
         Element* createChild(const char *name);
+        void appendChild(Element *);
+        void releaseChildren();
+        bool hasChildren() const;
+
         void setAttribute(const char *name, const char *value, size_t n = 0);
         void setAttribute(const char *name, const struct timespec&);
         void setAttribute(const char *name, const std::string& value);

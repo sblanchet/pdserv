@@ -29,15 +29,23 @@ Session::Task::Task(Session *s): session(s)
 /////////////////////////////////////////////////////////////////////////////
 Session::Task::~Task()
 {
+    for (SubscribedSet::const_iterator it = subscribedSet.begin();
+            it != subscribedSet.end(); it++) {
+        delete[] it->second.data_bptr;
+        delete it->second.element;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::Task::addSignal(const HRTLab::Signal *signal,
-        unsigned int decimation, size_t blocksize)
+        unsigned int decimation, size_t blocksize, bool base64,
+        size_t precision)
 {
     SubscribedSet::iterator it = subscribedSet.find(signal->index);
-    if (it != subscribedSet.end())
+    if (it != subscribedSet.end()) {
         delete[] it->second.data_bptr;
+        delete it->second.element;
+    }
 
     size_t trigger;
     if (decimation) {
@@ -51,21 +59,29 @@ void Session::Task::addSignal(const HRTLab::Signal *signal,
 
     SignalData sd = {
         signal,
+        new MsrXml::Element("F"),
         decimation,
         trigger,
-        signal->memSize
+        blocksize,
+        signal->memSize,
+        (base64 ? toBase64 : toCSV),
+        precision
     };
     sd.data_bptr = new char[blocksize * signal->memSize];
     sd.data_pptr = sd.data_bptr;
     sd.data_eptr = sd.data_bptr + blocksize * signal->memSize;
+
+    sd.element->setAttribute("c", signal->index);
 
     subscribedSet[signal->index] = sd;
 
     if (!quiet && session->quiet) {
         quiet = true;
         for (SignalList::iterator it = signals.begin();
-                it != signals.end(); it++)
+                it != signals.end(); it++) {
             (*it).data_pptr = (*it).data_bptr;
+            (*it).trigger = (*it).decimation;
+        }
     }
 
     quiet = session->quiet;
@@ -155,24 +171,27 @@ void Session::Task::newList(unsigned int *sigIdx, size_t n)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::Task::newValues(const char* dataPtr)
+void Session::Task::newValues(MsrXml::Element *parent, const char* dataPtr)
 {
     if (quiet)
         return;
 
-    struct timespec t = *reinterpret_cast<const struct timespec*>(dataPtr);
-    dataPtr += sizeof(t);
-
     for (SignalList::iterator it = signals.begin();
             it != signals.end(); it++) {
+
         SignalData& sd = *it;
+
         if (sd.decimation) {
             if (!--sd.trigger) {
                 sd.trigger = sd.decimation;
+
                 std::copy(dataPtr, dataPtr + sd.sigMemSize, sd.data_pptr);
                 sd.data_pptr += sd.sigMemSize;
                 if (sd.data_pptr == sd.data_eptr) {
-                    session->newValue(sd.signal, sd.data_bptr, t);
+                    sd.element->setAttribute("d",
+                            sd.print(sd.signal, sd.data_bptr,
+                                sd.precision, sd.blocksize));
+                    parent->appendChild(sd.element);
                     sd.data_pptr = sd.data_bptr;
                 }
             }
@@ -181,7 +200,9 @@ void Session::Task::newValues(const char* dataPtr)
             // Event triggering
             if (!std::equal(sd.data_bptr, sd.data_eptr, dataPtr)) {
                 std::copy(dataPtr, dataPtr + sd.sigMemSize, sd.data_bptr);
-                session->newValue(sd.signal, sd.data_bptr, t);
+                sd.element->setAttribute("d",
+                        sd.print(sd.signal, sd.data_bptr, sd.precision, 1));
+                parent->appendChild(sd.element);
             }
         }
         dataPtr += sd.signal->width;
