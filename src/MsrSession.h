@@ -29,6 +29,8 @@
 
 */
 
+#include "Session.h"
+
 #include <cc++/socketport.h> 
 #include <iosfwd>
 #include <string>
@@ -42,7 +44,6 @@
 #include "rtlab/etl_data_info.h"
 
 namespace HRTLab {
-    class Main;
     class Signal;
     class Variable;
     class Parameter;
@@ -56,7 +57,7 @@ namespace MsrProto {
 
 class Server;
 
-class Session: public ost::SocketPort,
+class Session: public HRTLab::Session, public ost::SocketPort,
     private std::streambuf, private std::ostream {
     public:
         Session(
@@ -72,7 +73,6 @@ class Session: public ost::SocketPort,
 
     private:
 
-        HRTLab::Main * const main;
         Server * const server;
 
         bool writeAccess;
@@ -89,6 +89,7 @@ class Session: public ost::SocketPort,
                 Task(Session *);
                 ~Task();
 
+                void rmSignal(const HRTLab::Signal *s);
                 void addSignal(const HRTLab::Signal *s,
                         unsigned int decimation, size_t blocksize,
                         bool base64, size_t precision);

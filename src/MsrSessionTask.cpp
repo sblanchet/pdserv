@@ -37,6 +37,14 @@ Session::Task::~Task()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::Task::rmSignal(const HRTLab::Signal *signal)
+{
+    SubscribedSet::iterator it = subscribedSet.find(signal->index);
+    if (it != subscribedSet.end())
+        subscribedSet.erase(it);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::Task::addSignal(const HRTLab::Signal *signal,
         unsigned int decimation, size_t blocksize, bool base64,
         size_t precision)
@@ -90,84 +98,92 @@ void Session::Task::addSignal(const HRTLab::Signal *signal,
 /////////////////////////////////////////////////////////////////////////////
 void Session::Task::newList(unsigned int *sigIdx, size_t n)
 {
-    cout << __PRETTY_FUNCTION__ << endl;
+    cout << __PRETTY_FUNCTION__ << ' ' << n << " new signals " << signals.size() << endl;
 
     const HRTLab::Main::SignalList& sl = session->main->getSignals();
     SignalList::iterator sit = signals.begin();
     size_t offset = 0;
+    size_t i = 0;
 
-    for (size_t i = 0; i < n; i++) {
-        if (sit != signals.end() and (*sit).signal->index == sigIdx[i]) {
+    while (i != n or sit != signals.end()) {
+        cout << "considering index " << sigIdx[i] << endl;
+        if (i != n and sit != signals.end()
+                and (*sit).signal->index == sigIdx[i]) {
             // Signal is already in the list
-            sit++;
+            cout << "   index already in list" << endl;
             offset += (*sit).signal->memSize;
+            i++;
+            sit++;
             continue;
         }
+        cout << "   index not in list" << endl;
 
-        size_t i2 = i + 1;
+        size_t i2 = i;
         SignalList::iterator sit2 = sit;
-        sit2++;
-        bool insert = false, remove = false;
-        while (i2 != n and sit2 != signals.end()) {
-            if (sigIdx[i2++] == (*sit).signal->index) {
-                // Signals between i and i2 are new
-                insert = true;
-                break;
+        while (i2 != n or sit2 != signals.end()) {
+            cout << __LINE__ << "   i2 = " << i2 << endl;
+            if (sit == signals.end()) {
+                cout << __LINE__ << endl;
+                i2 = n;
             }
-
-            if (sigIdx[i] == (*sit2++).signal->index) {
-                remove = true;
-                break;
-            }
-        }
-
-        if (sit2 == signals.end() and i2 == n) {
-            insert = true;
-            remove = true;
-        }
-        else if (i2 == n) {
-            while (sit2 != signals.end()) {
-                if (sigIdx[i] == (*sit2).signal->index)
+            else if (i2 != n) {
+                cout << __LINE__ << ' ' << i2 << endl;
+                if (sigIdx[i2] == (*sit).signal->index) {
+                    cout << __LINE__ << ' ' << sigIdx[i2] << endl;
+                    sit2 = sit;
                     break;
-                sit++;
-            }
-            remove = true;
-        }
-        else {
-            while (i2 != n) {
-                if (sigIdx[i2] == (*sit).signal->index)
-                    break;
+                }
                 i2++;
+                cout << __LINE__ << ' ' << i2 << endl;
             }
-            insert = true;
-        }
 
-        if (insert) {
-            // Signals between i and i2 are new in the list
-            do {
-                SubscribedSet::iterator it =
-                    subscribedSet.find(sigIdx[i]);
-                const HRTLab::Signal *signal = sl[sigIdx[i]];
-
-                if (it == subscribedSet.end()) {
-                    // This signal is not required by us
-                    SignalData sd = { signal, 0, 0 };
-
-                    signals.insert(++sit, sd);
+            if (i == n) {
+                cout << __LINE__ << endl;
+                sit2 = signals.end();
+            }
+            else if (sit2 != signals.end()) {
+                cout << __LINE__ << endl;
+                if (sigIdx[i] == (*sit2).signal->index) {
+                    cout << __LINE__ << endl;
+                    i2 = i;
+                    break;
                 }
-                else {
-                    it->second.offset = offset;
-                    signals.insert(sit, it->second);
-                }
-                offset += signal->memSize;
-            } while (++i != i2);
+                sit2++;
+                cout << __LINE__ << endl;
+            }
+        }
+        cout << "   i2 = " << i2 << endl;
+
+        // Signals between i and i2 are new in the list
+        cout << __LINE__ << " Inserting from : " << i << ' ' << i2 <<endl;
+        while (i != i2) {
+            SubscribedSet::iterator it =
+                subscribedSet.find(sigIdx[i]);
+            const HRTLab::Signal *signal = sl[sigIdx[i]];
+
+            if (it == subscribedSet.end()) {
+                // This signal is not required by us
+                SignalData sd = { signal, 0, 0 };
+
+                signals.insert(sit, sd);
+            }
+            else {
+                cout << __LINE__ << " inserting = " << signal->path << endl;
+                it->second.offset = offset;
+                signals.insert(sit, it->second);
+            }
+            offset += signal->memSize;
+            cout << __LINE__ << " offset = " << offset << endl;
+            i++;
         }
 
-        if (remove) {
-            // Signals between sit and sit2 are removed from the list
-            signals.erase(sit, sit2);
-        }
+        // Signals between sit and sit2 are removed from the list
+        cout << __LINE__ << " Erasing : "<<  this << endl;
+        signals.erase(sit, sit2);
+        sit = sit2;
+        cout << __LINE__ << " Erasing : "<<  this << endl;
     }
+    cout << __LINE__ << __func__ << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <map>
+#include <set>
 #include <algorithm>
 #include <string>
 #include <stdint.h>
@@ -16,6 +17,7 @@ namespace MsrProto {
 
 namespace HRTLab {
 
+class Session;
 class Signal;
 class Parameter;
 class Variable;
@@ -101,9 +103,13 @@ class Main {
 
         // Methods used by the clients to post instructions to the real-time
         // process
+        void close(const Session *s);
         void writeParameter(Parameter *);
         void poll(Signal **s, size_t nelem, char *buf);
-        void subscribe(const Signal **s, size_t nelem);
+        void unsubscribe(const Session *session,
+                const Signal **s, size_t nelem);
+        void subscribe(const Session *session,
+                const Signal **s, size_t nelem);
         void subscriptionList();
 
     private:
@@ -151,7 +157,7 @@ class Main {
                 Main * const main;
                 const unsigned int tid;
 
-                static const size_t dtype_idx[8];
+                static const size_t dtype_idx[9];
 
                 bool dirty;
                 CopyList *copyList, *copyListEnd;
@@ -163,6 +169,8 @@ class Main {
         };
 
         std::vector<Task*> task;
+        std::map<const Session*, std::set<const Signal*> > sessionSignals;
+        std::map<const Signal*, std::set<const Session*> > signalSubscribers;
 
         Task::CopyList **subscriptionPtr;
 

@@ -25,5 +25,5 @@ Signal::Signal( unsigned int tid,
             decimation ? decimation : 1, addr),
     tid(tid)
 {
-    cout << __func__ << endl;
+    cout << __func__ << index << endl;
 }

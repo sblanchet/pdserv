@@ -25,8 +25,9 @@ Session::CommandMap Session::commandMap;
 /////////////////////////////////////////////////////////////////////////////
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
+    HRTLab::Session(main),
     SocketPort(0, socket), std::ostream(this),
-    main(main), server(s), task(main->nst),
+    server(s), task(main->nst),
     signal_ptr_start(main->getSignalPtrStart())
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
@@ -38,7 +39,6 @@ Session::Session( Server *s, ost::SocketService *ss,
     for (size_t i = 0; i < main->nst; i++) {
         task[i] = new Task(this);
     }
-    signal_ptr = signal_ptr_start;
 
     if (commandMap.empty()) {
         commandMap["ping"] = &Session::pingCmd;
@@ -54,8 +54,8 @@ Session::Session( Server *s, ost::SocketService *ss,
         commandMap["write_parameter"] = &Session::writeParameterCmd;
         commandMap["echo"] = &Session::echoCmd;
         commandMap["remote_host"] = &Session::remoteHostCmd;
-
         commandMap["xsad"] = &Session::xsadCmd;
+
         commandMap["xsod"] = &Session::xsodCmd;
         commandMap["read_statics"] = &Session::readStatisticsCmd;
         commandMap["read_statistics"] = &Session::readStatisticsCmd;
@@ -81,6 +81,17 @@ Session::Session( Server *s, ost::SocketService *ss,
 
     *this << greeting << std::flush;
 
+    // Skip all data in the inbox thus far
+    signal_ptr = signal_ptr_start;
+    while (*signal_ptr) {
+        if (*signal_ptr == HRTLab::Main::Restart) {
+            signal_ptr = signal_ptr_start;
+            continue;
+        }
+
+        signal_ptr += signal_ptr[1];
+    }
+
     expired();
 }
 
@@ -92,6 +103,7 @@ Session::~Session()
     for (size_t i = 0; i < main->nst; i++) {
         delete task[i];
     }
+    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -119,6 +131,7 @@ std::streamsize Session::xsputn ( const char * s, std::streamsize n )
 /////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
+    //cout << __func__ << endl;
     while (*signal_ptr) {
         if (*signal_ptr == HRTLab::Main::Restart) {
             signal_ptr = signal_ptr_start;
@@ -148,7 +161,7 @@ void Session::expired()
                         *reinterpret_cast<const struct timespec *>(dataPtr);
                     dataPtr += sizeof(struct timespec);
 
-                    cout << "Main::SubscriptionData " << tid << endl;
+//                    cout << "Main::SubscriptionData " << tid << endl;
 
                     MsrXml::Element data("data");
                     data.setAttribute("level", 0);
@@ -859,13 +872,36 @@ void Session::xsadCmd(const AttributeMap &attributes)
         task[(*sp)->tid]->addSignal(*sp, reduction, blocksize, base64, precision);
     }
 
-    main->subscribe(signals, channelList.size());
-
+    main->subscribe(this, signals, channelList.size());
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::xsodCmd(const AttributeMap &attributes)
 {
+    AttributeMap::const_iterator it;
+    std::list<HRTLab::Signal*> channelList;
+    const HRTLab::Main::SignalList& sl = main->getSignals();
+
+    if ((it = attributes.find("channels")) != attributes.end()) {
+        std::istringstream is(it->second);
+        while (is) {
+            unsigned int index;
+            char comma;
+
+            is >> index >> comma;
+            if (index < sl.size())
+                channelList.push_back(sl[index]);
+        }
+    }
+
+    const HRTLab::Signal *signals[channelList.size()];
+    std::copy(channelList.begin(), channelList.end(), signals);
+    for (const HRTLab::Signal **sp = signals;
+            sp != signals + channelList.size(); sp++) {
+        task[(*sp)->tid]->rmSignal(*sp);
+    }
+
+    main->unsubscribe(this, signals, channelList.size());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1055,6 +1091,7 @@ std::string Session::toCSV( const HRTLab::Variable *v,
     os.precision(precision);
     size_t count = v->nelem * n;
 
+    cout << "Eval si_double_T " << v->dtype << endl;
     switch (v->dtype) {
         case si_boolean_T:
             os << reinterpret_cast<const bool*>(data)[0];
@@ -1117,10 +1154,12 @@ std::string Session::toCSV( const HRTLab::Variable *v,
             break;
 
         case si_double_T:
+            cout << "Eval si_double_T " << endl;
             os << reinterpret_cast<const double*>(data)[0];
             for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const double*>(data)[i];
             break;
+            cout << "Eval si_double_T " << endl;
 
         default:
             break;

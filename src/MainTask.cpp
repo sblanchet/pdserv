@@ -13,7 +13,7 @@ using std::endl;
 
 using namespace HRTLab;
 
-const size_t Main::Task::dtype_idx[8] = {0,0,0,0,1,0,2,3};
+const size_t Main::Task::dtype_idx[9] = {0,0,0,0,0,1,0,2,3};
 
 /////////////////////////////////////////////////////////////////////////////
 Main::Task::Task(Main *main, unsigned int tid):
@@ -53,8 +53,10 @@ void Main::Task::subscribe(unsigned int index)
 
     const size_t dtype = dtype_idx[signal->width];
     CopyList *p = copyList;
-    for (size_t i = 0; i <= dtype; i++)
+    for (size_t i = 0; i <= dtype; i++) {
         p += subscriptionIndex[i];
+    }
+    subscriptionIndex[dtype]++;
     main->subscriptionPtr[index] = p;
 
     std::copy(p, copyListEnd++, p + 1);

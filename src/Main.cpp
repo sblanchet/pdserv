@@ -270,11 +270,53 @@ void Main::poll(Signal **s, size_t nelem, char *buf)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::subscribe(const Signal **signal, size_t nelem)
+void Main::close(const Session *session)
+{
+    std::set<const Signal*>& subscribedSignals = sessionSignals[session];
+    const Signal *signals[subscribedSignals.size()];
+    size_t count = 0;
+    cout << __func__ << " Removing signals ";
+    for (std::set<const Signal*>::iterator it = subscribedSignals.begin();
+            it != subscribedSignals.end(); it++) {
+        signals[count++] = *it;
+        cout << (*it)->index << ' ';
+    }
+    cout << endl;
+
+    unsubscribe(session, signals, count);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::unsubscribe(const Session *session,
+        const Signal **signal, size_t nelem)
 {
     unsigned int sigIdx[nelem];
-    for (size_t i = 0; i < nelem; i++)
+    size_t count = 0;
+    for (size_t i = 0; i < nelem; i++) {
+        sessionSignals[session].erase(signal[i]);
+        signalSubscribers[signal[i]].erase(session);
+        if (signalSubscribers[signal[i]].empty()) {
+            sigIdx[count++] = signal[i]->index;
+        }
+    }
+
+    if (sessionSignals[session].empty())
+        sessionSignals.erase(sessionSignals.find(session));
+
+    post(Unsubscribe, count,
+            reinterpret_cast<const char*>(sigIdx), sizeof(sigIdx));
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::subscribe(const Session *session,
+        const Signal **signal, size_t nelem)
+{
+    unsigned int sigIdx[nelem];
+    for (size_t i = 0; i < nelem; i++) {
         sigIdx[i] = signal[i]->index;
+        sessionSignals[session].insert(signal[i]);
+        signalSubscribers[signal[i]].insert(session);
+    }
 
     post(Subscribe, nelem,
             reinterpret_cast<const char*>(sigIdx), sizeof(sigIdx));
@@ -353,10 +395,10 @@ int Main::newSignal(
     if (variableMap.find(path) != variableMap.end())
         return -EEXIST;
 
-    Signal *s = new Signal(signals.size(), tid, decimation, path, alias,
-                datatype, ndims, dim, addr);
-    signals.push_back(s);
-    variableMap[path] = s;
+    signals.push_back(
+            new Signal(tid, signals.size(), decimation, path, alias,
+                datatype, ndims, dim, addr));
+    variableMap[path] = signals.back();
 
     return 0;
 }
