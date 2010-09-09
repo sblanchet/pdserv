@@ -270,7 +270,14 @@ void Main::poll(Signal **s, size_t nelem, char *buf)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::close(const Session *session)
+void Main::closeSession(const Session *session)
+{
+    clearSession(session);
+    sessionSignals.erase(session);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::clearSession(const Session *session)
 {
     std::set<const Signal*>& subscribedSignals = sessionSignals[session];
     const Signal *signals[subscribedSignals.size()];
@@ -284,6 +291,27 @@ void Main::close(const Session *session)
     cout << endl;
 
     unsubscribe(session, signals, count);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::newSession(const Session* s)
+{
+    sessionSignals[s] = std::set<const Signal*>();
+    cout << __func__ << sessionSignals.size() << endl;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::list<const Session*> Main::getSessions() const
+{
+    std::list<const Session*> s;
+
+    std::map<const Session*, std::set<const Signal*> >::const_iterator it; 
+    for (it = sessionSignals.begin(); it != sessionSignals.end(); it++) {
+        s.push_back(it->first);
+    }
+
+    return s;
+
 }
 
 /////////////////////////////////////////////////////////////////////////////

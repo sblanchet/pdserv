@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <list>
 #include <algorithm>
 #include <string>
 #include <stdint.h>
@@ -103,7 +104,9 @@ class Main {
 
         // Methods used by the clients to post instructions to the real-time
         // process
-        void close(const Session *s);
+        void newSession(const Session *);
+        void closeSession(const Session *);
+        void clearSession(const Session *s);
         void writeParameter(Parameter *);
         void poll(Signal **s, size_t nelem, char *buf);
         void unsubscribe(const Session *session,
@@ -111,6 +114,8 @@ class Main {
         void subscribe(const Session *session,
                 const Signal **s, size_t nelem);
         void subscriptionList();
+
+        std::list<const Session*> getSessions() const;
 
     private:
 

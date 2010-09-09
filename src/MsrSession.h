@@ -57,7 +57,7 @@ namespace MsrProto {
 
 class Server;
 
-class Session: public HRTLab::Session, public ost::SocketPort,
+class Session: public ost::SocketPort, public HRTLab::Session,
     private std::streambuf, private std::ostream {
     public:
         Session(
@@ -83,6 +83,11 @@ class Session: public HRTLab::Session, public ost::SocketPort,
 
         std::string buf;
         std::string inbuf;
+
+        size_t dataIn;
+        size_t dataOut;
+
+        struct timespec loginTime;
 
         class Task {
             public:
@@ -178,6 +183,13 @@ class Session: public HRTLab::Session, public ost::SocketPort,
         void pending();
         void output();
         void disconnect();
+
+        // Reimplemented from HRTLab::Session
+        std::string getName() const;
+        std::string getClientName() const;
+        size_t getCountIn() const;
+        size_t getCountOut() const;
+        struct timespec getLoginTime() const;
 };
 
 }

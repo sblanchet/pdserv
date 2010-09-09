@@ -25,8 +25,8 @@ Session::CommandMap Session::commandMap;
 /////////////////////////////////////////////////////////////////////////////
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
-    HRTLab::Session(main),
-    SocketPort(0, socket), std::ostream(this),
+    SocketPort(0, socket), HRTLab::Session(main),
+    std::ostream(this),
     server(s), task(main->nst),
     signal_ptr_start(main->getSignalPtrStart())
 {
@@ -36,6 +36,10 @@ Session::Session( Server *s, ost::SocketService *ss,
     writeAccess = false;
     echo = false;
     quiet = false;
+    dataIn = 0;
+    dataOut = 0;
+    main->gettime(&loginTime);
+
     for (size_t i = 0; i < main->nst; i++) {
         task[i] = new Task(this);
     }
@@ -194,6 +198,8 @@ void Session::pending()
         delete this;
         return;
     }
+
+    dataIn += n;
 
     const char *pptr, *eptr;
     if (inbuf.empty()) {
@@ -907,9 +913,39 @@ void Session::xsodCmd(const AttributeMap &attributes)
                 it != task.end(); it++) {
             (*it)->rmSignal(0);
         }
-        main->close(this);
+        main->clearSession(this);
     }
 
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::string Session::getName() const
+{
+    return remote;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::string Session::getClientName() const
+{
+    return applicationname;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+size_t Session::getCountIn() const
+{
+    return dataIn;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+size_t Session::getCountOut() const
+{
+    return dataOut;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+struct timespec Session::getLoginTime() const
+{
+    return loginTime;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -956,6 +992,22 @@ void Session::readStatisticsCmd(const AttributeMap &attributes)
     //           connectedtime="1282151176.659208"/>
     //   <client index="1" .../>
     // </clients>
+    const std::list<const HRTLab::Session*> s(main->getSessions());
+    int index = 0;
+
+    MsrXml::Element clients("clients");
+    for (std::list<const HRTLab::Session*>::const_iterator it = s.begin();
+            it != s.end(); it++) {
+        MsrXml::Element *e = clients.createChild("client");
+        e->setAttribute("index", index++);
+        e->setAttribute("name", (*it)->getName());
+        e->setAttribute("apname", (*it)->getClientName());
+        e->setAttribute("countin", (*it)->getCountIn());
+        e->setAttribute("countout", (*it)->getCountOut());
+        e->setAttribute("connectedtime", (*it)->getLoginTime());
+    }
+
+    *this << clients << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1005,8 +1057,10 @@ void Session::output()
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     ssize_t n = send(buf.c_str(), buf.length());
-    if (n > 0)
+    if (n > 0) {
         buf.erase(0,n);
+        dataOut += n;
+    }
     else {
         delete this;
         return;
