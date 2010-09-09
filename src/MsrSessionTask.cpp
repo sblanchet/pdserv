@@ -39,9 +39,22 @@ Session::Task::~Task()
 /////////////////////////////////////////////////////////////////////////////
 void Session::Task::rmSignal(const HRTLab::Signal *signal)
 {
-    SubscribedSet::iterator it = subscribedSet.find(signal->index);
-    if (it != subscribedSet.end())
-        subscribedSet.erase(it);
+    if (signal) {
+        SubscribedSet::iterator it = subscribedSet.find(signal->index);
+        if (it != subscribedSet.end()) {
+            delete[] it->second.data_bptr;
+            delete it->second.element;
+            subscribedSet.erase(it);
+        }
+    }
+    else {
+        for (SubscribedSet::iterator it = subscribedSet.begin();
+                it != subscribedSet.end(); it++) {
+            delete[] it->second.data_bptr;
+            delete it->second.element;
+        }
+        subscribedSet.clear();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////

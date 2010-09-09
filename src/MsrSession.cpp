@@ -55,8 +55,8 @@ Session::Session( Server *s, ost::SocketService *ss,
         commandMap["echo"] = &Session::echoCmd;
         commandMap["remote_host"] = &Session::remoteHostCmd;
         commandMap["xsad"] = &Session::xsadCmd;
-
         commandMap["xsod"] = &Session::xsodCmd;
+
         commandMap["read_statics"] = &Session::readStatisticsCmd;
         commandMap["read_statistics"] = &Session::readStatisticsCmd;
         commandMap["rs"] = &Session::readStatisticsCmd;
@@ -892,16 +892,24 @@ void Session::xsodCmd(const AttributeMap &attributes)
             if (index < sl.size())
                 channelList.push_back(sl[index]);
         }
+
+        const HRTLab::Signal *signals[channelList.size()];
+        std::copy(channelList.begin(), channelList.end(), signals);
+        for (const HRTLab::Signal **sp = signals;
+                sp != signals + channelList.size(); sp++) {
+            task[(*sp)->tid]->rmSignal(*sp);
+        }
+
+        main->unsubscribe(this, signals, channelList.size());
+    }
+    else {
+        for (std::vector<Task*>::iterator it = task.begin();
+                it != task.end(); it++) {
+            (*it)->rmSignal(0);
+        }
+        main->close(this);
     }
 
-    const HRTLab::Signal *signals[channelList.size()];
-    std::copy(channelList.begin(), channelList.end(), signals);
-    for (const HRTLab::Signal **sp = signals;
-            sp != signals + channelList.size(); sp++) {
-        task[(*sp)->tid]->rmSignal(*sp);
-    }
-
-    main->unsubscribe(this, signals, channelList.size());
 }
 
 /////////////////////////////////////////////////////////////////////////////
