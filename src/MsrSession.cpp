@@ -60,12 +60,11 @@ Session::Session( Server *s, ost::SocketService *ss,
         commandMap["remote_host"] = &Session::remoteHostCmd;
         commandMap["xsad"] = &Session::xsadCmd;
         commandMap["xsod"] = &Session::xsodCmd;
-
         commandMap["read_statics"] = &Session::readStatisticsCmd;
         commandMap["read_statistics"] = &Session::readStatisticsCmd;
         commandMap["rs"] = &Session::readStatisticsCmd;
-        commandMap["te"] = &Session::broadcastCmd; //triggerevents
 
+        //commandMap["te"] = &Session::broadcastCmd; //triggerevents
         //commandMap["start_data"] = &Session::xsadCmd;
         //commandMap["stop_data"] = &Session::xsadCmd;
         //commandMap["sad"] = &Session::xsadCmd;
@@ -81,7 +80,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     greeting.setAttribute("host", "localhost");
     greeting.setAttribute("version", MSR_VERSION);
     greeting.setAttribute("features", MSR_FEATURES);
-    greeting.setAttribute("recievebufsize", "100000000");
+    greeting.setAttribute("recievebufsize", 100000000);
 
     *this << greeting << std::flush;
 
@@ -293,9 +292,9 @@ bool Session::evalExpression(const char* &pptr, const char *eptr)
     CommandMap::const_iterator it = commandMap.find(std::string(cmd,cmdLen));
     if (it == commandMap.end()) {
         MsrXml::Element warn("warn");
-        warn.setAttribute("num","1000");
+        warn.setAttribute("num", 1000);
         warn.setAttribute("text", "unknown command");
-        warn.setAttribute("command", cmd, cmdLen);
+        warn.setAttributeCheck("command", cmd, cmdLen);
         *this << warn << std::flush;
 
         return false;
@@ -307,7 +306,7 @@ bool Session::evalExpression(const char* &pptr, const char *eptr)
     // Return the id sent previously
     if (!id.empty()) {
         MsrXml::Element ack("ack");
-        ack.setAttribute("id", id);
+        ack.setAttributeCheck("id", id);
         *this << ack << std::flush;
     }
 
@@ -375,7 +374,7 @@ void Session::pingCmd(const AttributeMap &attributes)
 
     AttributeMap::const_iterator it = attributes.find("id");
     if (it != attributes.end())
-        ping.setAttribute("id", it->second);
+        ping.setAttributeCheck("id", it->second);
 
     *this << ping << std::flush;
 }
@@ -442,7 +441,7 @@ void Session::setParameterAttributes(MsrXml::Element *e,
     // name=
     // value=
     // index=
-    e->setAttribute("name", p->path);
+    e->setAttributeCheck("name", p->path);
     e->setAttribute("index", p->index);
     if (hex) {
         e->setAttribute("hexvalue", toHexDec(p, p->Variable::addr));
@@ -458,18 +457,18 @@ void Session::setParameterAttributes(MsrXml::Element *e,
     // mtime=
     // typ=
     e->setAttribute("datasize", p->width);
-    e->setAttribute("flags", "3");
+    e->setAttribute("flags", 3);
     e->setAttribute("mtime", p->getMtime());
     e->setAttribute("typ", getDTypeName(p));
 
     // unit=
     if (p->unit.size()) {
-        e->setAttribute("unit", p->unit);
+        e->setAttributeCheck("unit", p->unit);
     }
 
     // text=
     if (p->comment.size()) {
-        e->setAttribute("text", p->comment);
+        e->setAttributeCheck("text", p->comment);
     }
 
     // For vectors:
@@ -537,7 +536,7 @@ void Session::setChannelAttributes(MsrXml::Element *e,
     // name=
     // value=
     // index=
-    e->setAttribute("name", s->path);
+    e->setAttributeCheck("name", s->path);
     e->setAttribute("index", s->index);
     if (shortReply)
         return;
@@ -555,12 +554,12 @@ void Session::setChannelAttributes(MsrXml::Element *e,
 
     // unit=
     if (s->unit.size()) {
-        e->setAttribute("unit", s->unit);
+        e->setAttributeCheck("unit", s->unit);
     }
 
     // text=
     if (s->comment.size()) {
-        e->setAttribute("text", s->comment);
+        e->setAttributeCheck("text", s->comment);
     }
 
     // For vectors:
@@ -975,7 +974,7 @@ void Session::remoteHostCmd(const AttributeMap &attributes)
                                                 // ost::Socket
                 MsrXml::Element info("info");
                 info.setAttribute("time", ts);
-                info.setAttribute("text", os.str());
+                info.setAttributeCheck("text", os.str());
                 server->broadcast(this, info);
             }
         }
@@ -1000,8 +999,8 @@ void Session::readStatisticsCmd(const AttributeMap &attributes)
             it != s.end(); it++) {
         MsrXml::Element *e = clients.createChild("client");
         e->setAttribute("index", index++);
-        e->setAttribute("name", (*it)->getName());
-        e->setAttribute("apname", (*it)->getClientName());
+        e->setAttributeCheck("name", (*it)->getName());
+        e->setAttributeCheck("apname", (*it)->getClientName());
         e->setAttribute("countin", (*it)->getCountIn());
         e->setAttribute("countout", (*it)->getCountOut());
         e->setAttribute("connectedtime", (*it)->getLoginTime());
@@ -1037,11 +1036,11 @@ void Session::broadcastCmd(const AttributeMap &attributes)
     broadcast.setAttribute("time", ts);
 
     if ((it = attributes.find("action"))!= attributes.end()) {
-        broadcast.setAttribute("action", it->second);
+        broadcast.setAttributeCheck("action", it->second);
     }
 
     if ((it = attributes.find("text"))!= attributes.end()) {
-        broadcast.setAttribute("text", it->second);
+        broadcast.setAttributeCheck("text", it->second);
     }
     server->broadcast(this, broadcast);
 }

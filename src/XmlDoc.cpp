@@ -1,5 +1,7 @@
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
+#include <cstring>
 #include "XmlDoc.h"
 
 using namespace MsrXml;
@@ -18,6 +20,25 @@ Element::~Element()
     for (Element::Children::const_iterator it = children.begin();
             it != children.end(); it++)
         delete *it;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::ostream& MsrXml::operator<<(std::ostream& os, const Element& el)
+{
+    os << std::string(el.indent, ' ') << '<' << el.name;
+    for (Element::Attribute::const_iterator it = el.attr.begin();
+            it != el.attr.end(); it++)
+        os << ' ' << it->first << "=\"" << it->second << '"';
+    if (el.children.empty())
+        os << "/>\r\n";
+    else {
+        os << ">\r\n";
+        for (Element::Children::const_iterator it = el.children.begin();
+                it != el.children.end(); it++)
+            os << **it;
+        os << std::string(el.indent, ' ') << "</" << el.name << ">\r\n";
+    }
+    return os;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -47,13 +68,18 @@ bool Element::hasChildren() const
     return !children.empty();
 }
 
+/////////////////////////////////////////////////////////////////////////////
+void Element::setAttribute(const char *a, const std::string &v)
+{
+    attr[a] = v;
+}
 
 /////////////////////////////////////////////////////////////////////////////
 void Element::setAttribute(const char *a, const char *v, size_t n)
 {
-    // FIXME: Check for escaped characters
-    attr[a] = n ? std::string(v, n) : v;
+    attr[a] = n ? std::string(v,n) : v;
 }
+
 
 /////////////////////////////////////////////////////////////////////////////
 void Element::setAttribute(const char *a, const struct timespec &t)
@@ -64,28 +90,48 @@ void Element::setAttribute(const char *a, const struct timespec &t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::setAttribute(const char *a, const std::string &v)
+void Element::setAttributeCheck(const char *a, const std::string &v)
 {
-    // FIXME: Check for escaped characters
-    attr[a] = v;
+    setAttributeCheck(a, v.c_str(), v.size());
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::ostream& MsrXml::operator<<(std::ostream& os, const Element& el)
+void Element::setAttributeCheck(const char *a, const char *v, size_t n)
 {
-    os << std::string(el.indent, ' ') << '<' << el.name;
-    for (Element::Attribute::const_iterator it = el.attr.begin();
-            it != el.attr.end(); it++)
-        os << ' ' << it->first << "=\"" << it->second << '"';
-    if (el.children.empty())
-        os << "/>\r\n";
-    else {
-        os << ">\r\n";
-        for (Element::Children::const_iterator it = el.children.begin();
-                it != el.children.end(); it++)
-            os << **it;
-        os << std::string(el.indent, ' ') << "</" << el.name << ">\r\n";
-    }
-    return os;
-}
+    const char *escape = "<>&\"'";
+    const char *escape_end = escape + 5;
+    if (!n)
+        n = strlen(v);
+    const char *v_end = v + n;
+    const char *p;
+    std::string &s = attr[a];
+    s = std::string();
 
+    while ((p = std::find_first_of(v, v_end, escape, escape_end)) != v_end) {
+        s += std::string(v, p - v - 1);
+        switch (*p) {
+            case '<':
+                s += "&lt;";
+                break;
+
+            case '>':
+                s += "&gt;";
+                break;
+
+            case '&':
+                s += "&amp;";
+                break;
+
+            case '"':
+                s += "&quot;";
+                break;
+
+            case '\'':
+                s += "&apos;";
+                break;
+        }
+
+        v = p + 1;
+    }
+    s += std::string(v, v_end - v);
+}
