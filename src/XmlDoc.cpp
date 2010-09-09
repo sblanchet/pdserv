@@ -1,8 +1,16 @@
-#include <sstream>
+/*****************************************************************************
+ * $Id$
+ *
+ * Copyright (C) 2010 Richard Hacker
+ * License: GPL
+ *
+ *****************************************************************************/
+
+#include "XmlDoc.h"
+
 #include <iomanip>
 #include <algorithm>
 #include <cstring>
-#include "XmlDoc.h"
 
 using namespace MsrXml;
 
