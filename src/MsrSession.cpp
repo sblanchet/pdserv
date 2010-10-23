@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <limits>
+#include <algorithm>
 
 #include <iomanip>
 using std::cout;
@@ -33,6 +34,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     attach(ss);
 
+    bptr = 0;
     writeAccess = false;
     echo = false;
     quiet = false;
@@ -43,34 +45,6 @@ Session::Session( Server *s, ost::SocketService *ss,
     for (size_t i = 0; i < main->nst; i++) {
         task[i] = new Task(this);
     }
-
-    if (commandMap.empty()) {
-        commandMap["ping"] = &Session::pingCmd;
-        commandMap["rp"] = &Session::readParameterCmd;
-        commandMap["read_parameter"] = &Session::readParameterCmd;
-        commandMap["broadcast"] = &Session::broadcastCmd;
-        commandMap["read_param_values"] = &Session::readParamValuesCmd;
-        commandMap["rpv"] = &Session::readParamValuesCmd;
-        commandMap["rk"] = &Session::readChannelsCmd;
-        commandMap["rc"] = &Session::readChannelsCmd;
-        commandMap["read_kanaele"] = &Session::readChannelsCmd;
-        commandMap["wp"] = &Session::writeParameterCmd;
-        commandMap["write_parameter"] = &Session::writeParameterCmd;
-        commandMap["echo"] = &Session::echoCmd;
-        commandMap["remote_host"] = &Session::remoteHostCmd;
-        commandMap["xsad"] = &Session::xsadCmd;
-        commandMap["xsod"] = &Session::xsodCmd;
-        commandMap["read_statics"] = &Session::readStatisticsCmd;
-        commandMap["read_statistics"] = &Session::readStatisticsCmd;
-        commandMap["rs"] = &Session::readStatisticsCmd;
-
-        //commandMap["te"] = &Session::broadcastCmd; //triggerevents
-        //commandMap["start_data"] = &Session::xsadCmd;
-        //commandMap["stop_data"] = &Session::xsadCmd;
-        //commandMap["sad"] = &Session::xsadCmd;
-        //commandMap["sod"] = &Session::xsodCmd;
-    }
-
 
     setCompletion(false);
 
@@ -112,7 +86,7 @@ Session::~Session()
 /////////////////////////////////////////////////////////////////////////////
 int Session::sync()
 {
-    if (!buf.empty())
+    if (!outbuf.empty())
         setDetectOutput(true);
     return 0;
 }
@@ -120,14 +94,14 @@ int Session::sync()
 /////////////////////////////////////////////////////////////////////////////
 int Session::overflow(int c)
 {
-    buf.append(1,c);
+    outbuf.append(1,c);
     return c;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 std::streamsize Session::xsputn ( const char * s, std::streamsize n )
 {
-    buf.append(s,n);
+    outbuf.append(s,n);
     return n;
 }
 
@@ -190,118 +164,284 @@ void Session::expired()
 void Session::pending()
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
-    char buf[1024];
+    int n, count;
+    size_t inputLen = 0;
 
-    ssize_t n = receive(buf, sizeof(buf));
-    if (n <= 0) {
+    do {
+        char *p = inbuf.rptr();
+        count = inbuf.free();
+        n = receive(p, count);
+
+        // No more data available or there was an error
+        if (n <= 0)
+            break;
+
+        inbuf.rptr(n);
+
+        dataIn += n;    // Global input counter
+        inputLen += n;  // Local input counter
+
+        const char *buf = inbuf.bptr();
+        parseInput(buf, inbuf.eptr());
+        inbuf.erase(buf);
+
+        cout << __LINE__ << "n == count: " << n << ' ' << count << endl;
+    } while (n == count);
+
+    if (!inputLen) {
+        // End of stream
         delete this;
         return;
     }
 
-    dataIn += n;
+    cout << __LINE__ << " Data left in buffer: "
+        << std::string(inbuf.bptr(), inbuf.eptr() - inbuf.bptr()) << endl;
+}
 
-    const char *pptr, *eptr;
-    if (inbuf.empty()) {
-        pptr = buf;
-        eptr = buf + n;
+/////////////////////////////////////////////////////////////////////////////
+Session::Inbuf::Inbuf()
+{
+    _bptr = 0;
+    _eptr = 0;
+    bufLen = 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Session::Inbuf::~Inbuf()
+{
+    delete[] _bptr;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Session::Inbuf::empty() const
+{
+    return _bptr == _eptr;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::Inbuf::erase(const char *p)
+{
+    size_t n = p - _bptr;
+    std::copy(_bptr + n, _eptr, _bptr);
+    _eptr -= n;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+char *Session::Inbuf::rptr(size_t n)
+{
+    if (n) {
+        _eptr += n;
+        return 0;
     }
-    else {
-        inbuf.append(buf,n);
-        pptr = inbuf.c_str();
-        eptr = inbuf.c_str() + inbuf.size();
+
+    if (!free()) {
+        bufLen += 1024;
+
+        char *newbuf = new char[bufLen];
+
+        std::copy(_bptr, _eptr, newbuf);
+
+        delete[] _bptr;
+
+        _eptr = newbuf + (_eptr - _bptr);
+        _bptr = newbuf;
     }
 
-    while (true) {
-        if (search('<', pptr, eptr))
-            break;
+    return _eptr;
+}
 
-        const char *p = pptr;
+/////////////////////////////////////////////////////////////////////////////
+const char *Session::Inbuf::bptr() const
+{
+    return _bptr;
+}
 
-        if (evalExpression(p, eptr))
-            break;
+/////////////////////////////////////////////////////////////////////////////
+const char *Session::Inbuf::eptr() const
+{
+    return _eptr;
+}
 
-        pptr = p;
-    }
+/////////////////////////////////////////////////////////////////////////////
+size_t Session::Inbuf::free() const
+{
+    return _bptr + bufLen - _eptr;
+}
 
-    if (inbuf.empty()) {
-        inbuf.append(pptr, eptr - pptr);
-    }
-    else {
-        inbuf.erase(0, pptr - buf);
+/////////////////////////////////////////////////////////////////////////////
+void Session::Attr::clear()
+{
+    id.clear();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::Attr::insert(const char *name, size_t nameLen,
+                        const char *attr, size_t attrLen)
+{
+    cout << "Value attribute: Name=" << std::string(name, nameLen)
+        << ", Value=" << std::string(attr, attrLen)
+        << endl;
+
+    if (nameLen == 2 and !strcmp(name, "id")) {
+        id.assign(attr, attrLen);
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Session::search(char c, const char* &pptr, const char *eptr)
+void Session::Attr::insert(const char *name, size_t nameLen)
 {
-    pptr = std::find(pptr, eptr, c);
-    return pptr == eptr;
+    cout << "Binary attribute: Name=" << std::string(name, nameLen) << endl;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::parseInput(const char * &buf, const char * const eptr)
+{
+    cout << __LINE__ << __PRETTY_FUNCTION__ << ' ' << (void*)buf << endl;
+    cout << "   ->" << std::string(buf, eptr - buf) << "<-" << endl;
+
+    if (bptr != buf) {
+        parseState = FindStart;
+        bptr = buf;
+        pptr = buf;
+    }
+
+    while (true) {
+        switch (parseState) {
+            case FindStart:
+                cout << __LINE__ << "FindStart" << endl;
+
+                attr.clear();
+                
+                // Move forward in the buffer until '<' is found
+                buf = std::find(buf, eptr, '<');
+                if (buf == eptr) {
+                    return;
+                }
+
+                commandPtr = buf + 1;
+                pptr = commandPtr;
+                parseState = GetCommand;
+                cout << "Found command at " << (void*)commandPtr << endl;
+                // no break here
+
+            case GetCommand:
+                cout << __LINE__ << "GetCommand" << endl;
+                while (pptr != eptr and isalpha(*pptr))
+                    pptr++;
+
+                if (pptr == eptr)
+                    return;
+
+                commandLen = pptr - commandPtr;
+                parseState = GetToken;
+                cout << "Command is " << std::string(commandPtr, commandLen) << endl;
+                // no break here
+
+            case GetToken:
+                cout << __LINE__ << "GetToken" << endl;
+                while (pptr != eptr and isspace(*pptr))
+                    pptr++;
+
+                if (pptr == eptr)
+                    return;
+
+                if (!isalpha(*pptr)) {
+                    if (*pptr == '>') {
+                        buf = pptr + 1;
+                        cout << __LINE__ << "processCommand()" << endl;
+//                        processCommand();
+                    }
+                    else if (*pptr == '/') {
+                        if (eptr - pptr < 2)
+                            return;
+
+                        if (pptr[1] == '>') {
+                            buf = pptr + 2;
+                            cout << __LINE__ << "processCommand()" << endl;
+//                            processCommand();
+                        }
+                        else {
+                            buf = pptr + 1;
+                        }
+                    }
+                    else {
+                        buf = pptr;
+                    }
+                    parseState = FindStart;
+                    break;
+                }
+
+                attrName = pptr;
+                parseState = GetAttribute;
+
+            case GetAttribute:
+                cout << __LINE__ << "GetAttribute" << endl;
+                while (pptr != eptr and isalpha(*pptr))
+                    pptr++;
+
+                if (pptr == eptr)
+                    return;
+
+                if (*pptr == '=') {
+                    // Value attribute
+                    attrLen = pptr - attrName;
+                    pptr++;
+                }
+                else {
+                    if (isspace(*pptr)) {
+                        // Binary attribute
+                        attr.insert(attrName, pptr - attrName);
+                    }
+                    parseState = GetToken;
+                    break;
+                }
+
+                parseState = GetQuote;
+                // no break here
+
+            case GetQuote:
+                cout << __LINE__ << "GetQuote" << endl;
+                if (pptr == eptr)
+                    return;
+
+                quote = *pptr;
+                if (quote != '\'' and quote != '"') {
+                    buf = pptr;
+                    parseState = FindStart;
+                    break;
+                }
+
+                pptr++;
+                attrValue = pptr;
+                parseState = GetValue;
+                // no break here
+
+            case GetValue:
+                cout << __LINE__ << "GetValue" << endl;
+                pptr = std::find(pptr, eptr, quote);
+
+                if (pptr == eptr)
+                    return;
+
+                attr.insert(attrName, attrLen,
+                        attrValue, pptr - attrValue);
+                pptr++;
+                
+                parseState = GetToken;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
 bool Session::evalExpression(const char* &pptr, const char *eptr)
 {
-    const char *start = pptr;
-
     if (*pptr++ != '<')
         return false;
 
-    const char * const cmd = pptr;
-    if (evalIdentifier(pptr, eptr))
+    id.clear();
+
+    if (evalCommand(pptr, eptr))
         return true;
-
-    const size_t cmdLen = pptr - cmd;
-    AttributeMap attributes;
-
-    std::string id;
-    while (true) {
-        std::string name;
-        std::string value;
-
-        if (evalAttribute(pptr, eptr, name, value))
-            return true;
-
-        if (name.empty()) {
-            // No attributes any more
-            break;
-        }
-
-        if (name == "id")
-            id = value;
-
-        attributes[name] = value;
-    }
-
-    // Skip whitespace
-    while (isspace(*pptr)) {
-        if (++pptr == eptr)
-            return true;
-    }
-
-    if (*pptr == '/')
-        if (++pptr == eptr)
-            return true;
-
-    if (*pptr++ != '>')
-        return false;
-
-    if (echo) {
-        *this << std::string(start, pptr - start) << "\r\n" << std::flush;
-    }
-
-    CommandMap::const_iterator it = commandMap.find(std::string(cmd,cmdLen));
-    if (it == commandMap.end()) {
-        MsrXml::Element warn("warn");
-        warn.setAttribute("num", 1000);
-        warn.setAttribute("text", "unknown command");
-        warn.setAttributeCheck("command", cmd, cmdLen);
-        *this << warn << std::flush;
-
-        return false;
-    }
-
-    // Execute the desired command
-    (this->*(it->second))(attributes);
 
     // Return the id sent previously
     if (!id.empty()) {
@@ -309,6 +449,195 @@ bool Session::evalExpression(const char* &pptr, const char *eptr)
         ack.setAttributeCheck("id", id);
         *this << ack << std::flush;
     }
+
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Session::evalCommand(const char* &pptr, const char *eptr)
+{
+    static struct {
+        size_t len;
+        const char *name;
+        bool (Session::*func)(const char* &pptr, const char *eptr);
+    } cmds[] = {
+        // First list most common commands
+//        { 2, "rs", &Session::readStatistics},
+//        { 2, "wp", &Session::writeParameter,},
+//        { 2, "rp", &Session::readParameter,},
+//        { 4, "ping", &Session::ping,},
+//        { 4, "xsad", &Session::xsad,},
+//        { 4, "xsod", &Session::xsod,},
+//        { 4, "echo", &Session::echo_,},
+//
+//        // Now comes the rest
+//        { 2, "rc", &Session::readChannels,},
+//        { 2, "rk", &Session::readChannels,},
+//        { 3, "rpv", &Session::readParamValues,},
+//        { 9, "broadcast", &Session::broadcast,},
+//        {11, "remote_host", &Session::remoteHost,},
+//        {12, "read_kanaele", &Session::readChannels,},
+//        {12, "read_statics", &Session::readStatistics,},
+//        {14, "read_parameter", &Session::readParameter,},
+//        {15, "read_statistics", &Session::readStatistics,},
+//        {15, "write_parameter", &Session::writeParameter,},
+//        {17, "read_param_values", &Session::readParamValues,},
+        {0,},
+    };
+
+    size_t cmdLen = eptr - pptr;
+
+    for (size_t idx = 0; cmds[idx].len; idx++) {
+        if (cmdLen > cmds[idx].len and !strcmp(cmds[idx].name, pptr)) {
+            pptr += cmds[idx].len;
+            return (this->*cmds[idx].func)(pptr, eptr);
+        }
+    }
+
+    // If this point is reached, no command was found
+    if (pptr == eptr)
+        // Input empty
+        return true;
+
+    MsrXml::Element warn("warn");
+    warn.setAttribute("num", 1000);
+    warn.setAttribute("text", "unknown command");
+    warn.setAttributeCheck("command", pptr, cmdLen);
+    *this << warn << std::flush;
+
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Session::Attributes& Session::Attributes::operator<<(const std::string& k)
+{
+    static Session::AttributeValue v = {0,0};
+    (*this)[k] = v;
+    return *this;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Session::findAttributes(Attributes& attr, const char* &ptr, const char *eptr)
+{
+    std::string attrName;
+    const char *begin = 0, *end = 0;
+    char quote = 0;
+    enum {GetToken, GetAttribute, GetQuote, GetValue} state;
+
+    state = GetToken;
+
+    while (ptr != eptr) {
+
+        // Skip escape character
+        if (*ptr == '\\') {
+            ptr = std::min(ptr + 2, eptr);
+            continue;
+        }
+
+        switch (state) {
+            case GetToken:
+                if (isspace(*ptr) or *ptr == '/')
+                    ptr++;
+                else if (*ptr == '>' and ptr++)
+                    return false;
+                else {
+                    begin = ptr;
+                    state = GetAttribute;
+                }
+                break;
+
+            case GetAttribute:
+                if (isspace(*ptr)) {
+                    // Binary attribute found
+                    attrName = std::string(begin, end-begin);
+                    end = 0;
+                    state = GetToken;
+
+                    const Attributes::iterator it(attr.find(attrName));
+                    if (it != attr.end()) {
+                        it->second.begin++;
+                    }
+                }
+                else if (*ptr == '=') {
+                    // Value attribute found
+                    if (!end)
+                        return true;
+
+                    attrName = std::string(begin, end-begin);
+                    state = GetQuote;
+                    ptr++;
+                }
+                else
+                    end = ptr++;
+
+                break;
+
+            case GetQuote:
+                if (*ptr != '"' and *ptr != '\'')
+                    return true;
+
+                quote = *ptr++;
+                begin = ptr;
+                state = GetValue;
+                break;
+
+            case GetValue:
+                if (*ptr == quote) {
+                    const Attributes::iterator it(attr.find(attrName));
+                    if (it != attr.end()) {
+                        it->second.begin = begin;
+                        it->second.end = end;
+                    }
+
+                    if (attrName == "id") {
+                        id = std::string(begin, end-begin);
+                    }
+
+                    state = GetToken;
+                    end = 0;
+                    ptr++;
+                }
+                else {
+                    end = ptr++;
+                }
+                break;
+        }
+    }
+
+    return true;        // Need more input
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Session::readStatistics(const char* &pptr, const char *eptr)
+{
+    Attributes attr;
+
+    if (findAttributes(attr, pptr, eptr))
+        return true;
+
+    // <clients>
+    //   <client index="0" name="lansim"
+    //           apname="Persistent Manager, Version: 0.3.1"
+    //           countin="19908501" countout="27337577"
+    //           connectedtime="1282151176.659208"/>
+    //   <client index="1" .../>
+    // </clients>
+    const std::list<const HRTLab::Session*> s(main->getSessions());
+    int index = 0;
+
+    MsrXml::Element clients("clients");
+    for (std::list<const HRTLab::Session*>::const_iterator it = s.begin();
+            it != s.end(); it++) {
+        MsrXml::Element *e = clients.createChild("client");
+        e->setAttribute("index", index++);
+        e->setAttributeCheck("name", (*it)->getName());
+        e->setAttributeCheck("apname", (*it)->getClientName());
+        e->setAttribute("countin", (*it)->getCountIn());
+        e->setAttribute("countout", (*it)->getCountOut());
+        e->setAttribute("connectedtime", (*it)->getLoginTime());
+    }
+
+    *this << clients << std::flush;
 
     return false;
 }
@@ -1055,9 +1384,9 @@ void Session::broadcast(Session *s, const MsrXml::Element &element)
 void Session::output()
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
-    ssize_t n = send(buf.c_str(), buf.length());
+    ssize_t n = send(outbuf.c_str(), outbuf.length());
     if (n > 0) {
-        buf.erase(0,n);
+        outbuf.erase(0,n);
         dataOut += n;
     }
     else {
@@ -1065,7 +1394,7 @@ void Session::output()
         return;
     }
 
-    if (buf.empty())
+    if (outbuf.empty())
         setDetectOutput(false);
 }
 
