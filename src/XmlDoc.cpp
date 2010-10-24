@@ -34,9 +34,9 @@ Element::~Element()
 std::ostream& MsrXml::operator<<(std::ostream& os, const Element& el)
 {
     os << std::string(el.indent, ' ') << '<' << el.name;
-    for (Element::Attribute::const_iterator it = el.attr.begin();
-            it != el.attr.end(); it++)
-        os << ' ' << it->first << "=\"" << it->second << '"';
+    for (Element::AttributeList::const_iterator it = el.attrList.begin();
+            it != el.attrList.end(); it++)
+        os << ' ' << *it << "=\"" << el.attrMap.find(*it)->second << '"';
     if (el.children.empty())
         os << "/>\r\n";
     else {
@@ -79,22 +79,31 @@ bool Element::hasChildren() const
 /////////////////////////////////////////////////////////////////////////////
 void Element::setAttribute(const char *a, const std::string &v)
 {
-    attr[a] = v;
+    if (attrMap.find(a) == attrMap.end())
+        attrList.push_back(a);
+
+    attrMap[a] = v;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Element::setAttribute(const char *a, const char *v, size_t n)
 {
-    attr[a] = n ? std::string(v,n) : v;
+    if (attrMap.find(a) == attrMap.end())
+        attrList.push_back(a);
+
+    attrMap[a] = n ? std::string(v,n) : v;
 }
 
 
 /////////////////////////////////////////////////////////////////////////////
 void Element::setAttribute(const char *a, const struct timespec &t)
 {
+    if (attrMap.find(a) == attrMap.end())
+        attrList.push_back(a);
+
     std::ostringstream os;
     os << t.tv_sec << '.' << std::setprecision(9) << t.tv_nsec;
-    attr[a] = os.str();
+    attrMap[a] = os.str();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -106,13 +115,16 @@ void Element::setAttributeCheck(const char *a, const std::string &v)
 /////////////////////////////////////////////////////////////////////////////
 void Element::setAttributeCheck(const char *a, const char *v, size_t n)
 {
+    if (attrMap.find(a) == attrMap.end())
+        attrList.push_back(a);
+
     const char *escape = "<>&\"'";
     const char *escape_end = escape + 5;
     if (!n)
         n = strlen(v);
     const char *v_end = v + n;
     const char *p;
-    std::string &s = attr[a];
+    std::string &s = attrMap[a];
     s = std::string();
 
     while ((p = std::find_first_of(v, v_end, escape, escape_end)) != v_end) {

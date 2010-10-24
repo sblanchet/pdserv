@@ -195,22 +195,27 @@ class Session: public ost::SocketPort, public HRTLab::Session,
         char quote;
         class Attr {
             public:
+                Attr();
+
                 void clear();
                 void insert(const char *name, size_t nameLen);
                 void insert(const char *name, size_t nameLen,
                         const char *attr, size_t attrLen);
                 bool find(const char *name);
 
+                const std::string *id;
+
             private:
-                std::string id;
+                std::string _id;
         };
         Attr attr;
 
-        std::string id;
         class Attributes: public std::map<const std::string, AttributeValue> {
             public:
                 Attributes& operator<<(const std::string&);
         };
+
+        void processCommand();
 
         bool findAttributes(Attributes&, const char* &ptr, const char *eptr);
 

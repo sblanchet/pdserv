@@ -269,9 +269,15 @@ size_t Session::Inbuf::free() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+Session::Attr::Attr()
+{
+    id = &_id;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::Attr::clear()
 {
-    id.clear();
+    _id.clear();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -282,8 +288,8 @@ void Session::Attr::insert(const char *name, size_t nameLen,
         << ", Value=" << std::string(attr, attrLen)
         << endl;
 
-    if (nameLen == 2 and !strcmp(name, "id")) {
-        id.assign(attr, attrLen);
+    if (nameLen == 2 and !strncmp(name, "id", 2)) {
+        _id.assign(attr, attrLen);
     }
 }
 
@@ -349,7 +355,7 @@ void Session::parseInput(const char * &buf, const char * const eptr)
                     if (*pptr == '>') {
                         buf = pptr + 1;
                         cout << __LINE__ << "processCommand()" << endl;
-//                        processCommand();
+                        processCommand();
                     }
                     else if (*pptr == '/') {
                         if (eptr - pptr < 2)
@@ -358,7 +364,7 @@ void Session::parseInput(const char * &buf, const char * const eptr)
                         if (pptr[1] == '>') {
                             buf = pptr + 2;
                             cout << __LINE__ << "processCommand()" << endl;
-//                            processCommand();
+                            processCommand();
                         }
                         else {
                             buf = pptr + 1;
@@ -433,24 +439,15 @@ void Session::parseInput(const char * &buf, const char * const eptr)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Session::evalExpression(const char* &pptr, const char *eptr)
+void Session::processCommand()
 {
-    if (*pptr++ != '<')
-        return false;
-
-    id.clear();
-
-    if (evalCommand(pptr, eptr))
-        return true;
-
     // Return the id sent previously
-    if (!id.empty()) {
+    if (!attr.id->empty()) {
+        cout << "HHHHHHHHHHHHHHHHHHHHH" << endl;
         MsrXml::Element ack("ack");
-        ack.setAttributeCheck("id", id);
+        ack.setAttributeCheck("id", *attr.id);
         *this << ack << std::flush;
     }
-
-    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -587,10 +584,6 @@ bool Session::findAttributes(Attributes& attr, const char* &ptr, const char *ept
                     if (it != attr.end()) {
                         it->second.begin = begin;
                         it->second.end = end;
-                    }
-
-                    if (attrName == "id") {
-                        id = std::string(begin, end-begin);
                     }
 
                     state = GetToken;

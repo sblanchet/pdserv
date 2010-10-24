@@ -66,8 +66,11 @@ class Element {
         const std::string name;
         const size_t indent;    // Indent used when printing
 
-        typedef std::map<const std::string, std::string> Attribute;
-        Attribute attr;
+        typedef std::map<const std::string, std::string> AttributeMap;
+        AttributeMap attrMap;
+
+        typedef std::list<std::string> AttributeList;
+        AttributeList attrList;
 
         typedef std::list<Element*> Children;
         Children children;
@@ -82,7 +85,10 @@ void Element::setAttribute(const char *name, const T& value)
     o.imbue(std::locale::classic());
 
     o << value;
-    attr[name] = o.str();
+    if (attrMap.find(name) == attrMap.end())
+        attrList.push_back(name);
+
+    attrMap[name] = o.str();
 }
 
 }
