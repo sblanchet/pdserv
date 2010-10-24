@@ -195,18 +195,27 @@ class Session: public ost::SocketPort, public HRTLab::Session,
         char quote;
         class Attr {
             public:
-                Attr();
-
                 void clear();
                 void insert(const char *name, size_t nameLen);
                 void insert(const char *name, size_t nameLen,
                         const char *attr, size_t attrLen);
-                bool find(const char *name);
+                bool find(const char *name,
+                        const char * &value, size_t &valueLen);
 
                 const std::string *id;
 
             private:
                 std::string _id;
+                
+                struct AttrPtrs {
+                    const char *name;
+                    size_t nameLen;
+                    const char *value;
+                    size_t valueLen;
+                };
+
+                typedef std::multimap<size_t,AttrPtrs> AttrMap;
+                AttrMap attrMap;
         };
         Attr attr;
 
@@ -221,11 +230,11 @@ class Session: public ost::SocketPort, public HRTLab::Session,
 
         bool broadcast(const char* &ptr, const char *eptr);
         bool echo_(const char* &ptr, const char *eptr);
-        bool ping(const char* &ptr, const char *eptr);
+        void ping();
         bool readChannels(const char* &ptr, const char *eptr);
-        bool readParameter(const char* &ptr, const char *eptr);
+        void readParameter();
         bool readParamValues(const char* &ptr, const char *eptr);
-        bool readStatistics(const char* &ptr, const char *eptr);
+        void readStatistics();
         bool remoteHost(const char* &ptr, const char *eptr);
         bool writeParameter(const char* &ptr, const char *eptr);
         bool xsad(const char* &ptr, const char *eptr);

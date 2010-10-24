@@ -269,34 +269,55 @@ size_t Session::Inbuf::free() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Attr::Attr()
-{
-    id = &_id;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Session::Attr::clear()
 {
+    id = 0;
     _id.clear();
+    attrMap.clear();
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::Attr::insert(const char *name, size_t nameLen,
-                        const char *attr, size_t attrLen)
+                        const char *value, size_t valueLen)
 {
     cout << "Value attribute: Name=" << std::string(name, nameLen)
-        << ", Value=" << std::string(attr, attrLen)
+        << ", Value=" << std::string(value, valueLen)
         << endl;
-
     if (nameLen == 2 and !strncmp(name, "id", 2)) {
-        _id.assign(attr, attrLen);
+        _id.assign(value, valueLen);
+        id = &_id;
+        return;
     }
+
+    AttrPtrs a = {name, nameLen, value, valueLen};
+    attrMap.insert(std::pair<size_t,AttrPtrs>(nameLen,a));
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::Attr::insert(const char *name, size_t nameLen)
 {
     cout << "Binary attribute: Name=" << std::string(name, nameLen) << endl;
+    AttrPtrs a = {name, nameLen, 0, 0};
+    attrMap.insert(std::pair<size_t,AttrPtrs>(nameLen,a));
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Session::Attr::find(const char *name,
+        const char * &value, size_t &valueLen)
+{
+    size_t len = strlen(name);
+    std::pair<AttrMap::iterator, AttrMap::iterator>
+        ret(attrMap.equal_range(len));
+
+    for (AttrMap::iterator it(ret.first); it != ret.second; it++) {
+        if (!strncmp(name, it->second.name, len)) {
+            value = it->second.value;
+            valueLen = it->second.valueLen;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -441,28 +462,16 @@ void Session::parseInput(const char * &buf, const char * const eptr)
 /////////////////////////////////////////////////////////////////////////////
 void Session::processCommand()
 {
-    // Return the id sent previously
-    if (!attr.id->empty()) {
-        cout << "HHHHHHHHHHHHHHHHHHHHH" << endl;
-        MsrXml::Element ack("ack");
-        ack.setAttributeCheck("id", *attr.id);
-        *this << ack << std::flush;
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-bool Session::evalCommand(const char* &pptr, const char *eptr)
-{
     static struct {
         size_t len;
         const char *name;
-        bool (Session::*func)(const char* &pptr, const char *eptr);
+        void (Session::*func)();
     } cmds[] = {
         // First list most common commands
-//        { 2, "rs", &Session::readStatistics},
+        { 2, "rs", &Session::readStatistics},
 //        { 2, "wp", &Session::writeParameter,},
 //        { 2, "rp", &Session::readParameter,},
-//        { 4, "ping", &Session::ping,},
+        { 4, "ping", &Session::ping,},
 //        { 4, "xsad", &Session::xsad,},
 //        { 4, "xsod", &Session::xsod,},
 //        { 4, "echo", &Session::echo_,},
@@ -482,132 +491,31 @@ bool Session::evalCommand(const char* &pptr, const char *eptr)
         {0,},
     };
 
-    size_t cmdLen = eptr - pptr;
-
     for (size_t idx = 0; cmds[idx].len; idx++) {
-        if (cmdLen > cmds[idx].len and !strcmp(cmds[idx].name, pptr)) {
+        if (commandLen == cmds[idx].len
+                and !strncmp(cmds[idx].name, commandPtr, commandLen)) {
             pptr += cmds[idx].len;
-            return (this->*cmds[idx].func)(pptr, eptr);
+            (this->*cmds[idx].func)();
+            cout << __LINE__ << "NNNNNNNNNNN" << endl;
+            if (attr.id) {
+                MsrXml::Element ack("ack");
+                ack.setAttributeCheck("id", *attr.id);
+                *this << ack << std::flush;
+            }
+            return;
         }
     }
-
-    // If this point is reached, no command was found
-    if (pptr == eptr)
-        // Input empty
-        return true;
 
     MsrXml::Element warn("warn");
     warn.setAttribute("num", 1000);
     warn.setAttribute("text", "unknown command");
-    warn.setAttributeCheck("command", pptr, cmdLen);
+    warn.setAttributeCheck("command", commandPtr, commandLen);
     *this << warn << std::flush;
-
-    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Attributes& Session::Attributes::operator<<(const std::string& k)
+void Session::readStatistics()
 {
-    static Session::AttributeValue v = {0,0};
-    (*this)[k] = v;
-    return *this;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-bool Session::findAttributes(Attributes& attr, const char* &ptr, const char *eptr)
-{
-    std::string attrName;
-    const char *begin = 0, *end = 0;
-    char quote = 0;
-    enum {GetToken, GetAttribute, GetQuote, GetValue} state;
-
-    state = GetToken;
-
-    while (ptr != eptr) {
-
-        // Skip escape character
-        if (*ptr == '\\') {
-            ptr = std::min(ptr + 2, eptr);
-            continue;
-        }
-
-        switch (state) {
-            case GetToken:
-                if (isspace(*ptr) or *ptr == '/')
-                    ptr++;
-                else if (*ptr == '>' and ptr++)
-                    return false;
-                else {
-                    begin = ptr;
-                    state = GetAttribute;
-                }
-                break;
-
-            case GetAttribute:
-                if (isspace(*ptr)) {
-                    // Binary attribute found
-                    attrName = std::string(begin, end-begin);
-                    end = 0;
-                    state = GetToken;
-
-                    const Attributes::iterator it(attr.find(attrName));
-                    if (it != attr.end()) {
-                        it->second.begin++;
-                    }
-                }
-                else if (*ptr == '=') {
-                    // Value attribute found
-                    if (!end)
-                        return true;
-
-                    attrName = std::string(begin, end-begin);
-                    state = GetQuote;
-                    ptr++;
-                }
-                else
-                    end = ptr++;
-
-                break;
-
-            case GetQuote:
-                if (*ptr != '"' and *ptr != '\'')
-                    return true;
-
-                quote = *ptr++;
-                begin = ptr;
-                state = GetValue;
-                break;
-
-            case GetValue:
-                if (*ptr == quote) {
-                    const Attributes::iterator it(attr.find(attrName));
-                    if (it != attr.end()) {
-                        it->second.begin = begin;
-                        it->second.end = end;
-                    }
-
-                    state = GetToken;
-                    end = 0;
-                    ptr++;
-                }
-                else {
-                    end = ptr++;
-                }
-                break;
-        }
-    }
-
-    return true;        // Need more input
-}
-
-/////////////////////////////////////////////////////////////////////////////
-bool Session::readStatistics(const char* &pptr, const char *eptr)
-{
-    Attributes attr;
-
-    if (findAttributes(attr, pptr, eptr))
-        return true;
-
     // <clients>
     //   <client index="0" name="lansim"
     //           apname="Persistent Manager, Version: 0.3.1"
@@ -631,78 +539,21 @@ bool Session::readStatistics(const char* &pptr, const char *eptr)
     }
 
     *this << clients << std::flush;
-
-    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Session::evalAttribute(const char* &pptr, const char *eptr,
-        std::string &name, std::string &value)
-{
-    const char *start = pptr;
-    while (isspace(*pptr)) 
-        if (++pptr == eptr)
-            return true;
-
-    if (pptr == start) {
-        // No whitespace found
-        return false;
-    }
-
-    start = pptr;
-    if (evalIdentifier(pptr, eptr))
-        return true;
-
-    // At the end of the identifier, need at least 3 more chars ( ="" )
-    if (eptr - pptr < 3)
-        return true;
-
-    char quote = pptr[1];
-    if (pptr[0] != '=' or (quote != '"' and quote != '\''))
-        return false;
-    name = std::string(start, pptr - start);
-
-    pptr += 2;
-    size_t len = 0;
-    while (pptr[len] != quote) {
-        if (pptr + ++len == eptr)
-            return true;
-    }
-    value = std::string(pptr, len);
-
-    pptr += len + 1;            // Skip the quote
-
-    return false;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-bool Session::evalIdentifier(const char* &pptr, const char *eptr)
-{
-    if (!isalpha(*pptr))
-        return false;
-
-    while (isalnum(*pptr) or *pptr == '_') {
-        if (++pptr == eptr)
-            return true;
-    }
-
-    return false;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::pingCmd(const AttributeMap &attributes)
+void Session::ping()
 {
     MsrXml::Element ping("ping");
 
-    AttributeMap::const_iterator it = attributes.find("id");
-    if (it != attributes.end())
-        ping.setAttributeCheck("id", it->second);
+    if (attr.id)
+        ping.setAttributeCheck("id", *attr.id);
 
     *this << ping << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readParameterCmd(const AttributeMap &attributes)
+void Session::readParameter()
 {
     AttributeMap::const_iterator it;
     HRTLab::Parameter *parameter = 0;
@@ -710,32 +561,32 @@ void Session::readParameterCmd(const AttributeMap &attributes)
     bool hex = false;
     const HRTLab::Main::ParameterList& pl = main->getParameters();
 
-    if ((it = attributes.find("short"))!= attributes.end()) {
-        shortReply = atoi(it->second.c_str());
-    }
-
-    if ((it = attributes.find("hex"))!= attributes.end()) {
-        hex = atoi(it->second.c_str());
-    }
-
-    if ((it = attributes.find("name")) != attributes.end()) {
-        const HRTLab::Main::VariableMap& m = main->getVariableMap();
-        HRTLab::Main::VariableMap::const_iterator vit = m.find(it->second);
-
-        if (vit == m.end() or vit->second->index >= pl.size()
-                or pl[vit->second->index]->path != it->second)
-            return;
-
-        parameter = pl[vit->second->index];
-    }
-    else if ((it = attributes.find("index")) != attributes.end()) {
-        unsigned int index = atoi(it->second.c_str());
-
-        if (index >= pl.size())
-            return;
-
-        parameter = pl[index];
-    }
+//    if ((it = attributes.find("short"))!= attributes.end()) {
+//        shortReply = atoi(it->second.c_str());
+//    }
+//
+//    if ((it = attributes.find("hex"))!= attributes.end()) {
+//        hex = atoi(it->second.c_str());
+//    }
+//
+//    if ((it = attributes.find("name")) != attributes.end()) {
+//        const HRTLab::Main::VariableMap& m = main->getVariableMap();
+//        HRTLab::Main::VariableMap::const_iterator vit = m.find(it->second);
+//
+//        if (vit == m.end() or vit->second->index >= pl.size()
+//                or pl[vit->second->index]->path != it->second)
+//            return;
+//
+//        parameter = pl[vit->second->index];
+//    }
+//    else if ((it = attributes.find("index")) != attributes.end()) {
+//        unsigned int index = atoi(it->second.c_str());
+//
+//        if (index >= pl.size())
+//            return;
+//
+//        parameter = pl[index];
+//    }
     
     if (parameter) {
         MsrXml::Element p("parameter");
