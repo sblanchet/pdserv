@@ -77,7 +77,7 @@ class Session: public ost::SocketPort, public HRTLab::Session,
 
         bool writeAccess;
         bool quiet;
-        bool echo;
+        bool echoOn;
         std::string remote;
         std::string applicationname;
 
@@ -89,7 +89,7 @@ class Session: public ost::SocketPort, public HRTLab::Session,
                 ~Inbuf();
                 bool empty() const;
                 void erase(const char *p);
-                const char *bptr() const;
+                char *bptr() const;
                 const char *eptr() const;
                 char *rptr(size_t n = 0);
                 size_t free() const;
@@ -155,42 +155,15 @@ class Session: public ost::SocketPort, public HRTLab::Session,
         // Parser routines
         // Returning true within these routines will interrupt parsing
         // and wait for more characters
-        void parseInput(const char* &pos, const char *end);
-        bool search(char, const char* &pos, const char *end);
-        bool evalExpression(const char* &pos, const char *end);
-        bool evalIdentifier(const char* &pos, const char *end);
-        bool evalCommand(const char* &pos, const char *end);
-        bool evalAttribute(const char* &pos, const char *end,
-                std::string &name, std::string &value);
-        bool evalReadParameter(const char* &pos, const char *end);
+        void parseInput(char* &pos, const char *end);
 
-        typedef std::map<const std::string, std::string> AttributeMap;
-        typedef void (Session::*CmdFunc)(const AttributeMap&);
-        typedef std::map<const std::string, CmdFunc> CommandMap;
-        static CommandMap commandMap;
-        void pingCmd(const AttributeMap &attributes);
-        void readParameterCmd(const AttributeMap &attributes);
-        void readParamValuesCmd(const AttributeMap &attributes);
-        void writeParameterCmd(const AttributeMap &attributes);
-        void readChannelsCmd(const AttributeMap &attributes);
-        void xsadCmd(const AttributeMap &attributes);
-        void xsodCmd(const AttributeMap &attributes);
-        void remoteHostCmd(const AttributeMap &attributes);
-        void broadcastCmd(const AttributeMap &attributes);
-        void echoCmd(const AttributeMap &attributes);
-        void readStatisticsCmd(const AttributeMap &attributes);
-        void nullCmd(const AttributeMap &attributes);
-
-        struct AttributeValue {
-            const char *begin;
-            const char *end;
-        };
-        const char *bptr, *pptr;
+        char *bptr, *pptr;
         enum ParseState {
             FindStart, GetCommand, GetToken, GetAttribute, GetQuote, GetValue,
         };
         ParseState parseState;
-        const char *commandPtr, *attrName, *attrValue;
+        const char *commandPtr, *attrName;
+        char *attrValue;
         size_t commandLen, attrLen;
         char quote;
         class Attr {
@@ -198,9 +171,12 @@ class Session: public ost::SocketPort, public HRTLab::Session,
                 void clear();
                 void insert(const char *name, size_t nameLen);
                 void insert(const char *name, size_t nameLen,
-                        const char *attr, size_t attrLen);
+                        char *attr, size_t attrLen);
                 bool find(const char *name,
-                        const char * &value, size_t &valueLen);
+                        char * &value, size_t &valueLen);
+                bool isTrue(const char *name);
+                bool getString(const char *name, std::string &s);
+                bool getInt(const char *name, int &i);
 
                 const std::string *id;
 
@@ -210,7 +186,7 @@ class Session: public ost::SocketPort, public HRTLab::Session,
                 struct AttrPtrs {
                     const char *name;
                     size_t nameLen;
-                    const char *value;
+                    char *value;
                     size_t valueLen;
                 };
 
@@ -219,26 +195,19 @@ class Session: public ost::SocketPort, public HRTLab::Session,
         };
         Attr attr;
 
-        class Attributes: public std::map<const std::string, AttributeValue> {
-            public:
-                Attributes& operator<<(const std::string&);
-        };
-
         void processCommand();
 
-        bool findAttributes(Attributes&, const char* &ptr, const char *eptr);
-
-        bool broadcast(const char* &ptr, const char *eptr);
-        bool echo_(const char* &ptr, const char *eptr);
+        void broadcast();
+        void echo();
         void ping();
-        bool readChannels(const char* &ptr, const char *eptr);
+        void readChannels();
         void readParameter();
-        bool readParamValues(const char* &ptr, const char *eptr);
+        void readParamValues();
         void readStatistics();
-        bool remoteHost(const char* &ptr, const char *eptr);
-        bool writeParameter(const char* &ptr, const char *eptr);
-        bool xsad(const char* &ptr, const char *eptr);
-        bool xsod(const char* &ptr, const char *eptr);
+        void remoteHost();
+        void writeParameter();
+        void xsad();
+        void xsod();
 
         static std::string toCSV( const HRTLab::Variable *v,
                 const char* data, size_t precision = 10, size_t n = 1);

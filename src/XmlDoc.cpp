@@ -128,7 +128,7 @@ void Element::setAttributeCheck(const char *a, const char *v, size_t n)
     s = std::string();
 
     while ((p = std::find_first_of(v, v_end, escape, escape_end)) != v_end) {
-        s += std::string(v, p - v - 1);
+        s += std::string(v, p - v);
         switch (*p) {
             case '<':
                 s += "&lt;";

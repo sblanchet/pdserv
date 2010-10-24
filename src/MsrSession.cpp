@@ -21,8 +21,6 @@ using std::endl;
 
 using namespace MsrProto;
 
-Session::CommandMap Session::commandMap;
-
 /////////////////////////////////////////////////////////////////////////////
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
@@ -36,7 +34,7 @@ Session::Session( Server *s, ost::SocketService *ss,
 
     bptr = 0;
     writeAccess = false;
-    echo = false;
+    echoOn = false;
     quiet = false;
     dataIn = 0;
     dataOut = 0;
@@ -181,7 +179,7 @@ void Session::pending()
         dataIn += n;    // Global input counter
         inputLen += n;  // Local input counter
 
-        const char *buf = inbuf.bptr();
+        char *buf = inbuf.bptr();
         parseInput(buf, inbuf.eptr());
         inbuf.erase(buf);
 
@@ -251,7 +249,7 @@ char *Session::Inbuf::rptr(size_t n)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const char *Session::Inbuf::bptr() const
+char *Session::Inbuf::bptr() const
 {
     return _bptr;
 }
@@ -278,7 +276,7 @@ void Session::Attr::clear()
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::Attr::insert(const char *name, size_t nameLen,
-                        const char *value, size_t valueLen)
+                        char *value, size_t valueLen)
 {
     cout << "Value attribute: Name=" << std::string(name, nameLen)
         << ", Value=" << std::string(value, valueLen)
@@ -302,8 +300,88 @@ void Session::Attr::insert(const char *name, size_t nameLen)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Session::Attr::find(const char *name,
-        const char * &value, size_t &valueLen)
+bool Session::Attr::getInt(const char *name, int &i)
+{
+    char *value;
+    size_t valueLen;
+
+    if (!(find(name, value, valueLen)))
+        return false;
+
+    value[valueLen] = 0;
+
+    i = atoi(value);
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Session::Attr::getString(const char *name, std::string &s)
+{
+    char *value;
+    size_t valueLen;
+
+    if (!(find(name, value, valueLen)))
+        return false;
+
+    value[valueLen] = 0;
+
+    char *pptr, *eptr = value + valueLen;
+    while ((pptr = std::find(value, eptr, '&')) != eptr) {
+        s.append(value, pptr - value);
+        size_t len = eptr - pptr;
+        if (len > 4 and !strncmp(pptr, "&gt;", 4)) {
+            s.append(1, '>');
+            value = pptr + 4;
+        }
+        else if (len > 4 and !strncmp(pptr, "&lt;", 4)) {
+            s.append(1, '<');
+            value = pptr + 4;
+        }
+        else if (len > 5 and !strncmp(pptr, "&amp;", 5)) {
+            s.append(1, '&');
+            value = pptr + 5;
+        }
+        else if (len > 6 and !strncmp(pptr, "&quot;", 6)) {
+            s.append(1, '"');
+            value = pptr + 6;
+        }
+        else if (len > 6 and !strncmp(pptr, "&apos;", 6)) {
+            s.append(1, '\'');
+            value = pptr + 6;
+        }
+        else {
+            s.append(1, '&');
+            value = pptr + 1;
+        }
+    }
+
+    s.append(value, eptr - value);
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Session::Attr::isTrue(const char *name)
+{
+    char *value;
+    size_t valueLen;
+
+    if (!(find(name, value, valueLen)))
+        return false;
+
+    if (valueLen == 1)
+        return *value == '1';
+
+    if (valueLen == 4)
+        return !strncasecmp(value, "true", 4);
+
+    if (valueLen == 2)
+        return !strncasecmp(value, "on", 2);
+
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Session::Attr::find(const char *name, char * &value, size_t &valueLen)
 {
     size_t len = strlen(name);
     std::pair<AttrMap::iterator, AttrMap::iterator>
@@ -321,7 +399,7 @@ bool Session::Attr::find(const char *name,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::parseInput(const char * &buf, const char * const eptr)
+void Session::parseInput(char * &buf, const char * const eptr)
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << ' ' << (void*)buf << endl;
     cout << "   ->" << std::string(buf, eptr - buf) << "<-" << endl;
@@ -340,13 +418,13 @@ void Session::parseInput(const char * &buf, const char * const eptr)
                 attr.clear();
                 
                 // Move forward in the buffer until '<' is found
-                buf = std::find(buf, eptr, '<');
+                buf = std::find(buf, const_cast<char*>(eptr), '<');
                 if (buf == eptr) {
                     return;
                 }
 
-                commandPtr = buf + 1;
-                pptr = commandPtr;
+                pptr = buf + 1;
+                commandPtr = pptr;
                 parseState = GetCommand;
                 cout << "Found command at " << (void*)commandPtr << endl;
                 // no break here
@@ -445,7 +523,7 @@ void Session::parseInput(const char * &buf, const char * const eptr)
 
             case GetValue:
                 cout << __LINE__ << "GetValue" << endl;
-                pptr = std::find(pptr, eptr, quote);
+                pptr = std::find(pptr, const_cast<char*>(eptr), quote);
 
                 if (pptr == eptr)
                     return;
@@ -470,24 +548,24 @@ void Session::processCommand()
         // First list most common commands
         { 2, "rs", &Session::readStatistics},
 //        { 2, "wp", &Session::writeParameter,},
-//        { 2, "rp", &Session::readParameter,},
+        { 2, "rp", &Session::readParameter,},
         { 4, "ping", &Session::ping,},
 //        { 4, "xsad", &Session::xsad,},
 //        { 4, "xsod", &Session::xsod,},
-//        { 4, "echo", &Session::echo_,},
+        { 4, "echo", &Session::echo,},
 //
 //        // Now comes the rest
 //        { 2, "rc", &Session::readChannels,},
 //        { 2, "rk", &Session::readChannels,},
-//        { 3, "rpv", &Session::readParamValues,},
+        { 3, "rpv", &Session::readParamValues,},
 //        { 9, "broadcast", &Session::broadcast,},
 //        {11, "remote_host", &Session::remoteHost,},
 //        {12, "read_kanaele", &Session::readChannels,},
-//        {12, "read_statics", &Session::readStatistics,},
-//        {14, "read_parameter", &Session::readParameter,},
-//        {15, "read_statistics", &Session::readStatistics,},
+        {12, "read_statics", &Session::readStatistics,},
+        {14, "read_parameter", &Session::readParameter,},
+        {15, "read_statistics", &Session::readStatistics,},
 //        {15, "write_parameter", &Session::writeParameter,},
-//        {17, "read_param_values", &Session::readParamValues,},
+        {17, "read_param_values", &Session::readParamValues,},
         {0,},
     };
 
@@ -555,38 +633,29 @@ void Session::ping()
 /////////////////////////////////////////////////////////////////////////////
 void Session::readParameter()
 {
-    AttributeMap::const_iterator it;
     HRTLab::Parameter *parameter = 0;
-    bool shortReply = false;
-    bool hex = false;
+    bool shortReply = attr.isTrue("short");
+    bool hex = attr.isTrue("hex");
+    std::string name;
+    int index;
     const HRTLab::Main::ParameterList& pl = main->getParameters();
 
-//    if ((it = attributes.find("short"))!= attributes.end()) {
-//        shortReply = atoi(it->second.c_str());
-//    }
-//
-//    if ((it = attributes.find("hex"))!= attributes.end()) {
-//        hex = atoi(it->second.c_str());
-//    }
-//
-//    if ((it = attributes.find("name")) != attributes.end()) {
-//        const HRTLab::Main::VariableMap& m = main->getVariableMap();
-//        HRTLab::Main::VariableMap::const_iterator vit = m.find(it->second);
-//
-//        if (vit == m.end() or vit->second->index >= pl.size()
-//                or pl[vit->second->index]->path != it->second)
-//            return;
-//
-//        parameter = pl[vit->second->index];
-//    }
-//    else if ((it = attributes.find("index")) != attributes.end()) {
-//        unsigned int index = atoi(it->second.c_str());
-//
-//        if (index >= pl.size())
-//            return;
-//
-//        parameter = pl[index];
-//    }
+    if (attr.getString("name", name)) {
+        const HRTLab::Main::VariableMap& m = main->getVariableMap();
+        HRTLab::Main::VariableMap::const_iterator vit = m.find(name);
+
+        if (vit == m.end() or vit->second->index >= pl.size()
+                or pl[vit->second->index]->path != name)
+            return;
+
+        parameter = pl[vit->second->index];
+    }
+    else if (attr.getInt("index", index)) {
+        if (static_cast<size_t>(index) >= pl.size())
+            return;
+
+        parameter = pl[index];
+    }
     
     if (parameter) {
         MsrXml::Element p("parameter");
@@ -782,7 +851,7 @@ void Session::setChannelAttributes(MsrXml::Element *e,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readParamValuesCmd(const AttributeMap &attributes)
+void Session::readParamValues()
 {
     MsrXml::Element param_values("param_values");
     std::string v;
@@ -802,7 +871,7 @@ void Session::readParamValuesCmd(const AttributeMap &attributes)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::writeParameterCmd(const AttributeMap &attributes)
+void Session::writeParameter()
 {
     if (!writeAccess) {
         MsrXml::Element warn("warn");
@@ -811,147 +880,145 @@ void Session::writeParameterCmd(const AttributeMap &attributes)
         return;
     }
 
-    AttributeMap::const_iterator it;
     HRTLab::Parameter *parameter;
     size_t startindex = 0;
     const HRTLab::Main::ParameterList& pl = main->getParameters();
 
-    if ((it = attributes.find("name")) != attributes.end()) {
-        const HRTLab::Main::VariableMap& m = main->getVariableMap();
-        HRTLab::Main::VariableMap::const_iterator vit = m.find(it->second);
+//    if ((it = attributes.find("name")) != attributes.end()) {
+//        const HRTLab::Main::VariableMap& m = main->getVariableMap();
+//        HRTLab::Main::VariableMap::const_iterator vit = m.find(it->second);
+//
+//        if (vit == m.end() or vit->second->index >= pl.size()
+//                or pl[vit->second->index]->path != it->second)
+//            return;
+//
+//        parameter = pl[vit->second->index];
+//    }
+//    else if ((it = attributes.find("index")) != attributes.end()) {
+//        unsigned int index = atoi(it->second.c_str());
+//
+//        if (index >= pl.size())
+//            return;
+//
+//        parameter = pl[index];
+//    }
+//    else {
+//        return;
+//    }
+//
+//    if ((it = attributes.find("startindex")) != attributes.end()) {
+//        startindex = atoi(it->second.c_str());
+//    }
+//
+//    char valbuf[parameter->memSize];
+//    size_t validx = 0;
+//    if ((it = attributes.find("hexvalue")) != attributes.end()) {
+//        const std::string &s = it->second;
+//        const char hexNum[] = {
+//            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
+//            0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+//            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+//            0,10,11,12,13,14,15
+//        };
+//
+//        for (validx = 0;
+//                validx < std::min(parameter->memSize, s.size() / 2);
+//                validx++) {
+//            unsigned char c1 = s[validx*2] - '0';
+//            unsigned char c2 = s[validx*2 + 1] - '0';
+//            if (c1 > 'f' - '0' or c2 > 'f' - '0')
+//                return;
+//            valbuf[validx] = hexNum[c1] << 4 | hexNum[c2];
+//        }
+//    }
+//    else if ((it = attributes.find("value")) != attributes.end()) {
+//        double v;
+//        char c;
+//        std::istringstream is(it->second);
+//
+//        is.imbue(std::locale::classic());
+//
+//        for (validx = 0; validx < parameter->nelem; validx++) {
+//            is >> v;
+//            cout << "value = " << v << endl;
+//
+//            if (!is)
+//                break;
+//
+//            switch (parameter->dtype) {
+//                case si_boolean_T:
+//                    reinterpret_cast<bool*>(valbuf)[validx] = v; break;
+//
+//                case si_uint8_T:
+//                    reinterpret_cast<uint8_t*>(valbuf)[validx] = v; break;
+//
+//                case si_sint8_T:
+//                    reinterpret_cast<int8_t*>(valbuf)[validx] = v; break;
+//
+//                case si_uint16_T:
+//                    reinterpret_cast<uint16_t*>(valbuf)[validx] = v; break;
+//
+//                case si_sint16_T:
+//                    reinterpret_cast<int16_t*>(valbuf)[validx] = v; break;
+//
+//                case si_uint32_T:
+//                    reinterpret_cast<uint32_t*>(valbuf)[validx] = v; break;
+//
+//                case si_sint32_T:
+//                    reinterpret_cast<int32_t*>(valbuf)[validx] = v; break;
+//
+//                case si_uint64_T:
+//                    reinterpret_cast<uint64_t*>(valbuf)[validx] = v; break;
+//
+//                case si_sint64_T:
+//                    reinterpret_cast<int64_t*>(valbuf)[validx] = v; break;
+//
+//                case si_single_T:
+//                    reinterpret_cast<float*>(valbuf)[validx] = v; break;
+//
+//                case si_double_T:
+//                    reinterpret_cast<double*>(valbuf)[validx] = v; break;
+//
+//                default:
+//                    break;
+//            }
+//
+//            is >> c;
+//        }
+//    }
 
-        if (vit == m.end() or vit->second->index >= pl.size()
-                or pl[vit->second->index]->path != it->second)
-            return;
-
-        parameter = pl[vit->second->index];
-    }
-    else if ((it = attributes.find("index")) != attributes.end()) {
-        unsigned int index = atoi(it->second.c_str());
-
-        if (index >= pl.size())
-            return;
-
-        parameter = pl[index];
-    }
-    else {
-        return;
-    }
-
-    if ((it = attributes.find("startindex")) != attributes.end()) {
-        startindex = atoi(it->second.c_str());
-    }
-
-    char valbuf[parameter->memSize];
-    size_t validx = 0;
-    if ((it = attributes.find("hexvalue")) != attributes.end()) {
-        const std::string &s = it->second;
-        const char hexNum[] = {
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
-            0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-            0,10,11,12,13,14,15
-        };
-
-        for (validx = 0;
-                validx < std::min(parameter->memSize, s.size() / 2);
-                validx++) {
-            unsigned char c1 = s[validx*2] - '0';
-            unsigned char c2 = s[validx*2 + 1] - '0';
-            if (c1 > 'f' - '0' or c2 > 'f' - '0')
-                return;
-            valbuf[validx] = hexNum[c1] << 4 | hexNum[c2];
-        }
-    }
-    else if ((it = attributes.find("value")) != attributes.end()) {
-        double v;
-        char c;
-        std::istringstream is(it->second);
-
-        is.imbue(std::locale::classic());
-
-        for (validx = 0; validx < parameter->nelem; validx++) {
-            is >> v;
-            cout << "value = " << v << endl;
-
-            if (!is)
-                break;
-
-            switch (parameter->dtype) {
-                case si_boolean_T:
-                    reinterpret_cast<bool*>(valbuf)[validx] = v; break;
-
-                case si_uint8_T:
-                    reinterpret_cast<uint8_t*>(valbuf)[validx] = v; break;
-
-                case si_sint8_T:
-                    reinterpret_cast<int8_t*>(valbuf)[validx] = v; break;
-
-                case si_uint16_T:
-                    reinterpret_cast<uint16_t*>(valbuf)[validx] = v; break;
-
-                case si_sint16_T:
-                    reinterpret_cast<int16_t*>(valbuf)[validx] = v; break;
-
-                case si_uint32_T:
-                    reinterpret_cast<uint32_t*>(valbuf)[validx] = v; break;
-
-                case si_sint32_T:
-                    reinterpret_cast<int32_t*>(valbuf)[validx] = v; break;
-
-                case si_uint64_T:
-                    reinterpret_cast<uint64_t*>(valbuf)[validx] = v; break;
-
-                case si_sint64_T:
-                    reinterpret_cast<int64_t*>(valbuf)[validx] = v; break;
-
-                case si_single_T:
-                    reinterpret_cast<float*>(valbuf)[validx] = v; break;
-
-                case si_double_T:
-                    reinterpret_cast<double*>(valbuf)[validx] = v; break;
-
-                default:
-                    break;
-            }
-
-            is >> c;
-        }
-    }
-
-    parameter->setValue(valbuf, validx, startindex);
+//    parameter->setValue(valbuf, validx, startindex);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readChannelsCmd(const AttributeMap &attributes)
+void Session::readChannels()
 {
-    AttributeMap::const_iterator it;
     HRTLab::Signal *signal = 0;
     bool shortReply = false;
     const HRTLab::Main::SignalList& sl = main->getSignals();
 
-    if ((it = attributes.find("short"))!= attributes.end()) {
-        shortReply = atoi(it->second.c_str());
-    }
-
-    if ((it = attributes.find("name")) != attributes.end()) {
-        const HRTLab::Main::VariableMap& m = main->getVariableMap();
-        HRTLab::Main::VariableMap::const_iterator vit = m.find(it->second);
-
-        if (vit == m.end() or vit->second->index >= sl.size()
-                or sl[vit->second->index]->path != it->second)
-            return;
-
-        signal = sl[vit->second->index];
-    }
-    else if ((it = attributes.find("index")) != attributes.end()) {
-        unsigned int index = atoi(it->second.c_str());
-
-        if (index >= sl.size())
-            return;
-
-        signal = sl[index];
-    }
+//    if ((it = attributes.find("short"))!= attributes.end()) {
+//        shortReply = atoi(it->second.c_str());
+//    }
+//
+//    if ((it = attributes.find("name")) != attributes.end()) {
+//        const HRTLab::Main::VariableMap& m = main->getVariableMap();
+//        HRTLab::Main::VariableMap::const_iterator vit = m.find(it->second);
+//
+//        if (vit == m.end() or vit->second->index >= sl.size()
+//                or sl[vit->second->index]->path != it->second)
+//            return;
+//
+//        signal = sl[vit->second->index];
+//    }
+//    else if ((it = attributes.find("index")) != attributes.end()) {
+//        unsigned int index = atoi(it->second.c_str());
+//
+//        if (index >= sl.size())
+//            return;
+//
+//        signal = sl[index];
+//    }
 
     if (signal) {
         char buf[signal->memSize];
@@ -989,59 +1056,58 @@ void Session::readChannelsCmd(const AttributeMap &attributes)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::xsadCmd(const AttributeMap &attributes)
+void Session::xsad()
 {
-    AttributeMap::const_iterator it;
     std::list<HRTLab::Signal*> channelList;
     unsigned int reduction, blocksize, precision = 10;
     bool base64 = false;
     const HRTLab::Main::SignalList& sl = main->getSignals();
 
-    if ((it = attributes.find("channels")) != attributes.end()) {
-        std::istringstream is(it->second);
-        while (is) {
-            unsigned int index;
-            char comma;
-
-            is >> index >> comma;
-            if (index < sl.size())
-                channelList.push_back(sl[index]);
-        }
-    }
-
-    if ((it = attributes.find("reduction")) != attributes.end()) {
-        reduction = atoi(it->second.c_str());
-    }
-    else {
-        reduction = 1 / main->baserate;
-    }
-
-    if ((it = attributes.find("blocksize")) != attributes.end()) {
-        blocksize = atoi(it->second.c_str());
-    }
-    else {
-        blocksize = main->baserate;
-    }
-
-    if ((it = attributes.find("coding")) != attributes.end()) {
-        if (it->second == "Base64")
-            base64 = true;
-    }
-
-    if ((it = attributes.find("precision")) != attributes.end()) {
-        precision = atoi(it->second.c_str());
-    }
-    else {
-        precision = 10;
-    }
-
-    if ((it = attributes.find("sync")) != attributes.end()) {
-        quiet = false;
-    }
-
-    if ((it = attributes.find("quiet")) != attributes.end()) {
-        quiet = true;
-    }
+//    if ((it = attributes.find("channels")) != attributes.end()) {
+//        std::istringstream is(it->second);
+//        while (is) {
+//            unsigned int index;
+//            char comma;
+//
+//            is >> index >> comma;
+//            if (index < sl.size())
+//                channelList.push_back(sl[index]);
+//        }
+//    }
+//
+//    if ((it = attributes.find("reduction")) != attributes.end()) {
+//        reduction = atoi(it->second.c_str());
+//    }
+//    else {
+//        reduction = 1 / main->baserate;
+//    }
+//
+//    if ((it = attributes.find("blocksize")) != attributes.end()) {
+//        blocksize = atoi(it->second.c_str());
+//    }
+//    else {
+//        blocksize = main->baserate;
+//    }
+//
+//    if ((it = attributes.find("coding")) != attributes.end()) {
+//        if (it->second == "Base64")
+//            base64 = true;
+//    }
+//
+//    if ((it = attributes.find("precision")) != attributes.end()) {
+//        precision = atoi(it->second.c_str());
+//    }
+//    else {
+//        precision = 10;
+//    }
+//
+//    if ((it = attributes.find("sync")) != attributes.end()) {
+//        quiet = false;
+//    }
+//
+//    if ((it = attributes.find("quiet")) != attributes.end()) {
+//        quiet = true;
+//    }
 
     const HRTLab::Signal *signals[channelList.size()];
     std::copy(channelList.begin(), channelList.end(), signals);
@@ -1054,39 +1120,38 @@ void Session::xsadCmd(const AttributeMap &attributes)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::xsodCmd(const AttributeMap &attributes)
+void Session::xsod()
 {
-    AttributeMap::const_iterator it;
     std::list<HRTLab::Signal*> channelList;
     const HRTLab::Main::SignalList& sl = main->getSignals();
 
-    if ((it = attributes.find("channels")) != attributes.end()) {
-        std::istringstream is(it->second);
-        while (is) {
-            unsigned int index;
-            char comma;
-
-            is >> index >> comma;
-            if (index < sl.size())
-                channelList.push_back(sl[index]);
-        }
-
-        const HRTLab::Signal *signals[channelList.size()];
-        std::copy(channelList.begin(), channelList.end(), signals);
-        for (const HRTLab::Signal **sp = signals;
-                sp != signals + channelList.size(); sp++) {
-            task[(*sp)->tid]->rmSignal(*sp);
-        }
-
-        main->unsubscribe(this, signals, channelList.size());
-    }
-    else {
-        for (std::vector<Task*>::iterator it = task.begin();
-                it != task.end(); it++) {
-            (*it)->rmSignal(0);
-        }
-        main->clearSession(this);
-    }
+//    if ((it = attributes.find("channels")) != attributes.end()) {
+//        std::istringstream is(it->second);
+//        while (is) {
+//            unsigned int index;
+//            char comma;
+//
+//            is >> index >> comma;
+//            if (index < sl.size())
+//                channelList.push_back(sl[index]);
+//        }
+//
+//        const HRTLab::Signal *signals[channelList.size()];
+//        std::copy(channelList.begin(), channelList.end(), signals);
+//        for (const HRTLab::Signal **sp = signals;
+//                sp != signals + channelList.size(); sp++) {
+//            task[(*sp)->tid]->rmSignal(*sp);
+//        }
+//
+//        main->unsubscribe(this, signals, channelList.size());
+//    }
+//    else {
+//        for (std::vector<Task*>::iterator it = task.begin();
+//                it != task.end(); it++) {
+//            (*it)->rmSignal(0);
+//        }
+//        main->clearSession(this);
+//    }
 
 }
 
@@ -1121,100 +1186,60 @@ struct timespec Session::getLoginTime() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::remoteHostCmd(const AttributeMap &attributes)
+void Session::remoteHost()
 {
-    AttributeMap::const_iterator it;
-
-    if ((it = attributes.find("name")) != attributes.end()) {
-        remote = it->second;
-    }
-
-    if ((it = attributes.find("applicationname")) != attributes.end()) {
-        applicationname = it->second;
-    }
-
-    if ((it = attributes.find("access")) != attributes.end()) {
-        writeAccess = it->second == "allow";
-
-        if (writeAccess
-                and (it = attributes.find("isadmin"))!= attributes.end()) {
-            if (it->second == "true") {
-                struct timespec ts;
-                std::ostringstream os;
-                server->getTime(ts);
-
-                os << "Adminmode filp: " << so; // so is the fd and comes from
-                                                // ost::Socket
-                MsrXml::Element info("info");
-                info.setAttribute("time", ts);
-                info.setAttributeCheck("text", os.str());
-                server->broadcast(this, info);
-            }
-        }
-    }
+//    if ((it = attributes.find("name")) != attributes.end()) {
+//        remote = it->second;
+//    }
+//
+//    if ((it = attributes.find("applicationname")) != attributes.end()) {
+//        applicationname = it->second;
+//    }
+//
+//    if ((it = attributes.find("access")) != attributes.end()) {
+//        writeAccess = it->second == "allow";
+//
+//        if (writeAccess
+//                and (it = attributes.find("isadmin"))!= attributes.end()) {
+//            if (it->second == "true") {
+//                struct timespec ts;
+//                std::ostringstream os;
+//                server->getTime(ts);
+//
+//                os << "Adminmode filp: " << so; // so is the fd and comes from
+//                                                // ost::Socket
+//                MsrXml::Element info("info");
+//                info.setAttribute("time", ts);
+//                info.setAttributeCheck("text", os.str());
+//                server->broadcast(this, info);
+//            }
+//        }
+//    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readStatisticsCmd(const AttributeMap &attributes)
+void Session::echo()
 {
-    // <clients>
-    //   <client index="0" name="lansim"
-    //           apname="Persistent Manager, Version: 0.3.1"
-    //           countin="19908501" countout="27337577"
-    //           connectedtime="1282151176.659208"/>
-    //   <client index="1" .../>
-    // </clients>
-    const std::list<const HRTLab::Session*> s(main->getSessions());
-    int index = 0;
-
-    MsrXml::Element clients("clients");
-    for (std::list<const HRTLab::Session*>::const_iterator it = s.begin();
-            it != s.end(); it++) {
-        MsrXml::Element *e = clients.createChild("client");
-        e->setAttribute("index", index++);
-        e->setAttributeCheck("name", (*it)->getName());
-        e->setAttributeCheck("apname", (*it)->getClientName());
-        e->setAttribute("countin", (*it)->getCountIn());
-        e->setAttribute("countout", (*it)->getCountOut());
-        e->setAttribute("connectedtime", (*it)->getLoginTime());
-    }
-
-    *this << clients << std::flush;
+    echoOn = attr.isTrue("value");
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::nullCmd(const AttributeMap &attributes)
-{
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::echoCmd(const AttributeMap &attributes)
-{
-    AttributeMap::const_iterator it;
-
-    if ((it = attributes.find("value")) != attributes.end()) {
-        echo = it->second == "on";
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::broadcastCmd(const AttributeMap &attributes)
+void Session::broadcast()
 {
     MsrXml::Element broadcast("broadcast");
-    AttributeMap::const_iterator it;
     struct timespec ts;
 
     server->getTime(ts);
 
     broadcast.setAttribute("time", ts);
 
-    if ((it = attributes.find("action"))!= attributes.end()) {
-        broadcast.setAttributeCheck("action", it->second);
-    }
-
-    if ((it = attributes.find("text"))!= attributes.end()) {
-        broadcast.setAttributeCheck("text", it->second);
-    }
+//    if ((it = attributes.find("action"))!= attributes.end()) {
+//        broadcast.setAttributeCheck("action", it->second);
+//    }
+//
+//    if ((it = attributes.find("text"))!= attributes.end()) {
+//        broadcast.setAttributeCheck("text", it->second);
+//    }
     server->broadcast(this, broadcast);
 }
 
