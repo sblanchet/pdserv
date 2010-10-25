@@ -161,7 +161,7 @@ void Session::expired()
 /////////////////////////////////////////////////////////////////////////////
 void Session::pending()
 {
-    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+    //cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     int n, count;
     size_t inputLen = 0;
 
@@ -183,7 +183,7 @@ void Session::pending()
         parseInput(buf, inbuf.eptr());
         inbuf.erase(buf);
 
-        cout << __LINE__ << "n == count: " << n << ' ' << count << endl;
+        //cout << __LINE__ << "n == count: " << n << ' ' << count << endl;
     } while (n == count);
 
     if (!inputLen) {
@@ -192,8 +192,8 @@ void Session::pending()
         return;
     }
 
-    cout << __LINE__ << " Data left in buffer: "
-        << std::string(inbuf.bptr(), inbuf.eptr() - inbuf.bptr()) << endl;
+    //cout << __LINE__ << " Data left in buffer: "
+        //<< std::string(inbuf.bptr(), inbuf.eptr() - inbuf.bptr()) << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -278,9 +278,9 @@ void Session::Attr::clear()
 void Session::Attr::insert(const char *name, size_t nameLen,
                         char *value, size_t valueLen)
 {
-    cout << "Value attribute: Name=" << std::string(name, nameLen)
-        << ", Value=" << std::string(value, valueLen)
-        << endl;
+    //cout << "Value attribute: Name=" << std::string(name, nameLen)
+        //<< ", Value=" << std::string(value, valueLen)
+        //<< endl;
     if (nameLen == 2 and !strncmp(name, "id", 2)) {
         _id.assign(value, valueLen);
         id = &_id;
@@ -294,13 +294,13 @@ void Session::Attr::insert(const char *name, size_t nameLen,
 /////////////////////////////////////////////////////////////////////////////
 void Session::Attr::insert(const char *name, size_t nameLen)
 {
-    cout << "Binary attribute: Name=" << std::string(name, nameLen) << endl;
+    //cout << "Binary attribute: Name=" << std::string(name, nameLen) << endl;
     AttrPtrs a = {name, nameLen, 0, 0};
     attrMap.insert(std::pair<size_t,AttrPtrs>(nameLen,a));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Session::Attr::getInt(const char *name, int &i)
+bool Session::Attr::getUnsigned(const char *name, unsigned int &i)
 {
     char *value;
     size_t valueLen;
@@ -310,7 +310,31 @@ bool Session::Attr::getInt(const char *name, int &i)
 
     value[valueLen] = 0;
 
-    i = atoi(value);
+    i = strtoul(value, 0, 0);
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Session::Attr::getUnsignedList(const char *name,
+        std::list<unsigned int> &intList)
+{
+    char *value;
+    size_t valueLen;
+
+    if (!(find(name, value, valueLen)))
+        return false;
+
+    value[valueLen] = 0;
+
+    std::istringstream is(value);
+    while (is) {
+        unsigned int i;
+        char comma;
+
+        is >> i >> comma;
+        intList.push_back(i);
+    }
+
     return true;
 }
 
@@ -319,6 +343,8 @@ bool Session::Attr::getString(const char *name, std::string &s)
 {
     char *value;
     size_t valueLen;
+
+    s.clear();
 
     if (!(find(name, value, valueLen)))
         return false;
@@ -357,6 +383,18 @@ bool Session::Attr::getString(const char *name, std::string &s)
 
     s.append(value, eptr - value);
     return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Session::Attr::isEqual(const char *name, const char *s)
+{
+    char *value;
+    size_t valueLen;
+
+    if (find(name, value, valueLen))
+        return !strncasecmp(value, s, valueLen);
+
+    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -401,7 +439,7 @@ bool Session::Attr::find(const char *name, char * &value, size_t &valueLen)
 /////////////////////////////////////////////////////////////////////////////
 void Session::parseInput(char * &buf, const char * const eptr)
 {
-    cout << __LINE__ << __PRETTY_FUNCTION__ << ' ' << (void*)buf << endl;
+    //cout << __LINE__ << __PRETTY_FUNCTION__ << ' ' << (void*)buf << endl;
     cout << "   ->" << std::string(buf, eptr - buf) << "<-" << endl;
 
     if (bptr != buf) {
@@ -413,7 +451,7 @@ void Session::parseInput(char * &buf, const char * const eptr)
     while (true) {
         switch (parseState) {
             case FindStart:
-                cout << __LINE__ << "FindStart" << endl;
+                //cout << __LINE__ << "FindStart" << endl;
 
                 attr.clear();
                 
@@ -426,12 +464,12 @@ void Session::parseInput(char * &buf, const char * const eptr)
                 pptr = buf + 1;
                 commandPtr = pptr;
                 parseState = GetCommand;
-                cout << "Found command at " << (void*)commandPtr << endl;
+                //cout << "Found command at " << (void*)commandPtr << endl;
                 // no break here
 
             case GetCommand:
-                cout << __LINE__ << "GetCommand" << endl;
-                while (pptr != eptr and isalpha(*pptr))
+                //cout << __LINE__ << "GetCommand" << endl;
+                while (pptr != eptr and (isalpha(*pptr) or *pptr == '_'))
                     pptr++;
 
                 if (pptr == eptr)
@@ -439,11 +477,11 @@ void Session::parseInput(char * &buf, const char * const eptr)
 
                 commandLen = pptr - commandPtr;
                 parseState = GetToken;
-                cout << "Command is " << std::string(commandPtr, commandLen) << endl;
+                //cout << "Command is " << std::string(commandPtr, commandLen) << endl;
                 // no break here
 
             case GetToken:
-                cout << __LINE__ << "GetToken" << endl;
+                //cout << __LINE__ << "GetToken" << endl;
                 while (pptr != eptr and isspace(*pptr))
                     pptr++;
 
@@ -453,7 +491,7 @@ void Session::parseInput(char * &buf, const char * const eptr)
                 if (!isalpha(*pptr)) {
                     if (*pptr == '>') {
                         buf = pptr + 1;
-                        cout << __LINE__ << "processCommand()" << endl;
+                        //cout << __LINE__ << "processCommand()" << endl;
                         processCommand();
                     }
                     else if (*pptr == '/') {
@@ -462,7 +500,7 @@ void Session::parseInput(char * &buf, const char * const eptr)
 
                         if (pptr[1] == '>') {
                             buf = pptr + 2;
-                            cout << __LINE__ << "processCommand()" << endl;
+                            //cout << __LINE__ << "processCommand()" << endl;
                             processCommand();
                         }
                         else {
@@ -480,7 +518,7 @@ void Session::parseInput(char * &buf, const char * const eptr)
                 parseState = GetAttribute;
 
             case GetAttribute:
-                cout << __LINE__ << "GetAttribute" << endl;
+                //cout << __LINE__ << "GetAttribute" << endl;
                 while (pptr != eptr and isalpha(*pptr))
                     pptr++;
 
@@ -505,7 +543,7 @@ void Session::parseInput(char * &buf, const char * const eptr)
                 // no break here
 
             case GetQuote:
-                cout << __LINE__ << "GetQuote" << endl;
+                //cout << __LINE__ << "GetQuote" << endl;
                 if (pptr == eptr)
                     return;
 
@@ -522,7 +560,7 @@ void Session::parseInput(char * &buf, const char * const eptr)
                 // no break here
 
             case GetValue:
-                cout << __LINE__ << "GetValue" << endl;
+                //cout << __LINE__ << "GetValue" << endl;
                 pptr = std::find(pptr, const_cast<char*>(eptr), quote);
 
                 if (pptr == eptr)
@@ -546,26 +584,26 @@ void Session::processCommand()
         void (Session::*func)();
     } cmds[] = {
         // First list most common commands
-        { 2, "rs", &Session::readStatistics},
-//        { 2, "wp", &Session::writeParameter,},
-        { 2, "rp", &Session::readParameter,},
-        { 4, "ping", &Session::ping,},
-//        { 4, "xsad", &Session::xsad,},
-//        { 4, "xsod", &Session::xsod,},
-        { 4, "echo", &Session::echo,},
-//
-//        // Now comes the rest
-//        { 2, "rc", &Session::readChannels,},
-//        { 2, "rk", &Session::readChannels,},
-        { 3, "rpv", &Session::readParamValues,},
-//        { 9, "broadcast", &Session::broadcast,},
-//        {11, "remote_host", &Session::remoteHost,},
-//        {12, "read_kanaele", &Session::readChannels,},
-        {12, "read_statics", &Session::readStatistics,},
-        {14, "read_parameter", &Session::readParameter,},
-        {15, "read_statistics", &Session::readStatistics,},
-//        {15, "write_parameter", &Session::writeParameter,},
-        {17, "read_param_values", &Session::readParamValues,},
+        { 2, "rs",                      &Session::readStatistics},
+//        { 2, "wp",                    &Session::writeParameter,},
+        { 2, "rp",                      &Session::readParameter,},
+        { 4, "ping",                    &Session::ping,},
+        { 4, "xsad",                    &Session::xsad,},
+        { 4, "xsod",                    &Session::xsod,},
+        { 4, "echo",                    &Session::echo,},
+
+        // Now comes the rest
+        { 2, "rc",                      &Session::readChannel,},
+        { 2, "rk",                      &Session::readChannel,},
+        { 3, "rpv",                     &Session::readParamValues,},
+        { 9, "broadcast",               &Session::broadcast,},
+        {11, "remote_host",             &Session::remoteHost,},
+        {12, "read_kanaele",            &Session::readChannel,},
+        {12, "read_statics",            &Session::readStatistics,},
+        {14, "read_parameter",          &Session::readParameter,},
+        {15, "read_statistics",         &Session::readStatistics,},
+//        {15, "write_parameter",       &Session::writeParameter,},
+        {17, "read_param_values",       &Session::readParamValues,},
         {0,},
     };
 
@@ -574,7 +612,6 @@ void Session::processCommand()
                 and !strncmp(cmds[idx].name, commandPtr, commandLen)) {
             pptr += cmds[idx].len;
             (this->*cmds[idx].func)();
-            cout << __LINE__ << "NNNNNNNNNNN" << endl;
             if (attr.id) {
                 MsrXml::Element ack("ack");
                 ack.setAttributeCheck("id", *attr.id);
@@ -637,7 +674,7 @@ void Session::readParameter()
     bool shortReply = attr.isTrue("short");
     bool hex = attr.isTrue("hex");
     std::string name;
-    int index;
+    unsigned int index;
     const HRTLab::Main::ParameterList& pl = main->getParameters();
 
     if (attr.getString("name", name)) {
@@ -650,8 +687,8 @@ void Session::readParameter()
 
         parameter = pl[vit->second->index];
     }
-    else if (attr.getInt("index", index)) {
-        if (static_cast<size_t>(index) >= pl.size())
+    else if (attr.getUnsigned("index", index)) {
+        if (index >= pl.size())
             return;
 
         parameter = pl[index];
@@ -880,9 +917,9 @@ void Session::writeParameter()
         return;
     }
 
-    HRTLab::Parameter *parameter;
-    size_t startindex = 0;
-    const HRTLab::Main::ParameterList& pl = main->getParameters();
+//    HRTLab::Parameter *parameter;
+//    size_t startindex = 0;
+//    const HRTLab::Main::ParameterList& pl = main->getParameters();
 
 //    if ((it = attributes.find("name")) != attributes.end()) {
 //        const HRTLab::Main::VariableMap& m = main->getVariableMap();
@@ -991,34 +1028,30 @@ void Session::writeParameter()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readChannels()
+void Session::readChannel()
 {
     HRTLab::Signal *signal = 0;
-    bool shortReply = false;
+    bool shortReply = attr.isTrue("short");
     const HRTLab::Main::SignalList& sl = main->getSignals();
+    std::string path;
+    unsigned int index;
 
-//    if ((it = attributes.find("short"))!= attributes.end()) {
-//        shortReply = atoi(it->second.c_str());
-//    }
-//
-//    if ((it = attributes.find("name")) != attributes.end()) {
-//        const HRTLab::Main::VariableMap& m = main->getVariableMap();
-//        HRTLab::Main::VariableMap::const_iterator vit = m.find(it->second);
-//
-//        if (vit == m.end() or vit->second->index >= sl.size()
-//                or sl[vit->second->index]->path != it->second)
-//            return;
-//
-//        signal = sl[vit->second->index];
-//    }
-//    else if ((it = attributes.find("index")) != attributes.end()) {
-//        unsigned int index = atoi(it->second.c_str());
-//
-//        if (index >= sl.size())
-//            return;
-//
-//        signal = sl[index];
-//    }
+    if (attr.getString("name", path)) {
+        const HRTLab::Main::VariableMap& m = main->getVariableMap();
+        HRTLab::Main::VariableMap::const_iterator vit = m.find(path);
+
+        if (vit == m.end() or vit->second->index >= sl.size()
+                or sl[vit->second->index]->path != path)
+            return;
+
+        signal = sl[vit->second->index];
+    }
+    else if (attr.getUnsigned("index", index)) {
+        if (index >= sl.size())
+            return;
+
+        signal = sl[index];
+    }
 
     if (signal) {
         char buf[signal->memSize];
@@ -1060,54 +1093,32 @@ void Session::xsad()
 {
     std::list<HRTLab::Signal*> channelList;
     unsigned int reduction, blocksize, precision = 10;
-    bool base64 = false;
+    bool base64 = attr.isEqual("coding", "Base64");
     const HRTLab::Main::SignalList& sl = main->getSignals();
+    std::list<unsigned int> indexList;
 
-//    if ((it = attributes.find("channels")) != attributes.end()) {
-//        std::istringstream is(it->second);
-//        while (is) {
-//            unsigned int index;
-//            char comma;
-//
-//            is >> index >> comma;
-//            if (index < sl.size())
-//                channelList.push_back(sl[index]);
-//        }
-//    }
-//
-//    if ((it = attributes.find("reduction")) != attributes.end()) {
-//        reduction = atoi(it->second.c_str());
-//    }
-//    else {
-//        reduction = 1 / main->baserate;
-//    }
-//
-//    if ((it = attributes.find("blocksize")) != attributes.end()) {
-//        blocksize = atoi(it->second.c_str());
-//    }
-//    else {
-//        blocksize = main->baserate;
-//    }
-//
-//    if ((it = attributes.find("coding")) != attributes.end()) {
-//        if (it->second == "Base64")
-//            base64 = true;
-//    }
-//
-//    if ((it = attributes.find("precision")) != attributes.end()) {
-//        precision = atoi(it->second.c_str());
-//    }
-//    else {
-//        precision = 10;
-//    }
-//
-//    if ((it = attributes.find("sync")) != attributes.end()) {
-//        quiet = false;
-//    }
-//
-//    if ((it = attributes.find("quiet")) != attributes.end()) {
-//        quiet = true;
-//    }
+    if (attr.getUnsignedList("channels", indexList)) {
+        for ( std::list<unsigned int>::const_iterator it(indexList.begin());
+                it != indexList.end(); it++) {
+            if (*it < sl.size())
+                channelList.push_back(sl[*it]);
+        }
+    }
+
+    if (!attr.getUnsigned("reduction", reduction)) {
+        reduction = 1 / main->baserate;
+    }
+
+    if (!attr.getUnsigned("blocksize", blocksize)) {
+        blocksize = main->baserate;
+    }
+
+    if (!attr.getUnsigned("precision", precision)) {
+        precision = 10;
+    }
+
+    quiet = !attr.isTrue("sync");
+    quiet = !attr.isTrue("quiet");
 
     const HRTLab::Signal *signals[channelList.size()];
     std::copy(channelList.begin(), channelList.end(), signals);
@@ -1123,35 +1134,32 @@ void Session::xsad()
 void Session::xsod()
 {
     std::list<HRTLab::Signal*> channelList;
+    std::list<unsigned int> intList;
     const HRTLab::Main::SignalList& sl = main->getSignals();
 
-//    if ((it = attributes.find("channels")) != attributes.end()) {
-//        std::istringstream is(it->second);
-//        while (is) {
-//            unsigned int index;
-//            char comma;
-//
-//            is >> index >> comma;
-//            if (index < sl.size())
-//                channelList.push_back(sl[index]);
-//        }
-//
-//        const HRTLab::Signal *signals[channelList.size()];
-//        std::copy(channelList.begin(), channelList.end(), signals);
-//        for (const HRTLab::Signal **sp = signals;
-//                sp != signals + channelList.size(); sp++) {
-//            task[(*sp)->tid]->rmSignal(*sp);
-//        }
-//
-//        main->unsubscribe(this, signals, channelList.size());
-//    }
-//    else {
-//        for (std::vector<Task*>::iterator it = task.begin();
-//                it != task.end(); it++) {
-//            (*it)->rmSignal(0);
-//        }
-//        main->clearSession(this);
-//    }
+    if (attr.getUnsignedList("channels", intList)) {
+        for (std::list<unsigned int>::const_iterator it = intList.begin();
+                it != intList.end(); it++) {
+            if (*it < sl.size())
+                channelList.push_back(sl[*it]);
+        }
+
+        const HRTLab::Signal *signals[channelList.size()];
+        std::copy(channelList.begin(), channelList.end(), signals);
+        for (const HRTLab::Signal **sp = signals;
+                sp != signals + channelList.size(); sp++) {
+            task[(*sp)->tid]->rmSignal(*sp);
+        }
+
+        main->unsubscribe(this, signals, channelList.size());
+    }
+    else {
+        for (std::vector<Task*>::iterator it = task.begin();
+                it != task.end(); it++) {
+            (*it)->rmSignal(0);
+        }
+        main->clearSession(this);
+    }
 
 }
 
@@ -1188,33 +1196,24 @@ struct timespec Session::getLoginTime() const
 /////////////////////////////////////////////////////////////////////////////
 void Session::remoteHost()
 {
-//    if ((it = attributes.find("name")) != attributes.end()) {
-//        remote = it->second;
-//    }
-//
-//    if ((it = attributes.find("applicationname")) != attributes.end()) {
-//        applicationname = it->second;
-//    }
-//
-//    if ((it = attributes.find("access")) != attributes.end()) {
-//        writeAccess = it->second == "allow";
-//
-//        if (writeAccess
-//                and (it = attributes.find("isadmin"))!= attributes.end()) {
-//            if (it->second == "true") {
-//                struct timespec ts;
-//                std::ostringstream os;
-//                server->getTime(ts);
-//
-//                os << "Adminmode filp: " << so; // so is the fd and comes from
-//                                                // ost::Socket
-//                MsrXml::Element info("info");
-//                info.setAttribute("time", ts);
-//                info.setAttributeCheck("text", os.str());
-//                server->broadcast(this, info);
-//            }
-//        }
-//    }
+    attr.getString("name", remote);
+
+    attr.getString("applicationname", applicationname);
+
+    writeAccess = attr.isEqual("access", "allow");
+
+    if (writeAccess and attr.isTrue("isadmin")) {
+        struct timespec ts;
+        std::ostringstream os;
+        server->getTime(ts);
+
+        os << "Adminmode filp: " << so; // so is the fd and comes from
+        // ost::Socket
+        MsrXml::Element info("info");
+        info.setAttribute("time", ts);
+        info.setAttributeCheck("text", os.str());
+        server->broadcast(this, info);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1228,18 +1227,19 @@ void Session::broadcast()
 {
     MsrXml::Element broadcast("broadcast");
     struct timespec ts;
+    std::string s;
 
     server->getTime(ts);
 
     broadcast.setAttribute("time", ts);
 
-//    if ((it = attributes.find("action"))!= attributes.end()) {
-//        broadcast.setAttributeCheck("action", it->second);
-//    }
-//
-//    if ((it = attributes.find("text"))!= attributes.end()) {
-//        broadcast.setAttributeCheck("text", it->second);
-//    }
+    if (attr.getString("action", s)) {
+        broadcast.setAttributeCheck("action", s);
+    }
+
+    if (attr.getString("text",s)) {
+        broadcast.setAttributeCheck("text", s);
+    }
     server->broadcast(this, broadcast);
 }
 
@@ -1252,9 +1252,10 @@ void Session::broadcast(Session *s, const MsrXml::Element &element)
 /////////////////////////////////////////////////////////////////////////////
 void Session::output()
 {
-    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+    //cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     ssize_t n = send(outbuf.c_str(), outbuf.length());
     if (n > 0) {
+        cout << ">>> " << std::string(outbuf.c_str(), n) << endl;
         outbuf.erase(0,n);
         dataOut += n;
     }

@@ -174,9 +174,12 @@ class Session: public ost::SocketPort, public HRTLab::Session,
                         char *attr, size_t attrLen);
                 bool find(const char *name,
                         char * &value, size_t &valueLen);
+                bool isEqual(const char *name, const char *s);
                 bool isTrue(const char *name);
                 bool getString(const char *name, std::string &s);
-                bool getInt(const char *name, int &i);
+                bool getUnsigned(const char *name, unsigned int &i);
+                bool getUnsignedList(const char *name,
+                        std::list<unsigned int> &i);
 
                 const std::string *id;
 
@@ -200,7 +203,7 @@ class Session: public ost::SocketPort, public HRTLab::Session,
         void broadcast();
         void echo();
         void ping();
-        void readChannels();
+        void readChannel();
         void readParameter();
         void readParamValues();
         void readStatistics();
