@@ -75,14 +75,43 @@ class Session: public ost::SocketPort, public HRTLab::Session,
 
         Server * const server;
 
+        // Reimplemented from streambuf
+        int sync();
+        int overflow(int c);
+        std::streamsize xsputn ( const char * s, std::streamsize n );
+
+        // Reimplemented from SocketPort
+        void expired();
+        void pending();
+        void output();
+        void disconnect();
+
+        // Reimplemented from HRTLab::Session
+        std::string getName() const;
+        std::string getClientName() const;
+        size_t getCountIn() const;
+        size_t getCountOut() const;
+        struct timespec getLoginTime() const;
+        size_t dataIn;
+        size_t dataOut;
+        struct timespec loginTime;
+
         bool writeAccess;
         bool quiet;
         bool echoOn;
         std::string remote;
         std::string applicationname;
 
-        std::string outbuf;
+        // Output buffer management
+        // Somewhat elusive, but makes writing to end of buffer and sending
+        // data fast
+        char *wbuf;      // Beginning of buffer
+        char *wbufpptr;  // Beginning of output data
+        char *wbufeptr;  // End of output data
+        size_t wbuffree; // Free space between end of data till buffer end
+        void checkwbuf(size_t n);       // Check for free space
 
+        // Input buffer management
         class Inbuf {
             public:
                 Inbuf();
@@ -100,57 +129,6 @@ class Session: public ost::SocketPort, public HRTLab::Session,
         };
 
         Inbuf inbuf;
-
-        size_t dataIn;
-        size_t dataOut;
-
-        struct timespec loginTime;
-
-        class Task {
-            public:
-                Task(Session *);
-                ~Task();
-
-                void rmSignal(const HRTLab::Signal *s);
-                void addSignal(const HRTLab::Signal *s,
-                        unsigned int decimation, size_t blocksize,
-                        bool base64, size_t precision);
-                void newList(unsigned int *tasks, size_t n);
-                void newValues(MsrXml::Element *, const char*);
-
-            private:
-                Session * const session;
-                bool quiet;
-
-                struct SignalData {
-                    const HRTLab::Signal *signal;
-                    MsrXml::Element *element;
-                    unsigned int decimation;
-                    unsigned int trigger;
-                    size_t blocksize;
-                    size_t sigMemSize;
-                    std::string (*print)(const HRTLab::Variable *v,
-                            const char* data, size_t precision, size_t n);
-                    size_t precision;
-                    char *data_bptr;
-                    char *data_pptr;
-                    char *data_eptr;
-                    size_t offset;
-                };
-
-                typedef std::list<SignalData> SignalList;
-                SignalList signals;
-
-                typedef std::map<unsigned int, SignalData> SubscribedSet;
-                SubscribedSet subscribedSet;
-        };
-
-        std::vector<Task*> task;
-
-        unsigned int * const signal_ptr_start;
-        unsigned int *signal_ptr;
-
-        static const char *getDTypeName(const HRTLab::Variable*);
 
         // Parser routines
         // Returning true within these routines will interrupt parsing
@@ -212,6 +190,52 @@ class Session: public ost::SocketPort, public HRTLab::Session,
         void xsad();
         void xsod();
 
+        class Task {
+            public:
+                Task(Session *);
+                ~Task();
+
+                void rmSignal(const HRTLab::Signal *s);
+                void addSignal(const HRTLab::Signal *s,
+                        unsigned int decimation, size_t blocksize,
+                        bool base64, size_t precision);
+                void newList(unsigned int *tasks, size_t n);
+                void newValues(MsrXml::Element *, const char*);
+
+            private:
+                Session * const session;
+                bool quiet;
+
+                struct SignalData {
+                    const HRTLab::Signal *signal;
+                    MsrXml::Element *element;
+                    unsigned int decimation;
+                    unsigned int trigger;
+                    size_t blocksize;
+                    size_t sigMemSize;
+                    std::string (*print)(const HRTLab::Variable *v,
+                            const char* data, size_t precision, size_t n);
+                    size_t precision;
+                    char *data_bptr;
+                    char *data_pptr;
+                    char *data_eptr;
+                    size_t offset;
+                };
+
+                typedef std::list<SignalData> SignalList;
+                SignalList signals;
+
+                typedef std::map<unsigned int, SignalData> SubscribedSet;
+                SubscribedSet subscribedSet;
+        };
+
+        std::vector<Task*> task;
+
+        unsigned int * const signal_ptr_start;
+        unsigned int *signal_ptr;
+
+        static const char *getDTypeName(const HRTLab::Variable*);
+
         static std::string toCSV( const HRTLab::Variable *v,
                 const char* data, size_t precision = 10, size_t n = 1);
         static std::string toHexDec( const HRTLab::Variable *v,
@@ -222,24 +246,6 @@ class Session: public ost::SocketPort, public HRTLab::Session,
                 const HRTLab::Parameter *p, bool shortReply, bool hex);
         void setChannelAttributes(MsrXml::Element *e,
                 const HRTLab::Signal *s, bool shortReply);
-
-        // Reimplemented from streambuf
-        int sync();
-        int overflow(int c);
-        std::streamsize xsputn ( const char * s, std::streamsize n );
-
-        // Reimplemented from SocketPort
-        void expired();
-        void pending();
-        void output();
-        void disconnect();
-
-        // Reimplemented from HRTLab::Session
-        std::string getName() const;
-        std::string getClientName() const;
-        size_t getCountIn() const;
-        size_t getCountOut() const;
-        struct timespec getLoginTime() const;
 };
 
 }
