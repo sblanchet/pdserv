@@ -9,6 +9,7 @@
 
 #include "Session.h"
 #include "Server.h"
+#include "Task.h"
 #include "XmlDoc.h"
 
 #include <iomanip>
@@ -45,7 +46,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     wbuffree = 0;
 
     for (size_t i = 0; i < main->nst; i++) {
-        task[i] = new Task(this);
+        task[i] = new Task(this, main);
     }
 
     setCompletion(false);
@@ -1121,8 +1122,19 @@ void Session::xsad()
         precision = 10;
     }
 
-    quiet = !attr.isTrue("sync");
-    quiet = !attr.isTrue("quiet");
+    if (attr.isTrue("quiet")) {
+        for (std::vector<Task*>::iterator it = task.begin();
+                it != task.end(); it++) {
+            (*it)->setQuiet(true);
+        }
+    }
+
+    if (attr.isTrue("sync")) {
+        for (std::vector<Task*>::iterator it = task.begin();
+                it != task.end(); it++) {
+            (*it)->setQuiet(false);
+        }
+    }
 
     const HRTLab::Signal *signals[channelList.size()];
     std::copy(channelList.begin(), channelList.end(), signals);

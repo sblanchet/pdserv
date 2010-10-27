@@ -164,7 +164,7 @@ void Element::setAttributeCheck(const char *a, const char *v, size_t n)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string toCSV( const HRTLab::Variable *v,
+std::string MsrXml::toCSV( const HRTLab::Variable *v,
         const char* data, size_t precision, size_t n)
 {
     std::ostringstream os;
@@ -250,7 +250,7 @@ std::string toCSV( const HRTLab::Variable *v,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string toHexDec( const HRTLab::Variable *v,
+std::string MsrXml::toHexDec( const HRTLab::Variable *v,
         const char* data, size_t precision, size_t n)
 {
     std::string s;
@@ -291,7 +291,7 @@ std::string toHexDec( const HRTLab::Variable *v,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string toBase64( const HRTLab::Variable *v,
+std::string MsrXml::toBase64( const HRTLab::Variable *v,
         const char* data, size_t precision, size_t n)
 {
     return "";

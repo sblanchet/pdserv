@@ -56,6 +56,7 @@ namespace MsrXml {
 namespace MsrProto {
 
 class Server;
+class Task;
 
 class Session: public ost::SocketPort, public HRTLab::Session,
     private std::streambuf, private std::ostream {
@@ -189,45 +190,6 @@ class Session: public ost::SocketPort, public HRTLab::Session,
         void writeParameter();
         void xsad();
         void xsod();
-
-        class Task {
-            public:
-                Task(Session *);
-                ~Task();
-
-                void rmSignal(const HRTLab::Signal *s);
-                void addSignal(const HRTLab::Signal *s,
-                        unsigned int decimation, size_t blocksize,
-                        bool base64, size_t precision);
-                void newList(unsigned int *tasks, size_t n);
-                void newValues(MsrXml::Element *, const char*);
-
-            private:
-                Session * const session;
-                bool quiet;
-
-                struct SignalData {
-                    const HRTLab::Signal *signal;
-                    MsrXml::Element *element;
-                    unsigned int decimation;
-                    unsigned int trigger;
-                    size_t blocksize;
-                    size_t sigMemSize;
-                    std::string (*print)(const HRTLab::Variable *v,
-                            const char* data, size_t precision, size_t n);
-                    size_t precision;
-                    char *data_bptr;
-                    char *data_pptr;
-                    char *data_eptr;
-                    size_t offset;
-                };
-
-                typedef std::list<SignalData> SignalList;
-                SignalList signals;
-
-                typedef std::map<unsigned int, SignalData> SubscribedSet;
-                SubscribedSet subscribedSet;
-        };
 
         std::vector<Task*> task;
 
