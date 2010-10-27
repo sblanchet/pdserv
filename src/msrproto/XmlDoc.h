@@ -19,9 +19,13 @@
 
 namespace HRTLab {
     class Variable;
+    class Signal;
+    class Parameter;
 }
 
 namespace MsrXml {
+
+class Element;
 
 std::string toCSV( const HRTLab::Variable *v,
         const char* data, size_t precision = 10, size_t n = 1);
@@ -29,7 +33,6 @@ std::string toHexDec( const HRTLab::Variable *v,
         const char* data, size_t precision = 10, size_t n = 1);
 std::string toBase64( const HRTLab::Variable *v,
         const char* data, size_t precision = 10, size_t n = 1);
-
 
 class Element {
     public:
@@ -67,6 +70,13 @@ class Element {
         void setAttribute(const char *name, const struct timespec&);
         template<class T>
             void setAttribute(const char *name, const T& value);
+
+        void setParameterAttributes( const HRTLab::Parameter *p,
+                bool shortReply, bool hex);
+        void setChannelAttributes( const HRTLab::Signal *s,
+                bool shortReply, double freq, size_t bufsize);
+
+        static const char *getDTypeName(const HRTLab::Variable*);
 
         friend std::ostream& operator<<(std::ostream& os, const Element& el);
 

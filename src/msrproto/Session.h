@@ -150,13 +150,6 @@ class Session: public ost::SocketPort, public HRTLab::Session,
 
         unsigned int * const signal_ptr_start;
         unsigned int *signal_ptr;
-
-        static const char *getDTypeName(const HRTLab::Variable*);
-
-        void setParameterAttributes(MsrXml::Element *e,
-                const HRTLab::Parameter *p, bool shortReply, bool hex);
-        void setChannelAttributes(MsrXml::Element *e,
-                const HRTLab::Signal *s, bool shortReply);
 };
 
 }

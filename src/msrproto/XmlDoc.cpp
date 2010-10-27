@@ -8,6 +8,8 @@
 
 #include "XmlDoc.h"
 #include "../Variable.h"
+#include "../Parameter.h"
+#include "../Signal.h"
 
 #include <stdint.h>
 #include <iomanip>
@@ -297,3 +299,186 @@ std::string MsrXml::toBase64( const HRTLab::Variable *v,
     return "";
 }
 
+/////////////////////////////////////////////////////////////////////////////
+void Element::setParameterAttributes( const HRTLab::Parameter *p,
+        bool shortReply, bool hex)
+{
+
+    // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
+    //            index="30" value="0"/>
+    // name=
+    // value=
+    // index=
+    setAttributeCheck("name", p->path);
+    setAttribute("index", p->index);
+    if (hex) {
+        setAttribute("hexvalue", MsrXml::toHexDec(p, p->Variable::addr));
+    }
+    else {
+        setAttribute("value", MsrXml::toCSV(p, p->Variable::addr));
+    }
+    if (shortReply)
+        return;
+
+    // datasize=
+    // flags= Add 0x100 for dependent variables
+    // mtime=
+    // typ=
+    setAttribute("datasize", p->width);
+    setAttribute("flags", 3);
+    setAttribute("mtime", p->getMtime());
+    setAttribute("typ", getDTypeName(p));
+
+    // unit=
+    if (p->unit.size()) {
+        setAttributeCheck("unit", p->unit);
+    }
+
+    // text=
+    if (p->comment.size()) {
+        setAttributeCheck("text", p->comment);
+    }
+
+    // For vectors:
+    // anz=
+    // cnum=
+    // rnum=
+    // orientation=
+    if (p->nelem > 1) {
+        setAttribute("anz",p->nelem);
+        const char *orientation;
+        size_t cnum, rnum;
+        switch (p->ndims) {
+            case 1:
+                {
+                    cnum = p->nelem;
+                    rnum = 1;
+                    orientation = "VECTOR";
+                }
+                break;
+
+            case 2:
+                {
+                    const size_t *dim = p->getDim();
+                    cnum = dim[1];
+                    rnum = dim[0];
+                    orientation = "MATRIX_ROW_MAJOR";
+                }
+                break;
+
+            default:
+                {
+                    const size_t *dim = p->getDim();
+                    cnum = dim[p->ndims - 1];
+                    rnum = p->nelem / cnum;
+                    orientation = "MATRIX_ROW_MAJOR";
+                }
+                break;
+        }
+        setAttribute("cnum", cnum);
+        setAttribute("rnum", rnum);
+        setAttribute("orientation", orientation);
+    }
+
+    // hide=
+    // unhide=
+    // persistent=
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Element::setChannelAttributes( const HRTLab::Signal *s,
+        bool shortReply, double freq, size_t bufsize)
+{
+    // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
+    //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
+    //
+    // name=
+    // value=
+    // index=
+    setAttributeCheck("name", s->path);
+    setAttribute("index", s->index);
+    if (shortReply)
+        return;
+
+    // datasize=
+    // typ=
+    // bufsize=
+    setAttribute("datasize", s->width);
+    setAttribute("typ", getDTypeName(s));
+    setAttribute("bufsize", bufsize);
+    setAttribute("HZ", freq);
+
+    // unit=
+    if (s->unit.size()) {
+        setAttributeCheck("unit", s->unit);
+    }
+
+    // text=
+    if (s->comment.size()) {
+        setAttributeCheck("text", s->comment);
+    }
+
+    // For vectors:
+    // anz=
+    // cnum=
+    // rnum=
+    // orientation=
+    if (s->nelem > 1) {
+        setAttribute("anz",s->nelem);
+        const char *orientation;
+        size_t cnum, rnum;
+        switch (s->ndims) {
+            case 1:
+                {
+                    cnum = s->nelem;
+                    rnum = 1;
+                    orientation = "VECTOR";
+                }
+                break;
+
+            case 2:
+                {
+                    const size_t *dim = s->getDim();
+                    cnum = dim[1];
+                    rnum = dim[0];
+                    orientation = "MATRIX_ROW_MAJOR";
+                }
+                break;
+
+            default:
+                {
+                    const size_t *dim = s->getDim();
+                    cnum = dim[s->ndims - 1];
+                    rnum = s->nelem / cnum;
+                    orientation = "MATRIX_ROW_MAJOR";
+                }
+                break;
+        }
+        setAttribute("cnum", cnum);
+        setAttribute("rnum", rnum);
+        setAttribute("orientation", orientation);
+    }
+
+    // hide=
+    // unhide=
+    // persistent=
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const char *Element::getDTypeName(const HRTLab::Variable *v)
+{
+    switch (v->dtype) {
+        case si_boolean_T: return "TCHAR";
+        case si_uint8_T:   return "TUCHAR";
+        case si_sint8_T:   return "TCHAR";
+        case si_uint16_T:  return "TUSHORT";
+        case si_sint16_T:  return "TSHORT";
+        case si_uint32_T:  return "TUINT";
+        case si_sint32_T:  return "TINT";
+        case si_uint64_T:  return "TULINT";
+        case si_sint64_T:  return "TLINT";
+        case si_single_T:  return "TDBL";
+        case si_double_T:  return "TFLT";
+        default:           return "";
+    }
+}

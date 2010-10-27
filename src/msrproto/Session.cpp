@@ -570,12 +570,17 @@ void Session::readChannel()
         signal = sl[index];
     }
 
+
     if (signal) {
         char buf[signal->memSize];
+        double freq = main->baserate / signal->decimation
+                / (main->decimation ? main->decimation[signal->tid] : 1);
+        size_t bufsize = std::max( 1U, (size_t)freq);
+
         main->poll(&signal, 1, buf);
 
         MsrXml::Element channel("channel");
-        setChannelAttributes(&channel, signal, shortReply);
+        channel.setChannelAttributes(signal, shortReply, freq, bufsize);
         channel.setAttribute("value", MsrXml::toCSV(signal, buf));
 
         *this << channel;
@@ -594,8 +599,13 @@ void Session::readChannel()
         MsrXml::Element channels("channels");
         const char *p = buf;
         for (size_t i = 0; i < sl.size(); i++) {
+            double freq = main->baserate / signal[i]->decimation
+                    / (main->decimation ? main->decimation[signal[i]->tid] : 1);
+
+            size_t bufsize = std::max( 1U, (size_t)freq);
+
             MsrXml::Element *c = channels.createChild("channel");
-            setChannelAttributes(c, signal[i], shortReply);
+            c->setChannelAttributes(signal[i], shortReply, freq, bufsize);
             c->setAttribute("value", MsrXml::toCSV(signal[i], p));
             p += signal[i]->memSize;
         }
@@ -634,7 +644,7 @@ void Session::readParameter()
     
     if (parameter) {
         MsrXml::Element p("parameter");
-        setParameterAttributes(&p, parameter, shortReply, hex);
+        p.setParameterAttributes(parameter, shortReply, hex);
         *this << p << std::flush;
     }
     else {
@@ -642,7 +652,7 @@ void Session::readParameter()
         for (HRTLab::Main::ParameterList::const_iterator it = pl.begin();
                 it != pl.end(); it++) {
             MsrXml::Element *p = parameters.createChild("parameter");
-            setParameterAttributes(p, *it, shortReply, hex);
+            p->setParameterAttributes(*it, shortReply, hex);
         }
         *this << parameters << std::flush;
     }
@@ -940,191 +950,3 @@ void Session::xsod()
     }
 
 }
-
-/////////////////////////////////////////////////////////////////////////////
-const char *Session::getDTypeName(const HRTLab::Variable *v)
-{
-    switch (v->dtype) {
-        case si_boolean_T: return "TCHAR";
-        case si_uint8_T:   return "TUCHAR";
-        case si_sint8_T:   return "TCHAR";
-        case si_uint16_T:  return "TUSHORT";
-        case si_sint16_T:  return "TSHORT";
-        case si_uint32_T:  return "TUINT";
-        case si_sint32_T:  return "TINT";
-        case si_uint64_T:  return "TULINT";
-        case si_sint64_T:  return "TLINT";
-        case si_single_T:  return "TDBL";
-        case si_double_T:  return "TFLT";
-        default:           return "";
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::setParameterAttributes(MsrXml::Element *e,
-        const HRTLab::Parameter *p, bool shortReply, bool hex)
-{
-
-    // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
-    //            index="30" value="0"/>
-    // name=
-    // value=
-    // index=
-    e->setAttributeCheck("name", p->path);
-    e->setAttribute("index", p->index);
-    if (hex) {
-        e->setAttribute("hexvalue", MsrXml::toHexDec(p, p->Variable::addr));
-    }
-    else {
-        e->setAttribute("value", MsrXml::toCSV(p, p->Variable::addr));
-    }
-    if (shortReply)
-        return;
-
-    // datasize=
-    // flags= Add 0x100 for dependent variables
-    // mtime=
-    // typ=
-    e->setAttribute("datasize", p->width);
-    e->setAttribute("flags", 3);
-    e->setAttribute("mtime", p->getMtime());
-    e->setAttribute("typ", getDTypeName(p));
-
-    // unit=
-    if (p->unit.size()) {
-        e->setAttributeCheck("unit", p->unit);
-    }
-
-    // text=
-    if (p->comment.size()) {
-        e->setAttributeCheck("text", p->comment);
-    }
-
-    // For vectors:
-    // anz=
-    // cnum=
-    // rnum=
-    // orientation=
-    if (p->nelem > 1) {
-        e->setAttribute("anz",p->nelem);
-        const char *orientation;
-        size_t cnum, rnum;
-        switch (p->ndims) {
-            case 1:
-                {
-                    cnum = p->nelem;
-                    rnum = 1;
-                    orientation = "VECTOR";
-                }
-                break;
-
-            case 2:
-                {
-                    const size_t *dim = p->getDim();
-                    cnum = dim[1];
-                    rnum = dim[0];
-                    orientation = "MATRIX_ROW_MAJOR";
-                }
-                break;
-
-            default:
-                {
-                    const size_t *dim = p->getDim();
-                    cnum = dim[p->ndims - 1];
-                    rnum = p->nelem / cnum;
-                    orientation = "MATRIX_ROW_MAJOR";
-                }
-                break;
-        }
-        e->setAttribute("cnum", cnum);
-        e->setAttribute("rnum", rnum);
-        e->setAttribute("orientation", orientation);
-    }
-
-    // hide=
-    // unhide=
-    // persistent=
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::setChannelAttributes(MsrXml::Element *e,
-        const HRTLab::Signal *s, bool shortReply)
-{
-    // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
-    //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
-    //
-    // name=
-    // value=
-    // index=
-    e->setAttributeCheck("name", s->path);
-    e->setAttribute("index", s->index);
-    if (shortReply)
-        return;
-
-    // datasize=
-    // typ=
-    // bufsize=
-    e->setAttribute("datasize", s->width);
-    e->setAttribute("typ", getDTypeName(s));
-    double freq = main->baserate / s->decimation
-            / (main->decimation ? main->decimation[s->tid] : 1);
-    e->setAttribute("bufsize", std::max(1, (int)(freq)));
-    e->setAttribute("HZ", main->baserate / s->decimation
-            / (main->decimation ? main->decimation[s->tid] : 1));
-
-    // unit=
-    if (s->unit.size()) {
-        e->setAttributeCheck("unit", s->unit);
-    }
-
-    // text=
-    if (s->comment.size()) {
-        e->setAttributeCheck("text", s->comment);
-    }
-
-    // For vectors:
-    // anz=
-    // cnum=
-    // rnum=
-    // orientation=
-    if (s->nelem > 1) {
-        e->setAttribute("anz",s->nelem);
-        const char *orientation;
-        size_t cnum, rnum;
-        switch (s->ndims) {
-            case 1:
-                {
-                    cnum = s->nelem;
-                    rnum = 1;
-                    orientation = "VECTOR";
-                }
-                break;
-
-            case 2:
-                {
-                    const size_t *dim = s->getDim();
-                    cnum = dim[1];
-                    rnum = dim[0];
-                    orientation = "MATRIX_ROW_MAJOR";
-                }
-                break;
-
-            default:
-                {
-                    const size_t *dim = s->getDim();
-                    cnum = dim[s->ndims - 1];
-                    rnum = s->nelem / cnum;
-                    orientation = "MATRIX_ROW_MAJOR";
-                }
-                break;
-        }
-        e->setAttribute("cnum", cnum);
-        e->setAttribute("rnum", rnum);
-        e->setAttribute("orientation", orientation);
-    }
-
-    // hide=
-    // unhide=
-    // persistent=
-}
-
