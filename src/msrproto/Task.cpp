@@ -10,6 +10,7 @@
 #include "Session.h"
 #include "Server.h"
 #include "XmlDoc.h"
+#include "Task.h"
 
 #include <iostream>
 #include <limits>
@@ -22,13 +23,13 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Task::Task(Session *s): session(s)
+Task::Task(Session *s, HRTLab::Main *m): session(s), main(m)
 {
     quiet = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Task::~Task()
+Task::~Task()
 {
     for (SubscribedSet::const_iterator it = subscribedSet.begin();
             it != subscribedSet.end(); it++) {
@@ -38,7 +39,21 @@ Session::Task::~Task()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::Task::rmSignal(const HRTLab::Signal *signal)
+void Task::setQuiet(bool q)
+{
+    if (!quiet and q) {
+        for (SignalList::iterator it = signals.begin();
+                it != signals.end(); it++) {
+            (*it).data_pptr = (*it).data_bptr;
+            (*it).trigger = (*it).decimation;
+        }
+    }
+
+    quiet = q;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::rmSignal(const HRTLab::Signal *signal)
 {
     if (signal) {
         SubscribedSet::iterator it = subscribedSet.find(signal->index);
@@ -59,7 +74,7 @@ void Session::Task::rmSignal(const HRTLab::Signal *signal)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::Task::addSignal(const HRTLab::Signal *signal,
+void Task::addSignal(const HRTLab::Signal *signal,
         unsigned int decimation, size_t blocksize, bool base64,
         size_t precision)
 {
@@ -86,7 +101,7 @@ void Session::Task::addSignal(const HRTLab::Signal *signal,
         trigger,
         blocksize,
         signal->memSize,
-        (base64 ? toBase64 : toCSV),
+        (base64 ? MsrXml::toBase64 : MsrXml::toCSV),
         precision
     };
     sd.data_bptr = new char[blocksize * signal->memSize];
@@ -96,25 +111,14 @@ void Session::Task::addSignal(const HRTLab::Signal *signal,
     sd.element->setAttribute("c", signal->index);
 
     subscribedSet[signal->index] = sd;
-
-    if (!quiet && session->quiet) {
-        quiet = true;
-        for (SignalList::iterator it = signals.begin();
-                it != signals.end(); it++) {
-            (*it).data_pptr = (*it).data_bptr;
-            (*it).trigger = (*it).decimation;
-        }
-    }
-
-    quiet = session->quiet;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::Task::newList(unsigned int *sigIdx, size_t n)
+void Task::newList(unsigned int *sigIdx, size_t n)
 {
     cout << __PRETTY_FUNCTION__ << ' ' << n << " new signals " << signals.size() << endl;
 
-    const HRTLab::Main::SignalList& sl = session->main->getSignals();
+    const HRTLab::Main::SignalList& sl = main->getSignals();
     SignalList::iterator sit = signals.begin();
     size_t offset = 0;
     size_t i = 0;
@@ -201,7 +205,7 @@ void Session::Task::newList(unsigned int *sigIdx, size_t n)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::Task::newValues(MsrXml::Element *parent, const char* dataPtr)
+void Task::newValues(MsrXml::Element *parent, const char* dataPtr)
 {
     if (quiet)
         return;

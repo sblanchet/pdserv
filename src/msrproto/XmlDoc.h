@@ -23,6 +23,14 @@ namespace HRTLab {
 
 namespace MsrXml {
 
+std::string toCSV( const HRTLab::Variable *v,
+        const char* data, size_t precision = 10, size_t n = 1);
+std::string toHexDec( const HRTLab::Variable *v,
+        const char* data, size_t precision = 10, size_t n = 1);
+std::string toBase64( const HRTLab::Variable *v,
+        const char* data, size_t precision = 10, size_t n = 1);
+
+
 class Element {
     public:
         Element(const char *name, size_t indent = 0);

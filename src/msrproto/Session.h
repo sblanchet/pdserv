@@ -236,12 +236,6 @@ class Session: public ost::SocketPort, public HRTLab::Session,
 
         static const char *getDTypeName(const HRTLab::Variable*);
 
-        static std::string toCSV( const HRTLab::Variable *v,
-                const char* data, size_t precision = 10, size_t n = 1);
-        static std::string toHexDec( const HRTLab::Variable *v,
-                const char* data, size_t precision = 10, size_t n = 1);
-        static std::string toBase64( const HRTLab::Variable *v,
-                const char* data, size_t precision = 10, size_t n = 1);
         void setParameterAttributes(MsrXml::Element *e,
                 const HRTLab::Parameter *p, bool shortReply, bool hex);
         void setChannelAttributes(MsrXml::Element *e,
