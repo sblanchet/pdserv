@@ -15,6 +15,7 @@ add_library( rtlab SHARED
     etlproto/Server.cpp etlproto/Server.h
     etlproto/Session.cpp etlproto/Session.h
 
+    msrproto/Inbuf.cpp msrproto/Inbuf.h
     msrproto/Server.cpp msrproto/Server.h
     msrproto/Task.cpp msrproto/Task.h
     msrproto/Session.cpp msrproto/Session.h

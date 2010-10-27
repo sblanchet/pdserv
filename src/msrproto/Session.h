@@ -30,6 +30,7 @@
 */
 
 #include "../Session.h"
+#include "Inbuf.h"
 
 #include <cc++/socketport.h> 
 #include <iosfwd>
@@ -111,23 +112,6 @@ class Session: public ost::SocketPort, public HRTLab::Session,
         char *wbufeptr;  // End of output data
         size_t wbuffree; // Free space between end of data till buffer end
         void checkwbuf(size_t n);       // Check for free space
-
-        // Input buffer management
-        class Inbuf {
-            public:
-                Inbuf();
-                ~Inbuf();
-                bool empty() const;
-                void erase(const char *p);
-                char *bptr() const;
-                const char *eptr() const;
-                char *rptr(size_t n = 0);
-                size_t free() const;
-
-            private:
-                size_t bufLen;
-                char *_bptr, *_eptr;
-        };
 
         Inbuf inbuf;
 
