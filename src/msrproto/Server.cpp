@@ -1,8 +1,8 @@
-#include "MsrServer.h"
-#include "Main.h"
+#include "Server.h"
+#include "../Main.h"
 #include <cc++/socketport.h>
 
-#include "MsrSession.h"
+#include "Session.h"
 
 #include <iostream>
 using std::cout;

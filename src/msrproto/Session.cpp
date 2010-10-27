@@ -2,12 +2,12 @@
  * $Id$
  *****************************************************************************/
 
-#include "MsrSession.h"
-#include "Main.h"
-#include "Variable.h"
-#include "Parameter.h"
-#include "Signal.h"
-#include "MsrServer.h"
+#include "Session.h"
+#include "Server.h"
+#include "../Main.h"
+#include "../Variable.h"
+#include "../Parameter.h"
+#include "../Signal.h"
 #include "XmlDoc.h"
 
 #include <iostream>

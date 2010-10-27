@@ -11,11 +11,13 @@ add_library( rtlab SHARED
     Variable.cpp Variable.h
     Signal.cpp Signal.h
     Parameter.cpp Parameter.h
+
     etlproto/Server.cpp etlproto/Server.h
     etlproto/Session.cpp etlproto/Session.h
-    MsrServer.cpp MsrServer.h
-    MsrSessionTask.cpp MsrSession.cpp MsrSession.h
-    XmlDoc.cpp XmlDoc.h
+
+    msrproto/Server.cpp msrproto/Server.h
+    msrproto/Task.cpp msrproto/Session.cpp msrproto/Session.h
+    msrproto/XmlDoc.cpp msrproto/XmlDoc.h
     )
 
 target_link_libraries(rtlab ccext2 xml2 xerces-c)

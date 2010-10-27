@@ -10,7 +10,7 @@
 #include <sys/time.h>
 
 #include "etlproto/Server.h"
-#include "MsrServer.h"
+#include "msrproto/Server.h"
 
 #include <iostream>
 using std::cout;

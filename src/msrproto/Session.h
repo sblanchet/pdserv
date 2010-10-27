@@ -29,7 +29,7 @@
 
 */
 
-#include "Session.h"
+#include "../Session.h"
 
 #include <cc++/socketport.h> 
 #include <iosfwd>
