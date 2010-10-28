@@ -31,6 +31,7 @@
 
 #include "../Session.h"
 #include "Inbuf.h"
+#include "Outbuf.h"
 #include "Attribute.h"
 
 #include <cc++/socketport.h> 
@@ -60,8 +61,7 @@ namespace MsrProto {
 class Server;
 class Task;
 
-class Session: public ost::SocketPort, public HRTLab::Session,
-    private std::streambuf, private std::ostream {
+class Session: public ost::SocketPort, public HRTLab::Session {
     public:
         Session(
                 Server *s,
@@ -71,17 +71,12 @@ class Session: public ost::SocketPort, public HRTLab::Session,
         ~Session();
 
         void broadcast(Session *s, const MsrXml::Element &element);
-
         void parameterChanged(const HRTLab::Parameter*);
+        void requestOutput();
 
     private:
 
         Server * const server;
-
-        // Reimplemented from streambuf
-        int sync();
-        int overflow(int c);
-        std::streamsize xsputn ( const char * s, std::streamsize n );
 
         // Reimplemented from SocketPort
         void expired();
@@ -105,15 +100,7 @@ class Session: public ost::SocketPort, public HRTLab::Session,
         std::string remote;
         std::string applicationname;
 
-        // Output buffer management
-        // Somewhat elusive, but makes writing to end of buffer and sending
-        // data fast
-        char *wbuf;      // Beginning of buffer
-        char *wbufpptr;  // Beginning of output data
-        char *wbufeptr;  // End of output data
-        size_t wbuffree; // Free space between end of data till buffer end
-        void checkwbuf(size_t n);       // Check for free space
-
+        Outbuf outbuf;
         Inbuf inbuf;
 
         // Parser routines

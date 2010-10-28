@@ -27,8 +27,7 @@ using namespace MsrProto;
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), HRTLab::Session(main),
-    std::ostream(this),
-    server(s), task(main->nst),
+    server(s), outbuf(this), task(main->nst),
     signal_ptr_start(main->getSignalPtrStart())
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
@@ -41,9 +40,6 @@ Session::Session( Server *s, ost::SocketService *ss,
     dataIn = 0;
     dataOut = 0;
     main->gettime(&loginTime);
-
-    wbuf = wbufeptr = wbufpptr = 0;
-    wbuffree = 0;
 
     for (size_t i = 0; i < main->nst; i++) {
         task[i] = new Task(this, main);
@@ -59,7 +55,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     greeting.setAttribute("features", MSR_FEATURES);
     greeting.setAttribute("recievebufsize", 100000000);
 
-    *this << greeting << std::flush;
+    outbuf << greeting << std::flush;
 
     // Skip all data in the inbox thus far
     signal_ptr = signal_ptr_start;
@@ -83,14 +79,13 @@ Session::~Session()
     for (size_t i = 0; i < main->nst; i++) {
         delete task[i];
     }
-    delete[] wbuf;
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::broadcast(Session *s, const MsrXml::Element &element)
 {
-    *this << element << std::flush;
+    outbuf << element << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -99,34 +94,13 @@ void Session::parameterChanged(const HRTLab::Parameter *p)
     MsrXml::Element pu("pu");
     pu.setAttribute("index", p->index);
 
-    *this << pu << std::flush;
+    outbuf << pu << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Session::sync()
+void Session::requestOutput()
 {
-    if (wbufpptr != wbufeptr)
-        setDetectOutput(true);
-    return 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int Session::overflow(int c)
-{
-    checkwbuf(1);
-    *wbufeptr++ = c;
-    wbuffree--;
-    return c;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-std::streamsize Session::xsputn ( const char * s, std::streamsize n )
-{
-    checkwbuf(n);
-    std::copy(s, s+n, wbufeptr);
-    wbufeptr += n;
-    wbuffree -= n;
-    return n;
+    setDetectOutput(true);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -171,7 +145,7 @@ void Session::expired()
                     task[tid]->newValues(&data, dataPtr);
 
                     if (data.hasChildren())
-                        *this << data << std::flush;
+                        outbuf << data << std::flush;
 
                     data.releaseChildren();
                 }
@@ -226,7 +200,7 @@ void Session::pending()
 void Session::output()
 {
     //cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
-    ssize_t n = send(wbufpptr, wbufeptr - wbufpptr);
+    ssize_t n = send(outbuf.bufptr(), outbuf.size());
 
     // In case of error, exit
     if (n <= 0) {
@@ -235,13 +209,9 @@ void Session::output()
     }
 
     dataOut += n;
-    wbufpptr += n;
 
-    if (wbufpptr == wbufeptr) {
-        wbuffree += wbufeptr - wbuf;
-        wbufpptr = wbufeptr = wbuf;
+    if (outbuf.clear(n))
         setDetectOutput(false);
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -279,39 +249,6 @@ size_t Session::getCountOut() const
 struct timespec Session::getLoginTime() const
 {
     return loginTime;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::checkwbuf(size_t n)
-{
-    static size_t chunk = 1024 - 1;
-
-    // Check whether there is enough space at the end of the buffer
-    if (wbuffree >= n)
-        return;
-
-    // Check whether total free space is enough
-    if (wbuffree + (wbufpptr - wbuf) >= n) {
-        std::copy(wbufpptr, wbufeptr, wbuf);
-        wbufeptr -= wbufpptr - wbuf;
-        wbuffree += wbufpptr - wbuf;
-        wbufpptr = wbuf;
-        return;
-    }
-
-    // Increment in chunk quantums
-    wbuffree += (n + chunk) & ~chunk;
-    char *p = new char[wbuffree + (wbufeptr - wbuf)];
-
-    // Copy unwritten data to new buffer
-    std::copy(wbufpptr, wbufeptr, p);
-
-    delete[] wbuf;
-
-    // Update pointers
-    wbufeptr = p + (wbufeptr - wbufpptr);
-    wbuffree += wbufpptr - wbuf;
-    wbuf = wbufpptr = p;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -493,7 +430,7 @@ void Session::processCommand()
             if (attr.id) {
                 MsrXml::Element ack("ack");
                 ack.setAttributeCheck("id", *attr.id);
-                *this << ack << std::flush;
+                outbuf << ack << std::flush;
             }
             return;
         }
@@ -503,7 +440,7 @@ void Session::processCommand()
     warn.setAttribute("num", 1000);
     warn.setAttribute("text", "unknown command");
     warn.setAttributeCheck("command", commandPtr, commandLen);
-    *this << warn << std::flush;
+    outbuf << warn << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -541,7 +478,7 @@ void Session::ping()
     if (attr.id)
         ping.setAttributeCheck("id", *attr.id);
 
-    *this << ping << std::flush;
+    outbuf << ping << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -583,7 +520,7 @@ void Session::readChannel()
         channel.setChannelAttributes(signal, shortReply, freq, bufsize);
         channel.setAttribute("value", MsrXml::toCSV(signal, buf));
 
-        *this << channel;
+        outbuf << channel;
     }
     else {
         HRTLab::Signal *signal[sl.size()];
@@ -609,10 +546,10 @@ void Session::readChannel()
             c->setAttribute("value", MsrXml::toCSV(signal[i], p));
             p += signal[i]->memSize;
         }
-        *this << channels;
+        outbuf << channels;
     }
 
-    *this << std::flush;
+    outbuf << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -645,7 +582,7 @@ void Session::readParameter()
     if (parameter) {
         MsrXml::Element p("parameter");
         p.setParameterAttributes(parameter, shortReply, hex);
-        *this << p << std::flush;
+        outbuf << p << std::flush;
     }
     else {
         MsrXml::Element parameters("parameters");
@@ -654,7 +591,7 @@ void Session::readParameter()
             MsrXml::Element *p = parameters.createChild("parameter");
             p->setParameterAttributes(*it, shortReply, hex);
         }
-        *this << parameters << std::flush;
+        outbuf << parameters << std::flush;
     }
 }
 
@@ -675,7 +612,7 @@ void Session::readParamValues()
 
     param_values.setAttribute("value", v);
 
-    *this << param_values << std::flush;
+    outbuf << param_values << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -703,7 +640,7 @@ void Session::readStatistics()
         e->setAttribute("connectedtime", (*it)->getLoginTime());
     }
 
-    *this << clients << std::flush;
+    outbuf << clients << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -735,7 +672,7 @@ void Session::writeParameter()
     if (!writeAccess) {
         MsrXml::Element warn("warn");
         warn.setAttribute("text", "No write access");
-        *this << warn << std::flush;
+        outbuf << warn << std::flush;
         return;
     }
 
@@ -871,7 +808,7 @@ void Session::xsad()
                 MsrXml::Element warn("warn");
                 warn.setAttribute("text", os.str());
                 warn.setAttribute("command", "xsad");
-                *this << warn << std::flush;
+                outbuf << warn << std::flush;
 
                 return;
             }
