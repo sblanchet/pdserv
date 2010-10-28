@@ -29,11 +29,11 @@ class Outbuf: public std::streambuf, public std::ostream {
         // Output buffer management
         // Somewhat elusive, but makes writing to end of buffer and sending
         // data fast
-        char *wbuf;      // Beginning of buffer
-        char *wbufpptr;  // Beginning of output data
-        char *wbufeptr;  // End of output data
-        size_t wbuffree; // Free space between end of data till buffer end
-        void checkwbuf(size_t n);       // Check for free space
+        char *bptr;     // Beginning of buffer
+        char *pptr;     // Beginning of output data
+        char *eptr;     // End of output data
+        size_t free;    // Free space between end of data till buffer end
+        void checkFreeSpace(size_t n);       // Check for free space
 
         // Reimplemented from streambuf
         int sync();

@@ -5,50 +5,54 @@
 #include "Outbuf.h"
 #include "Session.h"
 
+#include <locale>
+
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Outbuf::Outbuf(Session *s): std::ostream(this), session(s)
 {
-    wbuf = wbufeptr = wbufpptr = 0;
-    wbuffree = 0;
+    bptr = eptr = pptr = 0;
+    free = 0;
+
+    std::ostream::imbue(std::locale::classic());
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Outbuf::~Outbuf()
 {
-    delete[] wbuf;
+    delete[] bptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 const char *Outbuf::bufptr() const
 {
-    return wbufpptr;
+    return pptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 size_t Outbuf::size() const
 {
-    return wbufeptr - wbufpptr;
+    return eptr - pptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 bool Outbuf::clear(size_t n)
 {
-    wbufpptr += n;
+    pptr += n;
 
-    if (wbufpptr == wbufeptr) {
-        wbuffree += wbufeptr - wbuf;
-        wbufpptr = wbufeptr = wbuf;
+    if (pptr == eptr) {
+        free += eptr - bptr;
+        pptr = eptr = bptr;
     }
 
-    return wbufpptr == wbufeptr;
+    return pptr == eptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 int Outbuf::sync()
 {
-    if (wbufpptr != wbufeptr)
+    if (pptr != eptr)
         session->requestOutput();
     return 0;
 }
@@ -56,51 +60,51 @@ int Outbuf::sync()
 /////////////////////////////////////////////////////////////////////////////
 int Outbuf::overflow(int c)
 {
-    checkwbuf(1);
-    *wbufeptr++ = c;
-    wbuffree--;
+    checkFreeSpace(1);
+    *eptr++ = c;
+    free--;
     return c;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 std::streamsize Outbuf::xsputn ( const char * s, std::streamsize n )
 {
-    checkwbuf(n);
-    std::copy(s, s+n, wbufeptr);
-    wbufeptr += n;
-    wbuffree -= n;
+    checkFreeSpace(n);
+    std::copy(s, s+n, eptr);
+    eptr += n;
+    free -= n;
     return n;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Outbuf::checkwbuf(size_t n)
+void Outbuf::checkFreeSpace(size_t n)
 {
     static size_t chunk = 1024 - 1;
 
     // Check whether there is enough space at the end of the buffer
-    if (wbuffree >= n)
+    if (free >= n)
         return;
 
     // Check whether total free space is enough
-    if (wbuffree + (wbufpptr - wbuf) >= n) {
-        std::copy(wbufpptr, wbufeptr, wbuf);
-        wbufeptr -= wbufpptr - wbuf;
-        wbuffree += wbufpptr - wbuf;
-        wbufpptr = wbuf;
+    if (free + (pptr - bptr) >= n) {
+        std::copy(pptr, eptr, bptr);
+        eptr -= pptr - bptr;
+        free += pptr - bptr;
+        pptr = bptr;
         return;
     }
 
     // Increment in chunk quantums
-    wbuffree += (n + chunk) & ~chunk;
-    char *p = new char[wbuffree + (wbufeptr - wbuf)];
+    free += (n + chunk) & ~chunk;
+    char *p = new char[free + (eptr - bptr)];
 
     // Copy unwritten data to new buffer
-    std::copy(wbufpptr, wbufeptr, p);
+    std::copy(pptr, eptr, p);
 
-    delete[] wbuf;
+    delete[] bptr;
 
     // Update pointers
-    wbufeptr = p + (wbufeptr - wbufpptr);
-    wbuffree += wbufpptr - wbuf;
-    wbuf = wbufpptr = p;
+    eptr = p + (eptr - pptr);
+    free += pptr - bptr;
+    bptr = pptr = p;
 }
