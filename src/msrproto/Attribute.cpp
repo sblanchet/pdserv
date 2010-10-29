@@ -7,6 +7,7 @@
 #include <cstring>
 #include <algorithm>
 #include <sstream>
+#include <locale>
 
 using namespace MsrProto;
 
@@ -19,41 +20,41 @@ void Attr::clear()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Attr::insert(const char *name, size_t nameLen)
+void Attr::insert(const char *name)
 {
     //cout << "Binary attribute: Name=" << std::string(name, nameLen) << endl;
-    AttrPtrs a = {name, nameLen, 0, 0};
-    attrMap.insert(std::pair<size_t,AttrPtrs>(nameLen,a));
+    AttrPtrs a = {name, 0};
+    attrMap.insert(std::pair<size_t,AttrPtrs>(strlen(name), a));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Attr::insert(const char *name, size_t nameLen,
-                        char *value, size_t valueLen)
+void Attr::insert(const char *name, char *value)
 {
     //cout << "Value attribute: Name=" << std::string(name, nameLen)
         //<< ", Value=" << std::string(value, valueLen)
         //<< endl;
-    if (nameLen == 2 and !strncmp(name, "id", 2)) {
-        _id.assign(value, valueLen);
+    size_t len = strlen(name);
+
+    if (len == 2 and !strncmp(name, "id", 2)) {
+        _id.assign(value);
         id = &_id;
         return;
     }
 
-    AttrPtrs a = {name, nameLen, value, valueLen};
-    attrMap.insert(std::pair<size_t,AttrPtrs>(nameLen,a));
+    AttrPtrs a = {name, value};
+    attrMap.insert(std::pair<size_t,AttrPtrs>(len, a));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Attr::find(const char *name, char * &value, size_t &valueLen)
+bool Attr::find(const char *name, char * &value) const
 {
     size_t len = strlen(name);
-    std::pair<AttrMap::iterator, AttrMap::iterator>
+    std::pair<AttrMap::const_iterator, AttrMap::const_iterator>
         ret(attrMap.equal_range(len));
 
-    for (AttrMap::iterator it(ret.first); it != ret.second; it++) {
+    for (AttrMap::const_iterator it(ret.first); it != ret.second; it++) {
         if (!strncmp(name, it->second.name, len)) {
             value = it->second.value;
-            valueLen = it->second.valueLen;
             return true;
         }
     }
@@ -62,52 +63,49 @@ bool Attr::find(const char *name, char * &value, size_t &valueLen)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Attr::isEqual(const char *name, const char *s)
+bool Attr::isEqual(const char *name, const char *s) const
 {
     char *value;
-    size_t valueLen;
 
-    if (find(name, value, valueLen))
-        return !strncasecmp(value, s, valueLen);
+    if (find(name, value))
+        return !strcasecmp(value, s);
 
     return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Attr::isTrue(const char *name)
+bool Attr::isTrue(const char *name) const
 {
     char *value;
-    size_t valueLen;
 
-    if (!(find(name, value, valueLen)))
+    if (!(find(name, value)))
         return false;
 
-    if (valueLen == 1)
+    size_t len = strlen(value);
+
+    if (len == 1)
         return *value == '1';
 
-    if (valueLen == 4)
+    if (len == 4)
         return !strncasecmp(value, "true", 4);
 
-    if (valueLen == 2)
+    if (len == 2)
         return !strncasecmp(value, "on", 2);
 
     return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Attr::getString(const char *name, std::string &s)
+bool Attr::getString(const char *name, std::string &s) const
 {
     char *value;
-    size_t valueLen;
 
     s.clear();
 
-    if (!(find(name, value, valueLen)))
+    if (!(find(name, value)))
         return false;
 
-    value[valueLen] = 0;
-
-    char *pptr, *eptr = value + valueLen;
+    char *pptr, *eptr = value + strlen(value);
     while ((pptr = std::find(value, eptr, '&')) != eptr) {
         s.append(value, pptr - value);
         size_t len = eptr - pptr;
@@ -142,15 +140,12 @@ bool Attr::getString(const char *name, std::string &s)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Attr::getUnsigned(const char *name, unsigned int &i)
+bool Attr::getUnsigned(const char *name, unsigned int &i) const
 {
     char *value;
-    size_t valueLen;
 
-    if (!(find(name, value, valueLen)))
+    if (!(find(name, value)))
         return false;
-
-    value[valueLen] = 0;
 
     i = strtoul(value, 0, 0);
     return true;
@@ -158,17 +153,16 @@ bool Attr::getUnsigned(const char *name, unsigned int &i)
 
 /////////////////////////////////////////////////////////////////////////////
 bool Attr::getUnsignedList(const char *name,
-        std::list<unsigned int> &intList)
+        std::list<unsigned int> &intList) const
 {
     char *value;
-    size_t valueLen;
 
-    if (!(find(name, value, valueLen)))
+    if (!(find(name, value)))
         return false;
 
-    value[valueLen] = 0;
-
     std::istringstream is(value);
+    is.imbue(std::locale::classic());
+
     while (is) {
         unsigned int i;
         char comma;

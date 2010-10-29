@@ -27,13 +27,12 @@ using namespace MsrProto;
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), HRTLab::Session(main),
-    server(s), outbuf(this), task(main->nst),
+    server(s), outbuf(this), inbuf(this), task(main->nst),
     signal_ptr_start(main->getSignalPtrStart())
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     attach(ss);
 
-    bptr = 0;
     writeAccess = false;
     echoOn = false;
     quiet = false;
@@ -79,7 +78,6 @@ Session::~Session()
     for (size_t i = 0; i < main->nst; i++) {
         delete task[i];
     }
-    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -166,24 +164,19 @@ void Session::pending()
     size_t inputLen = 0;
 
     do {
-        char *p = inbuf.rptr();
         count = inbuf.free();
-        n = receive(p, count);
+        count = 1;
+        n = receive(inbuf.bufptr(), count);
 
         // No more data available or there was an error
         if (n <= 0)
             break;
 
-        inbuf.rptr(n);
-
         dataIn += n;    // Global input counter
         inputLen += n;  // Local input counter
 
-        char *buf = inbuf.bptr();
-        parseInput(buf, inbuf.eptr());
-        inbuf.erase(buf);
+        inbuf.parse(n);
 
-        //cout << __LINE__ << "n == count: " << n << ' ' << count << endl;
     } while (n == count);
 
     if (!inputLen) {
@@ -252,151 +245,14 @@ struct timespec Session::getLoginTime() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::parseInput(char * &buf, const char * const eptr)
+void Session::processCommand(const char *command, const Attr &attr)
 {
-    //cout << __LINE__ << __PRETTY_FUNCTION__ << ' ' << (void*)buf << endl;
-    //cout << "   ->" << std::string(buf, eptr - buf) << "<-" << endl;
+    size_t commandLen = strlen(command);
 
-    if (bptr != buf) {
-        parseState = FindStart;
-        bptr = buf;
-        pptr = buf;
-    }
-
-    while (true) {
-        switch (parseState) {
-            case FindStart:
-                //cout << __LINE__ << "FindStart" << endl;
-
-                attr.clear();
-                
-                // Move forward in the buffer until '<' is found
-                buf = std::find(buf, const_cast<char*>(eptr), '<');
-                if (buf == eptr) {
-                    return;
-                }
-
-                pptr = buf + 1;
-                commandPtr = pptr;
-                parseState = GetCommand;
-                //cout << "Found command at " << (void*)commandPtr << endl;
-                // no break here
-
-            case GetCommand:
-                //cout << __LINE__ << "GetCommand" << endl;
-                while (pptr != eptr and (isalpha(*pptr) or *pptr == '_'))
-                    pptr++;
-
-                if (pptr == eptr)
-                    return;
-
-                commandLen = pptr - commandPtr;
-                parseState = GetToken;
-                cout << "Command is " << std::string(commandPtr, commandLen) << endl;
-                // no break here
-
-            case GetToken:
-                //cout << __LINE__ << "GetToken" << endl;
-                while (pptr != eptr and isspace(*pptr))
-                    pptr++;
-
-                if (pptr == eptr)
-                    return;
-
-                if (!isalpha(*pptr)) {
-                    if (*pptr == '>') {
-                        buf = pptr + 1;
-                        //cout << __LINE__ << "processCommand()" << endl;
-                        processCommand();
-                    }
-                    else if (*pptr == '/') {
-                        if (eptr - pptr < 2)
-                            return;
-
-                        if (pptr[1] == '>') {
-                            buf = pptr + 2;
-                            //cout << __LINE__ << "processCommand()" << endl;
-                            processCommand();
-                        }
-                        else {
-                            buf = pptr + 1;
-                        }
-                    }
-                    else {
-                        buf = pptr;
-                    }
-                    parseState = FindStart;
-                    break;
-                }
-
-                attrName = pptr;
-                parseState = GetAttribute;
-
-            case GetAttribute:
-                //cout << __LINE__ << "GetAttribute" << endl;
-                while (pptr != eptr and isalpha(*pptr))
-                    pptr++;
-
-                if (pptr == eptr)
-                    return;
-
-                if (*pptr == '=') {
-                    // Value attribute
-                    attrLen = pptr - attrName;
-                    pptr++;
-                }
-                else {
-                    if (isspace(*pptr)) {
-                        // Binary attribute
-                        attr.insert(attrName, pptr - attrName);
-                    }
-                    parseState = GetToken;
-                    break;
-                }
-
-                parseState = GetQuote;
-                // no break here
-
-            case GetQuote:
-                //cout << __LINE__ << "GetQuote" << endl;
-                if (pptr == eptr)
-                    return;
-
-                quote = *pptr;
-                if (quote != '\'' and quote != '"') {
-                    buf = pptr;
-                    parseState = FindStart;
-                    break;
-                }
-
-                pptr++;
-                attrValue = pptr;
-                parseState = GetValue;
-                // no break here
-
-            case GetValue:
-                //cout << __LINE__ << "GetValue" << endl;
-                pptr = std::find(pptr, const_cast<char*>(eptr), quote);
-
-                if (pptr == eptr)
-                    return;
-
-                attr.insert(attrName, attrLen,
-                        attrValue, pptr - attrValue);
-                pptr++;
-                
-                parseState = GetToken;
-        }
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::processCommand()
-{
     static struct {
         size_t len;
         const char *name;
-        void (Session::*func)();
+        void (Session::*func)(const Attr &attr);
     } cmds[] = {
         // First list most common commands
         { 2, "rs",                      &Session::readStatistics},
@@ -424,9 +280,8 @@ void Session::processCommand()
 
     for (size_t idx = 0; cmds[idx].len; idx++) {
         if (commandLen == cmds[idx].len
-                and !strncmp(cmds[idx].name, commandPtr, commandLen)) {
-            pptr += cmds[idx].len;
-            (this->*cmds[idx].func)();
+                and !strcmp(cmds[idx].name, command)) {
+            (this->*cmds[idx].func)(attr);
             if (attr.id) {
                 MsrXml::Element ack("ack");
                 ack.setAttributeCheck("id", *attr.id);
@@ -439,12 +294,12 @@ void Session::processCommand()
     MsrXml::Element warn("warn");
     warn.setAttribute("num", 1000);
     warn.setAttribute("text", "unknown command");
-    warn.setAttributeCheck("command", commandPtr, commandLen);
+    warn.setAttributeCheck("command", command);
     outbuf << warn << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::broadcast()
+void Session::broadcast(const Attr &attr)
 {
     MsrXml::Element broadcast("broadcast");
     struct timespec ts;
@@ -465,13 +320,13 @@ void Session::broadcast()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::echo()
+void Session::echo(const Attr &attr)
 {
     echoOn = attr.isTrue("value");
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::ping()
+void Session::ping(const Attr &attr)
 {
     MsrXml::Element ping("ping");
 
@@ -482,7 +337,7 @@ void Session::ping()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readChannel()
+void Session::readChannel(const Attr &attr)
 {
     HRTLab::Signal *signal = 0;
     bool shortReply = attr.isTrue("short");
@@ -553,7 +408,7 @@ void Session::readChannel()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readParameter()
+void Session::readParameter(const Attr &attr)
 {
     HRTLab::Parameter *parameter = 0;
     bool shortReply = attr.isTrue("short");
@@ -596,7 +451,7 @@ void Session::readParameter()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readParamValues()
+void Session::readParamValues(const Attr &attr)
 {
     MsrXml::Element param_values("param_values");
     std::string v;
@@ -616,7 +471,7 @@ void Session::readParamValues()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readStatistics()
+void Session::readStatistics(const Attr &attr)
 {
     // <clients>
     //   <client index="0" name="lansim"
@@ -644,7 +499,7 @@ void Session::readStatistics()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::remoteHost()
+void Session::remoteHost(const Attr &attr)
 {
     attr.getString("name", remote);
 
@@ -667,7 +522,7 @@ void Session::remoteHost()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::writeParameter()
+void Session::writeParameter(const Attr &attr)
 {
     if (!writeAccess) {
         MsrXml::Element warn("warn");
@@ -787,7 +642,7 @@ void Session::writeParameter()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::xsad()
+void Session::xsad(const Attr &attr)
 {
     std::list<HRTLab::Signal*> channelList;
     unsigned int reduction, blocksize, precision = 10;
@@ -795,7 +650,7 @@ void Session::xsad()
     const HRTLab::Main::SignalList& sl = main->getSignals();
     std::list<unsigned int> indexList;
 
-    cout << __LINE__ << "xsad: " << std::string(bptr, pptr - bptr) << endl;
+    cout << __LINE__ << "xsad: " << endl;
 
     if (attr.getUnsignedList("channels", indexList)) {
         for ( std::list<unsigned int>::const_iterator it(indexList.begin());
@@ -854,13 +709,13 @@ void Session::xsad()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::xsod()
+void Session::xsod(const Attr &attr)
 {
     std::list<HRTLab::Signal*> channelList;
     std::list<unsigned int> intList;
     const HRTLab::Main::SignalList& sl = main->getSignals();
 
-    cout << __LINE__ << "xsod: " << std::string(bptr, pptr - bptr) << endl;
+    cout << __LINE__ << "xsod: " << endl;
 
     if (attr.getUnsignedList("channels", intList)) {
         for (std::list<unsigned int>::const_iterator it = intList.begin();

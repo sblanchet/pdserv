@@ -74,6 +74,8 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         void parameterChanged(const HRTLab::Parameter*);
         void requestOutput();
 
+        void processCommand(const char *command, const Attr &attr);
+
     private:
 
         Server * const server;
@@ -103,35 +105,17 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         Outbuf outbuf;
         Inbuf inbuf;
 
-        // Parser routines
-        // Returning true within these routines will interrupt parsing
-        // and wait for more characters
-        void parseInput(char* &pos, const char *end);
-
-        char *bptr, *pptr;
-        enum ParseState {
-            FindStart, GetCommand, GetToken, GetAttribute, GetQuote, GetValue,
-        };
-        ParseState parseState;
-        const char *commandPtr, *attrName;
-        char *attrValue;
-        size_t commandLen, attrLen;
-        char quote;
-        Attr attr;
-
-        void processCommand();
-
-        void broadcast();
-        void echo();
-        void ping();
-        void readChannel();
-        void readParameter();
-        void readParamValues();
-        void readStatistics();
-        void remoteHost();
-        void writeParameter();
-        void xsad();
-        void xsod();
+        void broadcast(const Attr &);
+        void echo(const Attr &);
+        void ping(const Attr &);
+        void readChannel(const Attr &);
+        void readParameter(const Attr &);
+        void readParamValues(const Attr &);
+        void readStatistics(const Attr &);
+        void remoteHost(const Attr &);
+        void writeParameter(const Attr &);
+        void xsad(const Attr &);
+        void xsod(const Attr &);
 
         std::vector<Task*> task;
 
