@@ -8,14 +8,15 @@
 #include "../Signal.h"
 
 #include "Session.h"
+#include "PdoSignalList.h"
 #include "Server.h"
 #include "XmlDoc.h"
 #include "Task.h"
 
-#include <iostream>
 #include <limits>
+#include <algorithm>
 
-#include <iomanip>
+#include <iostream>
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -25,7 +26,6 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 Task::Task(Session *s, HRTLab::Main *m): session(s), main(m)
 {
-    quiet = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -39,20 +39,6 @@ Task::~Task()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::setQuiet(bool q)
-{
-    if (!quiet and q) {
-        for (SignalList::iterator it = signals.begin();
-                it != signals.end(); it++) {
-            (*it).data_pptr = (*it).data_bptr;
-            (*it).trigger = (*it).decimation;
-        }
-    }
-
-    quiet = q;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Task::rmSignal(const HRTLab::Signal *signal)
 {
     if (signal) {
@@ -61,6 +47,7 @@ void Task::rmSignal(const HRTLab::Signal *signal)
             delete[] it->second.data_bptr;
             delete it->second.element;
             subscribedSet.erase(it);
+            activeSet.erase(signal);
         }
     }
     else {
@@ -111,134 +98,75 @@ void Task::addSignal(const HRTLab::Signal *signal,
     sd.element->setAttribute("c", signal->index);
 
     subscribedSet[signal->index] = sd;
+
+    if (session->isSignalActive(signal))
+        activeSet[signal] = &subscribedSet[signal->index];
 }
 
+
 /////////////////////////////////////////////////////////////////////////////
-void Task::newList(unsigned int *sigIdx, size_t n)
+void Task::newSignalMap( const HRTLab::PdoSignalList::SigOffsetMap &s)
 {
-    cout << __PRETTY_FUNCTION__ << ' ' << n << " new signals " << signals.size() << endl;
+    // Since it is not (should not!) possible that required signal 
+    // is not transmitted any more, only need to check for new signals
+    for (HRTLab::PdoSignalList::SigOffsetMap::const_iterator it = s.begin();
+            it != s.end(); it++) {
 
-    const HRTLab::Main::SignalList& sl = main->getSignals();
-    SignalList::iterator sit = signals.begin();
-    size_t offset = 0;
-    size_t i = 0;
-
-    while (i != n or sit != signals.end()) {
-        cout << "considering index " << sigIdx[i] << endl;
-        if (i != n and sit != signals.end()
-                and (*sit).signal->index == sigIdx[i]) {
-            // Signal is already in the list
-            cout << "   index already in list" << endl;
-            offset += (*sit).signal->memSize;
-            i++;
-            sit++;
+        SubscribedSet::iterator x = subscribedSet.find((it->first)->index);
+        if (x == subscribedSet.end())
             continue;
-        }
-        cout << "   index not in list" << endl;
 
-        size_t i2 = i;
-        SignalList::iterator sit2 = sit;
-        while (i2 != n or sit2 != signals.end()) {
-            cout << __LINE__ << "   i2 = " << i2 << endl;
-            if (sit == signals.end()) {
-                cout << __LINE__ << endl;
-                i2 = n;
-            }
-            else if (i2 != n) {
-                cout << __LINE__ << ' ' << i2 << endl;
-                if (sigIdx[i2] == (*sit).signal->index) {
-                    cout << __LINE__ << ' ' << sigIdx[i2] << endl;
-                    sit2 = sit;
-                    break;
-                }
-                i2++;
-                cout << __LINE__ << ' ' << i2 << endl;
-            }
+        if (activeSet.find(it->first) == activeSet.end())
+            activeSet[it->first] = &(x->second);
 
-            if (i == n) {
-                cout << __LINE__ << endl;
-                sit2 = signals.end();
-            }
-            else if (sit2 != signals.end()) {
-                cout << __LINE__ << endl;
-                if (sigIdx[i] == (*sit2).signal->index) {
-                    cout << __LINE__ << endl;
-                    i2 = i;
-                    break;
-                }
-                sit2++;
-                cout << __LINE__ << endl;
-            }
-        }
-        cout << "   i2 = " << i2 << endl;
-
-        // Signals between i and i2 are new in the list
-        cout << __LINE__ << " Inserting from : " << i << ' ' << i2 <<endl;
-        while (i != i2) {
-            SubscribedSet::iterator it =
-                subscribedSet.find(sigIdx[i]);
-            const HRTLab::Signal *signal = sl[sigIdx[i]];
-
-            if (it == subscribedSet.end()) {
-                // This signal is not required by us
-                SignalData sd = { signal, 0, 0 };
-
-                signals.insert(sit, sd);
-            }
-            else {
-                cout << __LINE__ << " inserting = " << signal->path << endl;
-                it->second.offset = offset;
-                signals.insert(sit, it->second);
-            }
-            offset += signal->memSize;
-            cout << __LINE__ << " offset = " << offset << endl;
-            i++;
-        }
-
-        // Signals between sit and sit2 are removed from the list
-        cout << __LINE__ << " Erasing : "<<  this << endl;
-        signals.erase(sit, sit2);
-        sit = sit2;
-        cout << __LINE__ << " Erasing : "<<  this << endl;
+        x->second.offset = it->second;
     }
-    cout << __LINE__ << __func__ << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::newValues(MsrXml::Element *parent, const char* dataPtr)
+void Task::newValues(MsrXml::Element *parent, size_t seqNo, const char *pdoData)
 {
-    if (quiet)
-        return;
+    for (ActiveSet::iterator it = activeSet.begin();
+            it != activeSet.end(); it++) {
 
-    for (SignalList::iterator it = signals.begin();
-            it != signals.end(); it++) {
+        SignalData *sd = it->second;
+        const char *dataPtr = pdoData + sd->offset;
 
-        SignalData& sd = *it;
+        if (sd->decimation) {
+            if (!--sd->trigger) {
+                sd->trigger = sd->decimation;
 
-        if (sd.decimation) {
-            if (!--sd.trigger) {
-                sd.trigger = sd.decimation;
-
-                std::copy(dataPtr, dataPtr + sd.sigMemSize, sd.data_pptr);
-                sd.data_pptr += sd.sigMemSize;
-                if (sd.data_pptr == sd.data_eptr) {
-                    sd.element->setAttribute("d",
-                            sd.print(sd.signal, sd.data_bptr,
-                                sd.precision, sd.blocksize));
-                    parent->appendChild(sd.element);
-                    sd.data_pptr = sd.data_bptr;
+                std::copy(dataPtr, dataPtr + sd->sigMemSize, sd->data_pptr);
+                sd->data_pptr += sd->sigMemSize;
+                if (sd->data_pptr == sd->data_eptr) {
+                    sd->element->setAttribute("d",
+                            sd->print(sd->signal, sd->data_bptr,
+                                sd->precision, sd->blocksize));
+                    parent->appendChild(sd->element);
+                    sd->data_pptr = sd->data_bptr;
                 }
             }
         }
-        else if (sd.trigger) {
+        else if (sd->trigger) {
             // Event triggering
-            if (!std::equal(sd.data_bptr, sd.data_eptr, dataPtr)) {
-                std::copy(dataPtr, dataPtr + sd.sigMemSize, sd.data_bptr);
-                sd.element->setAttribute("d",
-                        sd.print(sd.signal, sd.data_bptr, sd.precision, 1));
-                parent->appendChild(sd.element);
+            if (!std::equal(sd->data_bptr, sd->data_eptr, dataPtr)) {
+                std::copy(dataPtr, dataPtr + sd->sigMemSize, sd->data_bptr);
+                sd->element->setAttribute("d",
+                        sd->print(sd->signal, sd->data_bptr, sd->precision, 1));
+                parent->appendChild(sd->element);
             }
         }
-        dataPtr += sd.signal->width;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::sync()
+{
+    for (ActiveSet::iterator it = activeSet.begin();
+            it != activeSet.end(); it++) {
+        SignalData *sd = it->second;
+
+        sd->trigger = sd->decimation;
+        sd->data_pptr = sd->data_bptr;
     }
 }

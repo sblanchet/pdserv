@@ -25,20 +25,19 @@ class Task {
         Task(Session *, HRTLab::Main *);
         ~Task();
 
-        void setQuiet(bool);
-
         void rmSignal(const HRTLab::Signal *s);
         void addSignal(const HRTLab::Signal *s,
                 unsigned int decimation, size_t blocksize,
                 bool base64, size_t precision);
-        void newList(unsigned int *tasks, size_t n);
-        void newValues(MsrXml::Element *, const char*);
+
+        void newSignalMap( const HRTLab::PdoSignalList::SigOffsetMap &o);
+        void newValues(MsrXml::Element *, size_t seqNo, const char *pdo);
+
+        void sync();
 
     private:
         Session * const session;
         HRTLab::Main * const main;
-
-        bool quiet;
 
         struct SignalData {
             const HRTLab::Signal *signal;
@@ -56,8 +55,8 @@ class Task {
             size_t offset;
         };
 
-        typedef std::list<SignalData> SignalList;
-        SignalList signals;
+        typedef std::map<const HRTLab::Signal *, SignalData*> ActiveSet;
+        ActiveSet activeSet;
 
         typedef std::map<unsigned int, SignalData> SubscribedSet;
         SubscribedSet subscribedSet;

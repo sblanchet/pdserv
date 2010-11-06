@@ -22,7 +22,7 @@ Session::Session( ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), main(main),
     signals(main->getSignals()), crlf("\r\n"),
-    signal_ptr_start(main->getSignalPtrStart())
+    signal_ptr_start(0) // FIXME main->getSignalPtrStart())
 {
     std::ostream s(this);
     setCompletion(false);

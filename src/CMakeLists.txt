@@ -6,6 +6,7 @@ include_directories(.)
 
 add_library( rtlab SHARED
     interface.cpp
+    PdoSignalList.cpp PdoSignalList.h
     Session.cpp Session.h
     MainTask.cpp Main.cpp Main.h
     Variable.cpp Variable.h

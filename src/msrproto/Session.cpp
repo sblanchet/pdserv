@@ -27,8 +27,7 @@ using namespace MsrProto;
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), HRTLab::Session(main),
-    server(s), outbuf(this), inbuf(this), task(main->nst),
-    signal_ptr_start(main->getSignalPtrStart())
+    server(s), outbuf(this), inbuf(this), task(main->nst)
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     attach(ss);
@@ -55,17 +54,6 @@ Session::Session( Server *s, ost::SocketService *ss,
     greeting.setAttribute("recievebufsize", 100000000);
 
     outbuf << greeting << std::flush;
-
-    // Skip all data in the inbox thus far
-    signal_ptr = signal_ptr_start;
-    while (*signal_ptr) {
-        if (*signal_ptr == HRTLab::Main::Restart) {
-            signal_ptr = signal_ptr_start;
-            continue;
-        }
-
-        signal_ptr += signal_ptr[1];
-    }
 
     expired();
 }
@@ -104,55 +92,7 @@ void Session::requestOutput()
 /////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
-    //cout << __func__ << endl;
-    while (*signal_ptr) {
-        if (*signal_ptr == HRTLab::Main::Restart) {
-            signal_ptr = signal_ptr_start;
-            continue;
-        }
-
-        const size_t blockLen = signal_ptr[1];
-
-        switch (*signal_ptr) {
-            case HRTLab::Main::SubscriptionList:
-                {
-                    size_t headerLen = 4;
-                    unsigned int tid = signal_ptr[2];
-                    //unsigned int decimation = signal_ptr[3];
- 
-                    task[tid]->newList(signal_ptr + 4, blockLen - headerLen);
-                }
-                break;
-
-            case HRTLab::Main::SubscriptionData:
-                {
-                    unsigned int tid = signal_ptr[2];
-                    //unsigned int iterationNo = signal_ptr[3];
-                    char *dataPtr = reinterpret_cast<char*>(&signal_ptr[4]);
-
-                    struct timespec time =
-                        *reinterpret_cast<const struct timespec *>(dataPtr);
-                    dataPtr += sizeof(struct timespec);
-
-//                    cout << "Main::SubscriptionData " << tid << endl;
-
-                    MsrXml::Element data("data");
-                    data.setAttribute("level", 0);
-                    data.setAttribute("time", time);
-
-                    task[tid]->newValues(&data, dataPtr);
-
-                    if (data.hasChildren())
-                        outbuf << data << std::flush;
-
-                    data.releaseChildren();
-                }
-                break;
-        }
-
-        signal_ptr += blockLen;
-    }
-
+    receivePdo();
     setTimer(100);
 }
 
@@ -242,6 +182,32 @@ size_t Session::getCountOut() const
 struct timespec Session::getLoginTime() const
 {
     return loginTime;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::newSignalMap(unsigned int tid,
+                const HRTLab::PdoSignalList::SigOffsetMap &sigOffsetMap)
+{
+    task[tid]->newSignalMap(sigOffsetMap);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::newPdoData(unsigned int tid, unsigned int seqNo,
+        const struct timespec *time, const char *dataPtr)
+{
+    if (quiet)
+        return;
+
+    MsrXml::Element data("data");
+    data.setAttribute("level", 0);
+    data.setAttribute("time", *time);
+
+    task[tid]->newValues(&data, seqNo, dataPtr);
+
+    if (data.hasChildren())
+        outbuf << data << std::flush;
+
+    data.releaseChildren();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -684,18 +650,15 @@ void Session::xsad(const Attr &attr)
         precision = 10;
     }
 
-    if (attr.isTrue("quiet")) {
-        for (std::vector<Task*>::iterator it = task.begin();
-                it != task.end(); it++) {
-            (*it)->setQuiet(true);
-        }
-    }
+    if (attr.isTrue("quiet"))
+        quiet = true;
 
     if (attr.isTrue("sync")) {
         for (std::vector<Task*>::iterator it = task.begin();
                 it != task.end(); it++) {
-            (*it)->setQuiet(false);
+            (*it)->sync();
         }
+        quiet = false;
     }
 
     const HRTLab::Signal *signals[channelList.size()];

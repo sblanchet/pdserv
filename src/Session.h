@@ -7,10 +7,14 @@
 
 #include <string>
 #include <ctime>
+#include <vector>
+
+#include "PdoSignalList.h"
 
 namespace HRTLab {
 
 class Main;
+class PdoSignalList;
 
 class Session {
     public:
@@ -23,9 +27,23 @@ class Session {
         virtual size_t getCountOut() const;
         virtual struct timespec getLoginTime() const;
 
+        virtual void newSignalMap(unsigned int tid,
+                const HRTLab::PdoSignalList::SigOffsetMap &s);
+        virtual void newPdoData(unsigned int tid, unsigned int seqNo,
+                const struct timespec *t, const char *);
+
+        bool isSignalActive(const Signal *) const;
+
     protected:
         Main * const main;
+
+        void receivePdo();
+
+    private:
+        void * const *pdoBlockPtr;
+
+        std::vector<PdoSignalList> pdoSignalList;
 };
 
 }
-#endif //MSRSESSION_H
+#endif //SESSION_H

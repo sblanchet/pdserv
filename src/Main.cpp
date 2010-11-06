@@ -59,7 +59,7 @@ int Main::localtime(struct timespec* t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-unsigned int *Main::getSignalPtrStart() const
+const void * Main::getSignalPtrStart() const
 {
     return signal_ptr_start;
 }

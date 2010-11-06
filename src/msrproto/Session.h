@@ -50,6 +50,7 @@ namespace HRTLab {
     class Signal;
     class Variable;
     class Parameter;
+    class PdoSignalList;
 }
 
 namespace MsrXml {
@@ -80,6 +81,11 @@ class Session: public ost::SocketPort, public HRTLab::Session {
 
         Server * const server;
 
+        // Statistical data
+        size_t dataIn;
+        size_t dataOut;
+        struct timespec loginTime;
+
         // Reimplemented from SocketPort
         void expired();
         void pending();
@@ -92,10 +98,12 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         size_t getCountIn() const;
         size_t getCountOut() const;
         struct timespec getLoginTime() const;
-        size_t dataIn;
-        size_t dataOut;
-        struct timespec loginTime;
+        void newSignalMap(unsigned int tid,
+                const HRTLab::PdoSignalList::SigOffsetMap &s);
+        void newPdoData(unsigned int tid, unsigned int seqNo,
+                const struct timespec *t, const char *);
 
+        // Management variables
         bool writeAccess;
         bool quiet;
         bool echoOn;
@@ -118,9 +126,6 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         void xsod(const Attr &);
 
         std::vector<Task*> task;
-
-        unsigned int * const signal_ptr_start;
-        unsigned int *signal_ptr;
 };
 
 }

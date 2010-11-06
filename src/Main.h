@@ -100,7 +100,7 @@ class Main {
         const VariableMap& getVariableMap() const;
 
 
-        unsigned int *getSignalPtrStart() const;
+        const void * getSignalPtrStart() const;
 
         // Methods used by the clients to post instructions to the real-time
         // process
