@@ -25,4 +25,9 @@ add_library( rtlab SHARED
     msrproto/XmlDoc.cpp msrproto/XmlDoc.h
     )
 
-target_link_libraries(rtlab ccext2 xml2 xerces-c)
+target_link_libraries(rtlab ccext2 xml2)
+
+IF (UNIX)
+    ADD_CUSTOM_TARGET(tags etags *.cpp *.h */*.cpp */*.h)
+    ADD_CUSTOM_TARGET(etags DEPENDS tags)
+ENDIF (UNIX)
