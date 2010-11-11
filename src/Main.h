@@ -142,10 +142,10 @@ class Main {
         ParameterList parameters;
         VariableMap variableMap;
 
-        class Task {
+        class MTask {
             public:
-                Task(Main *main, unsigned int tid);
-                ~Task();
+                MTask(Main *main, unsigned int tid);
+                ~MTask();
 
                 void unsubscribe(unsigned int index);
                 void subscribe(unsigned int index);
@@ -173,11 +173,11 @@ class Main {
                 size_t iterationNo;
         };
 
-        std::vector<Task*> task;
+        std::vector<MTask*> mtask;
         std::map<const Session*, std::set<const Signal*> > sessionSignals;
         std::map<const Signal*, std::set<const Session*> > signalSubscribers;
 
-        Task::CopyList **subscriptionPtr;
+        MTask::CopyList **subscriptionPtr;
 
         void post(Instruction, unsigned int param,
                 const char* buf = 0, size_t len = 0);

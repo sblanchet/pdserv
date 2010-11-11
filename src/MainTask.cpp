@@ -13,10 +13,10 @@ using std::endl;
 
 using namespace HRTLab;
 
-const size_t Main::Task::dtype_idx[9] = {0,0,0,0,0,1,0,2,3};
+const size_t Main::MTask::dtype_idx[9] = {0,0,0,0,0,1,0,2,3};
 
 /////////////////////////////////////////////////////////////////////////////
-Main::Task::Task(Main *main, unsigned int tid):
+Main::MTask::MTask(Main *main, unsigned int tid):
     main(main), tid(tid)
 {
     std::fill_n(subscriptionIndex, 4, 0);
@@ -36,13 +36,13 @@ Main::Task::Task(Main *main, unsigned int tid):
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Main::Task::~Task()
+Main::MTask::~MTask()
 {
     delete[] copyList;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::Task::subscribe(unsigned int index)
+void Main::MTask::subscribe(unsigned int index)
 {
     dirty = true;
 
@@ -79,7 +79,7 @@ void Main::Task::subscribe(unsigned int index)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::Task::unsubscribe(unsigned int index)
+void Main::MTask::unsubscribe(unsigned int index)
 {
     if (main->subscriptionPtr[index] == 0)
         return;
@@ -100,7 +100,7 @@ void Main::Task::unsubscribe(unsigned int index)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::Task::update(const struct timespec *time)
+void Main::MTask::update(const struct timespec *time)
 {
     unsigned int *buf = main->signal_ptr;
 

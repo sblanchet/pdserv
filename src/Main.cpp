@@ -28,12 +28,12 @@ Main::Main(int argc, const char *argv[],
     name(name), version(version), baserate(baserate), nst(nst),
     decimation(nst > 1 ? new unsigned int [nst] : 0),
     gettime(gettime ? gettime : localtime), mutex(1), pollMutex(1),
-    task(nst)
+    mtask(nst)
 {
     if (nst > 1)
         std::copy(decimation, decimation + nst, this->decimation);
 
-    task.resize(nst);
+    mtask.resize(nst);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ Main::~Main()
 {
     delete decimation;
     for (size_t i = 0; i < nst; i++)
-        delete task[i];
+        delete mtask[i];
     delete[] subscriptionPtr;
 }
 
@@ -168,7 +168,7 @@ void Main::processSubscribe()
 
     for (unsigned int i = 0; i < signal_count; i++) {
         Signal *s = signals[*instruction_ptr++];
-        task[s->tid]->subscribe(s->index);
+        mtask[s->tid]->subscribe(s->index);
     }
 }
 
@@ -179,7 +179,7 @@ void Main::processUnsubscribe()
 
     for (unsigned int i = 0; i < signal_count; i++) {
         Signal *s = signals[*instruction_ptr++];
-        task[s->tid]->unsubscribe(s->index);
+        mtask[s->tid]->unsubscribe(s->index);
     }
 }
 
@@ -225,7 +225,7 @@ void Main::update(int st, const struct timespec *time)
         }
     }
 
-    task[st]->update(time);
+    mtask[st]->update(time);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -385,9 +385,9 @@ int Main::start()
     else if (pid) {
         // Parent here
         for (size_t i = 0; i < nst; i++)
-            task[i] = new Task(this, i);
+            mtask[i] = new MTask(this, i);
 
-        subscriptionPtr = new Task::CopyList*[signals.size()];
+        subscriptionPtr = new MTask::CopyList*[signals.size()];
         for (size_t i = 0; i < signals.size(); i++)
             subscriptionPtr[i] = 0;
 
@@ -423,10 +423,12 @@ int Main::newSignal(
     if (variableMap.find(path) != variableMap.end())
         return -EEXIST;
 
-    signals.push_back(
-            new Signal(tid, signals.size(), decimation, path, alias,
-                datatype, ndims, dim, addr));
-    variableMap[path] = signals.back();
+    Signal *s = new Signal(tid, signals.size(), decimation, path, alias,
+            datatype, ndims, dim, addr);
+
+//    task[tid]->addSignal(s);
+    signals.push_back(s);
+    variableMap[path] = s;
 
     return 0;
 }
