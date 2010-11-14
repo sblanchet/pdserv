@@ -3,6 +3,7 @@
  *****************************************************************************/
 
 #include "../Main.h"
+#include "../Task.h"
 #include "../Variable.h"
 #include "../Parameter.h"
 #include "../Signal.h"
@@ -186,15 +187,15 @@ struct timespec Session::getLoginTime() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalMap(unsigned int tid,
-                const HRTLab::PdoSignalList::SigOffsetMap &sigOffsetMap)
+void Session::newVariableList(const HRTLab::Task *t,
+        const HRTLab::Variable **s, size_t n)
 {
-    task[tid]->newSignalMap(sigOffsetMap);
+    task[t->tid]->newVariableList(s, n);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newPdoData(unsigned int tid, unsigned int seqNo,
-        const struct timespec *time, const char *dataPtr)
+void Session::newPdoData(const HRTLab::Task *t, unsigned int seqNo,
+                const struct timespec *time, const char *dataPtr)
 {
     if (quiet)
         return;
@@ -203,7 +204,7 @@ void Session::newPdoData(unsigned int tid, unsigned int seqNo,
     data.setAttribute("level", 0);
     data.setAttribute("time", *time);
 
-    task[tid]->newValues(&data, seqNo, dataPtr);
+    task[t->tid]->newValues(&data, seqNo, dataPtr);
 
     if (data.hasChildren())
         outbuf << data << std::flush;

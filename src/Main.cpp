@@ -38,7 +38,8 @@ Main::Main(int argc, const char *argv[],
 
     task = new Task*[nst];
     for (size_t i = 0; i < nst; i++)
-        task[i] = new Task(this, baserate * (decimation ? decimation[i] : 1));
+        task[i] =
+            new Task(this, i, baserate * (decimation ? decimation[i] : 1));
 }
 
 /////////////////////////////////////////////////////////////////////////////

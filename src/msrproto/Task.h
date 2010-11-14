@@ -30,7 +30,7 @@ class Task {
                 unsigned int decimation, size_t blocksize,
                 bool base64, size_t precision);
 
-        void newSignalMap( const HRTLab::PdoSignalList::SigOffsetMap &o);
+        void newVariableList(const HRTLab::Variable **, size_t);
         void newValues(MsrXml::Element *, size_t seqNo, const char *pdo);
 
         void sync();
@@ -40,7 +40,7 @@ class Task {
         HRTLab::Main * const main;
 
         struct SignalData {
-            const HRTLab::Signal *signal;
+            const HRTLab::Variable *variable;
             MsrXml::Element *element;
             unsigned int decimation;
             unsigned int trigger;
@@ -55,7 +55,7 @@ class Task {
             size_t offset;
         };
 
-        typedef std::map<const HRTLab::Signal *, SignalData*> ActiveSet;
+        typedef std::map<const HRTLab::Variable *, SignalData*> ActiveSet;
         ActiveSet activeSet;
 
         typedef std::map<unsigned int, SignalData> SubscribedSet;

@@ -111,7 +111,8 @@ void Element::setAttribute(const char *a, const struct timespec &t)
         attrList.push_back(a);
 
     std::ostringstream os;
-    os << t.tv_sec << '.' << std::setprecision(9) << t.tv_nsec;
+    os << t.tv_sec << '.' << std::setprecision(9)
+        << std::setw(9) << std::setfill('0') << t.tv_nsec;
     attrMap[a] = os.str();
 }
 

@@ -12,7 +12,7 @@ class Session;
 
 class Task {
     public:
-        Task(const Main *main, double sampleTime);
+        Task(const Main *main, unsigned int tid, double sampleTime);
         ~Task();
 
         void addVariable(const Variable *);
@@ -24,6 +24,8 @@ class Task {
         void unsubscribe(const Session*, const Variable *);
         void txPdo(const struct timespec *);
         void rxPdo(Session *);
+
+        const unsigned int tid;
 
     private:
 
@@ -37,7 +39,7 @@ class Task {
         size_t pdoMem;
         size_t txPdoCount;
         unsigned int seqNo;
-        std::map<const Session*, std::set<const Variable*> > session;
+        std::map<const Session*, VariableSet> session;
 
         struct Instruction {
             enum Type {Clear, Insert, Remove} instruction;

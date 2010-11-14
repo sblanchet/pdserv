@@ -47,10 +47,8 @@
 #include "rtlab/etl_data_info.h"
 
 namespace HRTLab {
-    class Signal;
     class Variable;
     class Parameter;
-    class PdoSignalList;
 }
 
 namespace MsrXml {
@@ -98,9 +96,9 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         size_t getCountIn() const;
         size_t getCountOut() const;
         struct timespec getLoginTime() const;
-        void newSignalMap(unsigned int tid,
-                const HRTLab::PdoSignalList::SigOffsetMap &s);
-        void newPdoData(unsigned int tid, unsigned int seqNo,
+        void newVariableList(const HRTLab::Task *, const HRTLab::Variable **,
+                size_t n);
+        void newPdoData(const HRTLab::Task *, unsigned int seqNo,
                 const struct timespec *t, const char *);
 
         // Management variables

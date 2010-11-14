@@ -7,6 +7,7 @@
 #include "Task.h"
 #include "Main.h"
 #include "Variable.h"
+#include "Session.h"
 
 #include <iostream>
 using std::cout;
@@ -24,8 +25,8 @@ T* ptr_align(void *p)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Task::Task(const Main *m, double sampleTime):
-    main(m), sampleTime(sampleTime)
+Task::Task(const Main *m, unsigned int tid, double sampleTime):
+    tid(tid), main(m), sampleTime(sampleTime)
 {
     pdoMem = 0;
     seqNo = 0;
@@ -244,10 +245,14 @@ void Task::rxPdo(Session *s)
         switch (rxPtr->type) {
             case TxFrame::PdoData:
                 cout << "TxFrame::PdoData: " << (void*)rxPtr << endl;
+                s->newPdoData(this, rxPtr->pdo.seqNo, &rxPtr->pdo.time,
+                        rxPtr->pdo.data);
                 break;
 
             case TxFrame::PdoList:
                 cout << "TxFrame::PdoList: " << (void*)rxPtr << endl;
+                s->newVariableList(this, rxPtr->list.variable,
+                        rxPtr->list.count);
                 break;
         }
 

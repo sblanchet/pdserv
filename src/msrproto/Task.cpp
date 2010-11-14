@@ -3,9 +3,8 @@
  *****************************************************************************/
 
 #include "../Main.h"
-#include "../Variable.h"
-#include "../Parameter.h"
 #include "../Signal.h"
+#include "../Parameter.h"
 
 #include "Session.h"
 #include "PdoSignalList.h"
@@ -98,28 +97,26 @@ void Task::addSignal(const HRTLab::Signal *signal,
     sd.element->setAttribute("c", signal->index);
 
     subscribedSet[signal->index] = sd;
-
-    if (session->isSignalActive(signal))
-        activeSet[signal] = &subscribedSet[signal->index];
 }
 
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::newSignalMap( const HRTLab::PdoSignalList::SigOffsetMap &s)
+void Task::newVariableList(const HRTLab::Variable **varList, size_t n)
 {
     // Since it is not (should not!) possible that required signal 
     // is not transmitted any more, only need to check for new signals
-    for (HRTLab::PdoSignalList::SigOffsetMap::const_iterator it = s.begin();
-            it != s.end(); it++) {
+    unsigned int offset = 0;
+    for (const HRTLab::Variable **v = varList; v != varList + n; v++) {
 
-        SubscribedSet::iterator x = subscribedSet.find((it->first)->index);
+        SubscribedSet::iterator x = subscribedSet.find((*v)->index);
         if (x == subscribedSet.end())
             continue;
 
-        if (activeSet.find(it->first) == activeSet.end())
-            activeSet[it->first] = &(x->second);
+        if (activeSet.find(*v) == activeSet.end())
+            activeSet[*v] = &(x->second);
 
-        x->second.offset = it->second;
+        x->second.offset = offset;
+        offset += (*v)->memSize;
     }
 }
 
@@ -140,7 +137,7 @@ void Task::newValues(MsrXml::Element *parent, size_t seqNo, const char *pdoData)
                 sd->data_pptr += sd->sigMemSize;
                 if (sd->data_pptr == sd->data_eptr) {
                     sd->element->setAttribute("d",
-                            sd->print(sd->signal, sd->data_bptr,
+                            sd->print(sd->variable, sd->data_bptr,
                                 sd->precision, sd->blocksize));
                     parent->appendChild(sd->element);
                     sd->data_pptr = sd->data_bptr;
@@ -152,7 +149,8 @@ void Task::newValues(MsrXml::Element *parent, size_t seqNo, const char *pdoData)
             if (!std::equal(sd->data_bptr, sd->data_eptr, dataPtr)) {
                 std::copy(dataPtr, dataPtr + sd->sigMemSize, sd->data_bptr);
                 sd->element->setAttribute("d",
-                        sd->print(sd->signal, sd->data_bptr, sd->precision, 1));
+                        sd->print(sd->variable,
+                            sd->data_bptr, sd->precision, 1));
                 parent->appendChild(sd->element);
             }
         }
