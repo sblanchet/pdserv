@@ -55,34 +55,25 @@ void Task::receive()
     };
 
     do {
+        const Variable *v = mailbox->variable;
+        unsigned int idx = 3 - subscriptionSetIndex[v->width];
+        VariableSet &vs = subscriptionSet[idx];
+        VariableSet::iterator it = vs.find(v);
+
         switch (mailbox->instruction) {
             case Instruction::Insert:
-                {
-                    const Variable *v = mailbox->variable;
-                    VariableSet::iterator it =
-                        subscriptionSet[v->width].find(v);
-                    unsigned int idx = 3 - subscriptionSetIndex[v->width];
-
-                    if (it == subscriptionSet[v->width].end()) {
-                        subscriptionSet[idx].insert(v);
-                        pdoMem += v->memSize;
-                        txPdoCount++;
-                    }
+                if (it == vs.end()) {
+                    vs.insert(v);
+                    pdoMem += v->memSize;
+                    txPdoCount++;
                 }
                 break;
 
             case Instruction::Remove:
-                {
-                    const Variable *v = mailbox->variable;
-                    VariableSet::iterator it =
-                        subscriptionSet[v->width].find(v);
-                    unsigned int idx = 3 - subscriptionSetIndex[v->width];
-
-                    if (it != subscriptionSet[v->width].end()) {
-                        subscriptionSet[idx].erase(it);
-                        pdoMem -= v->memSize;
-                        txPdoCount--;
-                    }
+                if (it != vs.end()) {
+                    vs.erase(it);
+                    pdoMem -= v->memSize;
+                    txPdoCount--;
                 }
                 break;
 
@@ -100,7 +91,7 @@ void Task::receive()
     if (txFrame->list.variable + txPdoCount >= txMemEnd)
         txFrame = txMemBegin;
 
-    cout << __func__ << ' ' << (void*)txFrame << endl;
+//    cout << __func__ << ' ' << (void*)txFrame << endl;
     txFrame->next = 0;
     txFrame->type = TxFrame::PdoList;
     txFrame->list.count = txPdoCount;
@@ -121,7 +112,7 @@ void Task::receive()
 void Task::deliver(Instruction::Type t, const Variable *v)
 {
     while (mailbox->instruction != Instruction::Clear)
-        sleep(1);
+        ost::Thread::sleep(100);
 
     mailbox->instruction = t;
     mailbox->variable = v;
@@ -179,7 +170,7 @@ void Task::setup()
         n += (*it)->memSize;
     }
 
-    n *= 2.0 / sampleTime;
+    n *= 10.0 / sampleTime;
     n += variables.size() * sizeof(Instruction);
 
     postoffice = ::mmap(0, n, PROT_READ | PROT_WRITE,
@@ -212,10 +203,10 @@ void Task::txPdo(const struct timespec *t)
 
     if ( txFrame->pdo.data + pdoMem >= txMemEnd) {
         txFrame = txMemBegin;
-        cout << "rewind ";
+//        cout << "rewind ";
     }
 
-    cout << __func__ << ' ' << (void*)txFrame << endl;
+//    cout << __func__ << ' ' << (void*)txFrame << endl;
 
     txFrame->next = 0;
     txFrame->type = TxFrame::PdoData;
@@ -244,13 +235,13 @@ void Task::rxPdo(Session *s)
     while (rxPtr->next) {
         switch (rxPtr->type) {
             case TxFrame::PdoData:
-                cout << "TxFrame::PdoData: " << (void*)rxPtr << endl;
+//                cout << "TxFrame::PdoData: " << (void*)rxPtr << endl;
                 s->newPdoData(this, rxPtr->pdo.seqNo, &rxPtr->pdo.time,
                         rxPtr->pdo.data);
                 break;
 
             case TxFrame::PdoList:
-                cout << "TxFrame::PdoList: " << (void*)rxPtr << endl;
+//                cout << "TxFrame::PdoList: " << (void*)rxPtr << endl;
                 s->newVariableList(this, rxPtr->list.variable,
                         rxPtr->list.count);
                 break;

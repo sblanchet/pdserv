@@ -667,6 +667,7 @@ void Session::xsad(const Attr &attr)
     std::copy(channelList.begin(), channelList.end(), signals);
     for (const HRTLab::Signal **sp = signals;
             sp != signals + channelList.size(); sp++) {
+        cout << "xsad " << (*sp)->index << (*sp)->path << endl;
         task[(*sp)->tid]->addSignal(*sp, reduction, blocksize, base64, precision);
     }
 

@@ -100,9 +100,6 @@ class Main {
         typedef std::map<const std::string,Variable*> VariableMap;
         const VariableMap& getVariableMap() const;
 
-
-        const void * getSignalPtrStart() const;
-
         // Methods used by the clients to post instructions to the real-time
         // process
         void newSession(const Session *);
@@ -114,7 +111,6 @@ class Main {
                 const Signal **s, size_t nelem);
         void subscribe(const Session *session,
                 const Signal **s, size_t nelem);
-        void subscriptionList();
 
     private:
 

@@ -69,12 +69,6 @@ int Main::localtime(struct timespec* t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const void * Main::getSignalPtrStart() const
-{
-    return signal_ptr_start;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Main::post(Instruction instr)
 {
     ost::SemaphoreLock lock(mutex);

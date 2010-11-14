@@ -175,7 +175,7 @@ std::string MsrXml::toCSV( const HRTLab::Variable *v,
     os.precision(precision);
     size_t count = v->nelem * n;
 
-    cout << "Eval si_double_T " << v->dtype << endl;
+//    cout << "Eval si_double_T " << v->dtype << endl;
     switch (v->dtype) {
         case si_boolean_T:
             os << reinterpret_cast<const bool*>(data)[0];
@@ -238,12 +238,12 @@ std::string MsrXml::toCSV( const HRTLab::Variable *v,
             break;
 
         case si_double_T:
-            cout << "Eval si_double_T " << endl;
+//            cout << "Eval si_double_T " << endl;
             os << reinterpret_cast<const double*>(data)[0];
             for ( size_t i = 1; i < count; i++)
                 os << ',' << reinterpret_cast<const double*>(data)[i];
             break;
-            cout << "Eval si_double_T " << endl;
+//            cout << "Eval si_double_T " << endl;
 
         default:
             break;
