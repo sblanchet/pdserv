@@ -41,6 +41,8 @@ class Variable {
 
         const size_t *getDim() const;
 
+        static const size_t maxWidth = 8;
+
     private:
         size_t * const dim;
 

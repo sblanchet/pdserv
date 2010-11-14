@@ -22,6 +22,7 @@ class Session;
 class Signal;
 class Parameter;
 class Variable;
+class Task;
 
 template <class T1>
     inline size_t element_count(size_t n)
@@ -105,8 +106,8 @@ class Main {
         // Methods used by the clients to post instructions to the real-time
         // process
         void newSession(const Session *);
-        void closeSession(const Session *);
-        void clearSession(const Session *s);
+        void rxPdo(Session *);
+        void closeSession(const Session *s);
         void writeParameter(Parameter *);
         void poll(Signal **s, size_t nelem, char *buf);
         void unsubscribe(const Session *session,
@@ -115,14 +116,14 @@ class Main {
                 const Signal **s, size_t nelem);
         void subscriptionList();
 
-        std::list<const Session*> getSessions() const;
-
     private:
 
         mutable ost::Semaphore mutex;
         mutable ost::Semaphore pollMutex;
         MsrProto::Server *msrproto;
 //    EtlProto::Server etlproto(this);
+        typedef std::set<const Session*> SessionSet;
+        SessionSet session;
 
         int pid;
 
@@ -172,6 +173,8 @@ class Main {
                 size_t blockLength;
                 size_t iterationNo;
         };
+
+        Task **task;
 
         std::vector<MTask*> mtask;
         std::map<const Session*, std::set<const Signal*> > sessionSignals;

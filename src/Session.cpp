@@ -77,6 +77,8 @@ void Session::newPdoData(unsigned int, unsigned int,
 /////////////////////////////////////////////////////////////////////////////
 void Session::receivePdo()
 {
+    return;
+
     while (*pdoBlockPtr) {
         pdoBlockPtr = &*pdoBlockPtr;
 

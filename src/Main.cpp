@@ -1,4 +1,5 @@
 #include "Main.h"
+#include "Task.h"
 #include "Signal.h"
 #include "Parameter.h"
 #include <cerrno>
@@ -34,6 +35,10 @@ Main::Main(int argc, const char *argv[],
         std::copy(decimation, decimation + nst, this->decimation);
 
     mtask.resize(nst);
+
+    task = new Task*[nst];
+    for (size_t i = 0; i < nst; i++)
+        task[i] = new Task(this, baserate * (decimation ? decimation[i] : 1));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -43,6 +48,10 @@ Main::~Main()
     for (size_t i = 0; i < nst; i++)
         delete mtask[i];
     delete[] subscriptionPtr;
+
+    for (size_t i = 0; i < nst; i++)
+        delete task[i];
+    delete[] task;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -226,6 +235,7 @@ void Main::update(int st, const struct timespec *time)
     }
 
     mtask[st]->update(time);
+    task[st]->txPdo(time);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -270,89 +280,55 @@ void Main::poll(Signal **s, size_t nelem, char *buf)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::closeSession(const Session *session)
+void Main::closeSession(const Session *s)
 {
-    clearSession(session);
-    sessionSignals.erase(session);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::clearSession(const Session *session)
-{
-    std::set<const Signal*>& subscribedSignals = sessionSignals[session];
-    const Signal *signals[subscribedSignals.size()];
-    size_t count = 0;
-    cout << __func__ << " Removing signals ";
-    for (std::set<const Signal*>::iterator it = subscribedSignals.begin();
-            it != subscribedSignals.end(); it++) {
-        signals[count++] = *it;
-        cout << (*it)->index << ' ';
-    }
-    cout << endl;
-
-    unsubscribe(session, signals, count);
+    ost::SemaphoreLock lock(mutex);
+    session.erase(s);
+    for (unsigned int i = 0; i < nst; i++)
+        task[i]->endSession(s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::newSession(const Session* s)
 {
-    sessionSignals[s] = std::set<const Signal*>();
-    cout << __func__ << sessionSignals.size() << endl;
+    ost::SemaphoreLock lock(mutex);
+    session.insert(s);
+
+    for (unsigned int i = 0; i < nst; i++)
+        task[i]->newSession(s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::list<const Session*> Main::getSessions() const
+void Main::rxPdo(Session *session)
 {
-    std::list<const Session*> s;
-
-    std::map<const Session*, std::set<const Signal*> >::const_iterator it; 
-    for (it = sessionSignals.begin(); it != sessionSignals.end(); it++) {
-        s.push_back(it->first);
-    }
-
-    return s;
-
+    for (unsigned int i = 0; i < nst; i++)
+        task[i]->rxPdo(session);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::unsubscribe(const Session *session,
         const Signal **signal, size_t nelem)
 {
-    unsigned int sigIdx[nelem];
-    size_t count = 0;
-    for (size_t i = 0; i < nelem; i++) {
-        sessionSignals[session].erase(signal[i]);
-        signalSubscribers[signal[i]].erase(session);
-        if (signalSubscribers[signal[i]].empty()) {
-            sigIdx[count++] = signal[i]->index;
-        }
-    }
-
-    if (sessionSignals[session].empty())
-        sessionSignals.erase(sessionSignals.find(session));
-
-    post(Unsubscribe, count,
-            reinterpret_cast<const char*>(sigIdx), sizeof(sigIdx));
+    ost::SemaphoreLock lock(mutex);
+    for (const Signal **s = signal; s != signal + nelem; s++)
+        task[(*s)->tid]->unsubscribe(session, *s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::subscribe(const Session *session,
         const Signal **signal, size_t nelem)
 {
-    unsigned int sigIdx[nelem];
-    for (size_t i = 0; i < nelem; i++) {
-        sigIdx[i] = signal[i]->index;
-        sessionSignals[session].insert(signal[i]);
-        signalSubscribers[signal[i]].insert(session);
-    }
-
-    post(Subscribe, nelem,
-            reinterpret_cast<const char*>(sigIdx), sizeof(sigIdx));
+    ost::SemaphoreLock lock(mutex);
+    for (const Signal **s = signal; s != signal + nelem; s++)
+        task[(*s)->tid]->subscribe(session, *s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 int Main::start()
 {
+    for (unsigned int i = 0; i < nst; i++)
+        task[i]->setup();
+
     shmem_len = 1000000;
 
     shmem = (char*)::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
@@ -426,7 +402,7 @@ int Main::newSignal(
     Signal *s = new Signal(tid, signals.size(), decimation, path, alias,
             datatype, ndims, dim, addr);
 
-//    task[tid]->addSignal(s);
+    task[tid]->addVariable(s);
     signals.push_back(s);
     variableMap[path] = s;
 

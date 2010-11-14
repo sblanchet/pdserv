@@ -10,6 +10,7 @@
 #include "Session.h"
 #include "Server.h"
 #include "Task.h"
+#include "Main.h"
 #include "XmlDoc.h"
 
 #include <iomanip>
@@ -92,7 +93,7 @@ void Session::requestOutput()
 /////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
-    receivePdo();
+    main->rxPdo(this);
     setTimer(100);
 }
 
@@ -446,22 +447,22 @@ void Session::readStatistics(const Attr &attr)
     //           connectedtime="1282151176.659208"/>
     //   <client index="1" .../>
     // </clients>
-    const std::list<const HRTLab::Session*> s(main->getSessions());
-    int index = 0;
-
-    MsrXml::Element clients("clients");
-    for (std::list<const HRTLab::Session*>::const_iterator it = s.begin();
-            it != s.end(); it++) {
-        MsrXml::Element *e = clients.createChild("client");
-        e->setAttribute("index", index++);
-        e->setAttributeCheck("name", (*it)->getName());
-        e->setAttributeCheck("apname", (*it)->getClientName());
-        e->setAttribute("countin", (*it)->getCountIn());
-        e->setAttribute("countout", (*it)->getCountOut());
-        e->setAttribute("connectedtime", (*it)->getLoginTime());
-    }
-
-    outbuf << clients << std::flush;
+//    const HRTLab::Main::SessionSet& s(main->getSessions());
+//    int index = 0;
+//
+//    MsrXml::Element clients("clients");
+//    for (HRTLab::Main::SessionSet::const_iterator it = s.begin();
+//            it != s.end(); it++) {
+//        MsrXml::Element *e = clients.createChild("client");
+//        e->setAttribute("index", index++);
+//        e->setAttributeCheck("name", (*it)->getName());
+//        e->setAttributeCheck("apname", (*it)->getClientName());
+//        e->setAttribute("countin", (*it)->getCountIn());
+//        e->setAttribute("countout", (*it)->getCountOut());
+//        e->setAttribute("connectedtime", (*it)->getLoginTime());
+//    }
+//
+//    outbuf << clients << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -701,7 +702,7 @@ void Session::xsod(const Attr &attr)
                 it != task.end(); it++) {
             (*it)->rmSignal(0);
         }
-        main->clearSession(this);
+//        main->clearSession(this);
     }
 
 }
