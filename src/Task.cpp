@@ -47,7 +47,7 @@ void Task::addVariable(const Variable *v)
 /////////////////////////////////////////////////////////////////////////////
 void Task::receive()
 {
-    msync(&mailbox->instruction, sizeof(mailbox->instruction), MS_INVALIDATE);
+//    msync(&mailbox->instruction, sizeof(mailbox->instruction), MS_INVALIDATE);
 
     if (mailbox->instruction == Instruction::Clear)
         return;
@@ -57,7 +57,7 @@ void Task::receive()
     };
 
     do {
-        msync(mailbox, sizeof(*mailbox), MS_INVALIDATE);
+//        msync(mailbox, sizeof(*mailbox), MS_INVALIDATE);
 
         const Variable *v = mailbox->variable;
         unsigned int idx = 3 - subscriptionSetIndex[v->width];
@@ -123,10 +123,10 @@ void Task::receive()
 /////////////////////////////////////////////////////////////////////////////
 void Task::deliver(Instruction::Type t, const Variable *v)
 {
-    msync(mailbox, sizeof(*mailbox), MS_INVALIDATE);
+//    msync(mailbox, sizeof(*mailbox), MS_INVALIDATE);
     while (mailbox->instruction != Instruction::Clear) {
         ost::Thread::sleep(100);
-        msync(mailbox, sizeof(*mailbox), MS_INVALIDATE);
+//        msync(mailbox, sizeof(*mailbox), MS_INVALIDATE);
     }
 
     mailbox->instruction = t;
@@ -279,14 +279,14 @@ void Task::rxPdo(Session *s)
 
     TxFrame *rxPtr = sessionRxPtr[s];
 //    cout << __func__ << rxPtr << "------------" << __LINE__ << endl;
-    msync(&rxPtr->next, sizeof(rxPtr->next), MS_INVALIDATE);
+//    msync(&rxPtr->next, sizeof(rxPtr->next), MS_INVALIDATE);
     while (rxPtr->next) {
 //        cout << __func__ << rxPtr << "------------" << __LINE__ << endl;
         switch (rxPtr->type) {
             case TxFrame::PdoData:
 //                cout << "TxFrame::PdoData: " << rxPtr << endl;
                 len = pdoMem + sizeof(*rxPtr);
-                msync(rxPtr, len, MS_INVALIDATE);
+//                msync(rxPtr, len, MS_INVALIDATE);
                 s->newPdoData(this, rxPtr->pdo.seqNo, &rxPtr->pdo.time,
                         rxPtr->pdo.data);
 //                s->newPdoData(this, f.pdo.seqNo, &f.pdo.time, b);
@@ -296,7 +296,7 @@ void Task::rxPdo(Session *s)
                 cout << "TxFrame::PdoList: " << rxPtr << endl;
                 len = (const char *)(rxPtr->list.variable + rxPtr->list.count)
                     - (const char *)rxPtr;
-                msync(rxPtr, len, MS_INVALIDATE);
+//                msync(rxPtr, len, MS_INVALIDATE);
 
                 s->newVariableList(this, rxPtr->list.variable,
                         rxPtr->list.count);

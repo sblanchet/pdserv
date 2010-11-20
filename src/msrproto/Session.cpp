@@ -660,7 +660,6 @@ void Session::xsad(const Attr &attr)
     if (!attr.getUnsigned("blocksize", blocksize)) {
         blocksize = main->baserate;
     }
-    blocksize = std::max(blocksize, 1U);
 
     if (!attr.getUnsigned("precision", precision)) {
         precision = 10;
