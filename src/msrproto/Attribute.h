@@ -5,7 +5,6 @@
 #ifndef MSRATTRIBUTE_H
 #define MSRATTRIBUTE_H
 
-#include <cstddef>
 #include <map>
 #include <list>
 #include <string>

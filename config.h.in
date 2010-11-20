@@ -4,4 +4,6 @@
 // Repository Version
 #define PKGID @Package_HG_ID@
 
+#cmakedefine DEBUG
+
 #endif //CONFIG_H

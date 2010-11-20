@@ -9,7 +9,6 @@ namespace HRTLab {
     class Signal;
     class Variable;
     class Parameter;
-    class Main;
 }
 
 namespace MsrXml {
@@ -18,16 +17,14 @@ namespace MsrXml {
 
 namespace MsrProto {
 
-class Session;
-
 class Task {
     public:
-        Task(Session *, HRTLab::Main *);
+        Task();
         ~Task();
 
         void rmSignal(const HRTLab::Signal *s);
         void addSignal(const HRTLab::Signal *s,
-                unsigned int decimation, size_t blocksize,
+                bool event, unsigned int decimation, size_t blocksize,
                 bool base64, size_t precision);
 
         void newVariableList(const HRTLab::Variable **, size_t);
@@ -36,12 +33,10 @@ class Task {
         void sync();
 
     private:
-        Session * const session;
-        HRTLab::Main * const main;
-
         struct SignalData {
             const HRTLab::Variable *variable;
             MsrXml::Element *element;
+            bool event;
             unsigned int decimation;
             unsigned int trigger;
             size_t blocksize;

@@ -2,15 +2,19 @@
  * $Id$
  *****************************************************************************/
 
+#include "config.h"
+
 #include "Inbuf.h"
 #include "Session.h"
 
 #include <algorithm>
 
+#ifdef DEBUG
 #include <iostream>
 using std::cout;
 using std::cerr;
 using std::endl;
+#endif
 
 using namespace MsrProto;
 

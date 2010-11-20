@@ -6,6 +6,7 @@
  *
  * This is a minimal implementation of the XML dialect as used by
  * the MSR protocol.
+ *
  *****************************************************************************/
 
 #ifndef XMLDOC_H
@@ -36,7 +37,7 @@ std::string toBase64( const HRTLab::Variable *v,
 
 class Element {
     public:
-        Element(const char *name, size_t indent = 0);
+        Element(const char *name);
 
         /** Destructor.
          * Children are destroyed if they were not released beforehand */
@@ -71,18 +72,22 @@ class Element {
         template<class T>
             void setAttribute(const char *name, const T& value);
 
+        /** Special functions to set Parameter and Channel
+         * attributes */
         void setParameterAttributes( const HRTLab::Parameter *p,
                 bool shortReply, bool hex);
         void setChannelAttributes( const HRTLab::Signal *s,
                 bool shortReply, double freq, size_t bufsize);
 
+        /** Returns the data type of a variable */
         static const char *getDTypeName(const HRTLab::Variable*);
 
+        /** Printing functions */
+        void print(std::ostream& os, size_t indent = 0) const;
         friend std::ostream& operator<<(std::ostream& os, const Element& el);
 
     private:
         const std::string name;
-        const size_t indent;    // Indent used when printing
 
         typedef std::map<const std::string, std::string> AttributeMap;
         AttributeMap attrMap;
@@ -103,10 +108,7 @@ void Element::setAttribute(const char *name, const T& value)
     o.imbue(std::locale::classic());
 
     o << value;
-    if (attrMap.find(name) == attrMap.end())
-        attrList.push_back(name);
-
-    attrMap[name] = o.str();
+    setAttribute(name, o.str());
 }
 
 }

@@ -28,7 +28,7 @@ int gettime(struct timespec *t)
 
 int main(int argc, const char *argv[])
 {
-    struct hrtlab *hrtlab = hrtlab_init(argc, argv, argv[0], "1.0", 1.0, 1, 0,
+    struct hrtlab *hrtlab = hrtlab_init(argc, argv, argv[0], "1.0", 0.1, 1, 0,
             gettime);
     unsigned int var1_dims[] = {2,3,4};
     struct timespec time;

@@ -32,17 +32,10 @@
 #include "../Session.h"
 #include "Inbuf.h"
 #include "Outbuf.h"
-#include "Attribute.h"
 
 #include <cc++/socketport.h> 
-#include <iosfwd>
 #include <string>
 #include <vector>
-#include <list>
-#include <map>
-#include <set>
-#include <list>
-#include <functional>
 
 #include "rtlab/etl_data_info.h"
 

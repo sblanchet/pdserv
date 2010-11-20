@@ -275,7 +275,6 @@ void Task::rxPdo(Session *s)
 {
     size_t len;
 //    TxFrame f;
-    char b[100];
 
     TxFrame *rxPtr = sessionRxPtr[s];
 //    cout << __func__ << rxPtr << "------------" << __LINE__ << endl;

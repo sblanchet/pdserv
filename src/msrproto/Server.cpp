@@ -1,13 +1,21 @@
+/*****************************************************************************
+ * $Id$
+ *****************************************************************************/
+
+#include "config.h"
+
 #include "Server.h"
 #include "../Main.h"
 #include <cc++/socketport.h>
 
 #include "Session.h"
 
+#ifdef DEBUG
 #include <iostream>
 using std::cout;
 using std::cerr;
 using std::endl;
+#endif
 
 using namespace MsrProto;
 

@@ -2,6 +2,8 @@
  * $Id$
  *****************************************************************************/
 
+#include "config.h"
+
 #include "../Main.h"
 #include "../Task.h"
 #include "../Variable.h"
@@ -11,17 +13,14 @@
 #include "Session.h"
 #include "Server.h"
 #include "Task.h"
-#include "Main.h"
 #include "XmlDoc.h"
 
-#include <iomanip>
-#include <limits>
-#include <algorithm>
-
+#ifdef DEBUG
 #include <iostream>
 using std::cout;
 using std::cerr;
 using std::endl;
+#endif
 
 using namespace MsrProto;
 
@@ -31,7 +30,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     SocketPort(0, socket), HRTLab::Session(main),
     server(s), outbuf(this), inbuf(this), task(main->nst)
 {
-    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     attach(ss);
 
     writeAccess = false;
@@ -42,7 +41,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     main->gettime(&loginTime);
 
     for (size_t i = 0; i < main->nst; i++) {
-        task[i] = new Task(this, main);
+        task[i] = new Task();
     }
 
     setCompletion(false);
@@ -63,7 +62,7 @@ Session::Session( Server *s, ost::SocketService *ss,
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
-    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     server->sessionClosed(this);
     for (size_t i = 0; i < main->nst; i++) {
         delete task[i];
@@ -121,7 +120,7 @@ void Session::pending()
         count = inbuf.free();
         n = receive(inbuf.bufptr(), count);
 
-        //cout << std::string(inbuf.bufptr(), n) << endl;
+        cout << std::string(inbuf.bufptr(), n) << endl;
         // No more data available or there was an error
         if (n <= 0)
             break;
@@ -164,7 +163,7 @@ void Session::output()
 /////////////////////////////////////////////////////////////////////////////
 void Session::disconnect()
 {
-    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     delete this;
 }
 
@@ -202,7 +201,7 @@ struct timespec Session::getLoginTime() const
 void Session::newVariableList(const HRTLab::Task *t,
         const HRTLab::Variable **s, size_t n)
 {
-    cout << __PRETTY_FUNCTION__ << endl;
+//    cout << __PRETTY_FUNCTION__ << endl;
     task[t->tid]->newVariableList(s, n);
 }
 
@@ -346,7 +345,7 @@ void Session::readChannel(const Attr &attr)
 
     if (signal) {
         char buf[signal->memSize];
-        double freq = main->baserate / signal->decimation
+        double freq = 1.0 / main->baserate / signal->decimation
                 / (main->decimation ? main->decimation[signal->tid] : 1);
         size_t bufsize = std::max( 1U, (size_t)freq);
 
@@ -372,7 +371,7 @@ void Session::readChannel(const Attr &attr)
         MsrXml::Element channels("channels");
         const char *p = buf;
         for (size_t i = 0; i < sl.size(); i++) {
-            double freq = main->baserate / signal[i]->decimation
+            double freq = 1.0 / main->baserate / signal[i]->decimation
                     / (main->decimation ? main->decimation[signal[i]->tid] : 1);
 
             size_t bufsize = std::max( 1U, (size_t)freq);
@@ -628,10 +627,10 @@ void Session::xsad(const Attr &attr)
     std::list<HRTLab::Signal*> channelList;
     unsigned int reduction, blocksize, precision = 10;
     bool base64 = attr.isEqual("coding", "Base64");
+    bool event = attr.isTrue("event");
+    bool foundReduction = false, foundBlocksize = false;
     const HRTLab::Main::SignalList& sl = main->getSignals();
     std::list<unsigned int> indexList;
-
-    cout << __LINE__ << "xsad: " << endl;
 
     if (attr.getUnsignedList("channels", indexList)) {
         for ( std::list<unsigned int>::const_iterator it(indexList.begin());
@@ -652,14 +651,58 @@ void Session::xsad(const Attr &attr)
             channelList.push_back(sl[*it]);
         }
     }
+    else
+        return;
 
-    if (!attr.getUnsigned("reduction", reduction)) {
-        reduction = 1 / main->baserate;
+    if (attr.getUnsigned("reduction", reduction)) {
+        if (!reduction) {
+            MsrXml::Element warn("warn");
+            warn.setAttribute("command", "xsad");
+            warn.setAttribute("text",
+                    "specified reduction=0, choosing reduction=1");
+            outbuf << warn << std::flush;
+
+            reduction = 1;
+        }
+        foundReduction = true;
     }
 
-    if (!attr.getUnsigned("blocksize", blocksize)) {
-        blocksize = main->baserate;
+    if (attr.getUnsigned("blocksize", blocksize)) {
+        if (!blocksize) {
+            MsrXml::Element warn("warn");
+            warn.setAttribute("command", "xsad");
+            warn.setAttribute("text",
+                    "specified blocksize=0, choosing blocksize=1");
+            outbuf << warn << std::flush;
+
+            blocksize = 1;
+        }
+
+        foundBlocksize = true;
     }
+
+    if (event) {
+        blocksize = 1;
+        if (!foundReduction)
+            reduction = std::max(1.0, 0.1 / main->baserate + 0.5);
+    }
+    else {
+        if (!foundReduction and !foundBlocksize) {
+            // Quite possibly user input; choose reduction for 1Hz
+            reduction = std::max(1.0, 1.0 / main->baserate + 0.5);
+            blocksize = 1;
+        }
+        else if (foundReduction) {
+            // Choose blocksize so that a datum is sent at 10Hz
+            blocksize =
+                std::max(1.0, 0.1 / main->baserate / reduction + 0.5);
+        }
+        else if (foundBlocksize) {
+            reduction = 1;
+        }
+    }
+
+//    cout << "foundReduction " << event << main->baserate << " reduction " << reduction << endl;
 
     if (!attr.getUnsigned("precision", precision)) {
         precision = 10;
@@ -680,9 +723,9 @@ void Session::xsad(const Attr &attr)
     std::copy(channelList.begin(), channelList.end(), signals);
     for (const HRTLab::Signal **sp = signals;
             sp != signals + channelList.size(); sp++) {
-        cout << "xsad " << (*sp)->index << (*sp)->path << endl;
+//        cout << "xsad " << (*sp)->index << (*sp)->path << endl;
         task[(*sp)->tid]->addSignal(
-                *sp, reduction, blocksize, base64, precision);
+                *sp, event, reduction, blocksize, base64, precision);
     }
 
     main->subscribe(this, signals, channelList.size());
@@ -695,7 +738,7 @@ void Session::xsod(const Attr &attr)
     std::list<unsigned int> intList;
     const HRTLab::Main::SignalList& sl = main->getSignals();
 
-    cout << __LINE__ << "xsod: " << endl;
+//    cout << __LINE__ << "xsod: " << endl;
 
     if (attr.getUnsignedList("channels", intList)) {
         for (std::list<unsigned int>::const_iterator it = intList.begin();

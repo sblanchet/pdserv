@@ -9,6 +9,12 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 find_package(Mercurial REQUIRED)
 mercurial_hg_info(${PROJECT_SOURCE_DIR} Package)
 
+if (Debug)
+    set(Debug 1)
+else (Debug)
+    set(Debug 0)
+endif (Debug)
+
 add_subdirectory(src)
 add_subdirectory(test)
 

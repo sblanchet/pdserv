@@ -6,6 +6,8 @@
  *
  *****************************************************************************/
 
+#include "config.h"
+
 #include "XmlDoc.h"
 #include "../Variable.h"
 #include "../Parameter.h"
@@ -16,24 +18,26 @@
 #include <algorithm>
 #include <cstring>
 
+#ifdef DEBUG
 #include <iostream>
 using std::cout;
 using std::cerr;
 using std::endl;
+#endif
 
 using namespace MsrXml;
 
 /////////////////////////////////////////////////////////////////////////////
 // Element
 /////////////////////////////////////////////////////////////////////////////
-Element::Element(const char *name, size_t indent):
-    name(name), indent(indent)
+Element::Element(const char *name): name(name)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Element::~Element()
 {
+    // If any children exist, kill them too
     for (Element::Children::const_iterator it = children.begin();
             it != children.end(); it++)
         delete *it;
@@ -42,27 +46,33 @@ Element::~Element()
 /////////////////////////////////////////////////////////////////////////////
 std::ostream& MsrXml::operator<<(std::ostream& os, const Element& el)
 {
-    os << std::string(el.indent, ' ') << '<' << el.name;
-    for (Element::AttributeList::const_iterator it = el.attrList.begin();
-            it != el.attrList.end(); it++)
-        os << ' ' << *it << "=\"" << el.attrMap.find(*it)->second << '"';
-    if (el.children.empty())
+    el.print(os);
+    return os;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Element::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << '<' << name;
+    for (Element::AttributeList::const_iterator it = attrList.begin();
+            it != attrList.end(); it++)
+        os << ' ' << *it << "=\"" << attrMap.find(*it)->second << '"';
+    if (children.empty())
         os << "/>\r\n";
     else {
         os << ">\r\n";
-        for (Element::Children::const_iterator it = el.children.begin();
-                it != el.children.end(); it++)
-            os << **it;
-        os << std::string(el.indent, ' ') << "</" << el.name << ">\r\n";
+        for (Element::Children::const_iterator it = children.begin();
+                it != children.end(); it++)
+            (*it)->print(os, indent+2);
+        os << std::string(indent, ' ') << "</" << name << ">\r\n";
     }
-    return os;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Element* Element::createChild(const char *name)
 {
     Element *child;
-    children.push_back(child = new Element(name, indent + 1));
+    children.push_back(child = new Element(name));
     return child;
 }
 

@@ -3,9 +3,9 @@
  *****************************************************************************/
 
 #include "Session.h"
-#include "Main.h"
-#include "Variable.h"
-#include "Signal.h"
+#include "../Main.h"
+#include "../Variable.h"
+#include "../Signal.h"
 
 #include <iostream>
 #include <limits>
