@@ -12,6 +12,7 @@
 
 #include "etlproto/Server.h"
 #include "msrproto/Server.h"
+#include "Session.h"
 
 #include <iostream>
 using std::cout;
@@ -210,6 +211,18 @@ void Main::subscribe(const Session *session,
     ost::SemaphoreLock lock(mutex);
     for (const Signal **s = signal; s != signal + nelem; s++)
         task[(*s)->tid]->subscribe(session, *s);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::getSessionStatistics(std::list<SessionStatistics>& stats) const
+{
+    ost::SemaphoreLock lock(mutex);
+    for (SessionSet::const_iterator it = session.begin();
+            it != session.end(); it++) {
+        SessionStatistics ss;
+        (*it)->getSessionStatistics(ss);
+        stats.push_back(ss);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////

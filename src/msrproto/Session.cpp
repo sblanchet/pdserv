@@ -13,7 +13,6 @@
 #include "Session.h"
 #include "Server.h"
 #include "Task.h"
-#include "XmlDoc.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -28,32 +27,35 @@ using namespace MsrProto;
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), HRTLab::Session(main),
-    server(s), outbuf(this), inbuf(this), task(main->nst)
+    server(s), dataTag("data"), outbuf(this), inbuf(this), task(main->nst)
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     attach(ss);
 
+    // Setup some internal variables
     writeAccess = false;
     echoOn = false;
     quiet = false;
     dataIn = 0;
     dataOut = 0;
     main->gettime(&loginTime);
+    dataTag.setAttribute("level", 0);
 
+    // Create enough tasks
     for (size_t i = 0; i < main->nst; i++) {
         task[i] = new Task();
     }
 
+    // Non-blocking read() and write()
     setCompletion(false);
 
+    // Greet the new client
     MsrXml::Element greeting("connected");
-
     greeting.setAttribute("name", "MSR");
     greeting.setAttribute("host", "localhost");
     greeting.setAttribute("version", MSR_VERSION);
     greeting.setAttribute("features", MSR_FEATURES);
     greeting.setAttribute("recievebufsize", 100000000);
-
     outbuf << greeting << std::flush;
 
     expired();
@@ -93,20 +95,8 @@ void Session::requestOutput()
 /////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
-    main->rxPdo(this);
-    setTimer(100);
-//
-//    if (rand > 0) {
-//        int channel = rand() % 2;
-//        main->
-//        for (const HRTLab::Signal **sp = signals;
-//                sp != signals + channelList.size(); sp++) {
-//            cout << "xsad " << (*sp)->index << (*sp)->path << endl;
-//            task[(*sp)->tid]->addSignal(*sp, reduction, blocksize, base64, precision);
-//        }
-//    }
-//    else {
-//    }
+    main->rxPdo(this);  // Read and process the incoming data
+    setTimer(100);      // Wakeup in 100ms again
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -120,7 +110,7 @@ void Session::pending()
         count = inbuf.free();
         n = receive(inbuf.bufptr(), count);
 
-        cout << std::string(inbuf.bufptr(), n) << endl;
+        //cout << std::string(inbuf.bufptr(), n);
         // No more data available or there was an error
         if (n <= 0)
             break;
@@ -154,7 +144,7 @@ void Session::output()
         return;
     }
 
-    dataOut += n;
+    dataOut += n;       // Global output counter
 
     if (outbuf.clear(n))
         setDetectOutput(false);
@@ -165,36 +155,6 @@ void Session::disconnect()
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     delete this;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-std::string Session::getName() const
-{
-    return remote;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-std::string Session::getClientName() const
-{
-    return applicationname;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-size_t Session::getCountIn() const
-{
-    return dataIn;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-size_t Session::getCountOut() const
-{
-    return dataOut;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-struct timespec Session::getLoginTime() const
-{
-    return loginTime;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -212,16 +172,24 @@ void Session::newPdoData(const HRTLab::Task *t, unsigned int seqNo,
     if (quiet)
         return;
 
-    MsrXml::Element data("data");
-    data.setAttribute("level", 0);
-    data.setAttribute("time", *time);
+    dataTag.setAttribute("time", *time);
 
-    task[t->tid]->newValues(&data, seqNo, dataPtr);
+    task[t->tid]->newValues(&dataTag, seqNo, dataPtr);
 
-    if (data.hasChildren())
-        outbuf << data << std::flush;
+    if (dataTag.hasChildren())
+        outbuf << dataTag << std::flush;
 
-    data.releaseChildren();
+    dataTag.releaseChildren();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::getSessionStatistics(HRTLab::Main::SessionStatistics& s) const
+{
+    s.remote = remote;
+    s.client = applicationname;
+    s.countIn = dataIn;
+    s.countOut = dataOut;
+    s.connectedTime = loginTime;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -235,10 +203,10 @@ void Session::processCommand(const char *command, const Attr &attr)
         void (Session::*func)(const Attr &attr);
     } cmds[] = {
         // First list most common commands
+        { 4, "ping",                    &Session::ping,},
         { 2, "rs",                      &Session::readStatistics},
         { 2, "wp",                      &Session::writeParameter,},
         { 2, "rp",                      &Session::readParameter,},
-        { 4, "ping",                    &Session::ping,},
         { 4, "xsad",                    &Session::xsad,},
         { 4, "xsod",                    &Session::xsod,},
         { 4, "echo",                    &Session::echo,},
@@ -258,19 +226,28 @@ void Session::processCommand(const char *command, const Attr &attr)
         {0,},
     };
 
+    // Go through the command list 
     for (size_t idx = 0; cmds[idx].len; idx++) {
+        // Check whether the lengths fit and the string matches
         if (commandLen == cmds[idx].len
                 and !strcmp(cmds[idx].name, command)) {
+
+            // Call the method
             (this->*cmds[idx].func)(attr);
+
+            // If "ack" attribute was set, send it back
             if (attr.id) {
                 MsrXml::Element ack("ack");
                 ack.setAttributeCheck("id", *attr.id);
                 outbuf << ack << std::flush;
             }
+
+            // Finished
             return;
         }
     }
 
+    // Unknown command warning
     MsrXml::Element warn("warn");
     warn.setAttribute("num", 1000);
     warn.setAttribute("text", "unknown command");
@@ -331,12 +308,14 @@ void Session::readChannel(const Attr &attr)
 
         if (vit == m.end() or vit->second->index >= sl.size()
                 or sl[vit->second->index]->path != path)
+            // Signal does not exist, ignore it
             return;
 
         signal = sl[vit->second->index];
     }
     else if (attr.getUnsigned("index", index)) {
         if (index >= sl.size())
+            // Index is out of range, ignore it
             return;
 
         signal = sl[index];
@@ -344,10 +323,12 @@ void Session::readChannel(const Attr &attr)
 
 
     if (signal) {
+        // A single signal was requested
+
         char buf[signal->memSize];
         double freq = 1.0 / main->baserate / signal->decimation
                 / (main->decimation ? main->decimation[signal->tid] : 1);
-        size_t bufsize = std::max( 1U, (size_t)freq);
+        size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
 
         main->poll(&signal, 1, buf);
 
@@ -358,6 +339,8 @@ void Session::readChannel(const Attr &attr)
         outbuf << channel;
     }
     else {
+        // Send the whole list
+
         HRTLab::Signal *signal[sl.size()];
         size_t buflen = 0;
 
@@ -374,7 +357,11 @@ void Session::readChannel(const Attr &attr)
             double freq = 1.0 / main->baserate / signal[i]->decimation
                     / (main->decimation ? main->decimation[signal[i]->tid] : 1);
 
-            size_t bufsize = std::max( 1U, (size_t)freq);
+            // The MSR protocoll wants a bufsize, the maximum number of
+            // values that can be retraced. This artificial limitation does
+            // not exist any more. Instead, choose a buffer size so that
+            // at a maximum of 1 second has to be stored.
+            size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
 
             MsrXml::Element *c = channels.createChild("channel");
             c->setChannelAttributes(signal[i], shortReply, freq, bufsize);
@@ -403,12 +390,14 @@ void Session::readParameter(const Attr &attr)
 
         if (vit == m.end() or vit->second->index >= pl.size()
                 or pl[vit->second->index]->path != name)
+            // Parameter does not exist, ignore
             return;
 
         parameter = pl[vit->second->index];
     }
     else if (attr.getUnsigned("index", index)) {
         if (index >= pl.size())
+            // Index does not exist, ignore
             return;
 
         parameter = pl[index];
@@ -460,22 +449,24 @@ void Session::readStatistics(const Attr &attr)
     //           connectedtime="1282151176.659208"/>
     //   <client index="1" .../>
     // </clients>
-//    const HRTLab::Main::SessionSet& s(main->getSessions());
-//    int index = 0;
-//
-//    MsrXml::Element clients("clients");
-//    for (HRTLab::Main::SessionSet::const_iterator it = s.begin();
-//            it != s.end(); it++) {
-//        MsrXml::Element *e = clients.createChild("client");
-//        e->setAttribute("index", index++);
-//        e->setAttributeCheck("name", (*it)->getName());
-//        e->setAttributeCheck("apname", (*it)->getClientName());
-//        e->setAttribute("countin", (*it)->getCountIn());
-//        e->setAttribute("countout", (*it)->getCountOut());
-//        e->setAttribute("connectedtime", (*it)->getLoginTime());
-//    }
-//
-//    outbuf << clients << std::flush;
+    typedef std::list<HRTLab::Main::SessionStatistics> StatList;
+    StatList stats;
+    main->getSessionStatistics(stats);
+    int index = 0;
+
+    MsrXml::Element clients("clients");
+    for (StatList::const_iterator it = stats.begin();
+            it != stats.end(); it++) {
+        MsrXml::Element *e = clients.createChild("client");
+        e->setAttribute("index", index++);
+        e->setAttributeCheck("name", (*it).remote);
+        e->setAttributeCheck("apname", (*it).client);
+        e->setAttribute("countin", (*it).countIn);
+        e->setAttribute("countout", (*it).countOut);
+        e->setAttribute("connectedtime", (*it).connectedTime);
+    }
+
+    outbuf << clients << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////

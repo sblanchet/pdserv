@@ -112,6 +112,16 @@ class Main {
         void subscribe(const Session *session,
                 const Signal **s, size_t nelem);
 
+        typedef struct {
+            std::string remote;
+            std::string client;
+            size_t countIn;
+            size_t countOut;
+            struct timespec connectedTime;
+        } SessionStatistics;
+
+        void getSessionStatistics(std::list<SessionStatistics>&) const;
+
     private:
 
         mutable ost::Semaphore mutex;

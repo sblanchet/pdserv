@@ -9,9 +9,10 @@
 #include <ctime>
 #include <vector>
 
+#include "Main.h"
+
 namespace HRTLab {
 
-class Main;
 class Task;
 class Variable;
 
@@ -20,16 +21,11 @@ class Session {
         Session(Main *main);
         virtual ~Session();
 
-        virtual std::string getName() const;
-        virtual std::string getClientName() const;
-        virtual size_t getCountIn() const;
-        virtual size_t getCountOut() const;
-        virtual struct timespec getLoginTime() const;
-
         virtual void newVariableList(const Task *, const Variable **,
                 size_t n);
         virtual void newPdoData(const Task *, unsigned int seqNo,
                 const struct timespec *t, const char *);
+        virtual void getSessionStatistics(Main::SessionStatistics&) const;
 
     protected:
         Main * const main;

@@ -2,14 +2,18 @@
  * $Id$
  *****************************************************************************/
 
+#include "config.h"
+
 #include "Session.h"
 #include "Main.h"
 #include "Signal.h"
 
+#ifdef DEBUG
 #include <iostream>
 using std::cout;
 using std::cerr;
 using std::endl;
+#endif
 
 using namespace HRTLab;
 
@@ -26,34 +30,8 @@ Session::~Session()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string Session::getName() const
+void Session::getSessionStatistics(Main::SessionStatistics&) const
 {
-    return std::string();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-std::string Session::getClientName() const
-{
-    return std::string();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-size_t Session::getCountIn() const
-{
-    return 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-size_t Session::getCountOut() const
-{
-    return 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-struct timespec Session::getLoginTime() const
-{
-    struct timespec t = {0,0};
-    return t;
 }
 
 /////////////////////////////////////////////////////////////////////////////

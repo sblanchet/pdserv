@@ -32,6 +32,7 @@
 #include "../Session.h"
 #include "Inbuf.h"
 #include "Outbuf.h"
+#include "XmlDoc.h"
 
 #include <cc++/socketport.h> 
 #include <string>
@@ -84,15 +85,11 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         void disconnect();
 
         // Reimplemented from HRTLab::Session
-        std::string getName() const;
-        std::string getClientName() const;
-        size_t getCountIn() const;
-        size_t getCountOut() const;
-        struct timespec getLoginTime() const;
         void newVariableList(const HRTLab::Task *, const HRTLab::Variable **,
                 size_t n);
         void newPdoData(const HRTLab::Task *, unsigned int seqNo,
                 const struct timespec *t, const char *);
+        void getSessionStatistics(HRTLab::Main::SessionStatistics&) const;
 
         // Management variables
         bool writeAccess;
@@ -100,6 +97,9 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         bool echoOn;
         std::string remote;
         std::string applicationname;
+
+        // <data> tag for the output stream
+        MsrXml::Element dataTag;
 
         Outbuf outbuf;
         Inbuf inbuf;
