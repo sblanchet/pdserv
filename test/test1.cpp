@@ -38,7 +38,7 @@ int main(int argc, const char *argv[])
 //            si_uint16_T, 3, var1_dims, var1));
 
     assert(!hrtlab_signal(hrtlab, 0, 1, "/path/to/var2", "var1",
-            si_uint16_T, 1, NULL, var1+5));
+            si_uint16_T, 1, NULL, var1 + 5));
 
     assert(!hrtlab_signal(hrtlab, 0, 1, "/path/to/double", "var1",
             si_double_T, 1, NULL, dbl));

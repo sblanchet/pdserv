@@ -96,6 +96,18 @@ void Session::expired()
 {
     main->rxPdo(this);
     setTimer(100);
+//
+//    if (rand > 0) {
+//        int channel = rand() % 2;
+//        main->
+//        for (const HRTLab::Signal **sp = signals;
+//                sp != signals + channelList.size(); sp++) {
+//            cout << "xsad " << (*sp)->index << (*sp)->path << endl;
+//            task[(*sp)->tid]->addSignal(*sp, reduction, blocksize, base64, precision);
+//        }
+//    }
+//    else {
+//    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -107,9 +119,9 @@ void Session::pending()
 
     do {
         count = inbuf.free();
-        count = 1;
         n = receive(inbuf.bufptr(), count);
 
+        //cout << std::string(inbuf.bufptr(), n) << endl;
         // No more data available or there was an error
         if (n <= 0)
             break;
@@ -190,6 +202,7 @@ struct timespec Session::getLoginTime() const
 void Session::newVariableList(const HRTLab::Task *t,
         const HRTLab::Variable **s, size_t n)
 {
+    cout << __PRETTY_FUNCTION__ << endl;
     task[t->tid]->newVariableList(s, n);
 }
 
@@ -647,6 +660,7 @@ void Session::xsad(const Attr &attr)
     if (!attr.getUnsigned("blocksize", blocksize)) {
         blocksize = main->baserate;
     }
+    blocksize = std::max(blocksize, 1U);
 
     if (!attr.getUnsigned("precision", precision)) {
         precision = 10;
@@ -668,7 +682,8 @@ void Session::xsad(const Attr &attr)
     for (const HRTLab::Signal **sp = signals;
             sp != signals + channelList.size(); sp++) {
         cout << "xsad " << (*sp)->index << (*sp)->path << endl;
-        task[(*sp)->tid]->addSignal(*sp, reduction, blocksize, base64, precision);
+        task[(*sp)->tid]->addSignal(
+                *sp, reduction, blocksize, base64, precision);
     }
 
     main->subscribe(this, signals, channelList.size());
@@ -704,7 +719,7 @@ void Session::xsod(const Attr &attr)
                 it != task.end(); it++) {
             (*it)->rmSignal(0);
         }
-//        main->clearSession(this);
+        main->unsubscribe(this);
     }
 
 }

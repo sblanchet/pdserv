@@ -108,7 +108,7 @@ class Main {
         void writeParameter(Parameter *);
         void poll(Signal **s, size_t nelem, char *buf);
         void unsubscribe(const Session *session,
-                const Signal **s, size_t nelem);
+                const Signal **s = 0, size_t nelem = 0);
         void subscribe(const Session *session,
                 const Signal **s, size_t nelem);
 
@@ -116,8 +116,10 @@ class Main {
 
         mutable ost::Semaphore mutex;
         mutable ost::Semaphore pollMutex;
+
         MsrProto::Server *msrproto;
 //    EtlProto::Server etlproto(this);
+
         typedef std::set<const Session*> SessionSet;
         SessionSet session;
 
@@ -126,67 +128,25 @@ class Main {
         size_t shmem_len;
         char *shmem;
 
-        unsigned int *instruction_block_begin;
-        unsigned int *instruction_ptr;
-        unsigned int *instruction_ptr_end;
+        struct PollStruct {
+            unsigned int reqId;
+            unsigned int replyId;
+            unsigned int count;
+            struct timespec time;
+            const Signal *signals[];
+        } *pollStruct;
 
-        unsigned int *signal_ptr_start, *signal_ptr_end;
-        unsigned int *signal_ptr;
-
-        unsigned int *pollId;
+        char *pollData;
 
         SignalList signals;
         ParameterList parameters;
         VariableMap variableMap;
 
-        class MTask {
-            public:
-                MTask(Main *main, unsigned int tid);
-                ~MTask();
-
-                void unsubscribe(unsigned int index);
-                void subscribe(unsigned int index);
-                void update(const struct timespec *time);
-
-                struct CopyList {
-                    const char *begin;
-                    const char *end;
-                    size_t len;
-                    unsigned int sigIdx;
-                };
-
-            private:
-                Main * const main;
-                const unsigned int tid;
-
-                static const size_t dtype_idx[9];
-
-                bool dirty;
-                CopyList *copyList, *copyListEnd;
-
-                size_t subscriptionIndex[4];
-                size_t blockLengthBytes;
-                size_t blockLength;
-                size_t iterationNo;
-        };
-
         Task **task;
-
-        std::vector<MTask*> mtask;
-        std::map<const Session*, std::set<const Signal*> > sessionSignals;
-        std::map<const Signal*, std::set<const Session*> > signalSubscribers;
-
-        MTask::CopyList **subscriptionPtr;
-
-        void post(Instruction, unsigned int param,
-                const char* buf = 0, size_t len = 0);
-        void post(Instruction);
 
         // Methods used by the real-time process to interpret inbox
         // instructions from the clients
-        void processPollSignal(const struct timespec *time);
-        void processSubscribe();
-        void processUnsubscribe();
+        void processPollSignal(unsigned int tid, const struct timespec *time);
         void processSetValue();
 
         static int localtime(struct timespec *);

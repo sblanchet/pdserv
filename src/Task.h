@@ -21,7 +21,7 @@ class Task {
         void newSession(const Session*);
         void endSession(const Session*);
         void subscribe(const Session*, const Variable *);
-        void unsubscribe(const Session*, const Variable *);
+        void unsubscribe(const Session*, const Variable * = 0);
         void txPdo(const struct timespec *);
         void rxPdo(Session *);
 
@@ -40,6 +40,7 @@ class Task {
         size_t txPdoCount;
         unsigned int seqNo;
         std::map<const Session*, VariableSet> session;
+        std::map<const Variable *, std::set<const Session*> > variableSessions;
 
         struct Instruction {
             enum Type {Clear, Insert, Remove} instruction;

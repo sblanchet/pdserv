@@ -28,13 +28,10 @@ Main::Main(int argc, const char *argv[],
         int (*gettime)(struct timespec*)):
     name(name), version(version), baserate(baserate), nst(nst),
     decimation(nst > 1 ? new unsigned int [nst] : 0),
-    gettime(gettime ? gettime : localtime), mutex(1), pollMutex(1),
-    mtask(nst)
+    gettime(gettime ? gettime : localtime), mutex(1), pollMutex(1)
 {
     if (nst > 1)
         std::copy(decimation, decimation + nst, this->decimation);
-
-    mtask.resize(nst);
 
     task = new Task*[nst];
     for (size_t i = 0; i < nst; i++)
@@ -46,9 +43,6 @@ Main::Main(int argc, const char *argv[],
 Main::~Main()
 {
     delete decimation;
-    for (size_t i = 0; i < nst; i++)
-        delete mtask[i];
-    delete[] subscriptionPtr;
 
     for (size_t i = 0; i < nst; i++)
         delete task[i];
@@ -69,47 +63,9 @@ int Main::localtime(struct timespec* t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::post(Instruction instr)
-{
-    ost::SemaphoreLock lock(mutex);
-
-    if (instruction_ptr + 1 >= instruction_ptr_end) {
-        *instruction_block_begin = 0;
-        *instruction_ptr = Restart;
-        instruction_ptr = instruction_block_begin;
-    }
-
-    instruction_ptr[1] = 0;
-    instruction_ptr[0] = instr;
-    instruction_ptr += 1;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::post(Instruction instr, unsigned int param,
-        const char *buf, size_t len)
-{
-    ost::SemaphoreLock lock(mutex);
-
-    size_t n = 2 + element_count_uint(len);
-
-    if (instruction_ptr + n >= instruction_ptr_end) {
-        *instruction_block_begin = 0;
-        *instruction_ptr = Restart;
-        instruction_ptr = instruction_block_begin;
-    }
-
-    instruction_ptr[1] = param;
-    std::copy(buf, buf + len, reinterpret_cast<char*>(instruction_ptr+2));
-
-    instruction_ptr[n] = 0;
-    instruction_ptr[0] = instr;
-    instruction_ptr += n;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Main::writeParameter(Parameter *p)
 {
-    post(SetValue, p->index, p->Variable::addr, p->memSize);
+//    post(SetValue, p->index, p->Variable::addr, p->memSize);
 
     msrproto->parameterChanged(p);
 }
@@ -133,7 +89,7 @@ const Main::VariableMap& Main::getVariableMap() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::processPollSignal(const struct timespec *time)
+void Main::processPollSignal(unsigned int tid, const struct timespec *time)
 {
     // PollSignal
     // Receive:
@@ -143,93 +99,43 @@ void Main::processPollSignal(const struct timespec *time)
     //
     // The reply is in the poll area
 
-    size_t signal_count = *instruction_ptr++;
+    if (pollStruct->reqId == pollStruct->replyId)
+        return;
 
-    char *p = reinterpret_cast<char*>(pollId + 1);
+    pollStruct->time = *time;
 
-    // struct timeval
-    if (time)
-        *reinterpret_cast<struct timespec*>(p) = *time;
-    else
-        std::fill_n(p, sizeof(struct timespec), 0);
-    p += sizeof(*time);
-
-    // Signal data
-    while (signal_count--) {
-        const Signal *s = signals[*instruction_ptr++];
-        std::copy(s->addr, s->addr + s->memSize, p);
-        p += s->memSize;
+    bool finished = true;
+    char *p = pollData;
+    for (const Signal **s = pollStruct->signals; *s; s++) {
+        if ((*s)->tid == tid)
+            std::copy((*s)->addr, (*s)->addr + (*s)->memSize, p);
+        else
+            finished = false;
+        p += (*s)->memSize;
     }
 
-    // Complete the message
-    (*pollId)++;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::processSubscribe()
-{
-    unsigned int signal_count = *instruction_ptr++;
-
-    for (unsigned int i = 0; i < signal_count; i++) {
-        Signal *s = signals[*instruction_ptr++];
-        mtask[s->tid]->subscribe(s->index);
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::processUnsubscribe()
-{
-    unsigned int signal_count = *instruction_ptr++;
-
-    for (unsigned int i = 0; i < signal_count; i++) {
-        Signal *s = signals[*instruction_ptr++];
-        mtask[s->tid]->unsubscribe(s->index);
-    }
+    if (finished)
+        pollStruct->replyId = pollStruct->reqId;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::processSetValue()
 {
-    unsigned int index = *instruction_ptr++;
-    Parameter *p = parameters[index];
-    const char *data = 
-        reinterpret_cast<const char*>(instruction_ptr);
-
-    p->setValue(data);
-
-    // Skip over the block with parameter data
-    instruction_ptr += element_count_uint(p->memSize);
+//    unsigned int index = *instruction_ptr++;
+//    Parameter *p = parameters[index];
+//    const char *data = 
+//        reinterpret_cast<const char*>(instruction_ptr);
+//
+//    p->setValue(data);
+//
+//    // Skip over the block with parameter data
+//    instruction_ptr += element_count_uint(p->memSize);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::update(int st, const struct timespec *time)
 {
-    // Check for instructions in the inbox
-    while (*instruction_ptr) {
-        switch (*instruction_ptr++) {
-            case Restart:
-                instruction_ptr = instruction_block_begin;
-                break;
-
-            case PollSignal:
-                processPollSignal(time);
-                break;
-
-            case Subscribe:
-                processSubscribe();
-                break;
-
-            case Unsubscribe:
-                processUnsubscribe();
-                break;
-
-            case SetValue:
-                processSetValue();
-                break;
-        }
-    }
-
-    mtask[st]->update(time);
+    processPollSignal(st, time);
     task[st]->txPdo(time);
 }
 
@@ -237,33 +143,16 @@ void Main::update(int st, const struct timespec *time)
 void Main::poll(Signal **s, size_t nelem, char *buf)
 {
     ost::SemaphoreLock lock(pollMutex);
-    unsigned int id = *pollId;
-    {
-        ost::SemaphoreLock globallock(mutex);
-        const size_t blockLen = nelem + 2;
 
-        if (instruction_ptr + blockLen >= instruction_ptr_end) {
-            *instruction_block_begin = 0;
-            *instruction_ptr = Restart;
-            instruction_ptr = instruction_block_begin;
-        }
-
-        instruction_ptr[1] = nelem;
-        for (size_t i = 0; i < nelem; i++)
-            instruction_ptr[i+2] = s[i]->index;
-
-        instruction_ptr[blockLen] = 0;
-        instruction_ptr[0] = PollSignal;
-        instruction_ptr += blockLen;
-    }
+    std::copy(s, s+nelem, pollStruct->signals);
+    pollStruct->count = nelem;
+    pollStruct->reqId++;
 
     do {
         ost::Thread::sleep(100);
-    } while (*pollId == id);
+    } while (pollStruct->reqId != pollStruct->replyId);
 
-    const char *p = reinterpret_cast<const char*>(pollId + 1);
-
-    p += sizeof(struct timeval);
+    char *p = pollData;
     while (nelem--) {
         size_t len = (*s)->memSize;
 
@@ -305,8 +194,13 @@ void Main::unsubscribe(const Session *session,
         const Signal **signal, size_t nelem)
 {
     ost::SemaphoreLock lock(mutex);
-    for (const Signal **s = signal; s != signal + nelem; s++)
-        task[(*s)->tid]->unsubscribe(session, *s);
+    cout << "Main::unsubscribe " << signal << endl;
+    if (signal)
+        for (const Signal **s = signal; s != signal + nelem; s++)
+            task[(*s)->tid]->unsubscribe(session, *s);
+    else
+        for (unsigned int i = 0; i < nst; i++)
+            task[i]->unsubscribe(session);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -336,16 +230,9 @@ int Main::start()
     }
     ::memset(shmem, 0, shmem_len);
 
-    pollId = reinterpret_cast<unsigned int*>(shmem);
-
-    instruction_block_begin = pollId + 100;
-    instruction_ptr     = instruction_block_begin;
-    instruction_ptr_end = instruction_block_begin + 1024;
-    *instruction_block_begin = 0;
-
-    signal_ptr_start = instruction_ptr_end + 1;
-    signal_ptr = signal_ptr_start;
-    signal_ptr_end = reinterpret_cast<unsigned int*>(shmem+shmem_len);
+    pollStruct = reinterpret_cast<PollStruct*>(shmem);
+    pollData =
+        reinterpret_cast<char*>(pollStruct->signals + variableMap.size());
 
     pid = ::fork();
     if (pid < 0) {
@@ -355,13 +242,6 @@ int Main::start()
     }
     else if (pid) {
         // Parent here
-        for (size_t i = 0; i < nst; i++)
-            mtask[i] = new MTask(this, i);
-
-        subscriptionPtr = new MTask::CopyList*[signals.size()];
-        for (size_t i = 0; i < signals.size(); i++)
-            subscriptionPtr[i] = 0;
-
         return 0;
     }
 

@@ -41,6 +41,12 @@ Task::~Task()
 void Task::rmSignal(const HRTLab::Signal *signal)
 {
     if (signal) {
+        cout << __func__ << " looking for " << signal->index << endl;
+        cout << " available is:";
+        for (SubscribedSet::const_iterator it = subscribedSet.begin();
+                it != subscribedSet.end(); it++)
+            cout << ' ' << it->first;
+        cout << endl;
         SubscribedSet::iterator it = subscribedSet.find(signal->index);
         if (it != subscribedSet.end()) {
             delete[] it->second.data_bptr;
@@ -56,6 +62,7 @@ void Task::rmSignal(const HRTLab::Signal *signal)
             delete it->second.element;
         }
         subscribedSet.clear();
+        activeSet.clear();
     }
 }
 
@@ -64,6 +71,11 @@ void Task::addSignal(const HRTLab::Signal *signal,
         unsigned int decimation, size_t blocksize, bool base64,
         size_t precision)
 {
+    cout << "Adding signal " << signal->path
+        << " decimation=" << decimation
+        << " blocksize=" << blocksize
+        << " base64=" << base64
+        << " precision=" << precision << endl;
     SubscribedSet::iterator it = subscribedSet.find(signal->index);
     if (it != subscribedSet.end()) {
         delete[] it->second.data_bptr;
@@ -99,30 +111,37 @@ void Task::addSignal(const HRTLab::Signal *signal,
     subscribedSet[signal->index] = sd;
 }
 
-
 /////////////////////////////////////////////////////////////////////////////
 void Task::newVariableList(const HRTLab::Variable **varList, size_t n)
 {
-    // Since it is not (should not!) possible that required signal 
+    // Since it is not (should not be!) possible that required signal 
     // is not transmitted any more, only need to check for new signals
     unsigned int offset = 0;
+    cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXX New Var list n=" << n ;
     for (const HRTLab::Variable **v = varList; v != varList + n; v++) {
 
-        SubscribedSet::iterator x = subscribedSet.find((*v)->index);
-        if (x == subscribedSet.end())
-            continue;
+        SubscribedSet::iterator it = subscribedSet.find((*v)->index);
+        if (it != subscribedSet.end()) {
+            activeSet[*v] = &(it->second);
+            it->second.offset = offset;
+        }
 
-        if (activeSet.find(*v) == activeSet.end())
-            activeSet[*v] = &(x->second);
-
-        x->second.offset = offset;
+        SignalData *sd = activeSet[*v];
+        cout << ' ' << (*v)->index
+            << " decimation=" << sd->decimation
+            << " trigger=" << sd->trigger
+            << " eptr=" << sd->data_eptr - sd->data_bptr
+            << " pptr=" << sd->data_pptr - sd->data_bptr << endl;
         offset += (*v)->memSize;
     }
+    cout << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Task::newValues(MsrXml::Element *parent, size_t seqNo, const char *pdoData)
 {
+    static unsigned int x = 0;
+
     for (ActiveSet::iterator it = activeSet.begin();
             it != activeSet.end(); it++) {
 
@@ -135,8 +154,10 @@ void Task::newValues(MsrXml::Element *parent, size_t seqNo, const char *pdoData)
 
                 std::copy(dataPtr, dataPtr + sd->sigMemSize, sd->data_pptr);
                 sd->data_pptr += sd->sigMemSize;
-                if (sd->data_pptr == sd->data_eptr) {
+                if (sd->data_pptr >= sd->data_eptr) {
                     sd->element->setAttribute("d",
+//                            sd->print(sd->variable, dataPtr,
+//                                sd->precision, 1));
                             sd->print(sd->variable, sd->data_bptr,
                                 sd->precision, sd->blocksize));
                     parent->appendChild(sd->element);
