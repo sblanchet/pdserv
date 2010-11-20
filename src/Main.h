@@ -119,7 +119,6 @@ class Main {
             size_t countOut;
             struct timespec connectedTime;
         } SessionStatistics;
-
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 
     private:

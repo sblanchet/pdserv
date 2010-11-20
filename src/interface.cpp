@@ -1,6 +1,11 @@
+/*****************************************************************************
+ * $Id$
+ *****************************************************************************/
+
 #include "rtlab/rtlab.h"
 #include "Main.h"
 
+/////////////////////////////////////////////////////////////////////////////
 struct hrtlab* hrtlab_init(int argc, const char *argv[], 
         const char *name, const char *version, 
         double baserate, unsigned int nst, const unsigned int decimation[],
@@ -11,16 +16,19 @@ struct hrtlab* hrtlab_init(int argc, const char *argv[],
                 decimation, gettime));
 }
 
+/////////////////////////////////////////////////////////////////////////////
 void hrtlab_exit(struct hrtlab* hrtlab)
 {
     delete reinterpret_cast<HRTLab::Main*>(hrtlab);
 }
 
+/////////////////////////////////////////////////////////////////////////////
 void hrtlab_update(struct hrtlab* hrtlab, int st, const struct timespec *t)
 {
     reinterpret_cast<HRTLab::Main*>(hrtlab)->update(st, t);
 }
 
+/////////////////////////////////////////////////////////////////////////////
 int hrtlab_signal(
         struct hrtlab* hrtlab,
         unsigned int tid,
@@ -40,6 +48,7 @@ int hrtlab_signal(
             );
 }
 
+/////////////////////////////////////////////////////////////////////////////
 int hrtlab_parameter(
         struct hrtlab* hrtlab,
         const char *path,
@@ -60,6 +69,7 @@ int hrtlab_parameter(
             paramcheck, paramupdate, priv_data);
 }
 
+/////////////////////////////////////////////////////////////////////////////
 int hrtlab_start(struct hrtlab* hrtlab)
 {
     return reinterpret_cast<HRTLab::Main*>(hrtlab)->start();

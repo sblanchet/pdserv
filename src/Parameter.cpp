@@ -2,16 +2,20 @@
  * $Id$
  *****************************************************************************/
 
+#include "config.h"
+
 #include <ctime>
 #include <algorithm>
 
 #include "Parameter.h"
 #include "Main.h"
 
-//#include <iostream>
-//using std::cout;
-//using std::cerr;
-//using std::endl;
+#ifdef DEBUG
+#include <iostream>
+using std::cout;
+using std::cerr;
+using std::endl;
+#endif
 
 using namespace HRTLab;
 

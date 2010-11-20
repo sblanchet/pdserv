@@ -483,11 +483,11 @@ void Session::remoteHost(const Attr &attr)
         std::ostringstream os;
         server->getTime(ts);
 
-        os << "Adminmode filp: " << so; // so is the fd and comes from
-        // ost::Socket
+        os << "Adminmode filp: " << so; // 'so' is the fd and comes from
+                                        // ost::Socket
         MsrXml::Element info("info");
         info.setAttribute("time", ts);
-        info.setAttributeCheck("text", os.str());
+        info.setAttribute("text", os.str());
         server->broadcast(this, info);
     }
 }
@@ -627,19 +627,8 @@ void Session::xsad(const Attr &attr)
         for ( std::list<unsigned int>::const_iterator it(indexList.begin());
                 it != indexList.end(); it++) {
 
-            if (*it >= sl.size()) {
-                std::ostringstream os;
-                os << "Channel " << *it << " does not exist.";
-
-                MsrXml::Element warn("warn");
-                warn.setAttribute("text", os.str());
-                warn.setAttribute("command", "xsad");
-                outbuf << warn << std::flush;
-
-                return;
-            }
-
-            channelList.push_back(sl[*it]);
+            if (*it <= sl.size())
+                channelList.push_back(sl[*it]);
         }
     }
     else
@@ -673,35 +662,35 @@ void Session::xsad(const Attr &attr)
     }
 
     if (event) {
-        blocksize = 1;
         if (!foundReduction)
+            // If user did not supply a reduction, limit to a 
+            // max of 10Hz automatically
             reduction = std::max(1.0, 0.1 / main->baserate + 0.5);
     }
-    else {
-        if (!foundReduction and !foundBlocksize) {
-            // Quite possibly user input; choose reduction for 1Hz
-            reduction = std::max(1.0, 1.0 / main->baserate + 0.5);
-            blocksize = 1;
-        }
-        else if (foundReduction) {
-            // Choose blocksize so that a datum is sent at 10Hz
-            blocksize =
-                std::max(1.0, 0.1 / main->baserate / reduction + 0.5);
-        }
-        else if (foundBlocksize) {
-            reduction = 1;
-        }
+    else if (!foundReduction and !foundBlocksize) {
+        // Quite possibly user input; choose reduction for 1Hz
+        reduction = std::max(1.0, 1.0 / main->baserate + 0.5);
+        blocksize = 1;
     }
-
-//    cout << "foundReduction " << event << main->baserate << " reduction " << reduction << endl;
+    else if (foundReduction) {
+        // Choose blocksize so that a datum is sent at 10Hz
+        blocksize =
+            std::max(1.0, 0.1 / main->baserate / reduction + 0.5);
+    }
+    else if (foundBlocksize) {
+        reduction = 1;
+    }
 
     if (!attr.getUnsigned("precision", precision)) {
         precision = 10;
     }
 
-    if (attr.isTrue("quiet"))
-        quiet = true;
+    // Quiet will stop all transmission of <data> tags until
+    // sync is called
+    quiet = attr.isTrue("quiet");
 
+    // Calling sync will reset all the channel buffers so that they
+    // all start together again
     if (attr.isTrue("sync")) {
         for (std::vector<Task*>::iterator it = task.begin();
                 it != task.end(); it++) {
@@ -714,7 +703,6 @@ void Session::xsad(const Attr &attr)
     std::copy(channelList.begin(), channelList.end(), signals);
     for (const HRTLab::Signal **sp = signals;
             sp != signals + channelList.size(); sp++) {
-//        cout << "xsad " << (*sp)->index << (*sp)->path << endl;
         task[(*sp)->tid]->addSignal(
                 *sp, event, reduction, blocksize, base64, precision);
     }
@@ -754,5 +742,4 @@ void Session::xsod(const Attr &attr)
         }
         main->unsubscribe(this);
     }
-
 }

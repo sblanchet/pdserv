@@ -101,9 +101,11 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         // <data> tag for the output stream
         MsrXml::Element dataTag;
 
+        // Input and output buffering
         Outbuf outbuf;
         Inbuf inbuf;
 
+        // Here are all the commands the MSR protocol supports
         void broadcast(const Attr &);
         void echo(const Attr &);
         void ping(const Attr &);
