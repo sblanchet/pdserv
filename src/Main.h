@@ -1,9 +1,12 @@
+/*****************************************************************************
+ * $Id$
+ *****************************************************************************/
+
 #ifndef MAIN_H
 #define MAIN_H
 
 #include <vector>
 #include <map>
-#include <set>
 #include <list>
 #include <algorithm>
 #include <string>
@@ -27,13 +30,6 @@ class Task;
 
 class Main {
     public:
-        enum Instruction {Restart = 1,
-            Subscribe, Unsubscribe, SetValue,
-            PollSignal,
-
-            SubscriptionList, SubscriptionData,
-        };
-
         Main(int argc, const char *argv[],
                 const char *name, const char *version,
                 double baserate,

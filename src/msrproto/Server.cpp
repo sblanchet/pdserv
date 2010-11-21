@@ -27,6 +27,9 @@ Server::Server(HRTLab::Main *main): main(main), mutex(1)
 /////////////////////////////////////////////////////////////////////////////
 Server::~Server()
 {
+    for (std::set<Session*>::iterator it = sessions.begin();
+            it != sessions.end(); it++)
+        delete *it;
 }
 
 /////////////////////////////////////////////////////////////////////////////

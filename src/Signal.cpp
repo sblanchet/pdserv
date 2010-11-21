@@ -2,12 +2,16 @@
  * $Id$
  *****************************************************************************/
 
+#include "config.h"
+
 #include "Signal.h"
 
+#ifdef DEBUG
 #include <iostream>
 using std::cout;
 using std::cerr;
 using std::endl;
+#endif
 
 using namespace HRTLab;
 

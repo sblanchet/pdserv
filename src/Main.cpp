@@ -4,21 +4,20 @@
 
 #include "config.h"
 
-#include "Main.h"
-#include "Task.h"
-#include "Signal.h"
-#include "Parameter.h"
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
-#include <list>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/time.h>
 
+#include "Main.h"
+#include "Task.h"
+#include "Signal.h"
+#include "Parameter.h"
+#include "Session.h"
 #include "etlproto/Server.h"
 #include "msrproto/Server.h"
-#include "Session.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -53,6 +52,17 @@ Main::~Main()
 {
     delete decimation;
     delete parameterAddr;
+    delete msrproto;
+
+    for (SignalList::const_iterator it = signals.begin();
+            it != signals.end(); it++)
+        delete *it;
+
+    for (ParameterList::const_iterator it = parameters.begin();
+            it != parameters.end(); it++)
+        delete *it;
+
+    munmap(shmem, shmem_len);
 
     for (size_t i = 0; i < nst; i++)
         delete task[i];
@@ -250,7 +260,7 @@ void Main::unsubscribe(const Session *session,
         const Signal * const *signal, size_t nelem)
 {
     ost::SemaphoreLock lock(mutex);
-    cout << "Main::unsubscribe " << signal << endl;
+//    cout << "Main::unsubscribe " << signal << endl;
     if (signal)
         for (const Signal * const *s = signal; s != signal + nelem; s++)
             task[(*s)->tid]->unsubscribe(session, *s);

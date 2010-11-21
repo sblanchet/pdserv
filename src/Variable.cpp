@@ -2,13 +2,18 @@
  * $Id$
  *****************************************************************************/
 
+#include "config.h"
+
 #include "Variable.h"
+
 #include <stdint.h>
 
+#ifdef DEBUG
 #include <iostream>
 using std::cout;
 using std::cerr;
 using std::endl;
+#endif
 
 using namespace HRTLab;
 

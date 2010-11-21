@@ -13,8 +13,8 @@ add_library( rtlab SHARED
     Signal.cpp Signal.h
     Parameter.cpp Parameter.h
 
-    etlproto/Server.cpp etlproto/Server.h
-    etlproto/Session.cpp etlproto/Session.h
+    #etlproto/Server.cpp etlproto/Server.h
+    #etlproto/Session.cpp etlproto/Session.h
 
     msrproto/Outbuf.cpp msrproto/Outbuf.h
     msrproto/Inbuf.cpp msrproto/Inbuf.h
