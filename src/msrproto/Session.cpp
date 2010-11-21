@@ -36,9 +36,6 @@ Session::Session( Server *s, ost::SocketService *ss,
     writeAccess = false;
     echoOn = false;
     quiet = false;
-    dataIn = 0;
-    dataOut = 0;
-    main->gettime(&loginTime);
     dataTag.setAttribute("level", 0);
 
     // Create enough tasks
@@ -115,7 +112,7 @@ void Session::pending()
         if (n <= 0)
             break;
 
-        dataIn += n;    // Global input counter
+        inBytes += n;   // HRTLab::Session input byte counter
         inputLen += n;  // Local input counter
 
         inbuf.parse(n);
@@ -144,7 +141,7 @@ void Session::output()
         return;
     }
 
-    dataOut += n;       // Global output counter
+    outBytes += n;       // HRTLab::Session output byte counter
 
     if (outbuf.clear(n))
         setDetectOutput(false);
@@ -180,16 +177,6 @@ void Session::newPdoData(const HRTLab::Task *t, unsigned int seqNo,
         outbuf << dataTag << std::flush;
 
     dataTag.releaseChildren();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::getSessionStatistics(HRTLab::Main::SessionStatistics& s) const
-{
-    s.remote = remote;
-    s.client = applicationname;
-    s.countIn = dataIn;
-    s.countOut = dataOut;
-    s.connectedTime = loginTime;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -262,7 +249,7 @@ void Session::broadcast(const Attr &attr)
     struct timespec ts;
     std::string s;
 
-    server->getTime(ts);
+    main->gettime(&ts);
 
     broadcast.setAttribute("time", ts);
 
@@ -449,7 +436,7 @@ void Session::readStatistics(const Attr &attr)
     //           connectedtime="1282151176.659208"/>
     //   <client index="1" .../>
     // </clients>
-    typedef std::list<HRTLab::Main::SessionStatistics> StatList;
+    typedef std::list<HRTLab::Session::Statistics> StatList;
     StatList stats;
     main->getSessionStatistics(stats);
     int index = 0;
@@ -472,16 +459,16 @@ void Session::readStatistics(const Attr &attr)
 /////////////////////////////////////////////////////////////////////////////
 void Session::remoteHost(const Attr &attr)
 {
-    attr.getString("name", remote);
+    attr.getString("name", HRTLab::Session::remoteHost);
 
-    attr.getString("applicationname", applicationname);
+    attr.getString("applicationname", client);
 
     writeAccess = attr.isEqual("access", "allow");
 
     if (writeAccess and attr.isTrue("isadmin")) {
         struct timespec ts;
         std::ostringstream os;
-        server->getTime(ts);
+        main->gettime(&ts);
 
         os << "Adminmode filp: " << so; // 'so' is the fd and comes from
                                         // ost::Socket
@@ -493,6 +480,39 @@ void Session::remoteHost(const Attr &attr)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+class Convert {
+    public:
+        Convert(si_datatype_t t, char *buf): buf(buf) {
+            switch (t) {
+                case si_boolean_T: conv = setTo<bool>;     break;
+                case si_uint8_T:   conv = setTo<uint8_t>;  break;
+                case si_sint8_T:   conv = setTo<int8_t>;   break;
+                case si_uint16_T:  conv = setTo<uint16_t>; break;
+                case si_sint16_T:  conv = setTo<int16_t>;  break;
+                case si_uint32_T:  conv = setTo<uint32_t>; break;
+                case si_sint32_T:  conv = setTo<int32_t>;  break;
+                case si_uint64_T:  conv = setTo<uint64_t>; break;
+                case si_sint64_T:  conv = setTo<int64_t>;  break;
+                case si_single_T:  conv = setTo<float>;    break;
+                case si_double_T:  conv = setTo<double>;   break;
+                default:           conv = 0;               break;
+            }
+        }
+        void set(size_t idx, double val) {
+            (*conv)(buf, idx, val);
+        }
+
+    private:
+        char * const buf;
+        void (*conv)(char *, size_t, double);
+
+        template<class T>
+        static void setTo(char *dst, size_t idx, double src) {
+            reinterpret_cast<T*>(dst)[idx] = src;
+        }
+};
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::writeParameter(const Attr &attr)
 {
     if (!writeAccess) {
@@ -502,114 +522,86 @@ void Session::writeParameter(const Attr &attr)
         return;
     }
 
-//    HRTLab::Parameter *parameter;
-//    size_t startindex = 0;
-//    const HRTLab::Main::ParameterList& pl = main->getParameters();
+    HRTLab::Parameter *parameter;
+    size_t startindex = 0;
+    const HRTLab::Main::ParameterList& pl = main->getParameters();
+    unsigned int index;
+    std::string name;
 
-//    if ((it = attributes.find("name")) != attributes.end()) {
-//        const HRTLab::Main::VariableMap& m = main->getVariableMap();
-//        HRTLab::Main::VariableMap::const_iterator vit = m.find(it->second);
-//
-//        if (vit == m.end() or vit->second->index >= pl.size()
-//                or pl[vit->second->index]->path != it->second)
-//            return;
-//
-//        parameter = pl[vit->second->index];
-//    }
-//    else if ((it = attributes.find("index")) != attributes.end()) {
-//        unsigned int index = atoi(it->second.c_str());
-//
-//        if (index >= pl.size())
-//            return;
-//
-//        parameter = pl[index];
-//    }
-//    else {
-//        return;
-//    }
-//
-//    if ((it = attributes.find("startindex")) != attributes.end()) {
-//        startindex = atoi(it->second.c_str());
-//    }
-//
-//    char valbuf[parameter->memSize];
-//    size_t validx = 0;
-//    if ((it = attributes.find("hexvalue")) != attributes.end()) {
-//        const std::string &s = it->second;
-//        const char hexNum[] = {
-//            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
-//            0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-//            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-//            0,10,11,12,13,14,15
-//        };
-//
-//        for (validx = 0;
-//                validx < std::min(parameter->memSize, s.size() / 2);
-//                validx++) {
-//            unsigned char c1 = s[validx*2] - '0';
-//            unsigned char c2 = s[validx*2 + 1] - '0';
-//            if (c1 > 'f' - '0' or c2 > 'f' - '0')
-//                return;
-//            valbuf[validx] = hexNum[c1] << 4 | hexNum[c2];
-//        }
-//    }
-//    else if ((it = attributes.find("value")) != attributes.end()) {
-//        double v;
-//        char c;
-//        std::istringstream is(it->second);
-//
-//        is.imbue(std::locale::classic());
-//
-//        for (validx = 0; validx < parameter->nelem; validx++) {
-//            is >> v;
-//            cout << "value = " << v << endl;
-//
-//            if (!is)
-//                break;
-//
-//            switch (parameter->dtype) {
-//                case si_boolean_T:
-//                    reinterpret_cast<bool*>(valbuf)[validx] = v; break;
-//
-//                case si_uint8_T:
-//                    reinterpret_cast<uint8_t*>(valbuf)[validx] = v; break;
-//
-//                case si_sint8_T:
-//                    reinterpret_cast<int8_t*>(valbuf)[validx] = v; break;
-//
-//                case si_uint16_T:
-//                    reinterpret_cast<uint16_t*>(valbuf)[validx] = v; break;
-//
-//                case si_sint16_T:
-//                    reinterpret_cast<int16_t*>(valbuf)[validx] = v; break;
-//
-//                case si_uint32_T:
-//                    reinterpret_cast<uint32_t*>(valbuf)[validx] = v; break;
-//
-//                case si_sint32_T:
-//                    reinterpret_cast<int32_t*>(valbuf)[validx] = v; break;
-//
-//                case si_uint64_T:
-//                    reinterpret_cast<uint64_t*>(valbuf)[validx] = v; break;
-//
-//                case si_sint64_T:
-//                    reinterpret_cast<int64_t*>(valbuf)[validx] = v; break;
-//
-//                case si_single_T:
-//                    reinterpret_cast<float*>(valbuf)[validx] = v; break;
-//
-//                case si_double_T:
-//                    reinterpret_cast<double*>(valbuf)[validx] = v; break;
-//
-//                default:
-//                    break;
-//            }
-//
-//            is >> c;
-//        }
-//    }
+    if (attr.getString("name", name)) {
+        const HRTLab::Main::VariableMap& m = main->getVariableMap();
+        HRTLab::Main::VariableMap::const_iterator vit = m.find(name);
 
-//    parameter->setValue(valbuf, validx, startindex);
+        if (vit == m.end() or vit->second->index >= pl.size()
+                or pl[vit->second->index]->path != name)
+            // Parameter does not exist, ignore
+            return;
+
+        parameter = pl[vit->second->index];
+    }
+    else if (attr.getUnsigned("index", index)) {
+        if (index >= pl.size())
+            // Index does not exist, ignore
+            return;
+
+        parameter = pl[index];
+    }
+    else
+        return;
+    
+    if (attr.getUnsigned("startindex", startindex)) {
+        if (startindex >= parameter->nelem)
+            return;
+    }
+
+    char valbuf[parameter->memSize];
+    size_t nelem;
+    char *s;
+    if (attr.find("hexvalue", s)) {
+        static const char hexNum[] = {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
+            0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+            0,10,11,12,13,14,15
+        };
+        size_t count = std::min(parameter->memSize, strlen(s) / 2);
+        nelem = count / parameter->width;
+
+        for (size_t validx = 0; validx < count; validx++) {
+            unsigned char c1 = s[validx*2]     - '0';
+            unsigned char c2 = s[validx*2 + 1] - '0';
+            if (std::max(c1,c2) >= sizeof(hexNum))
+                return;
+            valbuf[validx] = hexNum[c1] << 4 | hexNum[c2];
+        }
+        // FIXME: actually the setting operation must also check for
+        // endianness!
+    }
+    else if (attr.find("value", s)) {
+        double v;
+        Convert converter(parameter->dtype, valbuf);
+        char c;
+        std::istringstream is(s);
+
+        is.imbue(std::locale::classic());
+
+        for (nelem = 0; nelem < parameter->nelem; nelem++) {
+            is >> v;
+            cout << "found " << v << endl;
+
+            if (!is)
+                break;
+
+            converter.set(nelem, v);
+
+            is >> c;
+        }
+    }
+    else
+        return;
+
+    main->writeParameter(parameter, valbuf,
+            nelem * parameter->width, startindex);
 }
 
 /////////////////////////////////////////////////////////////////////////////

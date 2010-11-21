@@ -8,6 +8,8 @@
 #include <set>
 #include <cc++/thread.h>
 
+#include "Session.h"
+
 namespace HRTLab {
     class Main;
     class Parameter;
@@ -32,14 +34,14 @@ class Server:public ost::Thread {
 
         void sessionClosed(Session *s);
 
-        void getTime(struct timespec& ts) const;
+        void getSessionStatistics(std::list<Session::Statistics>& stats) const;
 
     private:
 
         HRTLab::Main * const main;
         std::set<Session*> sessions;
 
-        ost::Semaphore mutex;
+        mutable ost::Semaphore mutex;
 
         void run();
 

@@ -88,5 +88,5 @@ void Parameter::setValue(const char *valbuf, size_t nelem, size_t offset)
 
     main->gettime(&mtime);
 
-    main->writeParameter(this);
+//    main->writeParameter(this);
 }

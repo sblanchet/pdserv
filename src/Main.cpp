@@ -1,3 +1,9 @@
+/*****************************************************************************
+ * $Id$
+ *****************************************************************************/
+
+#include "config.h"
+
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
@@ -14,10 +20,12 @@
 #include "msrproto/Server.h"
 #include "Session.h"
 
+#ifdef DEBUG
 #include <iostream>
 using std::cout;
 using std::cerr;
 using std::endl;
+#endif
 
 using namespace HRTLab;
 
@@ -64,7 +72,8 @@ int Main::localtime(struct timespec* t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::writeParameter(Parameter *p)
+void Main::writeParameter(const Parameter *p, const char *data,
+                size_t n, size_t startindex)
 {
 //    post(SetValue, p->index, p->Variable::addr, p->memSize);
 
@@ -168,7 +177,7 @@ void Main::poll(Signal **s, size_t nelem, char *buf)
 void Main::closeSession(const Session *s)
 {
     ost::SemaphoreLock lock(mutex);
-    session.erase(s);
+//    session.erase(s);
     for (unsigned int i = 0; i < nst; i++)
         task[i]->endSession(s);
 }
@@ -177,7 +186,7 @@ void Main::closeSession(const Session *s)
 void Main::newSession(const Session* s)
 {
     ost::SemaphoreLock lock(mutex);
-    session.insert(s);
+//    session.insert(s);
 
     for (unsigned int i = 0; i < nst; i++)
         task[i]->newSession(s);
@@ -214,15 +223,10 @@ void Main::subscribe(const Session *session,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::getSessionStatistics(std::list<SessionStatistics>& stats) const
+void Main::getSessionStatistics(std::list<Session::Statistics>& stats) const
 {
-    ost::SemaphoreLock lock(mutex);
-    for (SessionSet::const_iterator it = session.begin();
-            it != session.end(); it++) {
-        SessionStatistics ss;
-        (*it)->getSessionStatistics(ss);
-        stats.push_back(ss);
-    }
+    msrproto->getSessionStatistics(stats);
+    //etlproto->getSessionStatistics(stats);
 }
 
 /////////////////////////////////////////////////////////////////////////////

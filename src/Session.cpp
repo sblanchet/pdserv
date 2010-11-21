@@ -21,6 +21,10 @@ using namespace HRTLab;
 Session::Session(Main *m): main(m)
 {
     main->newSession(this);
+    main->gettime(&connectedTime);
+
+    inBytes = 0;
+    outBytes = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -30,8 +34,17 @@ Session::~Session()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::getSessionStatistics(Main::SessionStatistics&) const
+Session::Statistics Session::getStatistics() const
 {
+    Statistics s;
+
+    s.remote = remoteHost;
+    s.client = client;
+    s.countIn = inBytes;
+    s.countOut = outBytes;
+    s.connectedTime = connectedTime;
+
+    return s;
 }
 
 /////////////////////////////////////////////////////////////////////////////

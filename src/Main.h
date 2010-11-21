@@ -12,13 +12,14 @@
 #include <rtlab/rtlab.h>
 #include <cc++/thread.h>
 
+#include "Session.h"
+
 namespace MsrProto {
     class Server;
 }
 
 namespace HRTLab {
 
-class Session;
 class Signal;
 class Parameter;
 class Variable;
@@ -105,21 +106,15 @@ class Main {
         void newSession(const Session *);
         void rxPdo(Session *);
         void closeSession(const Session *s);
-        void writeParameter(Parameter *);
+        void writeParameter(const Parameter *, const char *data,
+                size_t n, size_t startindex = 0);
         void poll(Signal **s, size_t nelem, char *buf);
         void unsubscribe(const Session *session,
                 const Signal **s = 0, size_t nelem = 0);
         void subscribe(const Session *session,
                 const Signal **s, size_t nelem);
 
-        typedef struct {
-            std::string remote;
-            std::string client;
-            size_t countIn;
-            size_t countOut;
-            struct timespec connectedTime;
-        } SessionStatistics;
-        void getSessionStatistics(std::list<SessionStatistics>&) const;
+        void getSessionStatistics(std::list<Session::Statistics>&) const;
 
     private:
 
@@ -128,9 +123,6 @@ class Main {
 
         MsrProto::Server *msrproto;
 //    EtlProto::Server etlproto(this);
-
-        typedef std::set<const Session*> SessionSet;
-        SessionSet session;
 
         int pid;
 

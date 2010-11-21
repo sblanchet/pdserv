@@ -9,12 +9,11 @@
 #include <ctime>
 #include <vector>
 
-#include "Main.h"
-
 namespace HRTLab {
 
 class Task;
 class Variable;
+class Main;
 
 class Session {
     public:
@@ -25,10 +24,26 @@ class Session {
                 size_t n);
         virtual void newPdoData(const Task *, unsigned int seqNo,
                 const struct timespec *t, const char *);
-        virtual void getSessionStatistics(Main::SessionStatistics&) const;
+
+        typedef struct {
+            std::string remote;
+            std::string client;
+            size_t countIn;
+            size_t countOut;
+            struct timespec connectedTime;
+        } Statistics;
+        Statistics getStatistics() const;
 
     protected:
         Main * const main;
+
+        size_t inBytes;
+        size_t outBytes;
+        std::string remoteHost;
+        std::string client;
+
+    private:
+        struct timespec connectedTime;
 };
 
 }

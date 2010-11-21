@@ -73,11 +73,6 @@ class Session: public ost::SocketPort, public HRTLab::Session {
 
         Server * const server;
 
-        // Statistical data
-        size_t dataIn;
-        size_t dataOut;
-        struct timespec loginTime;
-
         // Reimplemented from SocketPort
         void expired();
         void pending();
@@ -89,14 +84,11 @@ class Session: public ost::SocketPort, public HRTLab::Session {
                 size_t n);
         void newPdoData(const HRTLab::Task *, unsigned int seqNo,
                 const struct timespec *t, const char *);
-        void getSessionStatistics(HRTLab::Main::SessionStatistics&) const;
 
         // Management variables
         bool writeAccess;
         bool quiet;
         bool echoOn;
-        std::string remote;
-        std::string applicationname;
 
         // <data> tag for the output stream
         MsrXml::Element dataTag;
