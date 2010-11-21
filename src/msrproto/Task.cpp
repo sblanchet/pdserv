@@ -100,13 +100,12 @@ void Task::addSignal(const HRTLab::Signal *signal,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::newVariableList(const HRTLab::Variable **varList, size_t n)
+void Task::newVariableList(const HRTLab::Variable * const *varList, size_t n)
 {
     // Since it is not (should not be!) possible that required signal 
     // is not transmitted any more, only need to check for new signals
     unsigned int offset = 0;
-    for (const HRTLab::Variable **v = varList; v != varList + n; v++) {
-
+    for (const HRTLab::Variable * const *v = varList; v != varList + n; v++) {
         SubscribedSet::iterator it = subscribedSet.find((*v)->index);
         if (it != subscribedSet.end()) {
             activeSet[*v] = &(it->second);

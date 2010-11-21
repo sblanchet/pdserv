@@ -27,7 +27,7 @@ class Task {
                 bool event, unsigned int decimation, size_t blocksize,
                 bool base64, size_t precision);
 
-        void newVariableList(const HRTLab::Variable **, size_t);
+        void newVariableList(const HRTLab::Variable * const *, size_t);
         void newValues(MsrXml::Element *, size_t seqNo, const char *pdo);
 
         void sync();

@@ -64,7 +64,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         ~Session();
 
         void broadcast(Session *s, const MsrXml::Element &element);
-        void parameterChanged(const HRTLab::Parameter**, size_t n);
+        void parameterChanged(const HRTLab::Parameter* const *, size_t n);
         void requestOutput();
 
         void processCommand(const char *command, const Attr &attr);
@@ -80,8 +80,8 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         void disconnect();
 
         // Reimplemented from HRTLab::Session
-        void newVariableList(const HRTLab::Task *, const HRTLab::Variable **,
-                size_t n);
+        void newVariableList(const HRTLab::Task *,
+                const HRTLab::Variable * const *, size_t n);
         void newPdoData(const HRTLab::Task *, unsigned int seqNo,
                 const struct timespec *t, const char *);
 

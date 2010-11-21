@@ -48,7 +48,7 @@ Session::Statistics Session::getStatistics() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newVariableList(const Task *, const Variable **,
+void Session::newVariableList(const Task *, const Variable * const *,
                 size_t n)
 {
 }

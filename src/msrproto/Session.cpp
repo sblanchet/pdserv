@@ -75,7 +75,7 @@ void Session::broadcast(Session *s, const MsrXml::Element &element)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::parameterChanged(const HRTLab::Parameter **p, size_t n)
+void Session::parameterChanged(const HRTLab::Parameter * const *p, size_t n) 
 {
     MsrXml::Element pu("pu");
     while (n--) {
@@ -157,7 +157,7 @@ void Session::disconnect()
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::newVariableList(const HRTLab::Task *t,
-        const HRTLab::Variable **s, size_t n)
+        const HRTLab::Variable * const *s, size_t n)
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
     task[t->tid]->newVariableList(s, n);
@@ -561,11 +561,6 @@ void Session::writeParameter(const Attr &attr)
     char *s;
     std::copy(main->getParameterAddr(parameter),
             main->getParameterAddr(parameter) + parameter->memSize, valbuf);
-
-    for (size_t i = 0; i < parameter->memSize; i++)
-        cout << ' ' << (int)valbuf[i];
-    cout << endl;
-
     if (attr.find("hexvalue", s)) {
         static const char hexNum[] = {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
@@ -574,13 +569,13 @@ void Session::writeParameter(const Attr &attr)
             0,10,11,12,13,14,15
         };
 
-        for (char *x = valbuf + parameter->width * startindex;
-                *s and x < valbuf + parameter->memSize; x++) {
+        for (char *c = valbuf + parameter->width * startindex;
+                c < valbuf + parameter->memSize; c++) {
             unsigned char c1 = *s++ - '0';
             unsigned char c2 = *s++ - '0';
             if (std::max(c1,c2) >= sizeof(hexNum))
                 return;
-            *x = hexNum[c1] << 4 | hexNum[c2];
+            *c = hexNum[c1] << 4 | hexNum[c2];
         }
         // FIXME: actually the setting operation must also check for
         // endianness!
@@ -600,7 +595,6 @@ void Session::writeParameter(const Attr &attr)
             if (!is)
                 break;
 
-            cout << "found " << v << endl;
             converter.set(i, v);
 
             is >> c;
@@ -609,11 +603,14 @@ void Session::writeParameter(const Attr &attr)
     else
         return;
 
-    for (size_t i = 0; i < parameter->memSize; i++)
-        cout << ' ' << (int)valbuf[i];
-    cout << endl;
+    if (main->writeParameter(&parameter, 1, valbuf)) {
+        // If an error occurred, tell this client to reread the value
 
-    main->writeParameter(&parameter, 1, valbuf);
+        MsrXml::Element pu("pu");
+        pu.setAttribute("index", parameter->index);
+
+        outbuf << pu << std::flush;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////

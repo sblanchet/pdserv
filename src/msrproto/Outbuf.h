@@ -25,7 +25,6 @@ class Outbuf: public std::streambuf, public std::ostream {
     private:
         Session * const session;
 
-        //
         // Output buffer management
         // Somewhat elusive, but makes writing to end of buffer and sending
         // data fast

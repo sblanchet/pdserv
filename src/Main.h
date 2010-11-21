@@ -89,12 +89,13 @@ class Main {
         void newSession(const Session *);
         void rxPdo(Session *);
         void closeSession(const Session *s);
-        void writeParameter(const Parameter **, size_t n, const char *data);
-        void poll(Signal **s, size_t nelem, char *buf);
+        int writeParameter(const Parameter * const *, size_t n,
+                const char *data);
+        int poll(const Signal * const *s, size_t nelem, char *buf);
         void unsubscribe(const Session *session,
-                const Signal **s = 0, size_t nelem = 0);
+                const Signal * const *s = 0, size_t nelem = 0);
         void subscribe(const Session *session,
-                const Signal **s, size_t nelem);
+                const Signal * const *s, size_t nelem);
 
         void getSessionStatistics(std::list<Session::Statistics>&) const;
 
@@ -114,7 +115,7 @@ class Main {
             unsigned int reqId;
             unsigned int replyId;
             enum {PollSignal, WriteParameter} type;
-            bool error;
+            int errorCode;
             unsigned int count;
             struct timespec time;
             union {

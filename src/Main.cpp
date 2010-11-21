@@ -73,7 +73,8 @@ int Main::localtime(struct timespec* t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::writeParameter(const Parameter **p, size_t nelem, const char *data)
+int Main::writeParameter(const Parameter * const *p, size_t nelem,
+        const char *data)
 {
     ost::SemaphoreLock lock(sdoMutex);
 
@@ -91,10 +92,12 @@ void Main::writeParameter(const Parameter **p, size_t nelem, const char *data)
         ost::Thread::sleep(100);
     } while (sdo->reqId != sdo->replyId);
 
-    if (!sdo->error) {
+    if (!sdo->errorCode) {
         msrproto->parameterChanged(p, nelem);
         //etlproto->parameterChanged(p, nelem);
     }
+
+    return sdo->errorCode;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -137,7 +140,7 @@ void Main::processSdo(unsigned int tid, const struct timespec *time)
         return;
 
     sdo->time = *time;
-    sdo->error = false;
+    sdo->errorCode = 0;
 
     bool finished = true;
     char *data = sdoData;
@@ -156,13 +159,13 @@ void Main::processSdo(unsigned int tid, const struct timespec *time)
         case SDOStruct::WriteParameter:
             for (const Parameter **p = sdo->parameters;
                     p != sdo->parameters + sdo->count; p++) {
-                if ((*p)->setValue(data)) {
+                if ((sdo->errorCode = (*p)->setValue(data))) {
                     finished = false;
                     break;
                 }
                 data += (*p)->memSize;
             }
-            if (finished) {
+            if (sdo->errorCode) {
                 struct timespec t;
                 gettime(&t);
                 for (const Parameter **p = sdo->parameters;
@@ -179,7 +182,7 @@ void Main::processSdo(unsigned int tid, const struct timespec *time)
                 }
             }
             else {
-                sdo->error = true;
+                sdo->errorCode = true;
                 finished = true;
             }
             break;
@@ -197,7 +200,7 @@ void Main::update(int st, const struct timespec *time)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::poll(Signal **s, size_t nelem, char *buf)
+int Main::poll(const Signal * const *s, size_t nelem, char *buf)
 {
     ost::SemaphoreLock lock(sdoMutex);
 
@@ -219,6 +222,8 @@ void Main::poll(Signal **s, size_t nelem, char *buf)
         buf += len;
         s++;
     }
+
+    return sdo->errorCode;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -252,12 +257,12 @@ void Main::rxPdo(Session *session)
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::unsubscribe(const Session *session,
-        const Signal **signal, size_t nelem)
+        const Signal * const *signal, size_t nelem)
 {
     ost::SemaphoreLock lock(mutex);
     cout << "Main::unsubscribe " << signal << endl;
     if (signal)
-        for (const Signal **s = signal; s != signal + nelem; s++)
+        for (const Signal * const *s = signal; s != signal + nelem; s++)
             task[(*s)->tid]->unsubscribe(session, *s);
     else
         for (unsigned int i = 0; i < nst; i++)
@@ -266,10 +271,10 @@ void Main::unsubscribe(const Session *session,
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::subscribe(const Session *session,
-        const Signal **signal, size_t nelem)
+        const Signal * const *signal, size_t nelem)
 {
     ost::SemaphoreLock lock(mutex);
-    for (const Signal **s = signal; s != signal + nelem; s++)
+    for (const Signal * const *s = signal; s != signal + nelem; s++)
         task[(*s)->tid]->subscribe(session, *s);
 }
 

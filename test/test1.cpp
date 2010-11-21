@@ -45,7 +45,7 @@ int main(int argc, const char *argv[])
             si_double_T, dbl, 1, NULL));
 
     assert(!hrtlab_parameter(hrtlab,
-                "/path\"/to/püaram", "vüar1",
+                "/path/to/param", "vüar1",
                 si_uint32_T, param, 4, 0, 0, 0));
 
     assert(!hrtlab_start(hrtlab));

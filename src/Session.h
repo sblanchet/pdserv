@@ -20,7 +20,7 @@ class Session {
         Session(Main *main);
         virtual ~Session();
 
-        virtual void newVariableList(const Task *, const Variable **,
+        virtual void newVariableList(const Task *, const Variable * const *,
                 size_t n);
         virtual void newPdoData(const Task *, unsigned int seqNo,
                 const struct timespec *t, const char *);
