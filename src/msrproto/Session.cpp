@@ -79,8 +79,10 @@ void Session::parameterChanged(const HRTLab::Parameter * const *p, size_t n)
 {
     MsrXml::Element pu("pu");
     while (n--) {
-        pu.setAttribute("index", (*p++)->index);
-        outbuf << pu << std::flush;
+        if (*p) {
+            pu.setAttribute("index", (*p++)->index);
+            outbuf << pu << std::flush;
+        }
     }
 }
 

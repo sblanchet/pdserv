@@ -103,7 +103,6 @@ int Main::writeParameter(const Parameter * const *p, size_t nelem,
 /////////////////////////////////////////////////////////////////////////////
 const char * Main::getParameterAddr(const Parameter *p) const
 {
-    cout << __func__ << (void*)parameterAddr[p->index] << endl;
     return parameterAddr[p->index];
 }
 
@@ -144,6 +143,7 @@ void Main::processSdo(unsigned int tid, const struct timespec *time)
 
     bool finished = true;
     char *data = sdoData;
+    struct timespec t;
     switch (sdo->type) {
         case SDOStruct::PollSignal:
             for (const Signal **s = sdo->signals;
@@ -157,33 +157,23 @@ void Main::processSdo(unsigned int tid, const struct timespec *time)
             break;
 
         case SDOStruct::WriteParameter:
+            gettime(&t);
             for (const Parameter **p = sdo->parameters;
                     p != sdo->parameters + sdo->count; p++) {
-                if ((sdo->errorCode = (*p)->setValue(data))) {
-                    finished = false;
-                    break;
+
+                int errorCode = (*p)->setValue(data);
+                if (errorCode) {
+                    *p = 0;
+                    sdo->errorCode = errorCode;
                 }
-                data += (*p)->memSize;
-            }
-            if (sdo->errorCode) {
-                struct timespec t;
-                gettime(&t);
-                for (const Parameter **p = sdo->parameters;
-                        p != sdo->parameters + sdo->count; p++) {
+                else {
                     mtime[(*p)->index] = t;
-                    cout << " copying "
-                        << "from " << (void*)(*p)->Variable::addr
-                        << " " << (void*)((*p)->Variable::addr + (*p)->memSize)
-                        << " to " << (void*) parameterAddr[(*p)->index]
-                        << endl;
                     std::copy((*p)->Variable::addr,
                             (*p)->Variable::addr + (*p)->memSize,
                             parameterAddr[(*p)->index]);
                 }
-            }
-            else {
-                sdo->errorCode = true;
-                finished = true;
+
+                data += (*p)->memSize;
             }
             break;
     }
@@ -334,13 +324,13 @@ int Main::start()
     sdo           = ptr_align<SDOStruct>(parameterData + parameterSize);
     sdoData       = ptr_align<char>(
             sdo->signals + std::max(signals.size(), parameters.size()));
-    cout
-        << " shmem=" << shmem
-        << " mtime=" << mtime
-        << " parameterData=" << (void*)parameterData
-        << " sdo=" << sdo
-        << " sdoData=" << (void*)sdoData
-        << endl;
+//    cout
+//        << " shmem=" << shmem
+//        << " mtime=" << mtime
+//        << " parameterData=" << (void*)parameterData
+//        << " sdo=" << sdo
+//        << " sdoData=" << (void*)sdoData
+//        << endl;
 
     parameterAddr = new char*[parameters.size()];
 

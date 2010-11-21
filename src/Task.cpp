@@ -66,7 +66,7 @@ void Task::receive()
                     vs.insert(v);
                     pdoMem += v->memSize;
                     txPdoCount++;
-                    cout << "Instruction::Insert: " << v->path << endl;
+//                    cout << "Instruction::Insert: " << v->path << endl;
                 }
                 break;
 
@@ -75,7 +75,7 @@ void Task::receive()
                     vs.erase(it);
                     pdoMem -= v->memSize;
                     txPdoCount--;
-                    cout << "Instruction::Remove: " << v->path << endl;
+//                    cout << "Instruction::Remove: " << v->path << endl;
                 }
                 break;
 
@@ -127,14 +127,14 @@ void Task::deliver(Instruction::Type t, const Variable *v)
     if (++mailbox == mailboxEnd)
         mailbox = mailboxBegin;
 
-    cout << __func__ << v->path<< endl;
+//    cout << __func__ << v->path<< endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Task::subscribe(const Session *s, const Variable *v)
 {
     if (session[s].find(v) == session[s].end()) {
-        cout << "Inserting " << s << v->path << endl;
+//        cout << "Inserting " << s << v->path << endl;
         variableSessions[v].insert(s);
         session[s].insert(v);
         deliver(Instruction::Insert, v);
@@ -148,21 +148,21 @@ void Task::unsubscribe(const Session *s, const Variable *v)
         VariableSet &vs = session[s];
         VariableSet::const_iterator it = vs.find(v);
 
-        cout << "consider rem " << s << v->path<< endl;
+//        cout << "consider rem " << s << v->path<< endl;
         if (it != vs.end()) {
             vs.erase(it);
 
             variableSessions[v].erase(s);
             if (variableSessions[v].empty()) {
                 deliver(Instruction::Remove, v);
-                cout << "removed " << s << v->path<< endl;
+//                cout << "removed " << s << v->path<< endl;
             }
         }
     }
     else {
         for (VariableSet::const_iterator it = variables.begin();
                 it != variables.end(); it++) {
-            cout << "trying to remove " << (*it)->path << endl;
+//            cout << "trying to remove " << (*it)->path << endl;
             unsubscribe(s, *it);
         }
     }
@@ -280,7 +280,7 @@ void Task::rxPdo(Session *s)
                 break;
 
             case TxFrame::PdoList:
-                cout << "TxFrame::PdoList: " << rxPtr << endl;
+//                cout << "TxFrame::PdoList: " << rxPtr << endl;
                 len = (const char *)(rxPtr->list.variable + rxPtr->list.count)
                     - (const char *)rxPtr;
 

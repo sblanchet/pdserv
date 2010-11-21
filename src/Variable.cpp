@@ -32,7 +32,7 @@ Variable::Variable(
     dim(new size_t[nelem])
 {
     std::copy(dim, dim+ndims, this->dim);
-    cout << __func__ << endl;
+//    cout << __func__ << endl;
 }
 
 //////////////////////////////////////////////////////////////////////
