@@ -185,19 +185,27 @@ void Inbuf::tokenize()
 
                 quote = *pptr;
                 if (quote != '\'' and quote != '"') {
-                    bptr = pptr;
-                    parseState = FindStart;
-                    break;
+                    quote = 0;
+                    attrValue = pptr;
+                }
+                else {
+                    attrValue = ++pptr;
                 }
 
-                pptr++;
-                attrValue = pptr;
                 parseState = GetValue;
                 // no break here
 
             case GetValue:
                 //cout << __LINE__ << "GetValue" << endl;
-                pptr = std::find(pptr, const_cast<char*>(eptr), quote);
+                if (quote)
+                    pptr = std::find(pptr, const_cast<char*>(eptr), quote);
+                else {
+                    while (pptr != eptr) {
+                        if (isspace(*pptr))
+                            break;
+                        pptr++;
+                    }
+                }
 
                 if (pptr == eptr)
                     return;

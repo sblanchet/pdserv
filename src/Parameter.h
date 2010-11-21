@@ -17,7 +17,6 @@ class Main;
 class Parameter: public Variable {
     public:
         Parameter (
-                Main *main,
                 unsigned int index,
                 const char *path,
                 const char *alias,
@@ -25,26 +24,17 @@ class Parameter: public Variable {
                 unsigned int ndims,
                 const size_t dim[],
                 char *addr,
-                paramupdate_t paramcheck = copy,
-                paramupdate_t paramupdate = copy,
+                paramupdate_t paramcopy = copy,
                 void *priv_data = 0);
 
-        struct timespec getMtime() const;
-
-        void setValue(const char *valbuf,
-                size_t nelem = 0, size_t offset = 0);
+        // Called in real time context
+        int setValue(const char *valbuf) const;
 
     private:
-
-        Main * const main;
-        const paramupdate_t paramcheck;
-        const paramupdate_t paramupdate;
+        const paramupdate_t paramcopy;
         void * const priv_data;
-
         char * const addr;
-        struct timespec mtime;
 
-        mutable ost::Semaphore mutex;
 
         // A default function used when paramcheck or paramupdate are not
         // specified by the user

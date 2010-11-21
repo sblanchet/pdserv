@@ -75,6 +75,7 @@ class Element {
         /** Special functions to set Parameter and Channel
          * attributes */
         void setParameterAttributes( const HRTLab::Parameter *p,
+                const char *data, const struct timespec *mtime,
                 bool shortReply, bool hex);
         void setChannelAttributes( const HRTLab::Signal *s,
                 bool shortReply, double freq, size_t bufsize);

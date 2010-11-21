@@ -75,12 +75,13 @@ void Session::broadcast(Session *s, const MsrXml::Element &element)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::parameterChanged(const HRTLab::Parameter *p)
+void Session::parameterChanged(const HRTLab::Parameter **p, size_t n)
 {
     MsrXml::Element pu("pu");
-    pu.setAttribute("index", p->index);
-
-    outbuf << pu << std::flush;
+    while (n--) {
+        pu.setAttribute("index", (*p++)->index);
+        outbuf << pu << std::flush;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -392,7 +393,8 @@ void Session::readParameter(const Attr &attr)
     
     if (parameter) {
         MsrXml::Element p("parameter");
-        p.setParameterAttributes(parameter, shortReply, hex);
+        p.setParameterAttributes(parameter, main->getParameterAddr(parameter),
+                main->getMTime(parameter), shortReply, hex);
         outbuf << p << std::flush;
     }
     else {
@@ -400,7 +402,8 @@ void Session::readParameter(const Attr &attr)
         for (HRTLab::Main::ParameterList::const_iterator it = pl.begin();
                 it != pl.end(); it++) {
             MsrXml::Element *p = parameters.createChild("parameter");
-            p->setParameterAttributes(*it, shortReply, hex);
+            p->setParameterAttributes(*it, main->getParameterAddr(*it),
+                    main->getMTime(*it), shortReply, hex);
         }
         outbuf << parameters << std::flush;
     }
@@ -417,7 +420,7 @@ void Session::readParamValues(const Attr &attr)
     for (HRTLab::Main::ParameterList::const_iterator it = pl.begin();
             it != pl.end(); it++) {
         if (separator) v.append(1,'|');
-        v.append(MsrXml::toCSV(*it, (*it)->Variable::addr));
+        v.append(MsrXml::toCSV(*it, main->getParameterAddr(*it)));
         separator = true;
     }
 
@@ -522,7 +525,7 @@ void Session::writeParameter(const Attr &attr)
         return;
     }
 
-    HRTLab::Parameter *parameter;
+    const HRTLab::Parameter *parameter;
     size_t startindex = 0;
     const HRTLab::Main::ParameterList& pl = main->getParameters();
     unsigned int index;
@@ -555,8 +558,14 @@ void Session::writeParameter(const Attr &attr)
     }
 
     char valbuf[parameter->memSize];
-    size_t nelem;
     char *s;
+    std::copy(main->getParameterAddr(parameter),
+            main->getParameterAddr(parameter) + parameter->memSize, valbuf);
+
+    for (size_t i = 0; i < parameter->memSize; i++)
+        cout << ' ' << (int)valbuf[i];
+    cout << endl;
+
     if (attr.find("hexvalue", s)) {
         static const char hexNum[] = {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
@@ -564,35 +573,35 @@ void Session::writeParameter(const Attr &attr)
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
             0,10,11,12,13,14,15
         };
-        size_t count = std::min(parameter->memSize, strlen(s) / 2);
-        nelem = count / parameter->width;
 
-        for (size_t validx = 0; validx < count; validx++) {
-            unsigned char c1 = s[validx*2]     - '0';
-            unsigned char c2 = s[validx*2 + 1] - '0';
+        for (char *x = valbuf + parameter->width * startindex;
+                *s and x < valbuf + parameter->memSize; x++) {
+            unsigned char c1 = *s++ - '0';
+            unsigned char c2 = *s++ - '0';
             if (std::max(c1,c2) >= sizeof(hexNum))
                 return;
-            valbuf[validx] = hexNum[c1] << 4 | hexNum[c2];
+            *x = hexNum[c1] << 4 | hexNum[c2];
         }
         // FIXME: actually the setting operation must also check for
         // endianness!
     }
     else if (attr.find("value", s)) {
         double v;
-        Convert converter(parameter->dtype, valbuf);
+        Convert converter(parameter->dtype,
+                valbuf + startindex * parameter->width);
         char c;
         std::istringstream is(s);
 
         is.imbue(std::locale::classic());
 
-        for (nelem = 0; nelem < parameter->nelem; nelem++) {
+        for (size_t i = 0; i < parameter->nelem - startindex; i++) {
             is >> v;
-            cout << "found " << v << endl;
 
             if (!is)
                 break;
 
-            converter.set(nelem, v);
+            cout << "found " << v << endl;
+            converter.set(i, v);
 
             is >> c;
         }
@@ -600,8 +609,11 @@ void Session::writeParameter(const Attr &attr)
     else
         return;
 
-    main->writeParameter(parameter, valbuf,
-            nelem * parameter->width, startindex);
+    for (size_t i = 0; i < parameter->memSize; i++)
+        cout << ' ' << (int)valbuf[i];
+    cout << endl;
+
+    main->writeParameter(&parameter, 1, valbuf);
 }
 
 /////////////////////////////////////////////////////////////////////////////

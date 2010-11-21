@@ -312,6 +312,7 @@ std::string MsrXml::toBase64( const HRTLab::Variable *v,
 
 /////////////////////////////////////////////////////////////////////////////
 void Element::setParameterAttributes( const HRTLab::Parameter *p,
+        const char *data, const struct timespec *mtime,
         bool shortReply, bool hex)
 {
 
@@ -323,10 +324,10 @@ void Element::setParameterAttributes( const HRTLab::Parameter *p,
     setAttributeCheck("name", p->path);
     setAttribute("index", p->index);
     if (hex) {
-        setAttribute("hexvalue", MsrXml::toHexDec(p, p->Variable::addr));
+        setAttribute("hexvalue", MsrXml::toHexDec(p, data));
     }
     else {
-        setAttribute("value", MsrXml::toCSV(p, p->Variable::addr));
+        setAttribute("value", MsrXml::toCSV(p, data));
     }
     if (shortReply)
         return;
@@ -337,7 +338,7 @@ void Element::setParameterAttributes( const HRTLab::Parameter *p,
     // typ=
     setAttribute("datasize", p->width);
     setAttribute("flags", 3);
-    setAttribute("mtime", p->getMtime());
+    setAttribute("mtime", *mtime);
     setAttribute("typ", getDTypeName(p));
 
     // unit=

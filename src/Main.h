@@ -25,24 +25,6 @@ class Parameter;
 class Variable;
 class Task;
 
-template <class T1>
-    inline size_t element_count(size_t n)
-    {
-        return (n + sizeof(T1) - 1) / sizeof(T1);
-    }
-
-inline size_t element_count_uint(size_t n)
-{
-    return element_count<unsigned int>(n);
-}
-
-template <class T1>
-    T1 align(unsigned int n)
-    {
-        T1 mask = sizeof(T1) - 1;
-        return (n + mask) & ~mask;
-    }
-
 class Main {
     public:
         enum Instruction {Restart = 1,
@@ -80,8 +62,7 @@ class Main {
                 unsigned int ndims,
                 const unsigned int dim[],
                 char *addr,
-                paramupdate_t paramcheck,
-                paramupdate_t paramupdate,
+                paramupdate_t paramcopy,
                 void *priv_data
                 );
 
@@ -94,6 +75,8 @@ class Main {
 
         typedef std::vector<Parameter*> ParameterList;
         const ParameterList& getParameters() const;
+        const struct timespec *getMTime(const Parameter *) const;
+        const char *getParameterAddr(const Parameter *) const;
 
         typedef std::vector<Signal*> SignalList;
         const SignalList& getSignals() const;
@@ -106,8 +89,7 @@ class Main {
         void newSession(const Session *);
         void rxPdo(Session *);
         void closeSession(const Session *s);
-        void writeParameter(const Parameter *, const char *data,
-                size_t n, size_t startindex = 0);
+        void writeParameter(const Parameter **, size_t n, const char *data);
         void poll(Signal **s, size_t nelem, char *buf);
         void unsubscribe(const Session *session,
                 const Signal **s = 0, size_t nelem = 0);
@@ -119,7 +101,6 @@ class Main {
     private:
 
         mutable ost::Semaphore mutex;
-        mutable ost::Semaphore pollMutex;
 
         MsrProto::Server *msrproto;
 //    EtlProto::Server etlproto(this);
@@ -127,17 +108,26 @@ class Main {
         int pid;
 
         size_t shmem_len;
-        char *shmem;
+        void *shmem;
 
-        struct PollStruct {
+        struct SDOStruct {
             unsigned int reqId;
             unsigned int replyId;
+            enum {PollSignal, WriteParameter} type;
+            bool error;
             unsigned int count;
             struct timespec time;
-            const Signal *signals[];
-        } *pollStruct;
+            union {
+                const Signal *signals[];
+                const Parameter *parameters[];
+            };
+        } *sdo;
+        mutable ost::Semaphore sdoMutex;
+        char *sdoData;
+        char *parameterData;
+        char **parameterAddr;
 
-        char *pollData;
+        struct timespec *mtime;
 
         SignalList signals;
         ParameterList parameters;
@@ -147,8 +137,7 @@ class Main {
 
         // Methods used by the real-time process to interpret inbox
         // instructions from the clients
-        void processPollSignal(unsigned int tid, const struct timespec *time);
-        void processSetValue();
+        void processSdo(unsigned int tid, const struct timespec *time);
 
         static int localtime(struct timespec *);
 };

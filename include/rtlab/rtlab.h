@@ -61,12 +61,12 @@ int hrtlab_signal(
         const char *path,         /**< Signal path */
         const char *alias,        /**< Signal alias. No whitespace allowed */
         enum si_datatype_t datatype, /**< Signal data type */
+        const void *addr,         /**< Signal address */
         size_t n,                 /**< Element count.
                                    * If @dim != NULL, this is the number
                                    * elements in @dim */
-        const size_t dim[],       /**< Dimensions. If NULL, consider the
+        const size_t dim[]        /**< Dimensions. If NULL, consider the
                                    * parameter to be a vector of length @n */
-        const void *addr          /**< Signal address */
         );
 
 /** Callback on a parameter update event
@@ -110,15 +110,13 @@ int hrtlab_parameter(
         const char *path,         /**< Signal path */
         const char *alias,        /**< Signal alias */
         enum si_datatype_t datatype, /**< Signal data type */
+        void *addr,               /**< Signal address */
         size_t n,                 /**< Element count.  If @dim != NULL, this
                                    * is the number elements in * @dim */
         const size_t dim[],       /**< Dimensions. If NULL, consider the
                                    * parameter to be a vector of length @n */
-        void *addr,               /**< Signal address */
 
-        paramupdate_t paramcheck, /**< Callback for updating the parameter
-                                   * outside real time context. */
-        paramupdate_t paramupdate,/**< Callback for updating the parameter
+        paramupdate_t paramopy,/**< Callback for updating the parameter
                                    * inside real time context */
         void *priv_data           /**< Arbitrary pointer for callback */
         );

@@ -21,7 +21,6 @@ using namespace HRTLab;
 
 //////////////////////////////////////////////////////////////////////
 Parameter::Parameter(
-        Main *main,
         unsigned int index,
         const char *path,
         const char *alias,
@@ -29,14 +28,11 @@ Parameter::Parameter(
         unsigned int ndims,
         const size_t dim[],
         char *addr,
-        paramupdate_t paramcheck,
-        paramupdate_t paramupdate,
+        paramupdate_t paramcopy,
         void *priv_data) :
     Variable(index, path, alias, dtype, ndims, dim, 0, addr),
-    main(main),
-    paramcheck(paramcheck ? paramcheck : copy),
-    paramupdate(paramupdate ? paramupdate : copy),
-    priv_data(priv_data), addr(addr), mutex(1)
+    paramcopy(paramcopy ? paramcopy : copy),
+    priv_data(priv_data), addr(addr)
 {
 }
 
@@ -50,43 +46,7 @@ int Parameter::copy(void *dst, const void *src, size_t len, void *)
 }
 
 //////////////////////////////////////////////////////////////////////
-struct timespec Parameter::getMtime() const
+int Parameter::setValue(const char *valbuf) const
 {
-    ost::SemaphoreLock wait(mutex);
-    return mtime;
-}
-
-//////////////////////////////////////////////////////////////////////
-void Parameter::setValue(const char *valbuf, size_t nelem, size_t offset)
-{
-    size_t buflen = nelem * width;
-
-    // If nelem == 0, this method was called from inside the real-time thread.
-    // In this case, call the paramupdate callback which copies the parameter
-    // from shared memory to the process.
-    if (!buflen) {
-        paramupdate(addr, valbuf, memSize, priv_data);
-        return;
-    }
-
-    ost::SemaphoreLock wait(mutex);
-
-    char buf[memSize];
-
-    if (offset or buflen != memSize) {
-        if (buflen + offset*width > memSize)
-            return;
-
-        std::copy(addr, addr + memSize, buf);
-        std::copy(valbuf, valbuf + buflen, buf + offset*width);
-
-        valbuf = buf;
-    }
-
-    if (paramcheck(addr, valbuf, memSize, priv_data))
-        return;
-
-    main->gettime(&mtime);
-
-//    main->writeParameter(this);
+    return paramcopy(addr, valbuf, memSize, priv_data);
 }

@@ -37,7 +37,7 @@ Main::Main(int argc, const char *argv[],
         int (*gettime)(struct timespec*)):
     name(name), version(version), baserate(baserate), nst(nst),
     decimation(nst > 1 ? new unsigned int [nst] : 0),
-    gettime(gettime ? gettime : localtime), mutex(1), pollMutex(1)
+    gettime(gettime ? gettime : localtime), mutex(1), sdoMutex(1)
 {
     if (nst > 1)
         std::copy(decimation, decimation + nst, this->decimation);
@@ -52,6 +52,7 @@ Main::Main(int argc, const char *argv[],
 Main::~Main()
 {
     delete decimation;
+    delete parameterAddr;
 
     for (size_t i = 0; i < nst; i++)
         delete task[i];
@@ -72,12 +73,35 @@ int Main::localtime(struct timespec* t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::writeParameter(const Parameter *p, const char *data,
-                size_t n, size_t startindex)
+void Main::writeParameter(const Parameter **p, size_t nelem, const char *data)
 {
-//    post(SetValue, p->index, p->Variable::addr, p->memSize);
+    ost::SemaphoreLock lock(sdoMutex);
 
-    msrproto->parameterChanged(p);
+    size_t len = 0;
+    for (size_t i = 0; i < nelem; i++)
+        len += p[i]->memSize;
+
+    std::copy(p, p+nelem, sdo->parameters);
+    std::copy(data, data+len, sdoData);
+    sdo->count = nelem;
+    sdo->type = SDOStruct::WriteParameter;
+    sdo->reqId++;
+
+    do {
+        ost::Thread::sleep(100);
+    } while (sdo->reqId != sdo->replyId);
+
+    if (!sdo->error) {
+        msrproto->parameterChanged(p, nelem);
+        //etlproto->parameterChanged(p, nelem);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const char * Main::getParameterAddr(const Parameter *p) const
+{
+    cout << __func__ << (void*)parameterAddr[p->index] << endl;
+    return parameterAddr[p->index];
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -99,7 +123,7 @@ const Main::VariableMap& Main::getVariableMap() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::processPollSignal(unsigned int tid, const struct timespec *time)
+void Main::processSdo(unsigned int tid, const struct timespec *time)
 {
     // PollSignal
     // Receive:
@@ -109,60 +133,84 @@ void Main::processPollSignal(unsigned int tid, const struct timespec *time)
     //
     // The reply is in the poll area
 
-    if (pollStruct->reqId == pollStruct->replyId)
+    if (sdo->reqId == sdo->replyId)
         return;
 
-    pollStruct->time = *time;
+    sdo->time = *time;
+    sdo->error = false;
 
     bool finished = true;
-    char *p = pollData;
-    for (const Signal **s = pollStruct->signals; *s; s++) {
-        if ((*s)->tid == tid)
-            std::copy((*s)->addr, (*s)->addr + (*s)->memSize, p);
-        else
-            finished = false;
-        p += (*s)->memSize;
+    char *data = sdoData;
+    switch (sdo->type) {
+        case SDOStruct::PollSignal:
+            for (const Signal **s = sdo->signals;
+                    s != sdo->signals + sdo->count; s++) {
+                if ((*s)->tid == tid)
+                    std::copy((*s)->addr, (*s)->addr + (*s)->memSize, data);
+                else
+                    finished = false;
+                data += (*s)->memSize;
+            }
+            break;
+
+        case SDOStruct::WriteParameter:
+            for (const Parameter **p = sdo->parameters;
+                    p != sdo->parameters + sdo->count; p++) {
+                if ((*p)->setValue(data)) {
+                    finished = false;
+                    break;
+                }
+                data += (*p)->memSize;
+            }
+            if (finished) {
+                struct timespec t;
+                gettime(&t);
+                for (const Parameter **p = sdo->parameters;
+                        p != sdo->parameters + sdo->count; p++) {
+                    mtime[(*p)->index] = t;
+                    cout << " copying "
+                        << "from " << (void*)(*p)->Variable::addr
+                        << " " << (void*)((*p)->Variable::addr + (*p)->memSize)
+                        << " to " << (void*) parameterAddr[(*p)->index]
+                        << endl;
+                    std::copy((*p)->Variable::addr,
+                            (*p)->Variable::addr + (*p)->memSize,
+                            parameterAddr[(*p)->index]);
+                }
+            }
+            else {
+                sdo->error = true;
+                finished = true;
+            }
+            break;
     }
 
     if (finished)
-        pollStruct->replyId = pollStruct->reqId;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::processSetValue()
-{
-//    unsigned int index = *instruction_ptr++;
-//    Parameter *p = parameters[index];
-//    const char *data = 
-//        reinterpret_cast<const char*>(instruction_ptr);
-//
-//    p->setValue(data);
-//
-//    // Skip over the block with parameter data
-//    instruction_ptr += element_count_uint(p->memSize);
+        sdo->replyId = sdo->reqId;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::update(int st, const struct timespec *time)
 {
-    processPollSignal(st, time);
+    processSdo(st, time);
     task[st]->txPdo(time);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::poll(Signal **s, size_t nelem, char *buf)
 {
-    ost::SemaphoreLock lock(pollMutex);
+    ost::SemaphoreLock lock(sdoMutex);
 
-    std::copy(s, s+nelem, pollStruct->signals);
-    pollStruct->count = nelem;
-    pollStruct->reqId++;
+    std::copy(s, s+nelem, sdo->signals);
+    sdo->count = nelem;
+    sdo->type = SDOStruct::PollSignal;
+    sdo->reqId++;
 
     do {
         ost::Thread::sleep(100);
-    } while (pollStruct->reqId != pollStruct->replyId);
+    } while (sdo->reqId != sdo->replyId);
 
-    char *p = pollData;
+    char *p = sdoData;
     while (nelem--) {
         size_t len = (*s)->memSize;
 
@@ -177,7 +225,6 @@ void Main::poll(Signal **s, size_t nelem, char *buf)
 void Main::closeSession(const Session *s)
 {
     ost::SemaphoreLock lock(mutex);
-//    session.erase(s);
     for (unsigned int i = 0; i < nst; i++)
         task[i]->endSession(s);
 }
@@ -186,10 +233,14 @@ void Main::closeSession(const Session *s)
 void Main::newSession(const Session* s)
 {
     ost::SemaphoreLock lock(mutex);
-//    session.insert(s);
-
     for (unsigned int i = 0; i < nst; i++)
         task[i]->newSession(s);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const struct timespec *Main::getMTime(const Parameter *p) const
+{
+    return mtime + p->index;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -230,14 +281,40 @@ void Main::getSessionStatistics(std::list<Session::Statistics>& stats) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+template<class T>
+T* ptr_align(void *p)
+{
+    const size_t mask = sizeof(T*) - 1;
+    return reinterpret_cast<T*>(((unsigned)p + mask) & ~mask);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 int Main::start()
 {
     for (unsigned int i = 0; i < nst; i++)
         task[i]->setup();
 
-    shmem_len = 1000000;
+    std::list<Parameter*> p[9];
+    size_t parameterSize = 0;
+    for (ParameterList::const_iterator it = parameters.begin();
+            it != parameters.end(); it++) {
+        p[(*it)->width].push_back(*it);
+        parameterSize += (*it)->memSize;
+    }
 
-    shmem = (char*)::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
+    size_t signalSize = 0;
+    for (SignalList::const_iterator it = signals.begin();
+            it != signals.end(); it++) {
+        signalSize += (*it)->memSize;
+    }
+
+    shmem_len =
+        sizeof(*mtime) * parameters.size()
+        + parameterSize + 8
+        + sizeof(*sdo)
+        + std::max(parameterSize, signalSize);
+
+    shmem = ::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
             MAP_SHARED | MAP_ANON, -1, 0);
     if (MAP_FAILED == shmem) {
         // log(LOGCRIT, "could not mmap
@@ -247,9 +324,32 @@ int Main::start()
     }
     ::memset(shmem, 0, shmem_len);
 
-    pollStruct = reinterpret_cast<PollStruct*>(shmem);
-    pollData =
-        reinterpret_cast<char*>(pollStruct->signals + variableMap.size());
+    mtime         = ptr_align<struct timespec>(shmem);
+    parameterData = ptr_align<char>(mtime + parameters.size());
+    sdo           = ptr_align<SDOStruct>(parameterData + parameterSize);
+    sdoData       = ptr_align<char>(
+            sdo->signals + std::max(signals.size(), parameters.size()));
+    cout
+        << " shmem=" << shmem
+        << " mtime=" << mtime
+        << " parameterData=" << (void*)parameterData
+        << " sdo=" << sdo
+        << " sdoData=" << (void*)sdoData
+        << endl;
+
+    parameterAddr = new char*[parameters.size()];
+
+    const size_t idx[] = {8,4,2,1};
+    char *buf = parameterData;
+    for (size_t i = 0; i < 4; i++) {
+        for (std::list<Parameter*>::const_iterator it = p[idx[i]].begin();
+                it != p[idx[i]].end(); it++) {
+            parameterAddr[(*it)->index] = buf;
+            std::copy((*it)->Variable::addr,
+                    (*it)->Variable::addr + (*it)->memSize, buf);
+            buf += (*it)->memSize;
+        }
+    }
 
     pid = ::fork();
     if (pid < 0) {
@@ -309,19 +409,18 @@ int Main::newParameter(
         unsigned int ndims,
         const size_t dim[],
         char *addr,
-        paramupdate_t paramcheck,
-        paramupdate_t paramupdate,
+        paramupdate_t paramcopy,
         void *priv_data
         )
 {
     if (variableMap.find(path) != variableMap.end())
         return -EEXIST;
 
-    parameters.push_back(
-            new Parameter( this, parameters.size(),
-                path, alias, datatype, ndims, dim, addr,
-                paramcheck, paramupdate, priv_data));
-    variableMap[path] = parameters.back();
+    Parameter *p = new Parameter(parameters.size(), path, alias, datatype,
+            ndims, dim, addr, paramcopy, priv_data);
+
+    parameters.push_back(p);
+    variableMap[path] = p;
 
     return 0;
 }

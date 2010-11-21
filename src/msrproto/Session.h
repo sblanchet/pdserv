@@ -64,7 +64,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         ~Session();
 
         void broadcast(Session *s, const MsrXml::Element &element);
-        void parameterChanged(const HRTLab::Parameter*);
+        void parameterChanged(const HRTLab::Parameter**, size_t n);
         void requestOutput();
 
         void processCommand(const char *command, const Attr &attr);

@@ -33,19 +33,20 @@ int main(int argc, const char *argv[])
     unsigned int var1_dims[] = {2,3,4};
     struct timespec time;
     double dbl[3] = { 13,14,15};
+    uint32_t param[] = {1,2,3,4};
 
 //    assert(!hrtlab_signal(hrtlab, 0, 1, "/path/to/variable", "var1",
 //            si_uint16_T, 3, var1_dims, var1));
 
     assert(!hrtlab_signal(hrtlab, 0, 1, "/path/to/var2", "var1",
-            si_uint16_T, 1, NULL, var1 + 5));
+            si_uint16_T, var1+5, 1, NULL));
 
     assert(!hrtlab_signal(hrtlab, 0, 1, "/path/to/double", "var1",
-            si_double_T, 1, NULL, dbl));
+            si_double_T, dbl, 1, NULL));
 
     assert(!hrtlab_parameter(hrtlab,
                 "/path\"/to/püaram", "vüar1",
-                si_uint16_T, 3, var1_dims, var1, 0, 0, 0));
+                si_uint32_T, param, 4, 0, 0, 0));
 
     assert(!hrtlab_start(hrtlab));
 
@@ -57,8 +58,8 @@ int main(int argc, const char *argv[])
         //sleep(1);
         usleep(100000);
         var1[1][0][0] = i++;
-        dbl[0] += 1;
-        var1[5][0][0] += 1;
+        dbl[0] += param[0];
+        var1[5][0][0] += param[1];
         clock_gettime(CLOCK_REALTIME, &time);
         hrtlab_update(hrtlab, 0, &time);
     }
