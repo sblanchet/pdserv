@@ -22,6 +22,7 @@ using namespace MsrProto;
 Inbuf::Inbuf(Session *s): session(s)
 {
     bufLen = 1024;
+    parseState = FindStart;
     buf = bptr = pptr = eptr = new char[bufLen];
 }
 
@@ -40,21 +41,29 @@ char *Inbuf::bufptr() const
 /////////////////////////////////////////////////////////////////////////////
 size_t Inbuf::free() const
 {
-    return bufLen + (eptr - buf);
+    return bufLen - (eptr - buf);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Inbuf::parse(size_t n)
 {
     //cout << __LINE__ << __PRETTY_FUNCTION__ << ' ' << (void*)buf << endl;
-    //cout << "   ->" << std::string(buf, eptr - buf) << "<-" << endl;
 
     eptr += n;
+
+//    cout << "   ->" << std::string(buf, eptr - buf) << "<-";
+//    cout << "bptr:" << (void*)bptr << " eptr:" << (void*)eptr << endl;
+
     tokenize();
 
-    if (eptr == buf + bufLen) {
+    if (bptr == eptr) {
+        cout << "Finished parsing buffer; resetting it" << endl;
+        bptr = eptr = buf;
+    }
+    else if (eptr == buf + bufLen) {
         if (bptr == buf) {
             bufLen += 1024;
+            cout << "Buffer is too small, extending it to " << bufLen << endl;
 
             buf = new char[bufLen];
 
@@ -66,15 +75,14 @@ void Inbuf::parse(size_t n)
             bptr = buf;
         }
         else {
+            cout << "End of buffer reached but space is at the beginnng" << endl;
             std::copy(bptr, eptr, buf);
             eptr = buf + (eptr - bptr);
+            bptr = buf;
         }
 
         parseState = FindStart;
     }
-
-    if (bptr == eptr)
-        bptr = eptr = buf;
 }
 
 
@@ -89,7 +97,7 @@ void Inbuf::tokenize()
                 attr.clear();
                 
                 // Move forward in the buffer until '<' is found
-                bptr = std::find(bptr, const_cast<char*>(eptr), '<');
+                bptr = std::find(bptr, eptr, '<');
                 if (bptr == eptr)
                     return;
 
