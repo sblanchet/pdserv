@@ -19,11 +19,11 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Inbuf::Inbuf(Session *s): session(s)
+Inbuf::Inbuf(Session *s, size_t bufMax): session(s), bufLenMax(bufMax)
 {
-    bufLen = 1024;
     parseState = FindStart;
-    buf = bptr = pptr = eptr = new char[bufLen];
+    buf = bptr = pptr = eptr = new char[bufIncrement];
+    bufEnd = buf + bufIncrement;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ char *Inbuf::bufptr() const
 /////////////////////////////////////////////////////////////////////////////
 size_t Inbuf::free() const
 {
-    return bufLen - (eptr - buf);
+    return bufEnd - eptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -57,30 +57,47 @@ void Inbuf::parse(size_t n)
     tokenize();
 
     if (bptr == eptr) {
-        cout << "Finished parsing buffer; resetting it" << endl;
+//        cout << "Finished parsing buffer; resetting it" << endl;
         bptr = eptr = buf;
     }
-    else if (eptr == buf + bufLen) {
+    else if (eptr == bufEnd) {
+        // Command is not complete and there is not enough space at the end
+        // of the buffer for new data
+
         if (bptr == buf) {
-            bufLen += 1024;
-            cout << "Buffer is too small, extending it to " << bufLen << endl;
+            // Buffer is completely full
 
-            buf = new char[bufLen];
+            size_t bufLen = bufEnd - buf;
 
-            std::copy(bptr, eptr, buf);
-            eptr = buf + (eptr - bptr);
+            if (bufLen < bufLenMax) {
 
-            delete[] bptr;
+                bufLen += bufIncrement;
 
-            bptr = buf;
+                buf = new char[bufLen];
+                bufEnd = buf + bufLen;
+
+                std::copy(bptr, eptr, buf);
+                eptr = buf + (eptr - bptr);
+
+                delete[] bptr;
+
+                bptr = buf;
+            }
+            else {
+                // Buffer size exceeded limit. Discard everything
+                eptr = buf;
+            }
         }
         else {
-            cout << "End of buffer reached but space is at the beginnng" << endl;
+            // There is some space before the current command.
             std::copy(bptr, eptr, buf);
             eptr = buf + (eptr - bptr);
             bptr = buf;
         }
 
+        // Because the pointers have moved, start parsing from the beginning
+        // again
+        // FIXME: dont do this, rather adjust attribute pointers
         parseState = FindStart;
     }
 }

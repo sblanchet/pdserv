@@ -16,7 +16,7 @@ class Session;
 
 class Inbuf {
     public:
-        Inbuf(Session *);
+        Inbuf(Session *, size_t max = bufIncrement * 1000);
         ~Inbuf();
 
         char *bufptr() const;
@@ -26,10 +26,12 @@ class Inbuf {
 
     private:
         Session * const session;
+        const size_t bufLenMax;
 
         void tokenize();
 
-        size_t bufLen;
+        static const size_t bufIncrement = 1024;
+        const char *bufEnd;
         char *buf, *bptr, *eptr, *pptr;
 
         enum ParseState {
