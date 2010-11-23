@@ -140,9 +140,7 @@ void Element::setAttributeCheck(const char *a, const char *v, size_t n)
 
     const char *escape = "<>&\"'";
     const char *escape_end = escape + 5;
-    if (!n)
-        n = strlen(v);
-    const char *v_end = v + n;
+    const char *v_end = v + (n ? n : strlen(v));
     const char *p;
     std::string &s = attrMap[a];
     s = std::string();
