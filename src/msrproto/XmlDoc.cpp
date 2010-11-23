@@ -314,7 +314,46 @@ void Element::hexDecValueAttr( const char *attr, const HRTLab::Variable *v,
 void Element::base64ValueAttr(const char *attr, const HRTLab::Variable *v,
         const char* data, size_t precision, size_t n)
 {
-    // FIXME
+    static const char *base64Chr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz0123456789+/";
+    n *= v->memSize;
+    size_t len = (n + 2 - ((n + 2) % 3)) / 3 * 4;
+    char s[len + 1];
+    char *p = s;
+    size_t i = 0;
+    size_t rem = n % 3;
+    const unsigned char *udata = reinterpret_cast<const unsigned char*>(data);
+
+    // First convert all characters in chunks of 3
+    while (i != n - rem) {
+        *p++ = base64Chr[  udata[i  ]         >> 2];
+        *p++ = base64Chr[((udata[i  ] & 0x03) << 4) + (udata[i+1] >> 4)];
+        *p++ = base64Chr[((udata[i+1] & 0x0f) << 2) + (udata[i+2] >> 6)];
+        *p++ = base64Chr[ (udata[i+2] & 0x3f)     ];
+
+        i += 3;
+    }
+
+    // Convert the remaining 1 or 2 characters
+    switch (rem) {
+        case 2:
+            *p++ = base64Chr[  udata[i  ]         >> 2];
+            *p++ = base64Chr[((udata[i  ] & 0x03) << 4) + (udata[i+1] >> 4)];
+            *p++ = base64Chr[ (udata[i+1] & 0x0f) << 2];
+            break;
+        case 1:
+            *p++ = base64Chr[  udata[i]         >> 2];
+            *p++ = base64Chr[ (udata[i] & 0x03) << 4];
+            break;
+    }
+
+    // Fill the remaining space with '='
+    std::fill_n(p, (p - s) % 4, '=');
+
+    // Terminate the string
+    *p = '\0';
+
+    setAttribute(attr, s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
