@@ -81,7 +81,7 @@ class Element {
         void setCommonAttributes(const HRTLab::Variable*, bool shortReply);
         void setParameterAttributes( const HRTLab::Parameter *p,
                 const char *data, const struct timespec *mtime,
-                bool dep, bool shortReply, bool hex);
+                unsigned int flags, bool shortReply, bool hex);
         void setChannelAttributes( const HRTLab::Signal *s,
                 const char *data, bool shortReply, double freq, size_t bufsize);
 

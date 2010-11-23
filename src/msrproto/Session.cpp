@@ -21,6 +21,24 @@ using std::cerr;
 using std::endl;
 #endif
 
+#define MSR_R   0x01    /* Parameter is readable */
+#define MSR_W   0x02    /* Parameter is writeable */
+#define MSR_WOP 0x04    /* Parameter is writeable in real-time */
+#define MSR_MONOTONIC 0x8 /* List must be monotonic */
+#define MSR_S   0x10    /* Parameter must be saved by clients */
+#define MSR_G   0x20    /* Gruppenbezeichnung (unused) */
+#define MSR_AW  0x40    /* Writeable by admin only */
+#define MSR_P   0x80    /* Persistant parameter, written to disk */
+#define MSR_DEP 0x100   /* This parameter is an exerpt of another parameter.
+                           Writing to this parameter also causes an update
+                           notice for the encompassing parameter */
+#define MSR_AIC 0x200   /* Asynchronous input channel */
+
+/* ein paar Kombinationen */
+#define MSR_RWS (MSR_R | MSR_W | MSR_S)
+#define MSR_RP (MSR_R | MSR_P)
+
+
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -159,10 +177,10 @@ void Session::disconnect()
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::newVariableList(const HRTLab::Task *t,
-        const HRTLab::Variable * const *s, size_t n)
+        const HRTLab::Variable * const *v, size_t n)
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
-    task[t->tid]->newVariableList(s, n);
+    task[t->tid]->newVariableList(v, n);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -391,10 +409,12 @@ void Session::readParameter(const Attr &attr)
         parameter = pl[index];
     }
     
+    unsigned int flags = writeAccess
+        ? MSR_R | MSR_W | MSR_WOP | MSR_MONOTONIC : MSR_R | MSR_MONOTONIC;
     if (parameter) {
         MsrXml::Element p("parameter");
         p.setParameterAttributes(parameter, main->getParameterAddr(parameter),
-                main->getMTime(parameter), false, shortReply, hex);
+                main->getMTime(parameter), flags, shortReply, hex);
         outbuf << p << std::flush;
     }
     else {
@@ -403,7 +423,7 @@ void Session::readParameter(const Attr &attr)
                 it != pl.end(); it++) {
             MsrXml::Element *p = parameters.createChild("parameter");
             p->setParameterAttributes(*it, main->getParameterAddr(*it),
-                    main->getMTime(*it), false, shortReply, hex);
+                    main->getMTime(*it), flags, shortReply, hex);
         }
         outbuf << parameters << std::flush;
     }

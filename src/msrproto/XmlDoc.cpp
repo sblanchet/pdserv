@@ -320,7 +320,7 @@ void Element::base64ValueAttr(const char *attr, const HRTLab::Variable *v,
 /////////////////////////////////////////////////////////////////////////////
 void Element::setParameterAttributes( const HRTLab::Parameter *p,
         const char *data, const struct timespec *mtime,
-        bool dep, bool shortReply, bool hex)
+        unsigned int flags, bool shortReply, bool hex)
 {
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>
@@ -330,8 +330,8 @@ void Element::setParameterAttributes( const HRTLab::Parameter *p,
     if (!shortReply) {
         // flags= Add 0x100 for dependent variables
         // FIX
-        setAttribute("flags", p->mode + (dep ? 0x100 : 0),
-                std::ios::oct | std::ios::showbase);
+        setAttribute("flags", flags,
+                std::ios::hex | std::ios::showbase);
     }
 
     // mtime=
