@@ -29,11 +29,7 @@ namespace MsrXml {
 class Element;
 
 std::string toCSV( const HRTLab::Variable *v,
-        const char* data, size_t precision = 10, size_t n = 1);
-std::string toHexDec( const HRTLab::Variable *v,
-        const char* data, size_t precision = 10, size_t n = 1);
-std::string toBase64( const HRTLab::Variable *v,
-        const char* data, size_t precision = 10, size_t n = 1);
+        const char *data, size_t precision = 10, size_t n = 1);
 
 class Element {
     public:
@@ -72,16 +68,21 @@ class Element {
         template<class T>
             void setAttribute(const char *name, const T& value);
 
+        void base64ValueAttr( const char *name, const HRTLab::Variable *v,
+                const char* data, size_t precision = 10, size_t n = 1);
+        void csvValueAttr(    const char *name, const HRTLab::Variable *v,
+                const char* data, size_t precision = 10, size_t n = 1);
+        void hexDecValueAttr(  const char *name, const HRTLab::Variable *v,
+                const char* data, size_t n = 1);
+
         /** Special functions to set Parameter and Channel
          * attributes */
+        void setCommonAttributes(const HRTLab::Variable*, bool shortReply);
         void setParameterAttributes( const HRTLab::Parameter *p,
                 const char *data, const struct timespec *mtime,
                 bool shortReply, bool hex);
         void setChannelAttributes( const HRTLab::Signal *s,
-                bool shortReply, double freq, size_t bufsize);
-
-        /** Returns the data type of a variable */
-        static const char *getDTypeName(const HRTLab::Variable*);
+                const char *data, bool shortReply, double freq, size_t bufsize);
 
         /** Printing functions */
         void print(std::ostream& os, size_t indent = 0) const;

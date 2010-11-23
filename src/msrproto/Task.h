@@ -41,8 +41,9 @@ class Task {
             unsigned int trigger;
             size_t blocksize;
             size_t sigMemSize;
-            std::string (*print)(const HRTLab::Variable *v,
-                    const char* data, size_t precision, size_t n);
+            void (MsrXml::Element::*printValue)(const char *,
+                    const HRTLab::Variable *v, const char* data,
+                    size_t precision, size_t n);
             size_t precision;
             char *data_bptr;
             char *data_pptr;

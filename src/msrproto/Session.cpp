@@ -323,8 +323,7 @@ void Session::readChannel(const Attr &attr)
         main->poll(&signal, 1, buf);
 
         MsrXml::Element channel("channel");
-        channel.setChannelAttributes(signal, shortReply, freq, bufsize);
-        channel.setAttribute("value", MsrXml::toCSV(signal, buf));
+        channel.setChannelAttributes(signal, buf, shortReply, freq, bufsize);
 
         outbuf << channel;
     }
@@ -354,8 +353,7 @@ void Session::readChannel(const Attr &attr)
             size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
 
             MsrXml::Element *c = channels.createChild("channel");
-            c->setChannelAttributes(signal[i], shortReply, freq, bufsize);
-            c->setAttribute("value", MsrXml::toCSV(signal[i], p));
+            c->setChannelAttributes(signal[i], p, shortReply, freq, bufsize);
             p += signal[i]->memSize;
         }
         outbuf << channels;

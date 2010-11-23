@@ -86,7 +86,9 @@ void Task::addSignal(const HRTLab::Signal *signal,
         0,      // trigger
         blocksize,
         signal->memSize,
-        (base64 ? MsrXml::toBase64 : MsrXml::toCSV),
+        (base64
+         ? &MsrXml::Element::base64ValueAttr
+         : &MsrXml::Element::csvValueAttr),
         precision,
         data,
         data,
@@ -136,9 +138,8 @@ void Task::newValues(MsrXml::Element *parent, size_t seqNo,
             std::copy(dataPtr, dataPtr + sd->sigMemSize, sd->data_pptr);
             sd->data_pptr += sd->sigMemSize;
             if (sd->data_pptr == sd->data_eptr) {
-                sd->element->setAttribute("d",
-                        sd->print(sd->variable, sd->data_bptr,
-                            sd->precision, sd->blocksize));
+                (sd->element->*(sd->printValue))("d", sd->variable,
+                        sd->data_bptr, sd->precision, sd->blocksize);
                 parent->appendChild(sd->element);
                 sd->data_pptr = sd->data_bptr;
             }
@@ -147,8 +148,8 @@ void Task::newValues(MsrXml::Element *parent, size_t seqNo,
             sd->trigger = sd->decimation;
 
             std::copy(dataPtr, dataPtr + sd->sigMemSize, sd->data_bptr);
-            sd->element->setAttribute("d",
-                    sd->print(sd->variable, sd->data_bptr, sd->precision, 1));
+            (sd->element->*(sd->printValue))("d", sd->variable,
+                    sd->data_bptr, sd->precision, 1);
             parent->appendChild(sd->element);
         }
     }

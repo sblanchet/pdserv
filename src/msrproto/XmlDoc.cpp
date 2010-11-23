@@ -177,7 +177,14 @@ void Element::setAttributeCheck(const char *a, const char *v, size_t n)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string MsrXml::toCSV( const HRTLab::Variable *v,
+void Element::csvValueAttr(const char *attribute, const HRTLab::Variable *v,
+        const char* data, size_t precision, size_t n)
+{
+    setAttribute(attribute, toCSV(v, data, precision, n));
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::string MsrXml::toCSV(const HRTLab::Variable *v,
         const char* data, size_t precision, size_t n)
 {
     std::ostringstream os;
@@ -263,8 +270,8 @@ std::string MsrXml::toCSV( const HRTLab::Variable *v,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string MsrXml::toHexDec( const HRTLab::Variable *v,
-        const char* data, size_t precision, size_t n)
+void Element::hexDecValueAttr( const char *attr, const HRTLab::Variable *v,
+        const char* data, size_t n)
 {
     std::string s;
     const char *hexValue[256] = {
@@ -300,14 +307,14 @@ std::string MsrXml::toHexDec( const HRTLab::Variable *v,
     for (size_t i = 0; i < v->memSize * n; i++)
         s.append(hexValue[static_cast<unsigned char>(data[i])], 2);
 
-    return s;
+    setAttribute(attr, s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string MsrXml::toBase64( const HRTLab::Variable *v,
+void Element::base64ValueAttr(const char *attr, const HRTLab::Variable *v,
         const char* data, size_t precision, size_t n)
 {
-    return "";
+    // FIXME
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -315,134 +322,93 @@ void Element::setParameterAttributes( const HRTLab::Parameter *p,
         const char *data, const struct timespec *mtime,
         bool shortReply, bool hex)
 {
-
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>
-    // name=
-    // value=
-    // index=
-    setAttributeCheck("name", p->path);
-    setAttribute("index", p->index);
-    if (hex) {
-        setAttribute("hexvalue", MsrXml::toHexDec(p, data));
-    }
-    else {
-        setAttribute("value", MsrXml::toCSV(p, data));
-    }
-    if (shortReply)
-        return;
 
-    // datasize=
-    // flags= Add 0x100 for dependent variables
+    setCommonAttributes(p, shortReply);
+
+    if (!shortReply) {
+        // flags= Add 0x100 for dependent variables
+        setAttribute("flags", 3);
+    }
+
     // mtime=
-    // typ=
-    setAttribute("datasize", p->width);
-    setAttribute("flags", 3);
     setAttribute("mtime", *mtime);
-    setAttribute("typ", getDTypeName(p));
 
-    // unit=
-    if (p->unit.size()) {
-        setAttributeCheck("unit", p->unit);
-    }
+    if (hex)
+        hexDecValueAttr("hexvalue", p, data);
+    else
+        csvValueAttr("value", p, data);
+    return;
 
-    // text=
-    if (p->comment.size()) {
-        setAttributeCheck("text", p->comment);
-    }
-
-    // For vectors:
-    // anz=
-    // cnum=
-    // rnum=
-    // orientation=
-    if (p->nelem > 1) {
-        setAttribute("anz",p->nelem);
-        const char *orientation;
-        size_t cnum, rnum;
-        switch (p->ndims) {
-            case 1:
-                {
-                    cnum = p->nelem;
-                    rnum = 1;
-                    orientation = "VECTOR";
-                }
-                break;
-
-            case 2:
-                {
-                    const size_t *dim = p->getDim();
-                    cnum = dim[1];
-                    rnum = dim[0];
-                    orientation = "MATRIX_ROW_MAJOR";
-                }
-                break;
-
-            default:
-                {
-                    const size_t *dim = p->getDim();
-                    cnum = dim[p->ndims - 1];
-                    rnum = p->nelem / cnum;
-                    orientation = "MATRIX_ROW_MAJOR";
-                }
-                break;
-        }
-        setAttribute("cnum", cnum);
-        setAttribute("rnum", rnum);
-        setAttribute("orientation", orientation);
-    }
-
-    // hide=
-    // unhide=
     // persistent=
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Element::setChannelAttributes( const HRTLab::Signal *s,
-        bool shortReply, double freq, size_t bufsize)
+        const char *data, bool shortReply, double freq, size_t bufsize)
 {
     // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
     //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
-    //
+    setCommonAttributes(s, shortReply);
+
+    if (shortReply)
+        return;
+
+    // bufsize=
+    setAttribute("bufsize", bufsize);
+    setAttribute("HZ", freq);
+
+    csvValueAttr("value", s, data);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Element::setCommonAttributes(const HRTLab::Variable *v, bool shortReply)
+{
     // name=
     // value=
     // index=
-    setAttributeCheck("name", s->path);
-    setAttribute("index", s->index);
+    setAttribute("index", v->index);
+    setAttributeCheck("name", v->path);
+
     if (shortReply)
         return;
 
     // datasize=
     // typ=
-    // bufsize=
-    setAttribute("datasize", s->width);
-    setAttribute("typ", getDTypeName(s));
-    setAttribute("bufsize", bufsize);
-    setAttribute("HZ", freq);
-
-    // unit=
-    if (s->unit.size()) {
-        setAttributeCheck("unit", s->unit);
+    setAttribute("alias", v->alias);
+    setAttribute("datasize", v->width);
+    // type=
+    const char *dtype = 0;
+    switch (v->dtype) {
+        case si_boolean_T: dtype = "TCHAR";     break;
+        case si_uint8_T:   dtype = "TUCHAR";    break;
+        case si_sint8_T:   dtype = "TCHAR";     break;
+        case si_uint16_T:  dtype = "TUSHORT";   break;
+        case si_sint16_T:  dtype = "TSHORT";    break;
+        case si_uint32_T:  dtype = "TUINT";     break;
+        case si_sint32_T:  dtype = "TINT";      break;
+        case si_uint64_T:  dtype = "TULINT";    break;
+        case si_sint64_T:  dtype = "TLINT";     break;
+        case si_single_T:  dtype = "TDBL";      break;
+        case si_double_T:  dtype = "TFLT";      break;
+        default:                                break;
     }
-
-    // text=
-    if (s->comment.size()) {
-        setAttributeCheck("text", s->comment);
-    }
+    setAttribute("typ", dtype);
 
     // For vectors:
     // anz=
     // cnum=
     // rnum=
     // orientation=
-    if (s->nelem > 1) {
-        setAttribute("anz",s->nelem);
+    if (v->nelem > 1) {
+        setAttribute("anz",v->nelem);
         const char *orientation;
         size_t cnum, rnum;
-        switch (s->ndims) {
+        switch (v->ndims) {
             case 1:
                 {
-                    cnum = s->nelem;
+                    cnum = v->nelem;
                     rnum = 1;
                     orientation = "VECTOR";
                 }
@@ -450,7 +416,7 @@ void Element::setChannelAttributes( const HRTLab::Signal *s,
 
             case 2:
                 {
-                    const size_t *dim = s->getDim();
+                    const size_t *dim = v->getDim();
                     cnum = dim[1];
                     rnum = dim[0];
                     orientation = "MATRIX_ROW_MAJOR";
@@ -459,9 +425,9 @@ void Element::setChannelAttributes( const HRTLab::Signal *s,
 
             default:
                 {
-                    const size_t *dim = s->getDim();
-                    cnum = dim[s->ndims - 1];
-                    rnum = s->nelem / cnum;
+                    const size_t *dim = v->getDim();
+                    cnum = dim[v->ndims - 1];
+                    rnum = v->nelem / cnum;
                     orientation = "MATRIX_ROW_MAJOR";
                 }
                 break;
@@ -471,26 +437,14 @@ void Element::setChannelAttributes( const HRTLab::Signal *s,
         setAttribute("orientation", orientation);
     }
 
+    // unit=
+    if (v->unit.size())
+        setAttributeCheck("unit", v->unit);
+
+    // text=
+    if (v->comment.size())
+        setAttributeCheck("text", v->comment);
+
     // hide=
     // unhide=
-    // persistent=
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const char *Element::getDTypeName(const HRTLab::Variable *v)
-{
-    switch (v->dtype) {
-        case si_boolean_T: return "TCHAR";
-        case si_uint8_T:   return "TUCHAR";
-        case si_sint8_T:   return "TCHAR";
-        case si_uint16_T:  return "TUSHORT";
-        case si_sint16_T:  return "TSHORT";
-        case si_uint32_T:  return "TUINT";
-        case si_sint32_T:  return "TINT";
-        case si_uint64_T:  return "TULINT";
-        case si_sint64_T:  return "TLINT";
-        case si_single_T:  return "TDBL";
-        case si_double_T:  return "TFLT";
-        default:           return "";
-    }
 }
