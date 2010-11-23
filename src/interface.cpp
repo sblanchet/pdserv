@@ -34,7 +34,6 @@ int hrtlab_signal(
         unsigned int tid,
         unsigned int decimation,
         const char *path,
-        const char *alias,
         enum si_datatype_t datatype,
         const void *addr,
         size_t n,
@@ -42,17 +41,47 @@ int hrtlab_signal(
         )
 {
     return reinterpret_cast<HRTLab::Main*>(hrtlab)->newSignal(
-            tid, decimation, path, alias, datatype,
+            tid, decimation, path, datatype,
             dim ? n : 1, dim ? dim : &n,
             reinterpret_cast<const char*>(addr)
             );
 }
 
 /////////////////////////////////////////////////////////////////////////////
+int hrtlab_set_alias(
+        struct hrtlab* hrtlab,
+        const char *path,
+        const char *alias)
+{
+    return reinterpret_cast<HRTLab::Main*>(hrtlab)->setAlias(
+            path, alias);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int hrtlab_set_unit(
+        struct hrtlab* hrtlab,
+        const char *path,
+        const char *unit)
+{
+    return reinterpret_cast<HRTLab::Main*>(hrtlab)->setUnit(
+            path, unit);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int hrtlab_set_comment(
+        struct hrtlab* hrtlab,
+        const char *path,
+        const char *comment)
+{
+    return reinterpret_cast<HRTLab::Main*>(hrtlab)->setComment(
+            path, comment);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 int hrtlab_parameter(
         struct hrtlab* hrtlab,
         const char *path,
-        const char *alias,
+        unsigned int mode,
         enum si_datatype_t datatype,
         void *addr,
         size_t n,
@@ -63,7 +92,7 @@ int hrtlab_parameter(
         )
 {
     return reinterpret_cast<HRTLab::Main*>(hrtlab)->newParameter(
-            path, alias, datatype, dim ? n : 1, dim ? dim : &n,
+            path, mode, datatype, dim ? n : 1, dim ? dim : &n,
             reinterpret_cast<char*>(addr),
             paramcopy, priv_data);
 }

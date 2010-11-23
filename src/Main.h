@@ -44,7 +44,6 @@ class Main {
                 unsigned int tid,
                 unsigned int decimation,
                 const char *path,
-                const char *alias,
                 enum si_datatype_t datatype,
                 unsigned int ndims,
                 const unsigned int dim[],
@@ -53,7 +52,7 @@ class Main {
 
         int newParameter(
                 const char *path,
-                const char *alias,
+                unsigned int mode,
                 enum si_datatype_t datatype,
                 unsigned int ndims,
                 const unsigned int dim[],
@@ -61,6 +60,10 @@ class Main {
                 paramupdate_t paramcopy,
                 void *priv_data
                 );
+
+        int setAlias(const char *path, const char *alias);
+        int setUnit(const char *path, const char *unit);
+        int setComment(const char *path, const char *comment);
 
         const std::string name;
         const std::string version;

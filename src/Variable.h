@@ -17,7 +17,6 @@ class Variable {
         Variable(
                 unsigned int index,
                 const char *path,
-                const char *alias,
                 enum si_datatype_t dtype,
                 unsigned int ndims,
                 const size_t dim[],
@@ -28,9 +27,9 @@ class Variable {
 
         const unsigned int index;
         const std::string path;
-        const std::string alias;
-        const std::string unit;
-        const std::string comment;
+        std::string alias;
+        std::string unit;
+        std::string comment;
         const enum si_datatype_t dtype;
         const size_t ndims;
         const size_t width;

@@ -21,14 +21,13 @@ using namespace HRTLab;
 Variable::Variable(
                 unsigned int index,
                 const char *path,
-                const char *alias,
                 enum si_datatype_t dtype,
                 unsigned int ndims,
                 const size_t dim[],
                 unsigned int decimation,
                 const char *addr):
     index(index),
-    path(path), alias(alias), dtype(dtype),
+    path(path), dtype(dtype),
     ndims(ndims),
     width(getDTypeSize(dtype)),
     nelem(getNElem(ndims, dim)),

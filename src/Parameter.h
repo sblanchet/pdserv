@@ -19,7 +19,7 @@ class Parameter: public Variable {
         Parameter (
                 unsigned int index,
                 const char *path,
-                const char *alias,
+                unsigned int mode,
                 enum si_datatype_t dtype,
                 unsigned int ndims,
                 const size_t dim[],
@@ -28,7 +28,9 @@ class Parameter: public Variable {
                 void *priv_data = 0);
 
         // Called in real time context
-        int setValue(const char *valbuf) const;
+        int setValue(unsigned int tid, const char *valbuf) const;
+
+        const unsigned int mode;
 
     private:
         const paramupdate_t paramcopy;
@@ -38,7 +40,8 @@ class Parameter: public Variable {
 
         // A default function used when paramcheck or paramupdate are not
         // specified by the user
-        static int copy(void *dst, const void *src, size_t len, void *);
+        static int copy(unsigned int tid,
+                void *dst, const void *src, size_t len, void *);
 };
 
 }

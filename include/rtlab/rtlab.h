@@ -59,7 +59,6 @@ int hrtlab_signal(
         unsigned int decimation,  /**< Decimation with which the signal is
                                    * calculated */
         const char *path,         /**< Signal path */
-        const char *alias,        /**< Signal alias. No whitespace allowed */
         enum si_datatype_t datatype, /**< Signal data type */
         const void *addr,         /**< Signal address */
         size_t n,                 /**< Element count.
@@ -74,6 +73,7 @@ int hrtlab_signal(
  * See \hrtlab_parameter
  */
 typedef int (*paramupdate_t)(
+        unsigned int tid,       /**< Task id context of call */
         void *dst,              /**< Destination address @addr */
         const void *src,        /**< Data source */
         size_t len,             /**< Data length in bytes */
@@ -107,10 +107,10 @@ typedef int (*paramupdate_t)(
  */
 int hrtlab_parameter(
         struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
-        const char *path,         /**< Signal path */
-        const char *alias,        /**< Signal alias */
-        enum si_datatype_t datatype, /**< Signal data type */
-        void *addr,               /**< Signal address */
+        const char *path,         /**< Parameter path */
+        unsigned int mode,        /**< Access mode, same as unix file mode */
+        enum si_datatype_t datatype, /**< Parameter data type */
+        void *addr,               /**< Parameter address */
         size_t n,                 /**< Element count.  If @dim != NULL, this
                                    * is the number elements in * @dim */
         const size_t dim[],       /**< Dimensions. If NULL, consider the
@@ -119,6 +119,29 @@ int hrtlab_parameter(
         paramupdate_t paramopy,/**< Callback for updating the parameter
                                    * inside real time context */
         void *priv_data           /**< Arbitrary pointer for callback */
+        );
+
+/** Set an optional alias for a variable
+ *
+ * Sometimes it it easier to find a variable by its alias. Use this
+ * function after calling either @hrtlab_signal or @hrtlab_parameter
+ * to set the alias name for a variable.
+ */
+int hrtlab_set_alias(
+        const char *path,       /**< Variable path */
+        const char *alias       /**< Variable's alias */
+        );
+
+/** Set the optional unit of a variable */
+int hrtlab_set_unit(
+        const char *path,       /**< Variable path */
+        const char *unit        /**< Variable's unit */
+        );
+
+/** Set the optional comment of a variable */
+int hrtlab_set_comment(
+        const char *path,       /**< Variable path */
+        const char *comment     /**< Variable's comment */
         );
 
 /** Finish initialisation

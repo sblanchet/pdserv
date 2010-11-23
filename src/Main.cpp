@@ -171,7 +171,7 @@ void Main::processSdo(unsigned int tid, const struct timespec *time)
             for (const Parameter **p = sdo->parameters;
                     p != sdo->parameters + sdo->count; p++) {
 
-                int errorCode = (*p)->setValue(data);
+                int errorCode = (*p)->setValue(tid, data);
                 if (errorCode) {
                     *p = 0;
                     sdo->errorCode = errorCode;
@@ -383,7 +383,6 @@ int Main::newSignal(
         unsigned int tid,
         unsigned int decimation,
         const char *path,
-        const char *alias,
         enum si_datatype_t datatype,
         unsigned int ndims,
         const size_t dim[],
@@ -396,7 +395,7 @@ int Main::newSignal(
     if (variableMap.find(path) != variableMap.end())
         return -EEXIST;
 
-    Signal *s = new Signal(tid, signals.size(), decimation, path, alias,
+    Signal *s = new Signal(tid, signals.size(), decimation, path,
             datatype, ndims, dim, addr);
 
     task[tid]->addVariable(s);
@@ -409,7 +408,7 @@ int Main::newSignal(
 /////////////////////////////////////////////////////////////////////////////
 int Main::newParameter(
         const char *path,
-        const char *alias,
+        unsigned int mode,
         enum si_datatype_t datatype,
         unsigned int ndims,
         const size_t dim[],
@@ -421,11 +420,47 @@ int Main::newParameter(
     if (variableMap.find(path) != variableMap.end())
         return -EEXIST;
 
-    Parameter *p = new Parameter(parameters.size(), path, alias, datatype,
+    Parameter *p = new Parameter(parameters.size(), path, mode, datatype,
             ndims, dim, addr, paramcopy, priv_data);
 
     parameters.push_back(p);
     variableMap[path] = p;
 
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::setAlias( const char *path, const char *alias)
+{
+    VariableMap::iterator it = variableMap.find(path);
+
+    if (it == variableMap.end())
+        return -EOF;
+
+    it->second->alias = alias;
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::setUnit( const char *path, const char *unit)
+{
+    VariableMap::iterator it = variableMap.find(path);
+
+    if (it == variableMap.end())
+        return -EOF;
+
+    it->second->unit = unit;
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::setComment( const char *path, const char *comment)
+{
+    VariableMap::iterator it = variableMap.find(path);
+
+    if (it == variableMap.end())
+        return -EOF;
+
+    it->second->comment = comment;
     return 0;
 }

@@ -38,14 +38,14 @@ int main(int argc, const char *argv[])
 //    assert(!hrtlab_signal(hrtlab, 0, 1, "/path/to/variable", "var1",
 //            si_uint16_T, 3, var1_dims, var1));
 
-    assert(!hrtlab_signal(hrtlab, 0, 1, "/path/to/var2", "var1",
+    assert(!hrtlab_signal(hrtlab, 0, 1, "/path/to/var2",
             si_uint16_T, var1+5, 1, NULL));
 
-    assert(!hrtlab_signal(hrtlab, 0, 1, "/path/to/double", "var1",
+    assert(!hrtlab_signal(hrtlab, 0, 1, "/path/to/double",
             si_double_T, dbl, 1, NULL));
 
     assert(!hrtlab_parameter(hrtlab,
-                "/path/to/param", "vüar1",
+                "/path/to/param", 0666,
                 si_uint32_T, param, 4, 0, 0, 0));
 
     assert(!hrtlab_start(hrtlab));

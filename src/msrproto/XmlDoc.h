@@ -66,7 +66,8 @@ class Element {
         /** Various variations of numerical attributes */
         void setAttribute(const char *name, const struct timespec&);
         template<class T>
-            void setAttribute(const char *name, const T& value);
+            void setAttribute(const char *name, const T& value,
+                    std::ios::fmtflags flags = std::ios::dec);
 
         void base64ValueAttr( const char *name, const HRTLab::Variable *v,
                 const char* data, size_t precision = 10, size_t n = 1);
@@ -80,7 +81,7 @@ class Element {
         void setCommonAttributes(const HRTLab::Variable*, bool shortReply);
         void setParameterAttributes( const HRTLab::Parameter *p,
                 const char *data, const struct timespec *mtime,
-                bool shortReply, bool hex);
+                bool dep, bool shortReply, bool hex);
         void setChannelAttributes( const HRTLab::Signal *s,
                 const char *data, bool shortReply, double freq, size_t bufsize);
 
@@ -104,10 +105,13 @@ class Element {
 std::ostream& operator<<(std::ostream& os, const Element& el);
 
 template <class T>
-void Element::setAttribute(const char *name, const T& value)
+void Element::setAttribute(const char *name, const T& value,
+        std::ios::fmtflags flags)
 {
     std::ostringstream o;
     o.imbue(std::locale::classic());
+    o.setf(flags, std::ios_base::basefield);
+    o.setf(flags);
 
     o << value;
     setAttribute(name, o.str());

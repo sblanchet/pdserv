@@ -121,8 +121,8 @@ void Element::setAttribute(const char *a, const struct timespec &t)
         attrList.push_back(a);
 
     std::ostringstream os;
-    os << t.tv_sec << '.' << std::setprecision(9)
-        << std::setw(9) << std::setfill('0') << t.tv_nsec;
+    os << t.tv_sec << '.' << std::setprecision(6)
+        << std::setw(6) << std::setfill('0') << t.tv_nsec / 1000;
     attrMap[a] = os.str();
 }
 
@@ -320,7 +320,7 @@ void Element::base64ValueAttr(const char *attr, const HRTLab::Variable *v,
 /////////////////////////////////////////////////////////////////////////////
 void Element::setParameterAttributes( const HRTLab::Parameter *p,
         const char *data, const struct timespec *mtime,
-        bool shortReply, bool hex)
+        bool dep, bool shortReply, bool hex)
 {
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>
@@ -329,7 +329,9 @@ void Element::setParameterAttributes( const HRTLab::Parameter *p,
 
     if (!shortReply) {
         // flags= Add 0x100 for dependent variables
-        setAttribute("flags", 3);
+        // FIX
+        setAttribute("flags", p->mode + (dep ? 0x100 : 0),
+                std::ios::oct | std::ios::showbase);
     }
 
     // mtime=
@@ -374,11 +376,20 @@ void Element::setCommonAttributes(const HRTLab::Variable *v, bool shortReply)
     if (shortReply)
         return;
 
+    // alias=
+    // unit=
+    // comment=
+    if (!v->alias.empty())
+        setAttributeCheck("alias", v->alias);
+    if (!v->unit.empty())
+        setAttributeCheck("unit", v->unit);
+    if (!v->comment.empty())
+        setAttributeCheck("comment", v->comment);
+
     // datasize=
-    // typ=
-    setAttribute("alias", v->alias);
     setAttribute("datasize", v->width);
-    // type=
+
+    // typ=
     const char *dtype = 0;
     switch (v->dtype) {
         case si_boolean_T: dtype = "TCHAR";     break;

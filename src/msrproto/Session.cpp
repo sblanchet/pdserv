@@ -394,7 +394,7 @@ void Session::readParameter(const Attr &attr)
     if (parameter) {
         MsrXml::Element p("parameter");
         p.setParameterAttributes(parameter, main->getParameterAddr(parameter),
-                main->getMTime(parameter), shortReply, hex);
+                main->getMTime(parameter), false, shortReply, hex);
         outbuf << p << std::flush;
     }
     else {
@@ -403,7 +403,7 @@ void Session::readParameter(const Attr &attr)
                 it != pl.end(); it++) {
             MsrXml::Element *p = parameters.createChild("parameter");
             p->setParameterAttributes(*it, main->getParameterAddr(*it),
-                    main->getMTime(*it), shortReply, hex);
+                    main->getMTime(*it), false, shortReply, hex);
         }
         outbuf << parameters << std::flush;
     }

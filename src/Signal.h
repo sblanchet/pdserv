@@ -15,7 +15,6 @@ class Signal: public Variable {
                 unsigned int tid,
                 unsigned int decimation,
                 const char *path,
-                const char *alias,
                 enum si_datatype_t dtype,
                 unsigned int ndims,
                 const size_t *dim,
