@@ -17,25 +17,25 @@ class Main;
 class Parameter: public Variable {
     public:
         Parameter (
-                unsigned int index,
                 const char *path,
                 unsigned int mode,
                 enum si_datatype_t dtype,
-                unsigned int ndims,
-                const size_t dim[],
-                char *addr,
-                paramupdate_t paramcopy = copy,
-                void *priv_data = 0);
+                void *addr,
+                unsigned int ndims = 1,
+                const size_t *dim = 0);
 
         // Called in real time context
         int setValue(unsigned int tid, const char *valbuf) const;
 
+        void setTrigger(paramtrigger_t trigger, void *priv_data);
+
         const unsigned int mode;
 
     private:
-        const paramupdate_t paramcopy;
-        void * const priv_data;
-        char * const addr;
+        paramtrigger_t trigger;
+        void *priv_data;
+
+        void * const addr;
 
 
         // A default function used when paramcheck or paramupdate are not

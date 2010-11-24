@@ -16,11 +16,12 @@ class Signal: public Variable {
                 unsigned int decimation,
                 const char *path,
                 enum si_datatype_t dtype,
-                unsigned int ndims,
-                const size_t *dim,
-                const char *addr);
+                const void *addr,
+                unsigned int ndims = 1,
+                const size_t *dim = 0);
 
         const unsigned int tid;
+        const unsigned int decimation;
 
 //        void log(
 //                /** Signal decimation with which this signal will be logged.

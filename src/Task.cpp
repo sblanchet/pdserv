@@ -246,7 +246,8 @@ void Task::txPdo(const struct timespec *t)
         for (VariableSet::const_iterator it = subscriptionSet[i].begin();
                 it != subscriptionSet[i].end(); it++) {
             const Variable *v = *it;
-            std::copy(v->addr, v->addr + v->memSize, p);
+            std::copy((const char*)v->addr,
+                    (const char *)v->addr + v->memSize, p);
             p += v->memSize;
 //            cout << ' ' << v->index;
         }

@@ -4,6 +4,9 @@
 
 #include "rtlab/rtlab.h"
 #include "Main.h"
+#include "Variable.h"
+#include "Signal.h"
+#include "Parameter.h"
 
 /////////////////////////////////////////////////////////////////////////////
 struct hrtlab* hrtlab_init(int argc, const char *argv[], 
@@ -29,7 +32,7 @@ void hrtlab_update(struct hrtlab* hrtlab, int st, const struct timespec *t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int hrtlab_signal(
+struct variable *hrtlab_signal(
         struct hrtlab* hrtlab,
         unsigned int tid,
         unsigned int decimation,
@@ -40,45 +43,18 @@ int hrtlab_signal(
         const size_t dim[]
         )
 {
-    return reinterpret_cast<HRTLab::Main*>(hrtlab)->newSignal(
-            tid, decimation, path, datatype,
-            dim ? n : 1, dim ? dim : &n,
-            reinterpret_cast<const char*>(addr)
-            );
+    HRTLab::Variable *v =
+        reinterpret_cast<HRTLab::Main*>(hrtlab)->newSignal(
+                tid, decimation, path, datatype,
+                dim ? n : 1, dim ? dim : &n,
+                reinterpret_cast<const char*>(addr)
+                );
+
+    return reinterpret_cast<struct variable *>(v);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int hrtlab_set_alias(
-        struct hrtlab* hrtlab,
-        const char *path,
-        const char *alias)
-{
-    return reinterpret_cast<HRTLab::Main*>(hrtlab)->setAlias(
-            path, alias);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int hrtlab_set_unit(
-        struct hrtlab* hrtlab,
-        const char *path,
-        const char *unit)
-{
-    return reinterpret_cast<HRTLab::Main*>(hrtlab)->setUnit(
-            path, unit);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int hrtlab_set_comment(
-        struct hrtlab* hrtlab,
-        const char *path,
-        const char *comment)
-{
-    return reinterpret_cast<HRTLab::Main*>(hrtlab)->setComment(
-            path, comment);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int hrtlab_parameter(
+struct variable *hrtlab_parameter(
         struct hrtlab* hrtlab,
         const char *path,
         unsigned int mode,
@@ -86,15 +62,35 @@ int hrtlab_parameter(
         void *addr,
         size_t n,
         const size_t dim[],
-
-        paramupdate_t paramcopy,
-        void *priv_data
+        paramtrigger_t trigger = 0,
+        void *priv_data = 0
         )
 {
-    return reinterpret_cast<HRTLab::Main*>(hrtlab)->newParameter(
-            path, mode, datatype, dim ? n : 1, dim ? dim : &n,
-            reinterpret_cast<char*>(addr),
-            paramcopy, priv_data);
+    HRTLab::Parameter *p =
+        reinterpret_cast<HRTLab::Main*>(hrtlab)->newParameter(
+                path, mode, datatype, addr, n, dim);
+    p->setTrigger(trigger, priv_data);
+
+    HRTLab::Variable *v = p;
+    return reinterpret_cast<struct variable *>(v);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void hrtlab_set_alias( void *var, const char *alias)
+{
+    reinterpret_cast<HRTLab::Variable*>(var)->setAlias( alias);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void hrtlab_set_unit( void *var, const char *unit)
+{
+    reinterpret_cast<HRTLab::Variable*>(var)->setUnit(unit);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void hrtlab_set_comment( void *var, const char *comment)
+{
+    reinterpret_cast<HRTLab::Variable*>(var)->setComment(comment);
 }
 
 /////////////////////////////////////////////////////////////////////////////

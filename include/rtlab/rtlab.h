@@ -7,6 +7,7 @@ extern "C" {
 
 /** Structure declaration */
 struct hrtlab;
+struct variable;
 
 /** Initialise hrtlab library
  *
@@ -53,7 +54,7 @@ struct hrtlab* hrtlab_init(
  *   @dim = {2,3,4}
  *   
  */
-int hrtlab_signal(
+struct variable* hrtlab_signal(
         struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
         unsigned int tid,         /**< Task Id of the signal */
         unsigned int decimation,  /**< Decimation with which the signal is
@@ -70,9 +71,13 @@ int hrtlab_signal(
 
 /** Callback on a parameter update event
  *
- * See \hrtlab_parameter
+ * See \hrtlab_set_parameter_trigger
+ *
+ * This function is responsible for copying the data from @src to @dst
+ *
+ * \returns 0 on success
  */
-typedef int (*paramupdate_t)(
+typedef int (*paramtrigger_t)(
         unsigned int tid,       /**< Task id context of call */
         void *dst,              /**< Destination address @addr */
         const void *src,        /**< Data source */
@@ -105,7 +110,7 @@ typedef int (*paramupdate_t)(
  * events at the same time for example. Incidentally @dst is the address
  * specified by @addr during registration. The return value is ignored.
  */
-int hrtlab_parameter(
+struct variable *hrtlab_parameter(
         struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
         const char *path,         /**< Parameter path */
         unsigned int mode,        /**< Access mode, same as unix file mode */
@@ -115,8 +120,7 @@ int hrtlab_parameter(
                                    * is the number elements in * @dim */
         const size_t dim[],       /**< Dimensions. If NULL, consider the
                                    * parameter to be a vector of length @n */
-
-        paramupdate_t paramopy,/**< Callback for updating the parameter
+        paramtrigger_t paramopy,  /**< Callback for updating the parameter
                                    * inside real time context */
         void *priv_data           /**< Arbitrary pointer for callback */
         );
@@ -127,22 +131,23 @@ int hrtlab_parameter(
  * function after calling either @hrtlab_signal or @hrtlab_parameter
  * to set the alias name for a variable.
  */
-int hrtlab_set_alias(
-        const char *path,       /**< Variable path */
+void hrtlab_set_alias(
+        struct variable *variable, /**< Parameter or Signal address */
         const char *alias       /**< Variable's alias */
         );
 
 /** Set the optional unit of a variable */
-int hrtlab_set_unit(
-        const char *path,       /**< Variable path */
+void hrtlab_set_unit(
+        struct variable *variable, /**< Parameter or Signal address */
         const char *unit        /**< Variable's unit */
         );
 
 /** Set the optional comment of a variable */
-int hrtlab_set_comment(
-        const char *path,       /**< Variable path */
+void hrtlab_set_comment(
+        struct variable *variable, /**< Parameter or Signal address */
         const char *comment     /**< Variable's comment */
         );
+
 
 /** Finish initialisation
  *

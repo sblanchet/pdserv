@@ -374,12 +374,12 @@ void Element::setCommonAttributes(const HRTLab::Variable *v, bool shortReply)
     // alias=
     // unit=
     // comment=
-    if (!v->alias.empty())
-        setAttributeCheck("alias", v->alias);
-    if (!v->unit.empty())
-        setAttributeCheck("unit", v->unit);
-    if (!v->comment.empty())
-        setAttributeCheck("comment", v->comment);
+    if (!v->getAlias().empty())
+        setAttributeCheck("alias", v->getAlias());
+    if (!v->getUnit().empty())
+        setAttributeCheck("unit", v->getUnit());
+    if (!v->getComment().empty())
+        setAttributeCheck("comment", v->getComment());
 
     // datasize=
     setAttribute("datasize", v->width);
@@ -444,12 +444,12 @@ void Element::setCommonAttributes(const HRTLab::Variable *v, bool shortReply)
     }
 
     // unit=
-    if (v->unit.size())
-        setAttributeCheck("unit", v->unit);
+    if (v->getUnit().size())
+        setAttributeCheck("unit", v->getUnit());
 
     // text=
-    if (v->comment.size())
-        setAttributeCheck("text", v->comment);
+    if (v->getComment().size())
+        setAttributeCheck("text", v->getComment());
 
     // hide=
     // unhide=

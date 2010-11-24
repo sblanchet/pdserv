@@ -40,7 +40,7 @@ class Main {
         void update(int st, const struct timespec *time);
         int start();
 
-        int newSignal(
+        Signal *newSignal(
                 unsigned int tid,
                 unsigned int decimation,
                 const char *path,
@@ -50,20 +50,14 @@ class Main {
                 const char *addr
                 );
 
-        int newParameter(
+        Parameter *newParameter(
                 const char *path,
                 unsigned int mode,
                 enum si_datatype_t datatype,
-                unsigned int ndims,
-                const unsigned int dim[],
-                char *addr,
-                paramupdate_t paramcopy,
-                void *priv_data
+                void *addr,
+                unsigned int ndims = 1,
+                const unsigned int dim[] = 0
                 );
-
-        int setAlias(const char *path, const char *alias);
-        int setUnit(const char *path, const char *unit);
-        int setComment(const char *path, const char *comment);
 
         const std::string name;
         const std::string version;

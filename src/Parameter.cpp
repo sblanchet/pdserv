@@ -21,19 +21,16 @@ using namespace HRTLab;
 
 //////////////////////////////////////////////////////////////////////
 Parameter::Parameter(
-        unsigned int index,
         const char *path,
         unsigned int mode,
         enum si_datatype_t dtype,
+        void *addr,
         unsigned int ndims,
-        const size_t dim[],
-        char *addr,
-        paramupdate_t paramcopy,
-        void *priv_data) :
-    Variable(index, path, dtype, ndims, dim, 0, addr),
-    mode(mode), paramcopy(paramcopy ? paramcopy : copy),
-    priv_data(priv_data), addr(addr)
+        const size_t *dim):
+    Variable(index, path, dtype, addr, ndims, dim),
+    mode(mode), addr(addr)
 {
+    trigger = copy;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -49,5 +46,12 @@ int Parameter::copy(unsigned int tid,
 //////////////////////////////////////////////////////////////////////
 int Parameter::setValue(unsigned int tid, const char *valbuf) const
 {
-    return paramcopy(tid, addr, valbuf, memSize, priv_data);
+    return trigger(tid, addr, valbuf, memSize, priv_data);
+}
+
+//////////////////////////////////////////////////////////////////////
+void Parameter::setTrigger(paramtrigger_t t, void *d)
+{
+    trigger = t ? t : copy;
+    priv_data = d;
 }

@@ -159,7 +159,8 @@ void Main::processSdo(unsigned int tid, const struct timespec *time)
             for (const Signal **s = sdo->signals;
                     s != sdo->signals + sdo->count; s++) {
                 if ((*s)->tid == tid)
-                    std::copy((*s)->addr, (*s)->addr + (*s)->memSize, data);
+                    std::copy((const char *)(*s)->addr,
+                            (const char *)(*s)->addr + (*s)->memSize, data);
                 else
                     finished = false;
                 data += (*s)->memSize;
@@ -178,8 +179,8 @@ void Main::processSdo(unsigned int tid, const struct timespec *time)
                 }
                 else {
                     mtime[(*p)->index] = t;
-                    std::copy((*p)->Variable::addr,
-                            (*p)->Variable::addr + (*p)->memSize,
+                    std::copy((const char *)(*p)->Variable::addr,
+                            (const char *)(*p)->Variable::addr + (*p)->memSize,
                             parameterAddr[(*p)->index]);
                 }
 
@@ -350,8 +351,8 @@ int Main::start()
         for (std::list<Parameter*>::const_iterator it = p[idx[i]].begin();
                 it != p[idx[i]].end(); it++) {
             parameterAddr[(*it)->index] = buf;
-            std::copy((*it)->Variable::addr,
-                    (*it)->Variable::addr + (*it)->memSize, buf);
+            std::copy((const char *)(*it)->Variable::addr,
+                    (const char *)(*it)->Variable::addr + (*it)->memSize, buf);
             buf += (*it)->memSize;
         }
     }
@@ -379,7 +380,7 @@ int Main::start()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::newSignal(
+Signal *Main::newSignal(
         unsigned int tid,
         unsigned int decimation,
         const char *path,
@@ -390,77 +391,38 @@ int Main::newSignal(
         )
 {
     if (tid >= nst)
-        return -EINVAL;
+        return 0;
 
     if (variableMap.find(path) != variableMap.end())
-        return -EEXIST;
+        return 0;
 
     Signal *s = new Signal(tid, signals.size(), decimation, path,
-            datatype, ndims, dim, addr);
+            datatype, addr, ndims, dim);
 
     task[tid]->addVariable(s);
     signals.push_back(s);
     variableMap[path] = s;
 
-    return 0;
+    return s;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::newParameter(
+Parameter *Main::newParameter(
         const char *path,
         unsigned int mode,
         enum si_datatype_t datatype,
+        void *addr,
         unsigned int ndims,
-        const size_t dim[],
-        char *addr,
-        paramupdate_t paramcopy,
-        void *priv_data
+        const size_t dim[]
         )
 {
     if (variableMap.find(path) != variableMap.end())
-        return -EEXIST;
+        return 0;
 
-    Parameter *p = new Parameter(parameters.size(), path, mode, datatype,
-            ndims, dim, addr, paramcopy, priv_data);
+    Parameter *p = new Parameter(path, mode, datatype, addr, ndims, dim);
 
     parameters.push_back(p);
     variableMap[path] = p;
 
-    return 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int Main::setAlias( const char *path, const char *alias)
-{
-    VariableMap::iterator it = variableMap.find(path);
-
-    if (it == variableMap.end())
-        return -EOF;
-
-    it->second->alias = alias;
-    return 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int Main::setUnit( const char *path, const char *unit)
-{
-    VariableMap::iterator it = variableMap.find(path);
-
-    if (it == variableMap.end())
-        return -EOF;
-
-    it->second->unit = unit;
-    return 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int Main::setComment( const char *path, const char *comment)
-{
-    VariableMap::iterator it = variableMap.find(path);
-
-    if (it == variableMap.end())
-        return -EOF;
-
-    it->second->comment = comment;
-    return 0;
+    return p;
 }

@@ -21,12 +21,11 @@ Signal::Signal( unsigned int tid,
         unsigned int decimation,
         const char *path,
         enum si_datatype_t dtype,
+        const void *addr,
         unsigned int ndims,
-        const size_t *dim,
-        const char *addr):
-    Variable(index, path, dtype, ndims, dim,
-            decimation ? decimation : 1, addr),
-    tid(tid)
+        const size_t *dim):
+    Variable(index, path, dtype, addr, ndims, dim),
+    tid(tid), decimation(decimation)
 {
 //    cout << __func__ << index << endl;
 }
