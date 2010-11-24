@@ -20,6 +20,15 @@ void Attr::clear()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Attr::adjust(ptrdiff_t delta)
+{
+    for (AttrMap::iterator it = attrMap.begin(); it != attrMap.end(); it++) {
+        it->second.name += delta;
+        it->second.value += delta;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Attr::insert(const char *name)
 {
     //cout << "Binary attribute: Name=" << std::string(name, nameLen) << endl;
@@ -53,7 +62,7 @@ bool Attr::find(const char *name, char * &value) const
         ret(attrMap.equal_range(len));
 
     for (AttrMap::const_iterator it(ret.first); it != ret.second; it++) {
-        if (!strncmp(name, it->second.name, len)) {
+        if (!strncasecmp(name, it->second.name, len)) {
             value = it->second.value;
             return true;
         }

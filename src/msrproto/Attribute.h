@@ -14,8 +14,11 @@ namespace MsrProto {
         class Attr {
             public:
                 void clear();
+
                 void insert(const char *name);
                 void insert(const char *name, char *attr);
+                void adjust(ptrdiff_t delta);
+
                 bool find(const char *name, char * &value) const;
                 bool isEqual(const char *name, const char *s) const;
                 bool isTrue(const char *name) const;

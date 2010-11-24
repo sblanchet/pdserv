@@ -303,7 +303,8 @@ void Element::base64ValueAttr(const char *attr, const HRTLab::Variable *v,
     }
 
     // Fill the remaining space with '='
-    std::fill_n(p, (p - s) % 4, '=');
+    while ( (p - s) % 4)
+        *p++ = '=';
 
     // Terminate the string
     *p = '\0';

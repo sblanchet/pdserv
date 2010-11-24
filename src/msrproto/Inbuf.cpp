@@ -47,9 +47,10 @@ size_t Inbuf::free() const
 /////////////////////////////////////////////////////////////////////////////
 void Inbuf::parse(size_t n)
 {
-    //cout << __LINE__ << __PRETTY_FUNCTION__ << ' ' << (void*)buf << endl;
-
     eptr += n;
+
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << ' ' 
+//        << std::string(bptr, eptr - bptr) << endl;
 
 //    cout << "   ->" << std::string(buf, eptr - buf) << "<-";
 //    cout << "bptr:" << (void*)bptr << " eptr:" << (void*)eptr << endl;
@@ -63,9 +64,13 @@ void Inbuf::parse(size_t n)
     else if (eptr == bufEnd) {
         // Command is not complete and there is not enough space at the end
         // of the buffer for new data
+        ptrdiff_t delta = 0;
+//        cout << "not enough space " << std::string(buf, eptr - buf) << endl;
+//        cout << "not enough space " << std::string(bptr, eptr - bptr) << endl;
 
         if (bptr == buf) {
             // Buffer is completely full
+//            cout << "// Buffer is completely full" << endl;
 
             size_t bufLen = bufEnd - buf;
 
@@ -76,6 +81,8 @@ void Inbuf::parse(size_t n)
                 buf = new char[bufLen];
                 bufEnd = buf + bufLen;
 
+                delta = buf - bptr;
+
                 std::copy(bptr, eptr, buf);
                 eptr = buf + (eptr - bptr);
 
@@ -85,20 +92,32 @@ void Inbuf::parse(size_t n)
             }
             else {
                 // Buffer size exceeded limit. Discard everything
+//                cout << "// Buffer size exceeded limit. Discard everything"
+//                    << endl;
                 eptr = buf;
+                parseState = FindStart;
             }
         }
         else {
             // There is some space before the current command.
+//            cout << "// There is some space before the current command." << endl;
             std::copy(bptr, eptr, buf);
+
+            delta = buf - bptr;
+
             eptr = buf + (eptr - bptr);
             bptr = buf;
+//            cout << "    " << std::string(bptr, eptr - bptr) << endl;
         }
 
         // Because the pointers have moved, start parsing from the beginning
         // again
-        // FIXME: dont do this, rather adjust attribute pointers
-        parseState = FindStart;
+        attr.adjust(delta);
+        commandPtr += delta;
+        pptr += delta;
+        attrName += delta;
+        attrValue += delta;
+//        cout << "adjusted " << delta << commandPtr << endl;
     }
 }
 
