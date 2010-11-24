@@ -82,9 +82,9 @@ class Main {
         void newSession(const Session *);
         void rxPdo(Session *);
         void closeSession(const Session *s);
-        int writeParameter(const Parameter * const *, size_t n,
-                const char *data);
-        int poll(const Signal * const *s, size_t nelem, char *buf);
+        unsigned int writeParameter(const Parameter * const *,
+                size_t n, const char *data, int *errorCode = 0);
+        unsigned int poll(const Signal * const *s, size_t nelem, char *buf);
         void unsubscribe(const Session *session,
                 const Signal * const *s = 0, size_t nelem = 0);
         void subscribe(const Session *session,
@@ -108,12 +108,15 @@ class Main {
             unsigned int reqId;
             unsigned int replyId;
             enum {PollSignal, WriteParameter} type;
-            int errorCode;
+            unsigned int errorCount;
             unsigned int count;
             struct timespec time;
             union {
                 const Signal *signals[];
-                const Parameter *parameters[];
+                struct {
+                    const Parameter *parameter;
+                    int errorCode;
+                } paramchange[];
             };
         } *sdo;
         mutable ost::Semaphore sdoMutex;

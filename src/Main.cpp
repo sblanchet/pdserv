@@ -83,8 +83,8 @@ int Main::localtime(struct timespec* t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::writeParameter(const Parameter * const *p, size_t nelem,
-        const char *data)
+unsigned int Main::writeParameter(const Parameter * const *p, size_t nelem,
+        const char *data, int *errorCode)
 {
     ost::SemaphoreLock lock(sdoMutex);
 
@@ -92,7 +92,8 @@ int Main::writeParameter(const Parameter * const *p, size_t nelem,
     for (size_t i = 0; i < nelem; i++)
         len += p[i]->memSize;
 
-    std::copy(p, p+nelem, sdo->parameters);
+    for (size_t i = 0; i < nelem; i++)
+        sdo->paramchange[i].parameter = p[i];
     std::copy(data, data+len, sdoData);
     sdo->count = nelem;
     sdo->type = SDOStruct::WriteParameter;
@@ -102,12 +103,18 @@ int Main::writeParameter(const Parameter * const *p, size_t nelem,
         ost::Thread::sleep(100);
     } while (sdo->reqId != sdo->replyId);
 
-    if (!sdo->errorCode) {
-        msrproto->parameterChanged(p, nelem);
-        //etlproto->parameterChanged(p, nelem);
+    for (size_t i = 0; i < nelem; i++) {
+
+        if (errorCode)
+            errorCode[i] = sdo->paramchange[i].errorCode;
+
+        if (!sdo->paramchange[i].errorCode) {
+            msrproto->parameterChanged(p, nelem);
+            //etlproto->parameterChanged(p, nelem);
+        }
     }
 
-    return sdo->errorCode;
+    return sdo->errorCount;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -149,7 +156,7 @@ void Main::processSdo(unsigned int tid, const struct timespec *time)
         return;
 
     sdo->time = *time;
-    sdo->errorCode = 0;
+    sdo->errorCount = 0;
 
     bool finished = true;
     char *data = sdoData;
@@ -169,22 +176,21 @@ void Main::processSdo(unsigned int tid, const struct timespec *time)
 
         case SDOStruct::WriteParameter:
             gettime(&t);
-            for (const Parameter **p = sdo->parameters;
-                    p != sdo->parameters + sdo->count; p++) {
+            for (size_t i = 0; i < sdo->count; i++) {
+                const Parameter *p = sdo->paramchange[i].parameter;
 
-                int errorCode = (*p)->setValue(tid, data);
+                int errorCode = p->setValue(tid, data);
+                data += p->memSize;
+                sdo->paramchange[i].errorCode = errorCode;
                 if (errorCode) {
-                    *p = 0;
-                    sdo->errorCode = errorCode;
+                    sdo->errorCount++;
                 }
                 else {
-                    mtime[(*p)->index] = t;
-                    std::copy((const char *)(*p)->Variable::addr,
-                            (const char *)(*p)->Variable::addr + (*p)->memSize,
-                            parameterAddr[(*p)->index]);
+                    mtime[p->index] = t;
+                    std::copy((const char *)p->Variable::addr,
+                            (const char *)p->Variable::addr + p->memSize,
+                            parameterAddr[p->index]);
                 }
-
-                data += (*p)->memSize;
             }
             break;
     }
@@ -201,7 +207,7 @@ void Main::update(int st, const struct timespec *time)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::poll(const Signal * const *s, size_t nelem, char *buf)
+unsigned int Main::poll(const Signal * const *s, size_t nelem, char *buf)
 {
     ost::SemaphoreLock lock(sdoMutex);
 
@@ -224,7 +230,7 @@ int Main::poll(const Signal * const *s, size_t nelem, char *buf)
         s++;
     }
 
-    return sdo->errorCode;
+    return sdo->errorCount;
 }
 
 /////////////////////////////////////////////////////////////////////////////

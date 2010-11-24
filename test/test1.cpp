@@ -1,6 +1,7 @@
 #include "rtlab/rtlab.h"
 #include <stdint.h>
 #include <cstring>
+#include <stdio.h>
 #include <unistd.h>
 #include <assert.h>
 #include <sys/mman.h>
@@ -14,10 +15,11 @@ uint16_t var1[2][3][4] = {
     { {1,2,3,4}, {5,6,7}, },
 };
 
-int copy_param(void *priv_data, void* dst, const void* src, size_t nelem,
-        enum si_datatype_t datatype, size_t ndims, const size_t dim[])
+int copy_param(unsigned int tid, void* dst, const void* src, size_t len,
+        void *priv_data)
 {
-    memcpy(priv_data, src, nelem);
+    memcpy(dst, src, len);
+    printf("hallo %p\n", priv_data);
     return 0;
 }
 
@@ -45,7 +47,7 @@ int main(int argc, const char *argv[])
             si_double_T, dbl, 1, NULL));
 
     struct variable *p = hrtlab_parameter(hrtlab, "/path/to/param", 0666,
-            si_uint32_T, param, 4, 0, 0, 0);
+            si_uint32_T, param, 4, 0, copy_param, (void*)10);
     assert(p);
 
     assert(!hrtlab_start(hrtlab));
