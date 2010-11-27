@@ -7,25 +7,26 @@
 
 #include <set>
 #include <map>
-#include "Variable.h"
+#include <ctime>
 
 namespace HRTLab {
 
 class Main;
 class Session;
+class Signal;
 
 class Task {
     public:
         Task(const Main *main, unsigned int tid, double sampleTime);
         ~Task();
 
-        void addVariable(const Variable *);
+        void addSignal(const Signal *);
         void setup();
 
         void newSession(const Session*);
         void endSession(const Session*);
-        void subscribe(const Session*, const Variable *);
-        void unsubscribe(const Session*, const Variable * = 0);
+        void subscribe(const Session*, const Signal *);
+        void unsubscribe(const Session*, const Signal * = 0);
         void txPdo(const struct timespec *);
         void rxPdo(Session *);
 
@@ -36,19 +37,19 @@ class Task {
         const Main * const main;
         const double sampleTime;
 
-        typedef std::set<const Variable*> VariableSet;
-        VariableSet variables;
-        VariableSet subscriptionSet[4];
+        typedef std::set<const Signal*> SignalSet;
+        SignalSet signals;
+        SignalSet subscriptionSet[4];
 
         size_t pdoMem;
         size_t txPdoCount;
         unsigned int seqNo;
-        std::map<const Session*, VariableSet> session;
-        std::map<const Variable *, std::set<const Session*> > variableSessions;
+        std::map<const Session*, SignalSet> session;
+        std::map<const Signal *, std::set<const Session*> > variableSessions;
 
         struct Instruction {
             enum Type {Clear, Insert, Remove} instruction;
-            const Variable *variable;
+            const Signal *signal;
         };
 
         void *postoffice;
@@ -65,7 +66,7 @@ class Task {
                 } pdo;
                 struct {
                     unsigned int count;
-                    const Variable *variable[];
+                    const Signal *signal[];
                 } list;
             };
         };
@@ -74,7 +75,7 @@ class Task {
         const void *txMemEnd;
         std::map<const Session*, TxFrame *> sessionRxPtr;
 
-        void deliver(Instruction::Type t, const Variable *v);
+        void deliver(Instruction::Type t, const Signal *v);
         void receive();
 };
 

@@ -58,7 +58,7 @@ Session::Session( Server *s, ost::SocketService *ss,
 
     // Create enough tasks
     for (size_t i = 0; i < main->nst; i++) {
-        task[i] = new Task();
+        task[i] = new Task(this);
     }
 
     // Non-blocking read() and write()
@@ -72,6 +72,15 @@ Session::Session( Server *s, ost::SocketService *ss,
     greeting.setAttribute("features", MSR_FEATURES);
     greeting.setAttribute("recievebufsize", 100000000);
     outbuf << greeting << std::flush;
+
+    size_t idx = 0;
+    const HRTLab::Variable *v;
+    while ((v = main->getSignal(idx)))
+        variableIndexMap[v] = idx++;
+
+    idx = 0;
+    while ((v = main->getParameter(idx)))
+        variableIndexMap[v] = idx++;
 
     expired();
 }
@@ -98,10 +107,16 @@ void Session::parameterChanged(const HRTLab::Parameter * const *p, size_t n)
     MsrXml::Element pu("pu");
     while (n--) {
         if (*p) {
-            pu.setAttribute("index", (*p++)->index);
+//            pu.setAttribute("index", variableIndex[*p++]);
             outbuf << pu << std::flush;
         }
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+size_t Session::getVariableIndex(const HRTLab::Variable *v) const
+{
+    return variableIndexMap.find(v)->second;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -176,11 +191,11 @@ void Session::disconnect()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newVariableList(const HRTLab::Task *t,
-        const HRTLab::Variable * const *v, size_t n)
+void Session::newSignalList(const HRTLab::Task *t,
+        const HRTLab::Signal * const *v, size_t n)
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
-    task[t->tid]->newVariableList(v, n);
+    task[t->tid]->newSignalList(v, n);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -304,65 +319,38 @@ void Session::ping(const Attr &attr)
 /////////////////////////////////////////////////////////////////////////////
 void Session::readChannel(const Attr &attr)
 {
-    HRTLab::Signal *signal = 0;
+    const HRTLab::Signal *signal = 0;
     bool shortReply = attr.isTrue("short");
-    const HRTLab::Main::SignalList& sl = main->getSignals();
     std::string path;
     unsigned int index;
 
     if (attr.getString("name", path)) {
-        const HRTLab::Main::VariableMap& m = main->getVariableMap();
-        HRTLab::Main::VariableMap::const_iterator vit = m.find(path);
-
-        if (vit == m.end() or vit->second->index >= sl.size()
-                or sl[vit->second->index]->path != path)
-            // Signal does not exist, ignore it
-            return;
-
-        signal = sl[vit->second->index];
+        signal = main->getSignal(path);
     }
     else if (attr.getUnsigned("index", index)) {
-        if (index >= sl.size())
-            // Index is out of range, ignore it
-            return;
-
-        signal = sl[index];
-    }
-
-
-    if (signal) {
-        // A single signal was requested
-
-        char buf[signal->memSize];
-        double freq = 1.0 / main->baserate / signal->decimation
-                / (main->decimation ? main->decimation[signal->tid] : 1);
-        size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
-
-        main->poll(&signal, 1, buf);
-
-        MsrXml::Element channel("channel");
-        channel.setChannelAttributes(signal, buf, shortReply, freq, bufsize);
-
-        outbuf << channel;
+        signal = main->getSignal(index);
     }
     else {
         // Send the whole list
+        size_t count = 0;
 
-        HRTLab::Signal *signal[sl.size()];
+        while (main->getSignal(count++));
+
+        const HRTLab::Signal *signals[count];
         size_t buflen = 0;
 
-        for (size_t i = 0; i < sl.size(); i++) {
-            signal[i] = sl[i];
-            buflen += signal[i]->memSize;
+        for (size_t i = 0; i < count; i++) {
+            signals[i] = main->getSignal(i);
+            buflen += signals[i]->memSize;
         }
         char buf[buflen];
-        main->poll(signal, sl.size(), buf);
+        main->poll(signals, count, buf);
 
         MsrXml::Element channels("channels");
         const char *p = buf;
-        for (size_t i = 0; i < sl.size(); i++) {
-            double freq = 1.0 / main->baserate / signal[i]->decimation
-                    / (main->decimation ? main->decimation[signal[i]->tid] : 1);
+        for (size_t i = 0; i < count; i++) {
+            double freq = 1.0 / main->baserate / signals[i]->decimation
+                    / (main->decimation ? main->decimation[signals[i]->tid] : 1);
 
             // The MSR protocoll wants a bufsize, the maximum number of
             // values that can be retraced. This artificial limitation does
@@ -371,61 +359,79 @@ void Session::readChannel(const Attr &attr)
             size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
 
             MsrXml::Element *c = channels.createChild("channel");
-            c->setChannelAttributes(signal[i], p, shortReply, freq, bufsize);
-            p += signal[i]->memSize;
+            c->setChannelAttributes(signals[i], variableIndexMap[signals[i]],
+                    p, shortReply, freq, bufsize);
+            p += signals[i]->memSize;
         }
-        outbuf << channels;
+
+        outbuf << channels << std::flush;
+        return;
     }
 
-    outbuf << std::flush;
+    // A single signal was requested
+
+    char buf[signal->memSize];
+    double freq = 1.0 / main->baserate / signal->decimation
+        / (main->decimation ? main->decimation[signal->tid] : 1);
+    size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
+
+    main->poll(&signal, 1, buf);
+
+    MsrXml::Element channel("channel");
+    channel.setChannelAttributes(signal, variableIndexMap[signal], buf,
+            shortReply, freq, bufsize);
+
+    outbuf << channel << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::readParameter(const Attr &attr)
 {
-    HRTLab::Parameter *parameter = 0;
+    const HRTLab::Parameter *parameter = 0;
     bool shortReply = attr.isTrue("short");
     bool hex = attr.isTrue("hex");
     std::string name;
     unsigned int index;
-    const HRTLab::Main::ParameterList& pl = main->getParameters();
-
-    if (attr.getString("name", name)) {
-        const HRTLab::Main::VariableMap& m = main->getVariableMap();
-        HRTLab::Main::VariableMap::const_iterator vit = m.find(name);
-
-        if (vit == m.end() or vit->second->index >= pl.size()
-                or pl[vit->second->index]->path != name)
-            // Parameter does not exist, ignore
-            return;
-
-        parameter = pl[vit->second->index];
-    }
-    else if (attr.getUnsigned("index", index)) {
-        if (index >= pl.size())
-            // Index does not exist, ignore
-            return;
-
-        parameter = pl[index];
-    }
-    
     unsigned int flags = writeAccess
         ? MSR_R | MSR_W | MSR_WOP | MSR_MONOTONIC : MSR_R | MSR_MONOTONIC;
-    if (parameter) {
-        MsrXml::Element p("parameter");
-        p.setParameterAttributes(parameter, main->getParameterAddr(parameter),
-                main->getMTime(parameter), flags, shortReply, hex);
-        outbuf << p << std::flush;
+
+    if (attr.getString("name", name)) {
+        parameter = main->getParameter(name);
+    }
+    else if (attr.getUnsigned("index", index)) {
+        parameter = main->getParameter(index);
     }
     else {
+        // Send the whole list
+        size_t count = 0;
+
+        while (main->getParameter(count++));
+
+        const HRTLab::Parameter *params[count];
+
+        for (size_t i = 0; i < count; i++)
+            params[i] = main->getParameter(i);
+
         MsrXml::Element parameters("parameters");
-        for (HRTLab::Main::ParameterList::const_iterator it = pl.begin();
-                it != pl.end(); it++) {
+        for (size_t i = 0; i < count; i++) {
             MsrXml::Element *p = parameters.createChild("parameter");
-            p->setParameterAttributes(*it, main->getParameterAddr(*it),
-                    main->getMTime(*it), flags, shortReply, hex);
+            parameter = params[i];
+            p->setParameterAttributes(parameter,
+                    variableIndexMap[parameter],
+                    main->getParameterAddr(parameter),
+                    main->getMTime(parameter), flags, shortReply, hex);
         }
+
         outbuf << parameters << std::flush;
+        return;
+    }
+    
+    if (parameter) {
+        MsrXml::Element p("parameter");
+        p.setParameterAttributes(parameter, variableIndexMap[parameter],
+                main->getParameterAddr(parameter),
+                main->getMTime(parameter), flags, shortReply, hex);
+        outbuf << p << std::flush;
     }
 }
 
@@ -434,14 +440,12 @@ void Session::readParamValues(const Attr &attr)
 {
     MsrXml::Element param_values("param_values");
     std::string v;
-    bool separator = false;
-    const HRTLab::Main::ParameterList& pl = main->getParameters();
+    const HRTLab::Parameter *parameter;
+    size_t i = 0;
 
-    for (HRTLab::Main::ParameterList::const_iterator it = pl.begin();
-            it != pl.end(); it++) {
-        if (separator) v.append(1,'|');
-        v.append(MsrXml::toCSV(*it, main->getParameterAddr(*it)));
-        separator = true;
+    while ((parameter = main->getParameter(i++))) {
+        if (i++) v.append(1,'|');
+        v.append(MsrXml::toCSV(parameter, main->getParameterAddr(parameter)));
     }
 
     param_values.setAttribute("value", v);
@@ -546,32 +550,19 @@ void Session::writeParameter(const Attr &attr)
     }
 
     const HRTLab::Parameter *parameter;
-    size_t startindex = 0;
-    const HRTLab::Main::ParameterList& pl = main->getParameters();
+
     unsigned int index;
     std::string name;
-
     if (attr.getString("name", name)) {
-        const HRTLab::Main::VariableMap& m = main->getVariableMap();
-        HRTLab::Main::VariableMap::const_iterator vit = m.find(name);
-
-        if (vit == m.end() or vit->second->index >= pl.size()
-                or pl[vit->second->index]->path != name)
-            // Parameter does not exist, ignore
-            return;
-
-        parameter = pl[vit->second->index];
+        parameter = main->getParameter(name);
     }
     else if (attr.getUnsigned("index", index)) {
-        if (index >= pl.size())
-            // Index does not exist, ignore
-            return;
-
-        parameter = pl[index];
+        parameter = main->getParameter(index);
     }
     else
         return;
     
+    size_t startindex = 0;
     if (attr.getUnsigned("startindex", startindex)) {
         if (startindex >= parameter->nelem)
             return;
@@ -636,20 +627,18 @@ void Session::writeParameter(const Attr &attr)
 /////////////////////////////////////////////////////////////////////////////
 void Session::xsad(const Attr &attr)
 {
-    std::list<HRTLab::Signal*> channelList;
+    std::list<const HRTLab::Signal*> channelList;
     unsigned int reduction, blocksize, precision = 10;
     bool base64 = attr.isEqual("coding", "Base64");
     bool event = attr.isTrue("event");
     bool foundReduction = false, foundBlocksize = false;
-    const HRTLab::Main::SignalList& sl = main->getSignals();
     std::list<unsigned int> indexList;
 
     if (attr.getUnsignedList("channels", indexList)) {
         for ( std::list<unsigned int>::const_iterator it(indexList.begin());
                 it != indexList.end(); it++) {
 
-            if (*it <= sl.size())
-                channelList.push_back(sl[*it]);
+            channelList.push_back(main->getSignal(*it));
         }
     }
     else
@@ -734,17 +723,15 @@ void Session::xsad(const Attr &attr)
 /////////////////////////////////////////////////////////////////////////////
 void Session::xsod(const Attr &attr)
 {
-    std::list<HRTLab::Signal*> channelList;
+    std::list<const HRTLab::Signal*> channelList;
     std::list<unsigned int> intList;
-    const HRTLab::Main::SignalList& sl = main->getSignals();
 
 //    cout << __LINE__ << "xsod: " << endl;
 
     if (attr.getUnsignedList("channels", intList)) {
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
-            if (*it < sl.size())
-                channelList.push_back(sl[*it]);
+            channelList.push_back(main->getSignal(*it));
         }
 
         const HRTLab::Signal *signals[channelList.size()];

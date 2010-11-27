@@ -20,15 +20,16 @@ using std::endl;
 using namespace HRTLab;
 
 //////////////////////////////////////////////////////////////////////
-Parameter::Parameter(
+Parameter::Parameter( unsigned int index,
         const char *path,
         unsigned int mode,
         enum si_datatype_t dtype,
         void *addr,
         unsigned int ndims,
         const size_t *dim):
-    Variable(index, path, dtype, addr, ndims, dim),
-    mode(mode), addr(addr)
+    Variable(path, dtype, ndims, dim),
+    index(index), addr(addr),
+    mode(mode)
 {
     trigger = copy;
 }
@@ -44,7 +45,7 @@ int Parameter::copy(unsigned int tid,
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::setValue(unsigned int tid, const char *valbuf) const
+int Parameter::setValue_(unsigned int tid, const char *valbuf) const
 {
     return trigger(tid, addr, valbuf, memSize, priv_data);
 }

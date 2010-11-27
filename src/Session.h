@@ -12,7 +12,7 @@
 namespace HRTLab {
 
 class Task;
-class Variable;
+class Signal;
 class Main;
 
 class Session {
@@ -20,7 +20,7 @@ class Session {
         Session(Main *main);
         virtual ~Session();
 
-        virtual void newVariableList(const Task *, const Variable * const *,
+        virtual void newSignalList(const Task *, const Signal * const *,
                 size_t n);
         virtual void newPdoData(const Task *, unsigned int seqNo,
                 const struct timespec *t, const char *);

@@ -314,13 +314,13 @@ void Element::base64ValueAttr(const char *attr, const HRTLab::Variable *v,
 
 /////////////////////////////////////////////////////////////////////////////
 void Element::setParameterAttributes( const HRTLab::Parameter *p,
-        const char *data, const struct timespec *mtime,
+        unsigned int index, const char *data, const struct timespec *mtime,
         unsigned int flags, bool shortReply, bool hex)
 {
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>
 
-    setCommonAttributes(p, shortReply);
+    setCommonAttributes(p, index, shortReply);
 
     if (!shortReply) {
         // flags= Add 0x100 for dependent variables
@@ -343,11 +343,12 @@ void Element::setParameterAttributes( const HRTLab::Parameter *p,
 
 /////////////////////////////////////////////////////////////////////////////
 void Element::setChannelAttributes( const HRTLab::Signal *s,
-        const char *data, bool shortReply, double freq, size_t bufsize)
+        unsigned int index, const char *data, bool shortReply,
+        double freq, size_t bufsize)
 {
     // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
     //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
-    setCommonAttributes(s, shortReply);
+    setCommonAttributes(s, index, shortReply);
 
     if (shortReply)
         return;
@@ -360,12 +361,13 @@ void Element::setChannelAttributes( const HRTLab::Signal *s,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::setCommonAttributes(const HRTLab::Variable *v, bool shortReply)
+void Element::setCommonAttributes(const HRTLab::Variable *v,
+        unsigned int index, bool shortReply)
 {
     // name=
     // value=
     // index=
-    setAttribute("index", v->index);
+    setAttribute("index", index);
     setAttributeCheck("name", v->path);
 
     if (shortReply)
@@ -374,12 +376,12 @@ void Element::setCommonAttributes(const HRTLab::Variable *v, bool shortReply)
     // alias=
     // unit=
     // comment=
-    if (!v->getAlias().empty())
-        setAttributeCheck("alias", v->getAlias());
-    if (!v->getUnit().empty())
-        setAttributeCheck("unit", v->getUnit());
-    if (!v->getComment().empty())
-        setAttributeCheck("comment", v->getComment());
+    if (!v->alias.empty())
+        setAttributeCheck("alias", v->alias);
+    if (!v->unit.empty())
+        setAttributeCheck("unit", v->unit);
+    if (!v->comment.empty())
+        setAttributeCheck("comment", v->comment);
 
     // datasize=
     setAttribute("datasize", v->width);
@@ -444,12 +446,12 @@ void Element::setCommonAttributes(const HRTLab::Variable *v, bool shortReply)
     }
 
     // unit=
-    if (v->getUnit().size())
-        setAttributeCheck("unit", v->getUnit());
+    if (v->unit.size())
+        setAttributeCheck("unit", v->unit);
 
     // text=
-    if (v->getComment().size())
-        setAttributeCheck("text", v->getComment());
+    if (v->comment.size())
+        setAttributeCheck("text", v->comment);
 
     // hide=
     // unhide=

@@ -6,7 +6,7 @@
 
 #include "Task.h"
 #include "Main.h"
-#include "Variable.h"
+#include "Signal.h"
 #include "Session.h"
 
 #include <iostream>
@@ -39,9 +39,9 @@ Task::~Task()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::addVariable(const Variable *v)
+void Task::addSignal(const Signal *s)
 {
-    variables.insert(v);
+    signals.insert(s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -55,16 +55,16 @@ void Task::receive()
     };
 
     do {
-        const Variable *v = mailbox->variable;
-        unsigned int idx = 3 - subscriptionSetIndex[v->width];
-        VariableSet &vs = subscriptionSet[idx];
-        VariableSet::iterator it = vs.find(v);
+        const Signal *s = mailbox->signal;
+        unsigned int idx = 3 - subscriptionSetIndex[s->width];
+        SignalSet &vs = subscriptionSet[idx];
+        SignalSet::iterator it = vs.find(s);
 
         switch (mailbox->instruction) {
             case Instruction::Insert:
                 if (it == vs.end()) {
-                    vs.insert(v);
-                    pdoMem += v->memSize;
+                    vs.insert(s);
+                    pdoMem += s->memSize;
                     txPdoCount++;
 //                    cout << "Instruction::Insert: " << v->path << endl;
                 }
@@ -73,7 +73,7 @@ void Task::receive()
             case Instruction::Remove:
                 if (it != vs.end()) {
                     vs.erase(it);
-                    pdoMem -= v->memSize;
+                    pdoMem -= s->memSize;
                     txPdoCount--;
 //                    cout << "Instruction::Remove: " << v->path << endl;
                 }
@@ -90,19 +90,19 @@ void Task::receive()
 
     } while (mailbox->instruction != Instruction::Clear);
 
-    if (txFrame->list.variable + txPdoCount >= txMemEnd)
+    if (txFrame->list.signal + txPdoCount >= txMemEnd)
         txFrame = txMemBegin;
 
 //    cout << __func__ << " L " << (void*)txFrame;
     txFrame->next = 0;
     txFrame->type = TxFrame::PdoList;
     txFrame->list.count = txPdoCount;
-    const Variable **v = txFrame->list.variable;
+    const Signal **s = txFrame->list.signal;
     for (int i = 0; i < 4; i++) {
-        for (VariableSet::const_iterator it = subscriptionSet[i].begin();
+        for (SignalSet::const_iterator it = subscriptionSet[i].begin();
                 it != subscriptionSet[i].end(); it++) {
 //            cout << ' ' << (*it)->index;
-            *v++ = *it;
+            *s++ = *it;
         }
     }
 //    cout << endl;
@@ -111,18 +111,18 @@ void Task::receive()
 
 //    cout << "Setting " << nextTxFrame << " to " << txFrame << endl;
     nextTxFrame = &txFrame->next;
-    txFrame = ptr_align<TxFrame>(v);
+    txFrame = ptr_align<TxFrame>(s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::deliver(Instruction::Type t, const Variable *v)
+void Task::deliver(Instruction::Type t, const Signal *s)
 {
     while (mailbox->instruction != Instruction::Clear) {
         ost::Thread::sleep(100);
     }
 
     mailbox->instruction = t;
-    mailbox->variable = v;
+    mailbox->signal = s;
 
     if (++mailbox == mailboxEnd)
         mailbox = mailboxBegin;
@@ -131,37 +131,37 @@ void Task::deliver(Instruction::Type t, const Variable *v)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::subscribe(const Session *s, const Variable *v)
+void Task::subscribe(const Session *s, const Signal *signal)
 {
-    if (session[s].find(v) == session[s].end()) {
-//        cout << "Inserting " << s << v->path << endl;
-        variableSessions[v].insert(s);
-        session[s].insert(v);
-        deliver(Instruction::Insert, v);
+    if (session[s].find(signal) == session[s].end()) {
+//        cout << "Inserting " << s << s->path << endl;
+        variableSessions[signal].insert(s);
+        session[s].insert(signal);
+        deliver(Instruction::Insert, signal);
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::unsubscribe(const Session *s, const Variable *v)
+void Task::unsubscribe(const Session *s, const Signal *signal)
 {
-    if (v) {
-        VariableSet &vs = session[s];
-        VariableSet::const_iterator it = vs.find(v);
+    if (signal) {
+        SignalSet &vs = session[s];
+        SignalSet::const_iterator it = vs.find(signal);
 
-//        cout << "consider rem " << s << v->path<< endl;
+//        cout << "consider rem " << s << s->path<< endl;
         if (it != vs.end()) {
             vs.erase(it);
 
-            variableSessions[v].erase(s);
-            if (variableSessions[v].empty()) {
-                deliver(Instruction::Remove, v);
-//                cout << "removed " << s << v->path<< endl;
+            variableSessions[signal].erase(s);
+            if (variableSessions[signal].empty()) {
+                deliver(Instruction::Remove, signal);
+//                cout << "removed " << s << s->path<< endl;
             }
         }
     }
     else {
-        for (VariableSet::const_iterator it = variables.begin();
-                it != variables.end(); it++) {
+        for (SignalSet::const_iterator it = signals.begin();
+                it != signals.end(); it++) {
 //            cout << "trying to remove " << (*it)->path << endl;
             unsubscribe(s, *it);
         }
@@ -181,8 +181,8 @@ void Task::newSession(const Session *s)
 /////////////////////////////////////////////////////////////////////////////
 void Task::endSession(const Session *s)
 {
-    for (VariableSet::const_iterator it = variables.begin();
-            it != variables.end(); it++)
+    for (SignalSet::const_iterator it = signals.begin();
+            it != signals.end(); it++)
         unsubscribe(s, *it);
 
     sessionRxPtr.erase(sessionRxPtr.find(s));
@@ -191,11 +191,11 @@ void Task::endSession(const Session *s)
 /////////////////////////////////////////////////////////////////////////////
 void Task::setup()
 {
-    size_t paramLen = variables.size() * sizeof(Instruction);
+    size_t paramLen = signals.size() * sizeof(Instruction);
     size_t sigLen = sizeof(TxFrame);
 
-    for (VariableSet::const_iterator it = variables.begin();
-            it != variables.end(); it++) {
+    for (SignalSet::const_iterator it = signals.begin();
+            it != signals.end(); it++) {
         sigLen += (*it)->memSize;
     }
 
@@ -212,7 +212,7 @@ void Task::setup()
     std::fill_n((char*)postoffice, paramLen + sigLen, 0);
 
     mailboxBegin = reinterpret_cast<Instruction*>(postoffice);
-    mailboxEnd = mailboxBegin + variables.size();
+    mailboxEnd = mailboxBegin + signals.size();
     mailboxEnd = mailboxBegin + paramLen / sizeof(Instruction);
 
     mailbox = mailboxBegin;
@@ -243,12 +243,12 @@ void Task::txPdo(const struct timespec *t)
 
     char *p = txFrame->pdo.data;
     for (int i = 0; i < 4; i++) {
-        for (VariableSet::const_iterator it = subscriptionSet[i].begin();
+        for (SignalSet::const_iterator it = subscriptionSet[i].begin();
                 it != subscriptionSet[i].end(); it++) {
-            const Variable *v = *it;
-            std::copy((const char*)v->addr,
-                    (const char *)v->addr + v->memSize, p);
-            p += v->memSize;
+            const Signal *s = *it;
+            std::copy((const char*)s->addr,
+                    (const char *)s->addr + s->memSize, p);
+            p += s->memSize;
 //            cout << ' ' << v->index;
         }
     }
@@ -282,16 +282,16 @@ void Task::rxPdo(Session *s)
 
             case TxFrame::PdoList:
 //                cout << "TxFrame::PdoList: " << rxPtr << endl;
-                len = (const char *)(rxPtr->list.variable + rxPtr->list.count)
+                len = (const char *)(rxPtr->list.signal + rxPtr->list.count)
                     - (const char *)rxPtr;
 
-                s->newVariableList(this, rxPtr->list.variable,
+                s->newSignalList(this, rxPtr->list.signal,
                         rxPtr->list.count);
 
                 pdoMem = 0;
-                for (const Variable **v = rxPtr->list.variable;
-                        v != rxPtr->list.variable + rxPtr->list.count; v++)
-                    pdoMem += (*v)->memSize;
+                for (const Signal **sig = rxPtr->list.signal;
+                        sig != rxPtr->list.signal + rxPtr->list.count; sig++)
+                    pdoMem += (*sig)->memSize;
 
                 break;
         }

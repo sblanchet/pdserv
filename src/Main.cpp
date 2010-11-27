@@ -93,7 +93,7 @@ unsigned int Main::writeParameter(const Parameter * const *p, size_t nelem,
         len += p[i]->memSize;
 
     for (size_t i = 0; i < nelem; i++)
-        sdo->paramchange[i].parameter = p[i];
+        sdo->data[i].parameter = p[i];
     std::copy(data, data+len, sdoData);
     sdo->count = nelem;
     sdo->type = SDOStruct::WriteParameter;
@@ -106,39 +106,15 @@ unsigned int Main::writeParameter(const Parameter * const *p, size_t nelem,
     for (size_t i = 0; i < nelem; i++) {
 
         if (errorCode)
-            errorCode[i] = sdo->paramchange[i].errorCode;
+            errorCode[i] = sdo->data[i].errorCode;
 
-        if (!sdo->paramchange[i].errorCode) {
+        if (!sdo->data[i].errorCode) {
             msrproto->parameterChanged(p, nelem);
             //etlproto->parameterChanged(p, nelem);
         }
     }
 
     return sdo->errorCount;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const char * Main::getParameterAddr(const Parameter *p) const
-{
-    return parameterAddr[p->index];
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Main::SignalList& Main::getSignals() const
-{
-    return signals;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Main::ParameterList& Main::getParameters() const
-{
-    return parameters;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Main::VariableMap& Main::getVariableMap() const
-{
-    return variableMap;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -163,32 +139,33 @@ void Main::processSdo(unsigned int tid, const struct timespec *time)
     struct timespec t;
     switch (sdo->type) {
         case SDOStruct::PollSignal:
-            for (const Signal **s = sdo->signals;
-                    s != sdo->signals + sdo->count; s++) {
-                if ((*s)->tid == tid)
-                    std::copy((const char *)(*s)->addr,
-                            (const char *)(*s)->addr + (*s)->memSize, data);
+            for (unsigned i = 0; i < sdo->count; i++) {
+                const Signal *s = sdo->data[i].signal;
+                if (s->tid == tid)
+                    std::copy((const char *)s->addr,
+                            (const char *)s->addr + s->memSize,
+                            data);
                 else
                     finished = false;
-                data += (*s)->memSize;
+                data += s->memSize;
             }
             break;
 
         case SDOStruct::WriteParameter:
             gettime(&t);
-            for (size_t i = 0; i < sdo->count; i++) {
-                const Parameter *p = sdo->paramchange[i].parameter;
+            for (unsigned idx = 0; idx != sdo->count; idx++) {
+                const Parameter *p = sdo->data[idx].parameter;
 
-                int errorCode = p->setValue(tid, data);
+                int errorCode = p->hrtSetValue(tid, data);
                 data += p->memSize;
-                sdo->paramchange[i].errorCode = errorCode;
+                sdo->data[idx].errorCode = errorCode;
                 if (errorCode) {
                     sdo->errorCount++;
                 }
                 else {
                     mtime[p->index] = t;
-                    std::copy((const char *)p->Variable::addr,
-                            (const char *)p->Variable::addr + p->memSize,
+                    std::copy((const char *)p->addr,
+                            (const char *)p->addr + p->memSize,
                             parameterAddr[p->index]);
                 }
             }
@@ -211,7 +188,8 @@ unsigned int Main::poll(const Signal * const *s, size_t nelem, char *buf)
 {
     ost::SemaphoreLock lock(sdoMutex);
 
-    std::copy(s, s+nelem, sdo->signals);
+    for (unsigned i = 0; i < nelem; i++)
+        sdo->data[i].signal = s[i];
     sdo->count = nelem;
     sdo->type = SDOStruct::PollSignal;
     sdo->reqId++;
@@ -340,7 +318,7 @@ int Main::start()
     parameterData = ptr_align<char>(mtime + parameters.size());
     sdo           = ptr_align<SDOStruct>(parameterData + parameterSize);
     sdoData       = ptr_align<char>(
-            sdo->signals + std::max(signals.size(), parameters.size()));
+            sdo->data + std::max(signals.size(), parameters.size()));
 //    cout
 //        << " shmem=" << shmem
 //        << " mtime=" << mtime
@@ -357,8 +335,8 @@ int Main::start()
         for (std::list<Parameter*>::const_iterator it = p[idx[i]].begin();
                 it != p[idx[i]].end(); it++) {
             parameterAddr[(*it)->index] = buf;
-            std::copy((const char *)(*it)->Variable::addr,
-                    (const char *)(*it)->Variable::addr + (*it)->memSize, buf);
+            std::copy((const char *)(*it)->addr,
+                    (const char *)(*it)->addr + (*it)->memSize, buf);
             buf += (*it)->memSize;
         }
     }
@@ -387,13 +365,13 @@ int Main::start()
 
 /////////////////////////////////////////////////////////////////////////////
 Signal *Main::newSignal(
-        unsigned int tid,
-        unsigned int decimation,
         const char *path,
         enum si_datatype_t datatype,
+        const void *addr,
+        unsigned int tid,
+        unsigned int decimation,
         unsigned int ndims,
-        const size_t dim[],
-        const char *addr
+        const size_t dim[]
         )
 {
     if (tid >= nst)
@@ -402,10 +380,10 @@ Signal *Main::newSignal(
     if (variableMap.find(path) != variableMap.end())
         return 0;
 
-    Signal *s = new Signal(tid, signals.size(), decimation, path,
+    Signal *s = new Signal(tid, decimation, path,
             datatype, addr, ndims, dim);
 
-    task[tid]->addVariable(s);
+    task[tid]->addSignal(s);
     signals.push_back(s);
     variableMap[path] = s;
 
@@ -415,9 +393,9 @@ Signal *Main::newSignal(
 /////////////////////////////////////////////////////////////////////////////
 Parameter *Main::newParameter(
         const char *path,
-        unsigned int mode,
         enum si_datatype_t datatype,
         void *addr,
+        unsigned int mode,
         unsigned int ndims,
         const size_t dim[]
         )
@@ -425,7 +403,8 @@ Parameter *Main::newParameter(
     if (variableMap.find(path) != variableMap.end())
         return 0;
 
-    Parameter *p = new Parameter(path, mode, datatype, addr, ndims, dim);
+    Parameter *p = new Parameter(
+            parameters.size(), path, mode, datatype, addr, ndims, dim);
 
     parameters.push_back(p);
     variableMap[path] = p;

@@ -37,12 +37,14 @@
 #include <cc++/socketport.h> 
 #include <string>
 #include <vector>
+#include <map>
 
 #include "rtlab/etl_data_info.h"
 
 namespace HRTLab {
     class Variable;
     class Parameter;
+    class Variable;
 }
 
 namespace MsrXml {
@@ -69,9 +71,14 @@ class Session: public ost::SocketPort, public HRTLab::Session {
 
         void processCommand(const char *command, const Attr &attr);
 
+        size_t getVariableIndex(const HRTLab::Variable *v) const;
+
     private:
 
         Server * const server;
+
+        typedef std::map<const HRTLab::Variable *, size_t> VariableIndexMap;
+        VariableIndexMap variableIndexMap;
 
         // Reimplemented from SocketPort
         void expired();
@@ -80,8 +87,8 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         void disconnect();
 
         // Reimplemented from HRTLab::Session
-        void newVariableList(const HRTLab::Task *,
-                const HRTLab::Variable * const *, size_t n);
+        void newSignalList(const HRTLab::Task *,
+                const HRTLab::Signal * const *, size_t n);
         void newPdoData(const HRTLab::Task *, unsigned int seqNo,
                 const struct timespec *t, const char *);
 

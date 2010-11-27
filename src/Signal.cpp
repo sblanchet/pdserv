@@ -17,15 +17,14 @@ using namespace HRTLab;
 
 //////////////////////////////////////////////////////////////////////
 Signal::Signal( unsigned int tid,
-        unsigned int index,
         unsigned int decimation,
         const char *path,
         enum si_datatype_t dtype,
         const void *addr,
         unsigned int ndims,
         const size_t *dim):
-    Variable(index, path, dtype, addr, ndims, dim),
-    tid(tid), decimation(decimation)
+    Variable(path, dtype, ndims, dim),
+    tid(tid), decimation(decimation), addr(addr)
 {
 //    cout << __func__ << index << endl;
 }

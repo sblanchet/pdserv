@@ -41,23 +41,24 @@ class Main {
         int start();
 
         Signal *newSignal(
-                unsigned int tid,
-                unsigned int decimation,
                 const char *path,
                 enum si_datatype_t datatype,
-                unsigned int ndims,
-                const unsigned int dim[],
-                const char *addr
+                const void *addr,
+                unsigned int tid,
+                unsigned int decimation,
+                unsigned int ndims = 1,
+                const unsigned int dim[] = 0
                 );
 
         Parameter *newParameter(
                 const char *path,
-                unsigned int mode,
                 enum si_datatype_t datatype,
                 void *addr,
+                unsigned int mode,
                 unsigned int ndims = 1,
                 const unsigned int dim[] = 0
                 );
+
 
         const std::string name;
         const std::string version;
@@ -66,16 +67,12 @@ class Main {
         unsigned int * const decimation;
         int (* const gettime)(struct timespec*);
 
-        typedef std::vector<Parameter*> ParameterList;
-        const ParameterList& getParameters() const;
         const struct timespec *getMTime(const Parameter *) const;
+        const Signal *getSignal(const std::string&) const;
+        const Signal *getSignal(size_t) const;
+        const Parameter *getParameter(const std::string&) const;
+        const Parameter *getParameter(size_t) const;
         const char *getParameterAddr(const Parameter *) const;
-
-        typedef std::vector<Signal*> SignalList;
-        const SignalList& getSignals() const;
-
-        typedef std::map<const std::string,Variable*> VariableMap;
-        const VariableMap& getVariableMap() const;
 
         // Methods used by the clients to post instructions to the real-time
         // process
@@ -112,12 +109,10 @@ class Main {
             unsigned int count;
             struct timespec time;
             union {
-                const Signal *signals[];
-                struct {
-                    const Parameter *parameter;
-                    int errorCode;
-                } paramchange[];
-            };
+                const Signal *signal;
+                const Parameter *parameter;
+                int errorCode;
+            } data[];
         } *sdo;
         mutable ost::Semaphore sdoMutex;
         char *sdoData;
@@ -126,8 +121,13 @@ class Main {
 
         struct timespec *mtime;
 
+        typedef std::vector<Signal*> SignalList;
         SignalList signals;
+
+        typedef std::vector<Parameter*> ParameterList;
         ParameterList parameters;
+
+        typedef std::map<const std::string, const Variable*> VariableMap;
         VariableMap variableMap;
 
         Task **task;

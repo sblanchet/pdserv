@@ -6,8 +6,8 @@
 #define MSRTASK_H
 
 namespace HRTLab {
+    class Main;
     class Signal;
-    class Variable;
     class Parameter;
 }
 
@@ -17,9 +17,11 @@ namespace MsrXml {
 
 namespace MsrProto {
 
+class Session;
+
 class Task {
     public:
-        Task();
+        Task(const Session *);
         ~Task();
 
         void rmSignal(const HRTLab::Signal *s);
@@ -27,14 +29,16 @@ class Task {
                 bool event, unsigned int decimation, size_t blocksize,
                 bool base64, size_t precision);
 
-        void newVariableList(const HRTLab::Variable * const *, size_t);
+        void newSignalList(const HRTLab::Signal * const *, size_t);
         void newValues(MsrXml::Element *, size_t seqNo, const char *pdo);
 
         void sync();
 
     private:
+        const Session * const session;
+
         struct SignalData {
-            const HRTLab::Variable *variable;
+            const HRTLab::Signal *variable;
             MsrXml::Element *element;
             bool event;
             unsigned int decimation;
@@ -51,10 +55,10 @@ class Task {
             size_t offset;
         };
 
-        typedef std::map<const HRTLab::Variable *, SignalData*> ActiveSet;
+        typedef std::map<const HRTLab::Signal *, SignalData*> ActiveSet;
         ActiveSet activeSet;
 
-        typedef std::map<unsigned int, SignalData> SubscribedSet;
+        typedef std::map<const HRTLab::Signal*, SignalData> SubscribedSet;
         SubscribedSet subscribedSet;
 };
 

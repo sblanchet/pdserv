@@ -78,12 +78,15 @@ class Element {
 
         /** Special functions to set Parameter and Channel
          * attributes */
-        void setCommonAttributes(const HRTLab::Variable*, bool shortReply);
+        void setCommonAttributes(const HRTLab::Variable*,
+                unsigned int index, bool shortReply);
         void setParameterAttributes( const HRTLab::Parameter *p,
-                const char *data, const struct timespec *mtime,
+                unsigned int index, const char *data,
+                const struct timespec *mtime,
                 unsigned int flags, bool shortReply, bool hex);
         void setChannelAttributes( const HRTLab::Signal *s,
-                const char *data, bool shortReply, double freq, size_t bufsize);
+                unsigned int index, const char *data, bool shortReply,
+                double freq, size_t bufsize);
 
         /** Printing functions */
         void print(std::ostream& os, size_t indent = 0) const;

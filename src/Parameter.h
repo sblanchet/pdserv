@@ -16,7 +16,7 @@ class Main;
 
 class Parameter: public Variable {
     public:
-        Parameter (
+        Parameter ( unsigned int index,
                 const char *path,
                 unsigned int mode,
                 enum si_datatype_t dtype,
@@ -24,10 +24,14 @@ class Parameter: public Variable {
                 unsigned int ndims = 1,
                 const size_t *dim = 0);
 
+        const unsigned int index;
+        void * const addr;
+
         // Called in real time context
-        int setValue(unsigned int tid, const char *valbuf) const;
+        int hrtSsetValue(unsigned int tid, const char *valbuf) const;
 
         void setTrigger(paramtrigger_t trigger, void *priv_data);
+        struct timespec getMTime() const;
 
         const unsigned int mode;
 
@@ -35,7 +39,6 @@ class Parameter: public Variable {
         paramtrigger_t trigger;
         void *priv_data;
 
-        void * const addr;
 
 
         // A default function used when paramcheck or paramupdate are not

@@ -4,11 +4,11 @@
 
 #include "config.h"
 
-#include "../Main.h"
 #include "../Signal.h"
 
 #include "XmlDoc.h"
 #include "Task.h"
+#include "Session.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -20,7 +20,7 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Task::Task()
+Task::Task(const Session *s): session(s)
 {
 }
 
@@ -38,7 +38,7 @@ Task::~Task()
 void Task::rmSignal(const HRTLab::Signal *signal)
 {
     if (signal) {
-        SubscribedSet::iterator it = subscribedSet.find(signal->index);
+        SubscribedSet::iterator it = subscribedSet.find(signal);
         if (it != subscribedSet.end()) {
             delete[] it->second.data_bptr;
             delete it->second.element;
@@ -62,7 +62,7 @@ void Task::addSignal(const HRTLab::Signal *signal,
         bool event, unsigned int decimation, size_t blocksize,
         bool base64, size_t precision)
 {
-    SubscribedSet::iterator it = subscribedSet.find(signal->index);
+    SubscribedSet::iterator it = subscribedSet.find(signal);
     size_t offset = 0;
     if (it != subscribedSet.end()) {
         delete[] it->second.data_bptr;
@@ -96,25 +96,25 @@ void Task::addSignal(const HRTLab::Signal *signal,
         offset
     };
 
-    sd.element->setAttribute("c", signal->index);
+    sd.element->setAttribute("c", session->getVariableIndex(signal));
 
-    subscribedSet[signal->index] = sd;
+    subscribedSet[signal] = sd;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::newVariableList(const HRTLab::Variable * const *varList, size_t n)
+void Task::newSignalList(const HRTLab::Signal * const *varList, size_t n)
 {
     // Since it is not (should not be!) possible that required signal 
     // is not transmitted any more, only need to check for new signals
     unsigned int offset = 0;
-    for (const HRTLab::Variable * const *v = varList; v != varList + n; v++) {
-        SubscribedSet::iterator it = subscribedSet.find((*v)->index);
+    for (const HRTLab::Signal * const *s = varList; s != varList + n; s++) {
+        SubscribedSet::iterator it = subscribedSet.find(*s);
         if (it != subscribedSet.end()) {
-            activeSet[*v] = &(it->second);
+            activeSet[*s] = &(it->second);
             it->second.offset = offset;
         }
 
-        offset += (*v)->memSize;
+        offset += (*s)->memSize;
     }
 }
 

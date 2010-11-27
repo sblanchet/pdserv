@@ -19,19 +19,15 @@ using namespace HRTLab;
 
 //////////////////////////////////////////////////////////////////////
 Variable::Variable(
-                unsigned int index,
                 const char *path,
                 enum si_datatype_t dtype,
-                const void *addr,
                 unsigned int ndims,
                 const size_t *dim):
-    index(index),
     path(path), dtype(dtype),
     ndims(dim ? ndims : 1),
     width(getDTypeSize(dtype)),
     nelem(getNElem(ndims, dim)),
     memSize(nelem * width),
-    addr(addr),
     dim(new size_t[ndims])
 {
     if (dim)
@@ -50,42 +46,6 @@ Variable::~Variable()
 const size_t *Variable::getDim() const
 {
     return dim;
-}
-
-//////////////////////////////////////////////////////////////////////
-void Variable::setAlias(const char *s)
-{
-    alias = s;
-}
-
-//////////////////////////////////////////////////////////////////////
-void Variable::setComment(const char *c)
-{
-    comment = c;
-}
-
-//////////////////////////////////////////////////////////////////////
-void Variable::setUnit(const char *u)
-{
-    unit = u;
-}
-
-//////////////////////////////////////////////////////////////////////
-const std::string& Variable::getAlias() const
-{
-    return alias;
-}
-
-//////////////////////////////////////////////////////////////////////
-const std::string& Variable::getUnit() const
-{
-    return unit;
-}
-
-//////////////////////////////////////////////////////////////////////
-const std::string& Variable::getComment() const
-{
-    return comment;
 }
 
 //////////////////////////////////////////////////////////////////////

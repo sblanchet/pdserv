@@ -11,7 +11,7 @@ namespace HRTLab {
 
 class Signal: public Variable {
     public:
-        Signal( unsigned int index,
+        Signal(
                 unsigned int tid,
                 unsigned int decimation,
                 const char *path,
@@ -22,6 +22,8 @@ class Signal: public Variable {
 
         const unsigned int tid;
         const unsigned int decimation;
+
+        const void * const addr;
 
 //        void log(
 //                /** Signal decimation with which this signal will be logged.
