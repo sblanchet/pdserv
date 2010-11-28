@@ -3,11 +3,10 @@
  *****************************************************************************/
 
 #include "Task.h"
-
-using namespace HRTLab;
+#include "Main.h"
 
 /////////////////////////////////////////////////////////////////////////////
-Task::Task(const Main *m, unsigned int tid, double sampleTime):
-    tid(tid), sampleTime(sampleTime), main(m)
+Task::Task(const Main *main, unsigned int tid, double sampleTime):
+    HRTLab::Task(main, tid, sampleTime), main(main)
 {
 }

@@ -11,6 +11,7 @@
 #include "XmlDoc.h"
 #include "../Variable.h"
 #include "../Parameter.h"
+#include "../Task.h"
 #include "../Signal.h"
 
 #include <stdint.h>
@@ -314,9 +315,11 @@ void Element::base64ValueAttr(const char *attr, const HRTLab::Variable *v,
 
 /////////////////////////////////////////////////////////////////////////////
 void Element::setParameterAttributes( const HRTLab::Parameter *p,
-        unsigned int index, const char *data, const struct timespec *mtime,
-        unsigned int flags, bool shortReply, bool hex)
+        unsigned int index, unsigned int flags, bool shortReply, bool hex)
 {
+    struct timespec mtime;
+    const char *data = p->getValue(&mtime);
+
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>
 
@@ -330,7 +333,7 @@ void Element::setParameterAttributes( const HRTLab::Parameter *p,
     }
 
     // mtime=
-    setAttribute("mtime", *mtime);
+    setAttribute("mtime", mtime);
 
     if (hex)
         hexDecValueAttr("hexvalue", p, data);
@@ -343,11 +346,19 @@ void Element::setParameterAttributes( const HRTLab::Parameter *p,
 
 /////////////////////////////////////////////////////////////////////////////
 void Element::setChannelAttributes( const HRTLab::Signal *s,
-        unsigned int index, const char *data, bool shortReply,
-        double freq, size_t bufsize)
+        unsigned int index, bool shortReply, const char *data)
 {
     // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
     //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
+    double freq = 1.0 / s->task->sampleTime / s->decimation;
+
+    // The MSR protocoll wants a bufsize, the maximum number of
+    // values that can be retraced. This artificial limitation does
+    // not exist any more. Instead, choose a buffer size so that
+    // at a maximum of 1 second has to be stored.
+    size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
+
+
     setCommonAttributes(s, index, shortReply);
 
     if (shortReply)

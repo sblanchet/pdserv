@@ -9,6 +9,7 @@
 #include <cc++/thread.h>
 
 #include "Session.h"
+#include "../SessionStatistics.h"
 
 namespace HRTLab {
     class Main;
@@ -34,7 +35,8 @@ class Server:public ost::Thread {
 
         void sessionClosed(Session *s);
 
-        void getSessionStatistics(std::list<Session::Statistics>& stats) const;
+        void getSessionStatistics(
+                std::list<HRTLab::SessionStatistics>& stats) const;
 
     private:
 

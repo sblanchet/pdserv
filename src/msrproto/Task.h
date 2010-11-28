@@ -21,7 +21,7 @@ class Session;
 
 class Task {
     public:
-        Task(const Session *);
+        Task(Session *);
         ~Task();
 
         void rmSignal(const HRTLab::Signal *s);
@@ -30,15 +30,15 @@ class Task {
                 bool base64, size_t precision);
 
         void newSignalList(const HRTLab::Signal * const *, size_t);
-        void newValues(MsrXml::Element *, size_t seqNo, const char *pdo);
+        void newValues(MsrXml::Element *, size_t seqNo);
 
         void sync();
 
     private:
-        const Session * const session;
+        Session * const session;
 
         struct SignalData {
-            const HRTLab::Signal *variable;
+            const HRTLab::Signal *signal;
             MsrXml::Element *element;
             bool event;
             unsigned int decimation;
@@ -52,7 +52,6 @@ class Task {
             char *data_bptr;
             char *data_pptr;
             char *data_eptr;
-            size_t offset;
         };
 
         typedef std::map<const HRTLab::Signal *, SignalData*> ActiveSet;

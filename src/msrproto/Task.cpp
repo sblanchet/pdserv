@@ -20,7 +20,7 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Task::Task(const Session *s): session(s)
+Task::Task(Session *s): session(s)
 {
 }
 
@@ -39,21 +39,16 @@ void Task::rmSignal(const HRTLab::Signal *signal)
 {
     if (signal) {
         SubscribedSet::iterator it = subscribedSet.find(signal);
-        if (it != subscribedSet.end()) {
-            delete[] it->second.data_bptr;
-            delete it->second.element;
-            subscribedSet.erase(it);
-            activeSet.erase(signal);
-        }
+        delete[] it->second.data_bptr;
+        delete it->second.element;
+        subscribedSet.erase(it);
+        activeSet.erase(signal);
+        signal->unsubscribe(session);
     }
     else {
         for (SubscribedSet::iterator it = subscribedSet.begin();
-                it != subscribedSet.end(); it++) {
-            delete[] it->second.data_bptr;
-            delete it->second.element;
-        }
-        subscribedSet.clear();
-        activeSet.clear();
+                it != subscribedSet.end(); it++)
+            rmSignal(it->first);
     }
 }
 
@@ -63,11 +58,9 @@ void Task::addSignal(const HRTLab::Signal *signal,
         bool base64, size_t precision)
 {
     SubscribedSet::iterator it = subscribedSet.find(signal);
-    size_t offset = 0;
     if (it != subscribedSet.end()) {
         delete[] it->second.data_bptr;
         delete it->second.element;
-        offset = it->second.offset;
     }
 
     if (event)
@@ -92,13 +85,13 @@ void Task::addSignal(const HRTLab::Signal *signal,
         precision,
         data,
         data,
-        data + dataLen,
-        offset
+        data + dataLen
     };
 
     sd.element->setAttribute("c", session->getVariableIndex(signal));
 
     subscribedSet[signal] = sd;
+    signal->subscribe(session);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -106,21 +99,15 @@ void Task::newSignalList(const HRTLab::Signal * const *varList, size_t n)
 {
     // Since it is not (should not be!) possible that required signal 
     // is not transmitted any more, only need to check for new signals
-    unsigned int offset = 0;
     for (const HRTLab::Signal * const *s = varList; s != varList + n; s++) {
         SubscribedSet::iterator it = subscribedSet.find(*s);
-        if (it != subscribedSet.end()) {
+        if (it != subscribedSet.end())
             activeSet[*s] = &(it->second);
-            it->second.offset = offset;
-        }
-
-        offset += (*s)->memSize;
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::newValues(MsrXml::Element *parent, size_t seqNo,
-        const char *pdoData)
+void Task::newValues(MsrXml::Element *parent, size_t seqNo)
 {
     for (ActiveSet::iterator it = activeSet.begin();
             it != activeSet.end(); it++) {
@@ -130,7 +117,7 @@ void Task::newValues(MsrXml::Element *parent, size_t seqNo,
         if (sd->trigger and --sd->trigger)
             continue;
 
-        const char *dataPtr = pdoData + sd->offset;
+        const char *dataPtr = sd->signal->getValue(session);
 
         if (!sd->event) {
             sd->trigger = sd->decimation;
@@ -138,7 +125,7 @@ void Task::newValues(MsrXml::Element *parent, size_t seqNo,
             std::copy(dataPtr, dataPtr + sd->sigMemSize, sd->data_pptr);
             sd->data_pptr += sd->sigMemSize;
             if (sd->data_pptr == sd->data_eptr) {
-                (sd->element->*(sd->printValue))("d", sd->variable,
+                (sd->element->*(sd->printValue))("d", sd->signal,
                         sd->data_bptr, sd->precision, sd->blocksize);
                 parent->appendChild(sd->element);
                 sd->data_pptr = sd->data_bptr;
@@ -148,7 +135,7 @@ void Task::newValues(MsrXml::Element *parent, size_t seqNo,
             sd->trigger = sd->decimation;
 
             std::copy(dataPtr, dataPtr + sd->sigMemSize, sd->data_bptr);
-            (sd->element->*(sd->printValue))("d", sd->variable,
+            (sd->element->*(sd->printValue))("d", sd->signal,
                     sd->data_bptr, sd->precision, 1);
             parent->appendChild(sd->element);
         }

@@ -45,7 +45,8 @@ using namespace MsrProto;
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), HRTLab::Session(main),
-    server(s), dataTag("data"), outbuf(this), inbuf(this), task(main->nst)
+    server(s), task(new Task*[main->nst]),
+    dataTag("data"), outbuf(this), inbuf(this)
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     attach(ss);
@@ -73,14 +74,25 @@ Session::Session( Server *s, ost::SocketService *ss,
     greeting.setAttribute("recievebufsize", 100000000);
     outbuf << greeting << std::flush;
 
-    size_t idx = 0;
-    const HRTLab::Variable *v;
-    while ((v = main->getSignal(idx)))
-        variableIndexMap[v] = idx++;
+    std::vector<const HRTLab::Signal*> signals;
+    main->getSignals(signals);
+    signalCount = signals.size();
+    signal = new const HRTLab::Signal*[signalCount];
+    for (unsigned idx = 0; idx < signalCount; idx++) {
+        const HRTLab::Signal *s = signals[idx];
+        variableIndexMap[s] = idx;
+        signal[idx] = s;
+    }
 
-    idx = 0;
-    while ((v = main->getParameter(idx)))
-        variableIndexMap[v] = idx++;
+    std::vector<const HRTLab::Parameter*> parameters;
+    main->getParameters(parameters);
+    parameterCount = parameters.size();
+    parameter = new const HRTLab::Parameter*[parameterCount];
+    for (unsigned idx = 0; idx < parameterCount; idx++) {
+        const HRTLab::Parameter *p = parameters[idx];
+        variableIndexMap[parameters[idx]] = idx;
+        parameter[idx] = p;
+    }
 
     expired();
 }
@@ -191,23 +203,23 @@ void Session::disconnect()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalList(const HRTLab::Task *t,
+void Session::newSignalList(unsigned int tid,
         const HRTLab::Signal * const *v, size_t n)
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
-    task[t->tid]->newSignalList(v, n);
+    task[tid]->newSignalList(v, n);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newPdoData(const HRTLab::Task *t, unsigned int seqNo,
-                const struct timespec *time, const char *dataPtr)
+void Session::newPdoData(unsigned int tid, unsigned int seqNo,
+                const struct timespec *time)
 {
     if (quiet)
         return;
 
     dataTag.setAttribute("time", *time);
 
-    task[t->tid]->newValues(&dataTag, seqNo, dataPtr);
+    task[tid]->newValues(&dataTag, seqNo);
 
     if (dataTag.hasChildren())
         outbuf << dataTag << std::flush;
@@ -319,49 +331,49 @@ void Session::ping(const Attr &attr)
 /////////////////////////////////////////////////////////////////////////////
 void Session::readChannel(const Attr &attr)
 {
-    const HRTLab::Signal *signal = 0;
+    const HRTLab::Signal *s = 0;
     bool shortReply = attr.isTrue("short");
     std::string path;
     unsigned int index;
 
     if (attr.getString("name", path)) {
-        signal = main->getSignal(path);
+        s = main->getSignal(path);
     }
     else if (attr.getUnsigned("index", index)) {
-        signal = main->getSignal(index);
+        s = Session::signal[index];
     }
     else {
-        // Send the whole list
-        size_t count = 0;
-
-        while (main->getSignal(count++));
-
-        const HRTLab::Signal *signals[count];
         size_t buflen = 0;
+        size_t bufOffset[signalCount];
+        const HRTLab::Signal *signalList[signalCount];
 
-        for (size_t i = 0; i < count; i++) {
-            signals[i] = main->getSignal(i);
-            buflen += signals[i]->memSize;
+        typedef std::list<const HRTLab::Signal*> SignalList;
+        SignalList orderedSignals[HRTLab::Variable::maxWidth];
+
+        for (size_t i = 0; i < signalCount; i++) {
+            s = signal[i];
+            orderedSignals[s->width - 1].push_back(s);
+            bufOffset[i] = buflen;
+            buflen += s->memSize;
         }
+
+        index = 0;
+        for (size_t w = 8; w; w /= 2) {
+            for (SignalList::const_iterator it = orderedSignals[w-1].begin();
+                    it != orderedSignals[w-1].end(); it++) {
+                signalList[index++] = *it;
+            }
+        }
+
         char buf[buflen];
-        main->poll(signals, count, buf);
+        main->poll(signalList, signalCount, buf);
 
         MsrXml::Element channels("channels");
-        const char *p = buf;
-        for (size_t i = 0; i < count; i++) {
-            double freq = 1.0 / main->baserate / signals[i]->decimation
-                    / (main->decimation ? main->decimation[signals[i]->tid] : 1);
-
-            // The MSR protocoll wants a bufsize, the maximum number of
-            // values that can be retraced. This artificial limitation does
-            // not exist any more. Instead, choose a buffer size so that
-            // at a maximum of 1 second has to be stored.
-            size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
+        for (size_t i = 0; i < signalCount; i++) {
+            s = signal[i];
 
             MsrXml::Element *c = channels.createChild("channel");
-            c->setChannelAttributes(signals[i], variableIndexMap[signals[i]],
-                    p, shortReply, freq, bufsize);
-            p += signals[i]->memSize;
+            c->setChannelAttributes(s, i, shortReply, buf + bufOffset[i]);
         }
 
         outbuf << channels << std::flush;
@@ -369,17 +381,11 @@ void Session::readChannel(const Attr &attr)
     }
 
     // A single signal was requested
-
-    char buf[signal->memSize];
-    double freq = 1.0 / main->baserate / signal->decimation
-        / (main->decimation ? main->decimation[signal->tid] : 1);
-    size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
-
-    main->poll(&signal, 1, buf);
+    char buf[s->memSize];
+    s->poll(buf);
 
     MsrXml::Element channel("channel");
-    channel.setChannelAttributes(signal, variableIndexMap[signal], buf,
-            shortReply, freq, bufsize);
+    channel.setChannelAttributes(s, variableIndexMap[signal], shortReply, buf);
 
     outbuf << channel << std::flush;
 }
@@ -387,7 +393,7 @@ void Session::readChannel(const Attr &attr)
 /////////////////////////////////////////////////////////////////////////////
 void Session::readParameter(const Attr &attr)
 {
-    const HRTLab::Parameter *parameter = 0;
+    const HRTLab::Parameter *p = 0;
     bool shortReply = attr.isTrue("short");
     bool hex = attr.isTrue("hex");
     std::string name;
@@ -396,41 +402,25 @@ void Session::readParameter(const Attr &attr)
         ? MSR_R | MSR_W | MSR_WOP | MSR_MONOTONIC : MSR_R | MSR_MONOTONIC;
 
     if (attr.getString("name", name)) {
-        parameter = main->getParameter(name);
+        p = main->getParameter(name);
     }
     else if (attr.getUnsigned("index", index)) {
-        parameter = main->getParameter(index);
+        p = parameter[index];
     }
     else {
-        // Send the whole list
-        size_t count = 0;
-
-        while (main->getParameter(count++));
-
-        const HRTLab::Parameter *params[count];
-
-        for (size_t i = 0; i < count; i++)
-            params[i] = main->getParameter(i);
-
         MsrXml::Element parameters("parameters");
-        for (size_t i = 0; i < count; i++) {
-            MsrXml::Element *p = parameters.createChild("parameter");
-            parameter = params[i];
-            p->setParameterAttributes(parameter,
-                    variableIndexMap[parameter],
-                    main->getParameterAddr(parameter),
-                    main->getMTime(parameter), flags, shortReply, hex);
-        }
+        for (size_t i = 0; i < parameterCount; i++)
+            parameters.createChild("parameter")->setParameterAttributes(
+                    parameter[i], i, flags, shortReply, hex);
 
         outbuf << parameters << std::flush;
         return;
     }
     
-    if (parameter) {
-        MsrXml::Element p("parameter");
-        p.setParameterAttributes(parameter, variableIndexMap[parameter],
-                main->getParameterAddr(parameter),
-                main->getMTime(parameter), flags, shortReply, hex);
+    if (p) {
+        MsrXml::Element parameter("parameter");
+        parameter.setParameterAttributes(p, variableIndexMap[p],
+                flags, shortReply, hex);
         outbuf << p << std::flush;
     }
 }
@@ -440,12 +430,10 @@ void Session::readParamValues(const Attr &attr)
 {
     MsrXml::Element param_values("param_values");
     std::string v;
-    const HRTLab::Parameter *parameter;
-    size_t i = 0;
 
-    while ((parameter = main->getParameter(i++))) {
-        if (i++) v.append(1,'|');
-        v.append(MsrXml::toCSV(parameter, main->getParameterAddr(parameter)));
+    for (size_t idx = 0; idx < parameterCount; idx++) {
+        if (idx) v.append(1,'|');
+        v.append(MsrXml::toCSV(parameter[idx], parameter[idx]->getValue()));
     }
 
     param_values.setAttribute("value", v);
@@ -463,7 +451,7 @@ void Session::readStatistics(const Attr &attr)
     //           connectedtime="1282151176.659208"/>
     //   <client index="1" .../>
     // </clients>
-    typedef std::list<HRTLab::Session::Statistics> StatList;
+    typedef std::list<HRTLab::SessionStatistics> StatList;
     StatList stats;
     main->getSessionStatistics(stats);
     int index = 0;
@@ -549,29 +537,29 @@ void Session::writeParameter(const Attr &attr)
         return;
     }
 
-    const HRTLab::Parameter *parameter;
+    const HRTLab::Parameter *p;
 
     unsigned int index;
     std::string name;
     if (attr.getString("name", name)) {
-        parameter = main->getParameter(name);
+        p = main->getParameter(name);
     }
     else if (attr.getUnsigned("index", index)) {
-        parameter = main->getParameter(index);
+        p = parameter[index];
     }
     else
         return;
     
     size_t startindex = 0;
     if (attr.getUnsigned("startindex", startindex)) {
-        if (startindex >= parameter->nelem)
+        if (startindex >= p->nelem)
             return;
     }
 
-    char valbuf[parameter->memSize];
+    char valbuf[p->memSize];
+    std::copy(p->getValue(), p->getValue() + p->memSize, valbuf);
+
     char *s;
-    std::copy(main->getParameterAddr(parameter),
-            main->getParameterAddr(parameter) + parameter->memSize, valbuf);
     if (attr.find("hexvalue", s)) {
         static const char hexNum[] = {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
@@ -580,8 +568,8 @@ void Session::writeParameter(const Attr &attr)
             0,10,11,12,13,14,15
         };
 
-        for (char *c = valbuf + parameter->width * startindex;
-                c < valbuf + parameter->memSize; c++) {
+        for (char *c = valbuf + p->width * startindex;
+                c < valbuf + p->memSize; c++) {
             unsigned char c1 = *s++ - '0';
             unsigned char c2 = *s++ - '0';
             if (std::max(c1,c2) >= sizeof(hexNum))
@@ -593,14 +581,14 @@ void Session::writeParameter(const Attr &attr)
     }
     else if (attr.find("value", s)) {
         double v;
-        Convert converter(parameter->dtype,
-                valbuf + startindex * parameter->width);
+        Convert converter(p->dtype,
+                valbuf + startindex * p->width);
         char c;
         std::istringstream is(s);
 
         is.imbue(std::locale::classic());
 
-        for (size_t i = 0; i < parameter->nelem - startindex; i++) {
+        for (size_t i = 0; i < p->nelem - startindex; i++) {
             is >> v;
 
             if (!is)
@@ -614,11 +602,11 @@ void Session::writeParameter(const Attr &attr)
     else
         return;
 
-    if (main->writeParameter(&parameter, 1, valbuf)) {
+    if (p->setValue(valbuf)) {
         // If an error occurred, tell this client to reread the value
 
         MsrXml::Element pu("pu");
-        pu.setAttribute("index", parameter->index);
+        pu.setAttribute("index", variableIndexMap[p]);
 
         outbuf << pu << std::flush;
     }
@@ -638,7 +626,7 @@ void Session::xsad(const Attr &attr)
         for ( std::list<unsigned int>::const_iterator it(indexList.begin());
                 it != indexList.end(); it++) {
 
-            channelList.push_back(main->getSignal(*it));
+            channelList.push_back(signal[*it]);
         }
     }
     else
@@ -671,26 +659,6 @@ void Session::xsad(const Attr &attr)
         foundBlocksize = true;
     }
 
-    if (event) {
-        if (!foundReduction)
-            // If user did not supply a reduction, limit to a 
-            // max of 10Hz automatically
-            reduction = std::max(1.0, 0.1 / main->baserate + 0.5);
-    }
-    else if (!foundReduction and !foundBlocksize) {
-        // Quite possibly user input; choose reduction for 1Hz
-        reduction = std::max(1.0, 1.0 / main->baserate + 0.5);
-        blocksize = 1;
-    }
-    else if (foundReduction) {
-        // Choose blocksize so that a datum is sent at 10Hz
-        blocksize =
-            std::max(1.0, 0.1 / main->baserate / reduction + 0.5);
-    }
-    else if (foundBlocksize) {
-        reduction = 1;
-    }
-
     if (!attr.getUnsigned("precision", precision)) {
         precision = 10;
     }
@@ -702,9 +670,8 @@ void Session::xsad(const Attr &attr)
     // Calling sync will reset all the channel buffers so that they
     // all start together again
     if (attr.isTrue("sync")) {
-        for (std::vector<Task*>::iterator it = task.begin();
-                it != task.end(); it++) {
-            (*it)->sync();
+        for (Task **t = task; t != task + main->nst; t++) {
+            (*t)->sync();
         }
         quiet = false;
     }
@@ -713,11 +680,31 @@ void Session::xsad(const Attr &attr)
     std::copy(channelList.begin(), channelList.end(), signals);
     for (const HRTLab::Signal **sp = signals;
             sp != signals + channelList.size(); sp++) {
-        task[(*sp)->tid]->addSignal(
+
+        if (event) {
+            if (!foundReduction)
+                // If user did not supply a reduction, limit to a 
+                // max of 10Hz automatically
+                reduction =
+                    std::max(1.0, 0.1 / (*sp)->task->sampleTime + 0.5);
+        }
+        else if (!foundReduction and !foundBlocksize) {
+            // Quite possibly user input; choose reduction for 1Hz
+            reduction = std::max(1.0, 1.0 / (*sp)->task->sampleTime + 0.5);
+            blocksize = 1;
+        }
+        else if (foundReduction) {
+            // Choose blocksize so that a datum is sent at 10Hz
+            blocksize =
+                std::max(1.0, 0.1 / (*sp)->task->sampleTime + 0.5);
+        }
+        else if (foundBlocksize) {
+            reduction = 1;
+        }
+
+        task[(*sp)->task->tid]->addSignal(
                 *sp, event, reduction, blocksize, base64, precision);
     }
-
-    main->subscribe(this, signals, channelList.size());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -731,23 +718,17 @@ void Session::xsod(const Attr &attr)
     if (attr.getUnsignedList("channels", intList)) {
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
-            channelList.push_back(main->getSignal(*it));
+            channelList.push_back(signal[*it]);
         }
 
         const HRTLab::Signal *signals[channelList.size()];
         std::copy(channelList.begin(), channelList.end(), signals);
         for (const HRTLab::Signal **sp = signals;
-                sp != signals + channelList.size(); sp++) {
-            task[(*sp)->tid]->rmSignal(*sp);
-        }
-
-        main->unsubscribe(this, signals, channelList.size());
+                sp != signals + channelList.size(); sp++)
+            task[(*sp)->task->tid]->rmSignal(*sp);
     }
     else {
-        for (std::vector<Task*>::iterator it = task.begin();
-                it != task.end(); it++) {
-            (*it)->rmSignal(0);
-        }
-        main->unsubscribe(this);
+        for (size_t i = 0; i < main->nst; i++)
+            task[i]->rmSignal(0);
     }
 }

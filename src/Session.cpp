@@ -34,9 +34,9 @@ Session::~Session()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Statistics Session::getStatistics() const
+SessionStatistics Session::getStatistics() const
 {
-    Statistics s;
+    SessionStatistics s;
 
     s.remote = remoteHost;
     s.client = client;
@@ -45,16 +45,4 @@ Session::Statistics Session::getStatistics() const
     s.connectedTime = connectedTime;
 
     return s;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::newSignalList(const Task *, const Signal * const *,
-                size_t n)
-{
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::newPdoData(const Task *, unsigned int seqNo,
-                const struct timespec *t, const char *)
-{
 }

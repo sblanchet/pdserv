@@ -74,11 +74,16 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         size_t getVariableIndex(const HRTLab::Variable *v) const;
 
     private:
-
         Server * const server;
+        Task ** const task;
 
-        typedef std::map<const HRTLab::Variable *, size_t> VariableIndexMap;
-        VariableIndexMap variableIndexMap;
+        std::map<const void *, size_t> variableIndexMap;
+
+        size_t signalCount;
+        const HRTLab::Signal **signal;
+
+        size_t parameterCount;
+        const HRTLab::Parameter **parameter;
 
         // Reimplemented from SocketPort
         void expired();
@@ -87,10 +92,10 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         void disconnect();
 
         // Reimplemented from HRTLab::Session
-        void newSignalList(const HRTLab::Task *,
+        void newSignalList(unsigned int tid,
                 const HRTLab::Signal * const *, size_t n);
-        void newPdoData(const HRTLab::Task *, unsigned int seqNo,
-                const struct timespec *t, const char *);
+        void newPdoData(unsigned int tid, unsigned int seqNo,
+                const struct timespec *t);
 
         // Management variables
         bool writeAccess;
@@ -117,7 +122,6 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         void xsad(const Attr &);
         void xsod(const Attr &);
 
-        std::vector<Task*> task;
 };
 
 }

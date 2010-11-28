@@ -9,30 +9,27 @@
 
 namespace HRTLab {
 
+class Task;
+class Session;
+
 class Signal: public Variable {
     public:
-        Signal(
-                unsigned int tid,
+        Signal( Task *task,
                 unsigned int decimation,
                 const char *path,
                 enum si_datatype_t dtype,
-                const void *addr,
                 unsigned int ndims = 1,
                 const size_t *dim = 0);
 
-        const unsigned int tid;
+        virtual ~Signal();
+
         const unsigned int decimation;
+        const Task * const task;
 
-        const void * const addr;
-
-//        void log(
-//                /** Signal decimation with which this signal will be logged.
-//                 * Decimation is with respect to the signal sample time,
-//                 * not the task sample time */
-//                unsigned int decimation
-//                ) const;
-//
-//        void cancelLog() const;
+        virtual const char *getValue(const Session *) const = 0;
+        virtual void subscribe(Session *) const = 0;
+        virtual void unsubscribe(Session *) const = 0;
+        virtual void poll(char *buf) const = 0;
 
     private:
 };

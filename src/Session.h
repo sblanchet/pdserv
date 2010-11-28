@@ -9,6 +9,8 @@
 #include <ctime>
 #include <vector>
 
+#include "SessionStatistics.h"
+
 namespace HRTLab {
 
 class Task;
@@ -20,19 +22,12 @@ class Session {
         Session(Main *main);
         virtual ~Session();
 
-        virtual void newSignalList(const Task *, const Signal * const *,
-                size_t n);
-        virtual void newPdoData(const Task *, unsigned int seqNo,
-                const struct timespec *t, const char *);
+        virtual void newSignalList(unsigned int tid, const Signal * const *,
+                size_t n) = 0;
+        virtual void newPdoData(unsigned int tid, unsigned int seqNo,
+                const struct timespec *t) = 0;
 
-        typedef struct {
-            std::string remote;
-            std::string client;
-            size_t countIn;
-            size_t countOut;
-            struct timespec connectedTime;
-        } Statistics;
-        Statistics getStatistics() const;
+        SessionStatistics getStatistics() const;
 
     protected:
         Main * const main;

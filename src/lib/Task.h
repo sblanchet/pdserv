@@ -2,22 +2,25 @@
  * $Id$
  *****************************************************************************/
 
-#ifndef TASK_H
-#define TASK_H
+#ifndef LIB_TASK_H
+#define LIB_TASK_H
 
-namespace HRTLab {
+#include "../Task.h"
 
 class Main;
-class Session;
 class Signal;
 
-class Task {
+class Task: public HRTLab::Task {
     public:
         Task(const Main *main, unsigned int tid, double sampleTime);
         ~Task();
 
-        const unsigned int tid;
-        const double sampleTime;
+        const char *getValue(const HRTLab::Session *session,
+                const Signal *s) const;
+
+        void subscribe(HRTLab::Session *session, const Signal *s);
+        void unsubscribe(HRTLab::Session *session, const Signal *s);
+        void poll(const Signal *s, char *buf);
 
 //        void addSignal(const Signal *);
 //        void setup();
@@ -26,14 +29,15 @@ class Task {
 //        void endSession(const Session*);
 //        void subscribe(const Session*, const Signal *);
 //        void unsubscribe(const Session*, const Signal * = 0);
-//        void txPdo(const struct timespec *);
+        void txPdo(const struct timespec *);
 //        void rxPdo(Session *);
 //
-    protected:
-        const Main * const main;
-
-    private:
+//        const unsigned int tid;
 //
+    private:
+
+        const Main * const main;
+//        const double sampleTime;
 //
 //        typedef std::set<const Signal*> SignalSet;
 //        SignalSet signals;
@@ -77,5 +81,4 @@ class Task {
 //        void receive();
 };
 
-}
-#endif // TASK_H
+#endif // LIB_TASK_H

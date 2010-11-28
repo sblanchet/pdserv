@@ -65,7 +65,8 @@ void Server::sessionClosed(Session *s)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::getSessionStatistics(std::list<Session::Statistics>& stats) const
+void Server::getSessionStatistics(
+        std::list<HRTLab::SessionStatistics>& stats) const
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();

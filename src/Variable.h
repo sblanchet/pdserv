@@ -42,7 +42,6 @@ class Variable {
 
         static size_t getDTypeSize(enum si_datatype_t dtype);
         static size_t getNElem( unsigned int dims, const size_t dim[]);
-
 };
 
 }

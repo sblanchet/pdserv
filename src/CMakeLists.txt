@@ -5,13 +5,19 @@ include_directories(${RTLAB_SOURCE_DIR}/include)
 include_directories(${RTLAB_SOURCE_DIR})
 
 add_library( rtlab SHARED
-    interface.cpp
+    SessionStatistics.h
     Task.cpp Task.h
     Session.cpp Session.h
     Main.cpp Main.h
     Variable.cpp Variable.h
     Signal.cpp Signal.h
     Parameter.cpp Parameter.h
+
+    lib/interface.cpp
+    lib/Task.cpp lib/Task.h
+    lib/Main.cpp lib/Main.h
+    lib/Signal.cpp lib/Signal.h
+    lib/Parameter.cpp lib/Parameter.h
 
     #etlproto/Server.cpp etlproto/Server.h
     #etlproto/Session.cpp etlproto/Session.h
