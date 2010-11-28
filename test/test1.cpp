@@ -15,9 +15,12 @@ uint16_t var1[2][3][4] = {
     { {1,2,3,4}, {5,6,7}, },
 };
 
-int copy_param(unsigned int tid, void* dst, const void* src, size_t len,
+int copy_param(unsigned int tid, char checkOnly, void* dst, const void* src, size_t len,
         void *priv_data)
 {
+    if (checkOnly)
+        return 0;
+
     memcpy(dst, src, len);
     printf("hallo %p\n", priv_data);
     return 0;
@@ -30,7 +33,7 @@ int gettime(struct timespec *t)
 
 int main(int argc, const char *argv[])
 {
-    struct hrtlab *hrtlab = hrtlab_init(argc, argv, argv[0], "1.0", 0.1, 1, 0,
+    struct hrtlab *hrtlab = hrtlab_create(argc, argv, argv[0], "1.0", 0.1, 1, 0,
             gettime);
     unsigned int var1_dims[] = {2,3,4};
     struct timespec time;
@@ -50,7 +53,7 @@ int main(int argc, const char *argv[])
             si_uint32_T, param, 4, 0, copy_param, (void*)10);
     assert(p);
 
-    assert(!hrtlab_start(hrtlab));
+    assert(!hrtlab_init(hrtlab));
 
     // Need to be root
     //assert(!mlockall(MCL_CURRENT|MCL_FUTURE));

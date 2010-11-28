@@ -1,3 +1,6 @@
+#ifndef _HRTLAB_H
+#define _HRTLAB_H
+
 #include <rtlab/etl_data_info.h>
 #include <stddef.h>
 
@@ -17,7 +20,7 @@ struct variable;
  *      NULL on error
  *      pointer to struct hrtlab on success
  */
-struct hrtlab* hrtlab_init(
+struct hrtlab* hrtlab_create(
         int argc,               /**< Argument count */
         const char *argv[],     /**< Arguments */
         const char *name,       /**< Name of the process */
@@ -124,7 +127,8 @@ struct variable *hrtlab_parameter(
                                    * parameter to be a vector of length @n */
         paramtrigger_t paramopy,  /**< Callback for updating the parameter
                                    * inside real time context */
-        void *priv_data           /**< Arbitrary pointer for callback */
+        void *priv_data           /**< Arbitrary pointer passed to @paramcopy
+                                   * when it is called */
         );
 
 /** Set an optional alias for a variable
@@ -134,18 +138,21 @@ struct variable *hrtlab_parameter(
  * to set the alias name for a variable.
  */
 void hrtlab_set_alias(
+        struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
         struct variable *variable, /**< Parameter or Signal address */
         const char *alias       /**< Variable's alias */
         );
 
 /** Set the optional unit of a variable */
 void hrtlab_set_unit(
+        struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
         struct variable *variable, /**< Parameter or Signal address */
         const char *unit        /**< Variable's unit */
         );
 
 /** Set the optional comment of a variable */
 void hrtlab_set_comment(
+        struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
         struct variable *variable, /**< Parameter or Signal address */
         const char *comment     /**< Variable's comment */
         );
@@ -158,11 +165,11 @@ void hrtlab_set_comment(
  * that communicates with the rest of the world.
  *
  * Since the new process lives in a separate memory space, all parameters must
- * have been initialised beforehand. After calling @hrtlab_start, parameters
+ * have been initialised beforehand. After calling @hrtlab_init, parameters
  * should not be changed any more. They can only be updated though a call by
  * the library.
  */
-int hrtlab_start(
+int hrtlab_init(
         struct hrtlab* hrtlab     /**< Pointer to hrtlab structure */
         );
 
@@ -185,4 +192,6 @@ void hrtlab_exit(
 
 #ifdef __cplusplus
 }
-#endif
+#endif // __cplusplus
+
+#endif // _HRTLAB_H

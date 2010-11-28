@@ -6,11 +6,13 @@
 #define LIB_MAIN_H
 
 #include "../Main.h"
+
 #include <cc++/thread.h>
 #include "rtlab/rtlab.h"
 
 class Parameter;
 class Signal;
+class Variable;
 class Task;
 
 class Main: public HRTLab::Main {
@@ -22,8 +24,7 @@ class Main: public HRTLab::Main {
                 int (*gettime)(struct timespec*));
         ~Main();
 
-
-        int start();
+        int init();
         void update(int st, const struct timespec *time) const;
 
         Signal *newSignal(
@@ -43,6 +44,11 @@ class Main: public HRTLab::Main {
                 unsigned int ndims = 1,
                 const unsigned int dim[] = 0);
 
+        void setVariableAlias(Variable *p, const char *alias);
+        void setVariableUnit(Variable *p, const char *unit);
+        void setVariableComment(Variable *p, const char *comment);
+        void setParameterTrigger(Parameter *p,
+                paramtrigger_t trigger, void *priv_data);
 
 //        const std::string name;
 //        const std::string version;

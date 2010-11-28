@@ -3,11 +3,11 @@
  *****************************************************************************/
 
 #include "Main.h"
-#include "Parameter.h"
 #include "Signal.h"
+#include "Parameter.h"
 
 /////////////////////////////////////////////////////////////////////////////
-struct hrtlab* hrtlab_init(int argc, const char *argv[], 
+struct hrtlab* hrtlab_create(int argc, const char *argv[], 
         const char *name, const char *version, double baserate,
         unsigned int nst, const unsigned int decimation[],
         int (*gettime)(struct timespec*))
@@ -20,7 +20,7 @@ struct hrtlab* hrtlab_init(int argc, const char *argv[],
 /////////////////////////////////////////////////////////////////////////////
 void hrtlab_exit(struct hrtlab* hrtlab)
 {
-    delete reinterpret_cast<HRTLab::Main*>(hrtlab);
+    delete reinterpret_cast<Main*>(hrtlab);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -41,8 +41,7 @@ struct variable *hrtlab_signal(
         const size_t dim[]
         )
 {
-    HRTLab::Variable *v =
-        reinterpret_cast<Main*>(hrtlab)->newSignal(
+    HRTLab::Variable *v = reinterpret_cast<Main*>(hrtlab)->newSignal(
                 path, datatype, addr, tid, decimation,
                 dim ? n : 1, dim ? dim : &n);
 
@@ -62,37 +61,40 @@ struct variable *hrtlab_parameter(
         void *priv_data = 0
         )
 {
-    Parameter *p =
-        reinterpret_cast<Main*>(hrtlab)->newParameter(
-                path, datatype, addr, mode, n, dim);
-    p->trigger = trigger;
-    p->priv_data = priv_data;
+    Main *main = reinterpret_cast<Main*>(hrtlab);
+    Parameter *p = main->newParameter( path, datatype, addr, mode, n, dim);
+    main->setParameterTrigger(p, trigger, priv_data);
 
-    HRTLab::Variable *v = p;
-    return reinterpret_cast<struct variable *>(v);
+    return
+        reinterpret_cast<struct variable *>(static_cast<HRTLab::Variable*>(p));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void hrtlab_set_alias( void *var, const char *alias)
+void hrtlab_set_alias(struct hrtlab* hrtlab,
+        struct variable *var, const char *alias)
 {
-    reinterpret_cast<HRTLab::Variable*>(var)->alias = alias;
+    reinterpret_cast<Main*>(hrtlab)->setVariableAlias(
+            reinterpret_cast<Variable*>(var), alias);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void hrtlab_set_unit( void *var, const char *unit)
+void hrtlab_set_unit(struct hrtlab* hrtlab,
+        struct variable *var, const char *unit)
 {
-    reinterpret_cast<HRTLab::Variable*>(var)->unit = unit;
+    reinterpret_cast<Main*>(hrtlab)->setVariableUnit(
+            reinterpret_cast<Variable*>(var), unit);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void hrtlab_set_comment( void *var, const char *comment)
+void hrtlab_set_comment(struct hrtlab* hrtlab,
+        struct variable *var, const char *comment)
 {
-    reinterpret_cast<HRTLab::Variable*>(var)->comment = comment;
+    reinterpret_cast<Main*>(hrtlab)->setVariableComment(
+            reinterpret_cast<Variable*>(var), comment);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int hrtlab_start(struct hrtlab* hrtlab)
+int hrtlab_init(struct hrtlab* hrtlab)
 {
-    return reinterpret_cast<Main*>(hrtlab)->start();
+    return reinterpret_cast<Main*>(hrtlab)->init();
 }
-
