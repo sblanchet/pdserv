@@ -5,6 +5,7 @@
 #include "config.h"
 
 #include "Signal.h"
+#include "Main.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -16,7 +17,8 @@ using std::endl;
 using namespace HRTLab;
 
 //////////////////////////////////////////////////////////////////////
-Signal::Signal( Task *task,
+Signal::Signal( Main *main,
+        const Task *task,
         unsigned int decimation,
         const char *path,
         enum si_datatype_t dtype,
@@ -25,5 +27,6 @@ Signal::Signal( Task *task,
     Variable(path, dtype, ndims, dim),
     decimation(decimation), task(task)
 {
+    main->newSignal(this);
 //    cout << __func__ << index << endl;
 }

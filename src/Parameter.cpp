@@ -20,13 +20,15 @@ using std::endl;
 using namespace HRTLab;
 
 //////////////////////////////////////////////////////////////////////
-Parameter::Parameter( Main *main,
+Parameter::Parameter(
+        Main *main,
         const char *path,
         unsigned int mode,
         enum si_datatype_t dtype,
         unsigned int ndims,
         const size_t *dim):
     Variable(path, dtype, ndims, dim),
-    mode(mode), main(main)
+    mode(mode)
 {
+    main->newParameter(this);
 }

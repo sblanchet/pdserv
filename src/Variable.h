@@ -10,6 +10,8 @@
 #include <cstddef>
 #include <string>
 
+struct timespec;
+
 namespace HRTLab {
 
 class Variable {
@@ -19,7 +21,7 @@ class Variable {
                 unsigned int ndims = 1,
                 const size_t dim[] = 0);
 
-        ~Variable();
+        virtual ~Variable();
 
         const std::string path;         /**< Variable path */
         const enum si_datatype_t dtype; /**< Data type */
@@ -36,6 +38,8 @@ class Variable {
 
         static const size_t maxWidth = 8; /**< Maximum supported data type
                                             width */
+
+        virtual void getValue(char *, struct timespec * = 0) const = 0;
 
     private:
         size_t * const dim;

@@ -41,11 +41,11 @@ Main::~Main()
 {
     delete msrproto;
 
-    for (SignalList::const_iterator it = signals.begin();
+    for (Signals::const_iterator it = signals.begin();
             it != signals.end(); it++)
         delete *it;
 
-    for (ParameterList::const_iterator it = parameters.begin();
+    for (Parameters::const_iterator it = parameters.begin();
             it != parameters.end(); it++)
         delete *it;
 }

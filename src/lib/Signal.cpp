@@ -6,6 +6,7 @@
 
 #include "Signal.h"
 #include "Task.h"
+#include "Main.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -15,14 +16,15 @@ using std::endl;
 #endif
 
 //////////////////////////////////////////////////////////////////////
-Signal::Signal( Task *task,
+Signal::Signal(Main *main,
+        const Task *task,
         unsigned int decimation,
         const char *path,
         enum si_datatype_t dtype,
         const void *addr,
         unsigned int ndims,
         const size_t *dim):
-    HRTLab::Signal(task, decimation, path, dtype, ndims, dim),
+    HRTLab::Signal(main, task, decimation, path, dtype, ndims, dim),
     addr(addr), task(task)
 {
 }
@@ -46,7 +48,7 @@ void Signal::unsubscribe(HRTLab::Session *session) const
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::poll(char *buf) const
+void Signal::getValue(char *buf, struct timespec *t) const
 {
-    task->poll(this, buf);
+    task->poll(this, buf, t);
 }

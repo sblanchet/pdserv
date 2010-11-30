@@ -5,6 +5,7 @@
 #include "config.h"
 
 #include "../Signal.h"
+#include "../Receiver.h"
 
 #include "XmlDoc.h"
 #include "Task.h"
@@ -95,19 +96,39 @@ void Task::addSignal(const HRTLab::Signal *signal,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::newSignalList(const HRTLab::Signal * const *varList, size_t n)
+void Task::newSignalList(const HRTLab::Receiver &receiver)
 {
     // Since it is not (should not be!) possible that required signal 
     // is not transmitted any more, only need to check for new signals
-    for (const HRTLab::Signal * const *s = varList; s != varList + n; s++) {
-        SubscribedSet::iterator it = subscribedSet.find(*s);
+    const HRTLab::Receiver::SignalList& signals =
+        receiver.getSignals();
+    HRTLab::Receiver::SignalList::const_iterator sit;
+    for (sit = signals.begin(); sit != signals.end(); sit++) {
+        SubscribedSet::iterator it = subscribedSet.find(*sit);
         if (it != subscribedSet.end())
-            activeSet[*s] = &(it->second);
+            activeSet[*sit] = &(it->second);
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::newValues(MsrXml::Element *parent, size_t seqNo)
+void Task::process(MsrXml::Element *parent, const HRTLab::Receiver &receiver)
+{
+    switch (receiver.type) {
+        case HRTLab::Receiver::NewSignals:
+            newSignalList(receiver);
+            break;
+
+        case HRTLab::Receiver::Data:
+            newValues(parent, receiver);
+            break;
+
+        default:
+            break;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::newValues(MsrXml::Element *parent, const HRTLab::Receiver &receiver)
 {
     for (ActiveSet::iterator it = activeSet.begin();
             it != activeSet.end(); it++) {
@@ -117,12 +138,12 @@ void Task::newValues(MsrXml::Element *parent, size_t seqNo)
         if (sd->trigger and --sd->trigger)
             continue;
 
-        const char *dataPtr = sd->signal->getValue(session);
+        const char* dataBuf = receiver.getValue(sd->signal);
 
         if (!sd->event) {
             sd->trigger = sd->decimation;
 
-            std::copy(dataPtr, dataPtr + sd->sigMemSize, sd->data_pptr);
+            std::copy(dataBuf, dataBuf + sd->sigMemSize, sd->data_pptr);
             sd->data_pptr += sd->sigMemSize;
             if (sd->data_pptr == sd->data_eptr) {
                 (sd->element->*(sd->printValue))("d", sd->signal,
@@ -131,10 +152,10 @@ void Task::newValues(MsrXml::Element *parent, size_t seqNo)
                 sd->data_pptr = sd->data_bptr;
             }
         }
-        else if (!std::equal(sd->data_bptr, sd->data_eptr, dataPtr)) {
+        else if (!std::equal(sd->data_bptr, sd->data_eptr, dataBuf)) {
             sd->trigger = sd->decimation;
 
-            std::copy(dataPtr, dataPtr + sd->sigMemSize, sd->data_bptr);
+            std::copy(dataBuf, dataBuf + sd->sigMemSize, sd->data_bptr);
             (sd->element->*(sd->printValue))("d", sd->signal,
                     sd->data_bptr, sd->precision, 1);
             parent->appendChild(sd->element);

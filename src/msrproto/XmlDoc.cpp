@@ -318,7 +318,9 @@ void Element::setParameterAttributes( const HRTLab::Parameter *p,
         unsigned int index, unsigned int flags, bool shortReply, bool hex)
 {
     struct timespec mtime;
-    const char *data = p->getValue(&mtime);
+    char data[p->memSize];
+
+    p->getValue(data, &mtime);
 
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>

@@ -44,11 +44,11 @@ class Main: public HRTLab::Main {
                 unsigned int ndims = 1,
                 const unsigned int dim[] = 0);
 
-        void setVariableAlias(Variable *p, const char *alias);
-        void setVariableUnit(Variable *p, const char *unit);
-        void setVariableComment(Variable *p, const char *comment);
+        void setVariableAlias(Variable *p, const char *alias) const;
+        void setVariableUnit(Variable *p, const char *unit) const;
+        void setVariableComment(Variable *p, const char *comment) const;
         void setParameterTrigger(Parameter *p,
-                paramtrigger_t trigger, void *priv_data);
+                paramtrigger_t trigger, void *priv_data) const;
 
 //        const std::string name;
 //        const std::string version;
@@ -66,9 +66,10 @@ class Main: public HRTLab::Main {
 //        // Methods used by the clients to post instructions to the real-time
 //        // process
         int setParameter(const HRTLab::Parameter *p, const char *data) const;
-//        void newSession(const Session *);
-//        void rxPdo(Session *);
-//        void closeSession(const Session *s);
+        void pollParameter(const Parameter *,
+                char *buf, struct timespec *) const;
+        void pollSignal(const Signal *,
+                char *buf, struct timespec *) const;
 //        unsigned int writeParameter(const Parameter * const *,
 //                size_t n, const char *data, int *errorCode = 0);
 //        unsigned int poll(const Signal * const *s, size_t nelem, char *buf);
@@ -136,6 +137,7 @@ class Main: public HRTLab::Main {
                 size_t nelem, char *buf) const;
         int setParameters(const HRTLab::Parameter * const *p, size_t nelem,
                 const char *data) const;
+        HRTLab::Receiver *newReceiver(HRTLab::Session *);
 };
 
 #endif // LIB_MAIN_H

@@ -6,6 +6,7 @@ include_directories(${RTLAB_SOURCE_DIR})
 
 add_library( rtlab SHARED
     SessionStatistics.h
+    Receiver.h
     Task.cpp Task.h
     Session.cpp Session.h
     Main.cpp Main.h
@@ -14,6 +15,8 @@ add_library( rtlab SHARED
     Parameter.cpp Parameter.h
 
     lib/interface.cpp
+    lib/ShmemDataStructures.h
+    lib/Receiver.cpp lib/Receiver.h
     lib/Task.cpp lib/Task.h
     lib/Main.cpp lib/Main.h
     lib/Signal.cpp lib/Signal.h

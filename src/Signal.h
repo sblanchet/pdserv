@@ -9,12 +9,14 @@
 
 namespace HRTLab {
 
+class Main;
 class Task;
 class Session;
 
 class Signal: public Variable {
     public:
-        Signal( Task *task,
+        Signal( Main *main,
+                const Task *task,
                 unsigned int decimation,
                 const char *path,
                 enum si_datatype_t dtype,
@@ -26,10 +28,8 @@ class Signal: public Variable {
         const unsigned int decimation;
         const Task * const task;
 
-        virtual const char *getValue(const Session *) const = 0;
         virtual void subscribe(Session *) const = 0;
         virtual void unsubscribe(Session *) const = 0;
-        virtual void poll(char *buf) const = 0;
 
     private:
 };

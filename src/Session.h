@@ -16,6 +16,7 @@ namespace HRTLab {
 class Task;
 class Signal;
 class Main;
+class Receiver;
 
 class Session {
     public:
@@ -29,8 +30,11 @@ class Session {
 
         SessionStatistics getStatistics() const;
 
+        const Receiver& rxPdo();
+
     protected:
         Main * const main;
+        Receiver * const receiver;
 
         size_t inBytes;
         size_t outBytes;
@@ -38,6 +42,7 @@ class Session {
         std::string client;
 
     private:
+
         struct timespec connectedTime;
 };
 

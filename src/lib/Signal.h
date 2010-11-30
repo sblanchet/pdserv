@@ -8,10 +8,12 @@
 #include "../Signal.h"
 
 class Task;
+class Main;
 
 class Signal: public HRTLab::Signal {
     public:
-        Signal( Task *task,
+        Signal( Main *main,
+                const Task *task,
                 unsigned int decimation,
                 const char *path,
                 enum si_datatype_t dtype,
@@ -22,13 +24,13 @@ class Signal: public HRTLab::Signal {
         const void * const addr;
 
     private:
-        Task * const task;
+        const Task * const task;
 
         // Reimplemented from HRTLab::Signal
         const char *getValue(const HRTLab::Session *s) const;
+        void getValue(char *, struct timespec *) const;
         void subscribe(HRTLab::Session *) const;
         void unsubscribe(HRTLab::Session *) const;
-        void poll(char *buf) const;
 
 };
 

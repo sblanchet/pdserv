@@ -7,6 +7,7 @@
 #include "Session.h"
 #include "Main.h"
 #include "Signal.h"
+#include "Receiver.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -18,9 +19,9 @@ using std::endl;
 using namespace HRTLab;
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Session(Main *m): main(m)
+Session::Session(Main *m):
+    main(m), receiver(main->newReceiver(this))
 {
-    main->newSession(this);
     main->gettime(&connectedTime);
 
     inBytes = 0;
@@ -30,7 +31,7 @@ Session::Session(Main *m): main(m)
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
-    main->closeSession(this);
+    delete receiver;
 }
 
 /////////////////////////////////////////////////////////////////////////////

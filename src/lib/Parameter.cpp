@@ -51,10 +51,7 @@ int Parameter::setValue(const char *valbuf) const
 }
 
 //////////////////////////////////////////////////////////////////////
-const char * Parameter::getValue(struct timespec *t) const
+void Parameter::getValue(char *buf, struct timespec* t) const
 {
-    if (t)
-        *t = mtime;
-
-    return shmemAddr;
+    main->pollParameter(this, buf, t);
 }

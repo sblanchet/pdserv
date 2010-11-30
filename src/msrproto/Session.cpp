@@ -6,9 +6,9 @@
 
 #include "../Main.h"
 #include "../Task.h"
-#include "../Variable.h"
 #include "../Parameter.h"
 #include "../Signal.h"
+#include "../Receiver.h"
 
 #include "Session.h"
 #include "Server.h"
@@ -74,8 +74,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     greeting.setAttribute("recievebufsize", 100000000);
     outbuf << greeting << std::flush;
 
-    std::vector<const HRTLab::Signal*> signals;
-    main->getSignals(signals);
+    const HRTLab::Main::Signals& signals = main->getSignals();
     signalCount = signals.size();
     signal = new const HRTLab::Signal*[signalCount];
     for (unsigned idx = 0; idx < signalCount; idx++) {
@@ -84,8 +83,7 @@ Session::Session( Server *s, ost::SocketService *ss,
         signal[idx] = s;
     }
 
-    std::vector<const HRTLab::Parameter*> parameters;
-    main->getParameters(parameters);
+    const HRTLab::Main::Parameters& parameters = main->getParameters();
     parameterCount = parameters.size();
     parameter = new const HRTLab::Parameter*[parameterCount];
     for (unsigned idx = 0; idx < parameterCount; idx++) {
@@ -140,7 +138,18 @@ void Session::requestOutput()
 /////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
-    main->rxPdo(this);  // Read and process the incoming data
+    // Read and process the incoming data
+    const HRTLab::Receiver& receiver = rxPdo();
+
+    dataTag.setAttribute("time", *receiver.time);
+
+    task[receiver.tid]->process(&dataTag, receiver);
+
+    if (!quiet and dataTag.hasChildren())
+        outbuf << dataTag << std::flush;
+
+    dataTag.releaseChildren();
+
     setTimer(100);      // Wakeup in 100ms again
 }
 
@@ -207,24 +216,12 @@ void Session::newSignalList(unsigned int tid,
         const HRTLab::Signal * const *v, size_t n)
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
-    task[tid]->newSignalList(v, n);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::newPdoData(unsigned int tid, unsigned int seqNo,
                 const struct timespec *time)
 {
-    if (quiet)
-        return;
-
-    dataTag.setAttribute("time", *time);
-
-    task[tid]->newValues(&dataTag, seqNo);
-
-    if (dataTag.hasChildren())
-        outbuf << dataTag << std::flush;
-
-    dataTag.releaseChildren();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -382,7 +379,8 @@ void Session::readChannel(const Attr &attr)
 
     // A single signal was requested
     char buf[s->memSize];
-    s->poll(buf);
+    s->getValue(buf);
+    //static_cast<const HRTLab::Variable*>(s)->getValue(buf, 0);
 
     MsrXml::Element channel("channel");
     channel.setChannelAttributes(s, variableIndexMap[signal], shortReply, buf);
@@ -433,7 +431,9 @@ void Session::readParamValues(const Attr &attr)
 
     for (size_t idx = 0; idx < parameterCount; idx++) {
         if (idx) v.append(1,'|');
-        v.append(MsrXml::toCSV(parameter[idx], parameter[idx]->getValue()));
+        char buf[parameter[idx]->memSize];
+        parameter[idx]->getValue(buf);
+        v.append(MsrXml::toCSV(parameter[idx], buf));
     }
 
     param_values.setAttribute("value", v);
@@ -557,7 +557,7 @@ void Session::writeParameter(const Attr &attr)
     }
 
     char valbuf[p->memSize];
-    std::copy(p->getValue(), p->getValue() + p->memSize, valbuf);
+    p->getValue(valbuf);
 
     char *s;
     if (attr.find("hexvalue", s)) {

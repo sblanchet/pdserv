@@ -7,6 +7,7 @@
 
 namespace HRTLab {
     class Main;
+    class Receiver;
     class Signal;
     class Parameter;
 }
@@ -29,8 +30,9 @@ class Task {
                 bool event, unsigned int decimation, size_t blocksize,
                 bool base64, size_t precision);
 
-        void newSignalList(const HRTLab::Signal * const *, size_t);
-        void newValues(MsrXml::Element *, size_t seqNo);
+        void process(MsrXml::Element *, const HRTLab::Receiver&);
+        void newSignalList(const HRTLab::Receiver&);
+        void newValues(MsrXml::Element *, const HRTLab::Receiver&);
 
         void sync();
 

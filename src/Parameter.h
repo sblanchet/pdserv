@@ -28,10 +28,8 @@ class Parameter: public Variable {
         const unsigned int mode;
 
         virtual int setValue(const char *valbuf) const = 0;
-        virtual const char* getValue(struct timespec * = 0) const = 0;
 
-    protected:
-        const Main * const main;
+    private:
 };
 
 }
