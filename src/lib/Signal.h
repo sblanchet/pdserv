@@ -5,7 +5,14 @@
 #ifndef LIB_SIGNAL
 #define LIB_SIGNAL
 
+#include <set>
+#include <cc++/thread.h>
+
 #include "../Signal.h"
+
+namespace HRTLab {
+    class Session;
+}
 
 class Task;
 class Main;
@@ -26,12 +33,16 @@ class Signal: public HRTLab::Signal {
     private:
         const Task * const task;
 
-        // Reimplemented from HRTLab::Signal
-        const char *getValue(const HRTLab::Session *s) const;
-        void getValue(char *, struct timespec *) const;
-        void subscribe(HRTLab::Session *) const;
-        void unsubscribe(HRTLab::Session *) const;
+        mutable ost::Semaphore mutex;
 
+        std::set<const HRTLab::Session*> sessions;
+
+        // Reimplemented from HRTLab::Variable
+        void getValue(char *, struct timespec *) const;
+
+        // Reimplemented from HRTLab::Signal
+        void subscribe(const HRTLab::Session *);
+        void unsubscribe(const HRTLab::Session *);
 };
 
 #endif //LIB_SIGNAL

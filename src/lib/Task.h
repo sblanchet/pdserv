@@ -18,8 +18,6 @@ class Task: public HRTLab::Task {
         const char *getValue(const HRTLab::Session *session,
                 const Signal *s) const;
 
-        void subscribe(HRTLab::Session *session, const Signal *s) const;
-        void unsubscribe(HRTLab::Session *session, const Signal *s) const;
         void poll(const Signal *s, char *buf, struct timespec *) const;
 
 //        void addSignal(const Signal *);
@@ -27,8 +25,10 @@ class Task: public HRTLab::Task {
 //
 //        void newSession(const Session*);
 //        void endSession(const Session*);
-//        void subscribe(const Session*, const Signal *);
-//        void unsubscribe(const Session*, const Signal * = 0);
+
+        void subscribe(const Signal *) const;
+        void unsubscribe(const Signal * = 0) const;
+
         void txPdo(const struct timespec *) const;
 //        void rxPdo(Session *);
 //
@@ -37,6 +37,7 @@ class Task: public HRTLab::Task {
     private:
 
         const Main * const main;
+
 //        const double sampleTime;
 //
 //        typedef std::set<const Signal*> SignalSet;

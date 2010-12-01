@@ -28,8 +28,8 @@ class Signal: public Variable {
         const unsigned int decimation;
         const Task * const task;
 
-        virtual void subscribe(Session *) const = 0;
-        virtual void unsubscribe(Session *) const = 0;
+        virtual void subscribe(const Session *) const = 0;
+        virtual void unsubscribe(const Session *) const = 0;
 
     private:
 };
