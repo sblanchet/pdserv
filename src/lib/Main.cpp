@@ -13,7 +13,7 @@
 
 #include "Main.h"
 #include "Task.h"
-//#include "Signal.h"
+#include "Signal.h"
 #include "Parameter.h"
 //#include "Session.h"
 //#include "etlproto/Server.h"
@@ -102,64 +102,70 @@ int Main::setParameters(const HRTLab::Parameter * const *p, size_t nelem,
     return sdo->errorCode;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-//void Main::processSdo(unsigned int tid, const struct timespec *time)
-//{
-//    // PollSignal
-//    // Receive:
-//    //          [0]: PollSignal
-//    //          [1]: The number of signals being polled (n)
-//    //          [2 .. 2+n]: Index numbers of the signals
-//    //
-//    // The reply is in the poll area
-//
-//    if (sdo->reqId == sdo->replyId)
-//        return;
-//
-//    sdo->time = *time;
-//    sdo->errorCount = 0;
-//
-//    bool finished = true;
-//    char *data = sdoData;
-//    struct timespec t;
-//    switch (sdo->type) {
-//        case SDOStruct::PollSignal:
-//            for (unsigned i = 0; i < sdo->count; i++) {
-//                const Signal *s = sdo->data[i].signal;
-//                if (s->tid == tid)
-//                    std::copy((const char *)s->addr,
-//                            (const char *)s->addr + s->memSize,
-//                            data);
-//                else
-//                    finished = false;
-//                data += s->memSize;
-//            }
-//            break;
-//
-//        case SDOStruct::WriteParameter:
-//            gettime(&t);
-//            for (unsigned idx = 0; idx != sdo->count; idx++) {
-//                const Parameter *p = sdo->data[idx].parameter;
-//
-//                int errorCode = p->hrtSetValue(tid, data);
-//                data += p->memSize;
-//                sdo->data[idx].errorCode = errorCode;
-//                if (errorCode) {
-//                    sdo->errorCount++;
-//                }
-//                else {
-//                    mtime[p->index] = t;
-//                    std::copy((const char *)p->addr,
-//                            (const char *)p->addr + p->memSize,
-//                            parameterAddr[p->index]);
-//                }
-//            }
-//            break;
-//    }
-//
-//    if (finished)
-//        sdo->replyId = sdo->reqId;
-//}
+/////////////////////////////////////////////////////////////////////////////
+void Main::processSdo(unsigned int tid, const struct timespec *time) const
+{
+    // PollSignal
+    // Receive:
+    //          [0]: PollSignal
+    //          [1]: The number of signals being polled (n)
+    //          [2 .. 2+n]: Index numbers of the signals
+    //
+    // The reply is in the poll area
+
+    if (sdo->reqId == sdo->replyId)
+        return;
+
+    sdo->time = *time;
+
+    bool finished = true;
+    char *data = sdoData;
+    struct timespec t;
+    switch (sdo->type) {
+        case SDOStruct::PollSignal:
+            for (unsigned i = 0; i < sdo->count; i++) {
+                const Signal *s = sdo->signal[i];
+                if (s->task->tid == tid)
+                    std::copy((const char *)s->addr,
+                            (const char *)s->addr + s->memSize,
+                            data);
+                else
+                    finished = false;
+                data += s->memSize;
+            }
+            break;
+
+        case SDOStruct::WriteParameter:
+            gettime(&t);
+            for (unsigned idx = 0; idx != sdo->count; idx++) {
+                const Parameter *p = sdo->parameter[idx];
+                sdo->errorCode =
+                    (*p->trigger)(tid, 1, 0, data, p->memSize, p->priv_data);
+
+                data += p->memSize;
+
+                if (sdo->errorCode) {
+                    sdo->count = idx;
+                    break;
+                }
+            }
+
+            if (sdo->errorCode)
+                break;
+
+            data = sdoData;
+            for (unsigned idx = 0; idx != sdo->count; idx++) {
+                const Parameter *p = sdo->parameter[idx];
+
+                (*p->trigger)(tid, 1, p->addr, data, p->memSize, p->priv_data);
+                data += p->memSize;
+            }
+            break;
+    }
+
+    if (finished)
+        sdo->replyId = sdo->reqId;
+}
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::update(int st, const struct timespec *time) const

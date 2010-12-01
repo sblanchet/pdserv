@@ -5,15 +5,30 @@
 #ifndef LIB_TASK_H
 #define LIB_TASK_H
 
+#include <cstddef>
+#include <set>
+
 #include "../Task.h"
+#include "rtlab/etl_data_info.h"
+#include "ShmemDataStructures.h"
 
 class Main;
 class Signal;
 
 class Task: public HRTLab::Task {
     public:
-        Task(const Main *main, unsigned int tid, double sampleTime);
+        Task(Main *main, unsigned int tid, double sampleTime);
         ~Task();
+
+        Signal *newSignal(
+                const char *path,
+                enum si_datatype_t datatype,
+                const void *addr,
+                unsigned int decimation,
+                unsigned int ndims = 1,
+                const unsigned int dim[] = 0);
+
+        size_t init();
 
         const char *getValue(const HRTLab::Session *session,
                 const Signal *s) const;
@@ -29,24 +44,25 @@ class Task: public HRTLab::Task {
         void subscribe(const Signal *) const;
         void unsubscribe(const Signal * = 0) const;
 
-        void txPdo(const struct timespec *) const;
+        void txPdo(const struct timespec *);
 //        void rxPdo(Session *);
 //
 //        const unsigned int tid;
 //
     private:
 
-        const Main * const main;
+        Main * const main;
+
+        typedef std::set<const Signal*> SignalSet;
+        SignalSet signals;
+        SignalSet subscriptionSet[4];
 
 //        const double sampleTime;
 //
-//        typedef std::set<const Signal*> SignalSet;
-//        SignalSet signals;
-//        SignalSet subscriptionSet[4];
 //
-//        size_t pdoMem;
-//        size_t txPdoCount;
-//        unsigned int seqNo;
+        size_t pdoMem;
+        size_t txPdoCount;
+        unsigned int seqNo;
 //        std::map<const Session*, SignalSet> session;
 //        std::map<const Signal *, std::set<const Session*> > variableSessions;
 //
@@ -55,8 +71,8 @@ class Task: public HRTLab::Task {
 //            const Signal *signal;
 //        };
 //
-//        void *postoffice;
-//        Instruction *mailboxBegin, *mailboxEnd, *mailbox;
+        void *postoffice;
+        Instruction *mailboxBegin, *mailboxEnd, *mailbox;
 //
 //        struct TxFrame {
 //            TxFrame *next;
@@ -74,12 +90,12 @@ class Task: public HRTLab::Task {
 //            };
 //        };
 //
-//        TxFrame *txMemBegin, *txFrame, **nextTxFrame;
-//        const void *txMemEnd;
+        TxFrame *txMemBegin, *txFrame, **nextTxFrame;
+        const void *txMemEnd;
 //        std::map<const Session*, TxFrame *> sessionRxPtr;
 //
 //        void deliver(Instruction::Type t, const Signal *v);
-//        void receive();
+        void receive();
 };
 
 #endif // LIB_TASK_H

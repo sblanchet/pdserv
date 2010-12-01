@@ -29,13 +29,13 @@ class Signal: public HRTLab::Signal {
                 const size_t *dim = 0);
 
         const void * const addr;
+        const Task * const task;
 
     private:
-        const Task * const task;
 
         mutable ost::Semaphore mutex;
 
-        std::set<const HRTLab::Session*> sessions;
+        mutable std::set<const HRTLab::Session*> sessions;
 
         // Reimplemented from HRTLab::Variable
         void getValue(char *, struct timespec *) const;
