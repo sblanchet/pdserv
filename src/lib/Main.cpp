@@ -5,21 +5,16 @@
 #include "config.h"
 
 #include <cerrno>
-//#include <cstdio>
-//#include <cstring>
 #include <sys/mman.h>
 
 #include <sys/types.h>
 #include <unistd.h>             // fork()
-//#include <sys/time.h>
 
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
 #include "Parameter.h"
 #include "Pointer.h"
-//#include "etlproto/Server.h"
-//#include "msrproto/Server.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -200,10 +195,9 @@ int Main::poll(const HRTLab::Signal * const *s, size_t nelem, char *buf) const
 /////////////////////////////////////////////////////////////////////////////
 int Main::init()
 {
-    size_t taskMemSize = 0;
-
+    size_t taskMemSize[nst];
     for (unsigned int i = 0; i < nst; i++)
-        taskMemSize += task[i]->getShmemSpace(bufferTime);
+        shmem_len += taskMemSize[i] = task[i]->getShmemSpace(bufferTime);
 
     std::list<Parameter*> p[HRTLab::Variable::maxWidth+1];
     size_t parameterSize = 0;
@@ -220,7 +214,7 @@ int Main::init()
         signalSize += (*it)->memSize;
     }
 
-    shmem_len =
+    shmem_len +=
         sizeof(*mtime) * parameters.size()
         + parameterSize + 8
         + sizeof(*sdo)
@@ -249,11 +243,10 @@ int Main::init()
 //        << " sdoData=" << (void*)sdoData
 //        << endl;
 
-    const size_t idx[] = {8,4,2,1};
     char *buf = parameterData;
-    for (size_t i = 0; i < 4; i++) {
+    for (size_t w = 8; w; w >>= 1) {
         std::list<Parameter*>::iterator it;
-        for (it = p[idx[i]].begin(); it != p[idx[i]].end(); it++) {
+        for (it = p[w].begin(); it != p[w].end(); it++) {
             (*it)->shmemAddr = buf;
             std::copy((const char *)(*it)->addr,
                     (const char *)(*it)->addr + (*it)->memSize, buf);
@@ -262,10 +255,8 @@ int Main::init()
     }
 
     for (unsigned int i = 0; i < nst; i++) {
-        size_t len = task[i]->getShmemSpace(bufferTime);
-
-        task[i]->init(buf);
-        buf += len;
+        task[i]->init(buf, buf + taskMemSize[i]);
+        buf += taskMemSize[i];
     }
 
     pid = ::fork();

@@ -32,12 +32,13 @@ size_t Task::getShmemSpace(double T) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::init(void *shmem)
+void Task::init(void *shmem, void *shmem_end)
 {
     mailboxBegin = mailbox = ptr_align<Instruction>(shmem);
     mailboxEnd = mailboxBegin + signals.size() + 1;
 
     txMemBegin = txFrame = ptr_align<TxFrame>(mailboxEnd);
+    txMemEnd = shmem_end;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -49,17 +50,19 @@ void Task::subscribe(const Signal * const *s, size_t n) const
         pdoMem = 0;
 
     while (n--) {
-        txPdoCount++;
-        subscriptionSet[(*s)->subscriptionIndex].insert(*s);
-
         while (mailbox->instruction != Instruction::Clear)
             ost::Thread::sleep(100);
 
-        mailbox->signal = *s++;
+        txPdoCount++;
+        subscriptionSet[(*s)->subscriptionIndex].insert(*s);
+        mailbox->signal = *s;
+        pdoMem += (*s)->memSize;
         mailbox->instruction = Instruction::Insert;
 
         if (++mailbox == mailboxEnd)
             mailbox = mailboxBegin;
+
+        s++;
     }
 }
 
@@ -69,17 +72,19 @@ void Task::unsubscribe(const Signal * const *s, size_t n) const
     ost::SemaphoreLock lock(mutex);
 
     while (n--) {
-        txPdoCount--;
-        subscriptionSet[(*s)->subscriptionIndex].erase(*s);
-
         while (mailbox->instruction != Instruction::Clear)
             ost::Thread::sleep(100);
 
-        mailbox->signal = *s++;
+        txPdoCount--;
+        subscriptionSet[(*s)->subscriptionIndex].erase(*s);
+        mailbox->signal = *s;
+        pdoMem -= (*s)->memSize;
         mailbox->instruction = Instruction::Remove;
 
         if (++mailbox == mailboxEnd)
             mailbox = mailboxBegin;
+
+        s++;
     }
 }
 
@@ -104,14 +109,9 @@ Signal *Task::newSignal(
 /////////////////////////////////////////////////////////////////////////////
 void Task::receive()
 {
-    const unsigned int subscriptionSetIndex[HRTLab::Variable::maxWidth+1] = {
-        0, 0, 1, 0, 2, 0, 0, 0, 3
-    };
-
     do {
         const Signal *s = mailbox->signal;
-        unsigned int idx = 3 - subscriptionSetIndex[s->width];
-        SignalSet &vs = subscriptionSet[idx];
+        SignalSet &vs = subscriptionSet[s->subscriptionIndex];
         SignalSet::iterator it = vs.find(s);
 
         switch (mailbox->instruction) {
