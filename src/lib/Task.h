@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <set>
+#include <cc++/thread.h>
 
 #include "../Task.h"
 #include "rtlab/etl_data_info.h"
@@ -28,37 +29,28 @@ class Task: public HRTLab::Task {
                 unsigned int ndims = 1,
                 const unsigned int dim[] = 0);
 
-        size_t init();
-
-        const char *getValue(const HRTLab::Session *session,
-                const Signal *s) const;
+        size_t getShmemSpace(double t) const;
+        void init(void *);
 
         void poll(const Signal *s, char *buf, struct timespec *) const;
 
-//        void addSignal(const Signal *);
-//        void setup();
-//
-//        void newSession(const Session*);
-//        void endSession(const Session*);
-
-        void subscribe(const Signal*) const;
-        void unsubscribe(const Signal*) const;
+        void subscribe(const Signal* const *, size_t n) const;
+        void unsubscribe(const Signal* const *, size_t n) const;
 
         void txPdo(const struct timespec *);
-//        void rxPdo(Session *);
-//
-//        const unsigned int tid;
-//
+
     private:
 
         Main * const main;
 
+        mutable ost::Semaphore mutex;
+        mutable size_t pdoMem;
+        mutable size_t txPdoCount;
+
         typedef std::set<const Signal*> SignalSet;
         SignalSet signals;
-        SignalSet subscriptionSet[4];
+        mutable SignalSet subscriptionSet[4];
 
-        size_t pdoMem;
-        size_t txPdoCount;
         unsigned int seqNo;
 //        std::map<const Session*, SignalSet> session;
 //        std::map<const Signal *, std::set<const Session*> > variableSessions;
@@ -68,8 +60,8 @@ class Task: public HRTLab::Task {
 //            const Signal *signal;
 //        };
 //
-        void *postoffice;
-        Instruction *mailboxBegin, *mailboxEnd, *mailbox;
+        Instruction *mailboxBegin, *mailboxEnd;
+        mutable Instruction *mailbox;
 //
 //        struct TxFrame {
 //            TxFrame *next;

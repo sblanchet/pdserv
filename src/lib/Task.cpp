@@ -5,11 +5,11 @@
 #include "Task.h"
 #include "Main.h"
 #include "Signal.h"
-#include "../pointer.h"
+#include "Pointer.h"
 
 /////////////////////////////////////////////////////////////////////////////
 Task::Task(Main *main, unsigned int tid, double sampleTime):
-    HRTLab::Task(main, tid, sampleTime), main(main)
+    HRTLab::Task(main, tid, sampleTime), main(main), mutex(1)
 {
     pdoMem = 0;
     txPdoCount = 0;
@@ -25,6 +25,65 @@ Task::~Task()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+size_t Task::getShmemSpace(double T) const
+{
+    return (signals.size() + 1) * sizeof(Instruction)
+        + std::max(10U, (size_t)(T / sampleTime + 0.5)) * pdoMem;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::init(void *shmem)
+{
+    mailboxBegin = mailbox = ptr_align<Instruction>(shmem);
+    mailboxEnd = mailboxBegin + signals.size() + 1;
+
+    txMemBegin = txFrame = ptr_align<TxFrame>(mailboxEnd);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::subscribe(const Signal * const *s, size_t n) const
+{
+    ost::SemaphoreLock lock(mutex);
+
+    if (!txPdoCount)
+        pdoMem = 0;
+
+    while (n--) {
+        txPdoCount++;
+        subscriptionSet[(*s)->subscriptionIndex].insert(*s);
+
+        while (mailbox->instruction != Instruction::Clear)
+            ost::Thread::sleep(100);
+
+        mailbox->signal = *s++;
+        mailbox->instruction = Instruction::Insert;
+
+        if (++mailbox == mailboxEnd)
+            mailbox = mailboxBegin;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::unsubscribe(const Signal * const *s, size_t n) const
+{
+    ost::SemaphoreLock lock(mutex);
+
+    while (n--) {
+        txPdoCount--;
+        subscriptionSet[(*s)->subscriptionIndex].erase(*s);
+
+        while (mailbox->instruction != Instruction::Clear)
+            ost::Thread::sleep(100);
+
+        mailbox->signal = *s++;
+        mailbox->instruction = Instruction::Remove;
+
+        if (++mailbox == mailboxEnd)
+            mailbox = mailboxBegin;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
 Signal *Task::newSignal(
         const char *path,
         enum si_datatype_t datatype,
@@ -36,6 +95,8 @@ Signal *Task::newSignal(
     Signal *s = 
         new Signal(main, this, decimation, path, datatype, addr, ndims, dim);
     signals.insert(s);
+
+    pdoMem += s->memSize;
 
     return s;
 }

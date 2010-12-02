@@ -31,7 +31,11 @@ class Signal: public HRTLab::Signal {
         const void * const addr;
         const Task * const task;
 
+        const size_t subscriptionIndex;
+
     private:
+
+        static const size_t index[HRTLab::Variable::maxWidth+1];
 
         mutable ost::Semaphore mutex;
 

@@ -17,7 +17,7 @@
 #include "Task.h"
 #include "Signal.h"
 #include "Parameter.h"
-//#include "Session.h"
+#include "Pointer.h"
 //#include "etlproto/Server.h"
 //#include "msrproto/Server.h"
 
@@ -169,47 +169,41 @@ void Main::update(int st, const struct timespec *time) const
     task[st]->txPdo(time);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-//unsigned int Main::poll(const Signal * const *s, size_t nelem, char *buf)
-//{
-//    ost::SemaphoreLock lock(sdoMutex);
-//
-//    for (unsigned i = 0; i < nelem; i++)
-//        sdo->data[i].signal = s[i];
-//    sdo->count = nelem;
-//    sdo->type = SDOStruct::PollSignal;
-//    sdo->reqId++;
-//
-//    do {
-//        ost::Thread::sleep(100);
-//    } while (sdo->reqId != sdo->replyId);
-//
-//    char *p = sdoData;
-//    while (nelem--) {
-//        size_t len = (*s)->memSize;
-//
-//        std::copy(p, p + len, buf);
-//        p += len;
-//        buf += len;
-//        s++;
-//    }
-//
-//    return sdo->errorCount;
-//}
-
 /////////////////////////////////////////////////////////////////////////////
-template<class T>
-T* ptr_align(void *p)
+int Main::poll(const HRTLab::Signal * const *s, size_t nelem, char *buf) const
 {
-    const size_t mask = sizeof(T*) - 1;
-    return reinterpret_cast<T*>(((unsigned)p + mask) & ~mask);
+    ost::SemaphoreLock lock(sdoMutex);
+
+    for (unsigned i = 0; i < nelem; i++)
+        sdo->signal[i] = dynamic_cast<const Signal*>(s[i]);
+    sdo->count = nelem;
+    sdo->type = SDOStruct::PollSignal;
+    sdo->reqId++;
+
+    do {
+        ost::Thread::sleep(100);
+    } while (sdo->reqId != sdo->replyId);
+
+    char *p = sdoData;
+    while (nelem--) {
+        size_t len = (*s)->memSize;
+
+        std::copy(p, p + len, buf);
+        p += len;
+        buf += len;
+        s++;
+    }
+
+    return sdo->errorCode;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 int Main::init()
 {
+    size_t taskMemSize = 0;
+
     for (unsigned int i = 0; i < nst; i++)
-        task[i]->init();
+        taskMemSize += task[i]->getShmemSpace(bufferTime);
 
     std::list<Parameter*> p[HRTLab::Variable::maxWidth+1];
     size_t parameterSize = 0;
@@ -265,6 +259,13 @@ int Main::init()
                     (const char *)(*it)->addr + (*it)->memSize, buf);
             buf += (*it)->memSize;
         }
+    }
+
+    for (unsigned int i = 0; i < nst; i++) {
+        size_t len = task[i]->getShmemSpace(bufferTime);
+
+        task[i]->init(buf);
+        buf += len;
     }
 
     pid = ::fork();

@@ -16,6 +16,12 @@ using std::endl;
 #endif
 
 //////////////////////////////////////////////////////////////////////
+const size_t Signal::index[HRTLab::Variable::maxWidth+1] = {
+    3 /*0*/, 3 /*1*/, 2 /*2*/, 3 /*3*/,
+    1 /*4*/, 3 /*5*/, 3 /*6*/, 3 /*7*/, 0 /*8*/
+};
+
+//////////////////////////////////////////////////////////////////////
 Signal::Signal(Main *main,
         const Task *task,
         unsigned int decimation,
@@ -25,7 +31,7 @@ Signal::Signal(Main *main,
         unsigned int ndims,
         const size_t *dim):
     HRTLab::Signal(main, task, decimation, path, dtype, ndims, dim),
-    addr(addr), task(task), mutex(1)
+    addr(addr), task(task), subscriptionIndex(index[width]), mutex(1)
 {
 }
 
@@ -34,8 +40,9 @@ void Signal::subscribe(const HRTLab::Session *session) const
 {
     ost::SemaphoreLock lock(mutex);
 
+    const Signal *s = this;
     if (sessions.empty())
-        task->subscribe(this);
+        task->subscribe(&s, 1);
 
     sessions.insert(session);
 }
@@ -47,8 +54,9 @@ void Signal::unsubscribe(const HRTLab::Session *session) const
 
     sessions.erase(session);
 
+    const Signal *s = this;
     if (sessions.empty())
-        task->unsubscribe(this);
+        task->unsubscribe(&s, 1);
 }
 
 //////////////////////////////////////////////////////////////////////

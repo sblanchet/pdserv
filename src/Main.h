@@ -56,7 +56,7 @@ class Main {
         // Methods used by the clients to post instructions to the real-time
         // process
         virtual Receiver* newReceiver(Session *) = 0;
-        virtual unsigned int poll(const Signal * const *s, size_t nelem,
+        virtual int poll(const Signal * const *s, size_t nelem,
                 char *buf) const = 0;
 
         void getSessionStatistics(std::list<SessionStatistics>&) const;

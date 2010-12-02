@@ -43,13 +43,6 @@ class Main: public HRTLab::Main {
                 unsigned int ndims = 1,
                 const unsigned int dim[] = 0);
 
-//        const struct timespec *getMTime(const Parameter *) const;
-//        const Signal *getSignal(const std::string&) const;
-//        const Signal *getSignal(size_t) const;
-//        const Parameter *getParameter(const std::string&) const;
-//        const Parameter *getParameter(size_t) const;
-//        const char *getParameterAddr(const Parameter *) const;
-//
 //        // Methods used by the clients to post instructions to the real-time
 //        // process
         int setParameter(const HRTLab::Parameter *p, const char *data) const;
@@ -57,16 +50,9 @@ class Main: public HRTLab::Main {
                 char *buf, struct timespec *) const;
         void pollSignal(const Signal *,
                 char *buf, struct timespec *) const;
-//        unsigned int writeParameter(const Parameter * const *,
-//                size_t n, const char *data, int *errorCode = 0);
-//        unsigned int poll(const Signal * const *s, size_t nelem, char *buf);
-//        void unsubscribe(const Session *session,
-//                const Signal * const *s = 0, size_t nelem = 0);
-//        void subscribe(const Session *session,
-//                const Signal * const *s, size_t nelem);
-//
-//        void getSessionStatistics(std::list<Session::Statistics>&) const;
-//
+
+        static const double bufferTime = 2;
+
     private:
         Task ** const task;
 
@@ -110,7 +96,7 @@ class Main: public HRTLab::Main {
         // Reimplemented from HRTLab::Main
         int gettime(struct timespec *) const;
         void rxPdo(HRTLab::Session *);
-        unsigned int poll(const HRTLab::Signal * const *s,
+        int poll(const HRTLab::Signal * const *s,
                 size_t nelem, char *buf) const;
         int setParameters(const HRTLab::Parameter * const *p, size_t nelem,
                 const char *data) const;
