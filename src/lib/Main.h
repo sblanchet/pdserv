@@ -124,7 +124,7 @@ class Main: public HRTLab::Main {
 //
         // Methods used by the real-time process to interpret inbox
         // instructions from the clients
-        void processSdo(unsigned int tid, const struct timespec *time) const;
+        bool processSdo(unsigned int tid, const struct timespec *time) const;
 //
 //        static int localtime(struct timespec *);
 

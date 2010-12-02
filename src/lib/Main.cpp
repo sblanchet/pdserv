@@ -103,7 +103,7 @@ int Main::setParameters(const HRTLab::Parameter * const *p, size_t nelem,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::processSdo(unsigned int tid, const struct timespec *time) const
+bool Main::processSdo(unsigned int tid, const struct timespec *time) const
 {
     // PollSignal
     // Receive:
@@ -112,9 +112,6 @@ void Main::processSdo(unsigned int tid, const struct timespec *time) const
     //          [2 .. 2+n]: Index numbers of the signals
     //
     // The reply is in the poll area
-
-    if (sdo->reqId == sdo->replyId)
-        return;
 
     sdo->time = *time;
 
@@ -163,14 +160,15 @@ void Main::processSdo(unsigned int tid, const struct timespec *time) const
             break;
     }
 
-    if (finished)
-        sdo->replyId = sdo->reqId;
+    return finished;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::update(int st, const struct timespec *time) const
 {
-    processSdo(st, time);
+    if (sdo->reqId != sdo->replyId and processSdo(st, time))
+        sdo->replyId = sdo->reqId;
+
     task[st]->txPdo(time);
 }
 

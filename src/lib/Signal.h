@@ -41,8 +41,8 @@ class Signal: public HRTLab::Signal {
         void getValue(char *, struct timespec *) const;
 
         // Reimplemented from HRTLab::Signal
-        void subscribe(const HRTLab::Session *);
-        void unsubscribe(const HRTLab::Session *);
+        void subscribe(const HRTLab::Session *) const;
+        void unsubscribe(const HRTLab::Session *) const;
 };
 
 #endif //LIB_SIGNAL

@@ -30,7 +30,7 @@ Signal::Signal(Main *main,
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::subscribe(const HRTLab::Session *session)
+void Signal::subscribe(const HRTLab::Session *session) const
 {
     ost::SemaphoreLock lock(mutex);
 
@@ -41,7 +41,7 @@ void Signal::subscribe(const HRTLab::Session *session)
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::unsubscribe(const HRTLab::Session *session)
+void Signal::unsubscribe(const HRTLab::Session *session) const
 {
     ost::SemaphoreLock lock(mutex);
 

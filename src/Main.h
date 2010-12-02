@@ -45,8 +45,6 @@ class Main {
         typedef std::vector<const Parameter*> Parameters;
         const Parameters& getParameters() const;
 
-        virtual void update(int st, const struct timespec *time) const = 0;
-
         const std::string name;
         const std::string version;
         const double baserate;

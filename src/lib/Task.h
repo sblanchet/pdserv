@@ -41,8 +41,8 @@ class Task: public HRTLab::Task {
 //        void newSession(const Session*);
 //        void endSession(const Session*);
 
-        void subscribe(const Signal *) const;
-        void unsubscribe(const Signal * = 0) const;
+        void subscribe(const Signal*) const;
+        void unsubscribe(const Signal*) const;
 
         void txPdo(const struct timespec *);
 //        void rxPdo(Session *);

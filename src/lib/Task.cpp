@@ -40,9 +40,6 @@ Signal *Task::newSignal(
 /////////////////////////////////////////////////////////////////////////////
 void Task::receive()
 {
-    if (mailbox->instruction == Instruction::Clear)
-        return;
-
     const unsigned int subscriptionSetIndex[HRTLab::Variable::maxWidth+1] = {
         0, 0, 1, 0, 2, 0, 0, 0, 3
     };
@@ -110,7 +107,8 @@ void Task::receive()
 /////////////////////////////////////////////////////////////////////////////
 void Task::txPdo(const struct timespec *t)
 {
-    receive();
+    if (mailbox->instruction != Instruction::Clear)
+        receive();
 
     if ( txFrame->pdo.data + pdoMem >= txMemEnd) {
         txFrame = txMemBegin;
@@ -142,5 +140,4 @@ void Task::txPdo(const struct timespec *t)
 //    cout << "Setting " << nextTxFrame << " to " << txFrame << endl;
     nextTxFrame = &txFrame->next;
     txFrame = ptr_align<TxFrame>(p);
-
 }
