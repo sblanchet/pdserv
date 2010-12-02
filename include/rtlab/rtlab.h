@@ -138,21 +138,18 @@ struct variable *hrtlab_parameter(
  * to set the alias name for a variable.
  */
 void hrtlab_set_alias(
-        struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
         struct variable *variable, /**< Parameter or Signal address */
         const char *alias       /**< Variable's alias */
         );
 
 /** Set the optional unit of a variable */
 void hrtlab_set_unit(
-        struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
         struct variable *variable, /**< Parameter or Signal address */
         const char *unit        /**< Variable's unit */
         );
 
 /** Set the optional comment of a variable */
 void hrtlab_set_comment(
-        struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
         struct variable *variable, /**< Parameter or Signal address */
         const char *comment     /**< Variable's comment */
         );

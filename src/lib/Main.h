@@ -44,18 +44,6 @@ class Main: public HRTLab::Main {
                 unsigned int ndims = 1,
                 const unsigned int dim[] = 0);
 
-        void setVariableAlias(Variable *p, const char *alias) const;
-        void setVariableUnit(Variable *p, const char *unit) const;
-        void setVariableComment(Variable *p, const char *comment) const;
-        void setParameterTrigger(Parameter *p,
-                paramtrigger_t trigger, void *priv_data) const;
-
-//        const std::string name;
-//        const std::string version;
-//        const double baserate;
-//        const unsigned int nst;
-//        unsigned int * const decimation;
-//
 //        const struct timespec *getMTime(const Parameter *) const;
 //        const Signal *getSignal(const std::string&) const;
 //        const Signal *getSignal(size_t) const;
@@ -84,15 +72,12 @@ class Main: public HRTLab::Main {
         Task ** const task;
 
         mutable ost::Semaphore mutex;
-//
-//        MsrProto::Server *msrproto;
-////    EtlProto::Server etlproto(this);
-//
-//        int pid;
-//
-//        size_t shmem_len;
-//        void *shmem;
-//
+
+        int pid;
+
+        size_t shmem_len;
+        void *shmem;
+
         struct SDOStruct {
             unsigned int reqId;
             unsigned int replyId;
@@ -107,21 +92,17 @@ class Main: public HRTLab::Main {
         } *sdo;
         mutable ost::Semaphore sdoMutex;
         char *sdoData;
-//        char *parameterData;
-//        char **parameterAddr;
-//
-//        struct timespec *mtime;
+
+        char *parameterData;
+
+        struct timespec *mtime;
 //
 //        typedef std::vector<Signal*> SignalList;
 //        SignalList signals;
 //
-//        typedef std::vector<Parameter*> ParameterList;
-//        ParameterList parameters;
-//
-//        typedef std::map<const std::string, const Variable*> VariableMap;
-//        VariableMap variableMap;
-//
-//
+        typedef std::vector<Parameter*> ParameterList;
+        ParameterList parameters;
+
         // Methods used by the real-time process to interpret inbox
         // instructions from the clients
         bool processSdo(unsigned int tid, const struct timespec *time) const;

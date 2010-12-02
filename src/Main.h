@@ -66,11 +66,14 @@ class Main {
         void parametersChanged(const Parameter * const *p,
                 size_t nelem) const;
 
+        void startProtocols();
+
     private:
 
         Task ** const task;
 
         MsrProto::Server *msrproto;
+////    EtlProto::Server etlproto(this);
 
         Signals signals;
         Parameters parameters;

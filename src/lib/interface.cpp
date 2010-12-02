@@ -42,8 +42,7 @@ struct variable *hrtlab_signal(
         )
 {
     HRTLab::Variable *v = reinterpret_cast<Main*>(hrtlab)->newSignal(
-                path, datatype, addr, tid, decimation,
-                dim ? n : 1, dim ? dim : &n);
+                path, datatype, addr, tid, decimation, n, dim);
 
     return reinterpret_cast<struct variable *>(v);
 }
@@ -57,40 +56,35 @@ struct variable *hrtlab_parameter(
         void *addr,
         size_t n,
         const size_t dim[],
-        paramtrigger_t trigger = 0,
-        void *priv_data = 0
+        paramtrigger_t _trigger = 0,
+        void *_priv_data = 0
         )
 {
     Main *main = reinterpret_cast<Main*>(hrtlab);
     Parameter *p = main->newParameter( path, datatype, addr, mode, n, dim);
-    main->setParameterTrigger(p, trigger, priv_data);
+    p->trigger = _trigger;
+    p->priv_data = _priv_data;
 
     return
         reinterpret_cast<struct variable *>(static_cast<HRTLab::Variable*>(p));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void hrtlab_set_alias(struct hrtlab* hrtlab,
-        struct variable *var, const char *alias)
+void hrtlab_set_alias( struct variable *var, const char *_alias)
 {
-    reinterpret_cast<Main*>(hrtlab)->setVariableAlias(
-            reinterpret_cast<Variable*>(var), alias);
+    reinterpret_cast<HRTLab::Variable*>(var)->alias = _alias;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void hrtlab_set_unit(struct hrtlab* hrtlab,
-        struct variable *var, const char *unit)
+void hrtlab_set_unit( struct variable *var, const char *_unit)
 {
-    reinterpret_cast<Main*>(hrtlab)->setVariableUnit(
-            reinterpret_cast<Variable*>(var), unit);
+    reinterpret_cast<HRTLab::Variable*>(var)->unit = _unit;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void hrtlab_set_comment(struct hrtlab* hrtlab,
-        struct variable *var, const char *comment)
+void hrtlab_set_comment( struct variable *var, const char *_comment)
 {
-    reinterpret_cast<Main*>(hrtlab)->setVariableComment(
-            reinterpret_cast<Variable*>(var), comment);
+    reinterpret_cast<HRTLab::Variable*>(var)->comment = _comment;
 }
 
 /////////////////////////////////////////////////////////////////////////////

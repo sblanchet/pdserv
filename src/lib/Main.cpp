@@ -4,11 +4,13 @@
 
 #include "config.h"
 
-//#include <cerrno>
+#include <cerrno>
 //#include <cstdio>
 //#include <cstring>
-//#include <unistd.h>
-//#include <sys/mman.h>
+#include <sys/mman.h>
+
+#include <sys/types.h>
+#include <unistd.h>             // fork()
 //#include <sys/time.h>
 
 #include "Main.h"
@@ -38,6 +40,9 @@ Main::Main(int argc, const char *argv[],
     for (size_t i = 0; i < nst; i++)
         task[i] =
             new Task(this, i, baserate * (decimation ? decimation[i] : 1));
+
+    shmem_len = 0;
+    shmem = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -199,204 +204,125 @@ void Main::update(int st, const struct timespec *time) const
 //
 //    return sdo->errorCount;
 //}
-//
-///////////////////////////////////////////////////////////////////////////////
-//void Main::closeSession(const Session *s)
-//{
-//    ost::SemaphoreLock lock(mutex);
-//    for (unsigned int i = 0; i < nst; i++)
-//        task[i]->endSession(s);
-//}
-//
-///////////////////////////////////////////////////////////////////////////////
-//void Main::newSession(const Session* s)
-//{
-//    ost::SemaphoreLock lock(mutex);
-//    for (unsigned int i = 0; i < nst; i++)
-//        task[i]->newSession(s);
-//}
-//
-///////////////////////////////////////////////////////////////////////////////
-//const struct timespec *Main::getMTime(const Parameter *p) const
-//{
-//    return mtime + p->index;
-//}
-//
-///////////////////////////////////////////////////////////////////////////////
-//void Main::rxPdo(Session *session)
-//{
-//    for (unsigned int i = 0; i < nst; i++)
-//        task[i]->rxPdo(session);
-//}
-//
-///////////////////////////////////////////////////////////////////////////////
-//void Main::unsubscribe(const Session *session,
-//        const Signal * const *signal, size_t nelem)
-//{
-//    ost::SemaphoreLock lock(mutex);
-////    cout << "Main::unsubscribe " << signal << endl;
-//    if (signal)
-//        for (const Signal * const *s = signal; s != signal + nelem; s++)
-//            task[(*s)->tid]->unsubscribe(session, *s);
-//    else
-//        for (unsigned int i = 0; i < nst; i++)
-//            task[i]->unsubscribe(session);
-//}
-//
-///////////////////////////////////////////////////////////////////////////////
-//void Main::subscribe(const Session *session,
-//        const Signal * const *signal, size_t nelem)
-//{
-//    ost::SemaphoreLock lock(mutex);
-//    for (const Signal * const *s = signal; s != signal + nelem; s++)
-//        task[(*s)->tid]->subscribe(session, *s);
-//}
-//
-///////////////////////////////////////////////////////////////////////////////
-//void Main::getSessionStatistics(std::list<Session::Statistics>& stats) const
-//{
-//    msrproto->getSessionStatistics(stats);
-//    //etlproto->getSessionStatistics(stats);
-//}
-//
-///////////////////////////////////////////////////////////////////////////////
-//template<class T>
-//T* ptr_align(void *p)
-//{
-//    const size_t mask = sizeof(T*) - 1;
-//    return reinterpret_cast<T*>(((unsigned)p + mask) & ~mask);
-//}
-//
-///////////////////////////////////////////////////////////////////////////////
-//int Main::start()
-//{
-//    for (unsigned int i = 0; i < nst; i++)
-//        task[i]->setup();
-//
-//    std::list<Parameter*> p[9];
-//    size_t parameterSize = 0;
-//    for (ParameterList::const_iterator it = parameters.begin();
-//            it != parameters.end(); it++) {
-//        p[(*it)->width].push_back(*it);
-//        parameterSize += (*it)->memSize;
-//    }
-//
-//    size_t signalSize = 0;
-//    for (SignalList::const_iterator it = signals.begin();
-//            it != signals.end(); it++) {
-//        signalSize += (*it)->memSize;
-//    }
-//
-//    shmem_len =
-//        sizeof(*mtime) * parameters.size()
-//        + parameterSize + 8
-//        + sizeof(*sdo)
-//        + std::max(parameterSize, signalSize);
-//
-//    shmem = ::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
-//            MAP_SHARED | MAP_ANON, -1, 0);
-//    if (MAP_FAILED == shmem) {
-//        // log(LOGCRIT, "could not mmap
-//        // err << "mmap(): " << strerror(errno);
-//        ::perror("mmap()");
-//        return -errno;
-//    }
-//    ::memset(shmem, 0, shmem_len);
-//
-//    mtime         = ptr_align<struct timespec>(shmem);
-//    parameterData = ptr_align<char>(mtime + parameters.size());
-//    sdo           = ptr_align<SDOStruct>(parameterData + parameterSize);
-//    sdoData       = ptr_align<char>(
-//            sdo->data + std::max(signals.size(), parameters.size()));
-////    cout
-////        << " shmem=" << shmem
-////        << " mtime=" << mtime
-////        << " parameterData=" << (void*)parameterData
-////        << " sdo=" << sdo
-////        << " sdoData=" << (void*)sdoData
-////        << endl;
-//
-//    parameterAddr = new char*[parameters.size()];
-//
-//    const size_t idx[] = {8,4,2,1};
-//    char *buf = parameterData;
-//    for (size_t i = 0; i < 4; i++) {
-//        for (std::list<Parameter*>::const_iterator it = p[idx[i]].begin();
-//                it != p[idx[i]].end(); it++) {
-//            parameterAddr[(*it)->index] = buf;
-//            std::copy((const char *)(*it)->addr,
-//                    (const char *)(*it)->addr + (*it)->memSize, buf);
-//            buf += (*it)->memSize;
-//        }
-//    }
-//
-//    pid = ::fork();
-//    if (pid < 0) {
-//        // Some error occurred
-//        ::perror("fork()");
-//        return pid;
-//    }
-//    else if (pid) {
-//        // Parent here
-//        return 0;
-//    }
-//
-//    msrproto = new MsrProto::Server(this);
-////    EtlProto::Server etlproto(this);
-////    etlproto.start();
-//    msrproto->start();
-//
-////    etlproto.join();
-//    msrproto->join();
-//
-//    return 0;
-//}
-//
-///////////////////////////////////////////////////////////////////////////////
-//Signal *Main::newSignal(
-//        const char *path,
-//        enum si_datatype_t datatype,
-//        const void *addr,
-//        unsigned int tid,
-//        unsigned int decimation,
-//        unsigned int ndims,
-//        const size_t dim[]
-//        )
-//{
-//    if (tid >= nst)
-//        return 0;
-//
-//    if (variableMap.find(path) != variableMap.end())
-//        return 0;
-//
-//    Signal *s = new Signal(tid, decimation, path,
-//            datatype, addr, ndims, dim);
-//
-//    task[tid]->addSignal(s);
-//    signals.push_back(s);
-//    variableMap[path] = s;
-//
-//    return s;
-//}
-//
-///////////////////////////////////////////////////////////////////////////////
-//Parameter *Main::newParameter(
-//        const char *path,
-//        enum si_datatype_t datatype,
-//        void *addr,
-//        unsigned int mode,
-//        unsigned int ndims,
-//        const size_t dim[]
-//        )
-//{
-//    if (variableMap.find(path) != variableMap.end())
-//        return 0;
-//
-//    Parameter *p = new Parameter(
-//            parameters.size(), path, mode, datatype, addr, ndims, dim);
-//
-//    parameters.push_back(p);
-//    variableMap[path] = p;
-//
-//    return p;
-//}
+
+/////////////////////////////////////////////////////////////////////////////
+template<class T>
+T* ptr_align(void *p)
+{
+    const size_t mask = sizeof(T*) - 1;
+    return reinterpret_cast<T*>(((unsigned)p + mask) & ~mask);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::init()
+{
+    for (unsigned int i = 0; i < nst; i++)
+        task[i]->init();
+
+    std::list<Parameter*> p[HRTLab::Variable::maxWidth+1];
+    size_t parameterSize = 0;
+    for (ParameterList::const_iterator it = parameters.begin();
+            it != parameters.end(); it++) {
+        p[(*it)->width].push_back(*it);
+        parameterSize += (*it)->memSize;
+    }
+
+    size_t signalSize = 0;
+    const HRTLab::Main::Signals& signals = getSignals();
+    for (HRTLab::Main::Signals::const_iterator it = signals.begin();
+            it != signals.end(); it++) {
+        signalSize += (*it)->memSize;
+    }
+
+    shmem_len =
+        sizeof(*mtime) * parameters.size()
+        + parameterSize + 8
+        + sizeof(*sdo)
+        + std::max(parameterSize, signalSize);
+
+    shmem = ::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
+            MAP_SHARED | MAP_ANON, -1, 0);
+    if (MAP_FAILED == shmem) {
+        // log(LOGCRIT, "could not mmap
+        // err << "mmap(): " << strerror(errno);
+        ::perror("mmap()");
+        return -errno;
+    }
+    ::memset(shmem, 0, shmem_len);
+
+    mtime         = ptr_align<struct timespec>(shmem);
+    parameterData = ptr_align<char>(mtime + parameters.size());
+    sdo           = ptr_align<SDOStruct>(parameterData + parameterSize);
+    sdoData       = ptr_align<char>(
+            sdo->signal + std::max(signals.size(), parameters.size()));
+//    cout
+//        << " shmem=" << shmem
+//        << " mtime=" << mtime
+//        << " parameterData=" << (void*)parameterData
+//        << " sdo=" << sdo
+//        << " sdoData=" << (void*)sdoData
+//        << endl;
+
+    const size_t idx[] = {8,4,2,1};
+    char *buf = parameterData;
+    for (size_t i = 0; i < 4; i++) {
+        std::list<Parameter*>::iterator it;
+        for (it = p[idx[i]].begin(); it != p[idx[i]].end(); it++) {
+            (*it)->shmemAddr = buf;
+            std::copy((const char *)(*it)->addr,
+                    (const char *)(*it)->addr + (*it)->memSize, buf);
+            buf += (*it)->memSize;
+        }
+    }
+
+    pid = ::fork();
+    if (pid < 0) {
+        // Some error occurred
+        ::perror("fork()");
+        return pid;
+    }
+    else if (pid) {
+        // Parent here
+        return 0;
+    }
+
+    pid = getpid();
+
+    startProtocols();
+
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Signal *Main::newSignal(
+        const char *path,
+        enum si_datatype_t datatype,
+        const void *addr,
+        unsigned int tid,
+        unsigned int decimation,
+        unsigned int ndims,
+        const size_t dim[]
+        )
+{
+    if (tid >= nst)
+        return 0;
+
+    return
+        task[tid]->newSignal( path, datatype, addr, decimation, ndims, dim);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Parameter *Main::newParameter(
+        const char *path,
+        enum si_datatype_t datatype,
+        void *addr,
+        unsigned int mode,
+        unsigned int ndims,
+        const size_t dim[]
+        )
+{
+    Parameter *p = new Parameter(this, path, mode, datatype, addr, ndims, dim);
+    parameters.push_back(p);
+
+    return p;
+}

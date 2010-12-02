@@ -34,6 +34,7 @@ Main::Main( const char *name, const char *version,
     name(name), version(version), baserate(baserate), nst(nst),
     task(new Task*[nst])
 {
+    msrproto = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -71,14 +72,6 @@ void Main::getSessionStatistics(std::list<SessionStatistics>& stats) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-template<class T>
-T* ptr_align(void *p)
-{
-    const size_t mask = sizeof(T*) - 1;
-    return reinterpret_cast<T*>(((unsigned)p + mask) & ~mask);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 int Main::newSignal(const Signal *s)
 {
     if (variableMap.find(s->path) != variableMap.end())
@@ -100,4 +93,19 @@ int Main::newParameter(const Parameter *p)
     variableMap[p->path] = p;
 
     return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::startProtocols()
+{
+    msrproto = new MsrProto::Server(this);
+
+//    EtlProto::Server etlproto(this);
+
+//    etlproto.start();
+    msrproto->start();
+
+//    etlproto.join();
+    msrproto->join();
+
 }
