@@ -12,7 +12,6 @@
 
 class Parameter;
 class Signal;
-class Variable;
 class Task;
 
 class Main: public HRTLab::Main {
@@ -96,10 +95,7 @@ class Main: public HRTLab::Main {
         char *parameterData;
 
         struct timespec *mtime;
-//
-//        typedef std::vector<Signal*> SignalList;
-//        SignalList signals;
-//
+
         typedef std::vector<Parameter*> ParameterList;
         ParameterList parameters;
 

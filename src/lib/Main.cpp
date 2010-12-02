@@ -48,23 +48,15 @@ Main::Main(int argc, const char *argv[],
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
-//    delete decimation;
-//    delete parameterAddr;
-//    delete msrproto;
-//
-//    for (SignalList::const_iterator it = signals.begin();
-//            it != signals.end(); it++)
-//        delete *it;
-//
-//    for (ParameterList::const_iterator it = parameters.begin();
-//            it != parameters.end(); it++)
-//        delete *it;
-//
-//    munmap(shmem, shmem_len);
+    for (ParameterList::const_iterator it = parameters.begin();
+            it != parameters.end(); it++)
+        delete *it;
 
     for (size_t i = 0; i < nst; i++)
         delete task[i];
     delete[] task;
+
+    ::munmap(shmem, shmem_len);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -282,15 +274,13 @@ int Main::init()
         return pid;
     }
     else if (pid) {
-        // Parent here
+        // Parent here; go back to the caller
         return 0;
     }
 
     pid = getpid();
 
-    startProtocols();
-
-    return 0;
+    return startProtocols();
 }
 
 /////////////////////////////////////////////////////////////////////////////

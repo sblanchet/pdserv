@@ -66,7 +66,7 @@ class Main {
         void parametersChanged(const Parameter * const *p,
                 size_t nelem) const;
 
-        void startProtocols();
+        int startProtocols();
 
     private:
 

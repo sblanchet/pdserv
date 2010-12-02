@@ -57,9 +57,6 @@ class Task: public HRTLab::Task {
         SignalSet signals;
         SignalSet subscriptionSet[4];
 
-//        const double sampleTime;
-//
-//
         size_t pdoMem;
         size_t txPdoCount;
         unsigned int seqNo;

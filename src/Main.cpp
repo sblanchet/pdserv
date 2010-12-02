@@ -96,7 +96,7 @@ int Main::newParameter(const Parameter *p)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::startProtocols()
+int Main::startProtocols()
 {
     msrproto = new MsrProto::Server(this);
 
@@ -108,4 +108,5 @@ void Main::startProtocols()
 //    etlproto.join();
     msrproto->join();
 
+    return 0;
 }
