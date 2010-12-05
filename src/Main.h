@@ -32,32 +32,32 @@ class Main {
                 double baserate, unsigned int nst);
         virtual ~Main();
 
-        int newSignal(const Signal *);
-        int newParameter(const Parameter *);
-
-        virtual int gettime(struct timespec *) const;
-        virtual int setParameters(const Parameter * const *p,
-                size_t nelem, const char *data) const = 0;
-
-        typedef std::vector<const Signal*> Signals;
-        const Signals& getSignals() const;
-
-        typedef std::vector<const Parameter*> Parameters;
-        const Parameters& getParameters() const;
-
         const std::string name;
         const std::string version;
         const double baserate;
         const unsigned int nst;
 
+        virtual int gettime(struct timespec *) const;
+
+        typedef std::vector<const Signal*> Signals;
+        int newSignal(const Signal *);
+        void delSignal(const Signal *);
+        const Signals& getSignals() const;
         const Signal *getSignal(const std::string&) const;
+
+        typedef std::vector<const Parameter*> Parameters;
+        int newParameter(const Parameter *);
+        void delParameter(const Parameter *);
+        const Parameters& getParameters() const;
         const Parameter *getParameter(const std::string&) const;
+
+        int setParameter(const Parameter *p, const char *data) const;
+        virtual int setParameters(const Parameter * const *p,
+                size_t nelem, const char *data) const = 0;
 
         // Methods used by the clients to post instructions to the real-time
         // process
-        virtual Receiver* newReceiver(Session *) = 0;
-        virtual int poll(const Signal * const *s, size_t nelem,
-                char *buf) const = 0;
+        virtual Receiver* newReceiver(unsigned int tid) = 0;
 
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 

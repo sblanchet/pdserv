@@ -13,6 +13,7 @@
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
+#include "Receiver.h"
 #include "Parameter.h"
 #include "Pointer.h"
 
@@ -165,6 +166,12 @@ void Main::update(int st, const struct timespec *time) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Main::pollParameter(const Parameter *,
+                char *buf, struct timespec *) const
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
 int Main::poll(const HRTLab::Signal * const *s, size_t nelem, char *buf) const
 {
     ost::SemaphoreLock lock(sdoMutex);
@@ -196,8 +203,11 @@ int Main::poll(const HRTLab::Signal * const *s, size_t nelem, char *buf) const
 int Main::init()
 {
     size_t taskMemSize[nst];
-    for (unsigned int i = 0; i < nst; i++)
-        shmem_len += taskMemSize[i] = task[i]->getShmemSpace(bufferTime);
+
+    for (unsigned int i = 0; i < nst; i++) {
+        taskMemSize[i] = ptr_align(task[i]->getShmemSpace(bufferTime));
+        shmem_len += taskMemSize[i];
+    }
 
     std::list<Parameter*> p[HRTLab::Variable::maxWidth+1];
     size_t parameterSize = 0;
@@ -308,3 +318,10 @@ Parameter *Main::newParameter(
 
     return p;
 }
+
+/////////////////////////////////////////////////////////////////////////////
+HRTLab::Receiver *Main::newReceiver(unsigned int tid)
+{
+    return new Receiver(tid);
+}
+

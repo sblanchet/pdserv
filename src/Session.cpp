@@ -20,18 +20,24 @@ using namespace HRTLab;
 
 /////////////////////////////////////////////////////////////////////////////
 Session::Session(Main *m):
-    main(m), receiver(main->newReceiver(this))
+    main(m), receiver(new Receiver*[main->nst])
 {
     main->gettime(&connectedTime);
 
     inBytes = 0;
     outBytes = 0;
+
+    for (unsigned int i = 0; i < main->nst; i++)
+        receiver[i] = main->newReceiver(i);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
-    delete receiver;
+    for (unsigned int i = 0; i < main->nst; i++)
+        delete receiver[i];
+
+    delete[] receiver;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -47,3 +53,11 @@ SessionStatistics Session::getStatistics() const
 
     return s;
 }
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::rxPdo()
+{
+    for (unsigned int i = 0; i < main->nst; i++)
+        receiver[i]->process(this);
+}
+

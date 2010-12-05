@@ -27,8 +27,13 @@ Task::~Task()
 /////////////////////////////////////////////////////////////////////////////
 size_t Task::getShmemSpace(double T) const
 {
+    size_t len = 0;
+    for (SignalSet::const_iterator it = signals.begin();
+            it != signals.end(); it++)
+        len += (*it)->memSize;
+
     return (signals.size() + 1) * sizeof(Instruction)
-        + std::max(10U, (size_t)(T / sampleTime + 0.5)) * pdoMem;
+        + std::max(10U, (size_t)(T / sampleTime + 0.5)) * len;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -42,12 +47,22 @@ void Task::init(void *shmem, void *shmem_end)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Task::poll(const Signal *s, char *buf, struct timespec *t) const
+{
+    poll(&s, 1, buf, t);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::poll(const Signal * const * s, size_t n,
+        char *buf, struct timespec *t) const
+{
+    ost::SemaphoreLock lock(mutex);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Task::subscribe(const Signal * const *s, size_t n) const
 {
     ost::SemaphoreLock lock(mutex);
-
-    if (!txPdoCount)
-        pdoMem = 0;
 
     while (n--) {
         while (mailbox->instruction != Instruction::Clear)
@@ -100,8 +115,6 @@ Signal *Task::newSignal(
     Signal *s = 
         new Signal(main, this, decimation, path, datatype, addr, ndims, dim);
     signals.insert(s);
-
-    pdoMem += s->memSize;
 
     return s;
 }

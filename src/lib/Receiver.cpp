@@ -6,7 +6,7 @@
 #include "../Session.h"
 
 ////////////////////////////////////////////////////////////////////////////
-Receiver::Receiver()
+Receiver::Receiver(unsigned int tid): HRTLab::Receiver(tid)
 {
 }
 
@@ -16,7 +16,13 @@ Receiver::~Receiver()
 }
 
 ////////////////////////////////////////////////////////////////////////////
-const Receiver* Receiver::receive(HRTLab::Session *session) const
+const char *Receiver::getValue(const HRTLab::Signal *s) const
+{
+    return rxPtr->pdo.data + offset.find(s)->second;
+}
+
+////////////////////////////////////////////////////////////////////////////
+void Receiver::process(HRTLab::Session *session)
 {
 //     while (rxPtr->next) {
 //         switch (rxPtr->type) {
@@ -49,7 +55,6 @@ const Receiver* Receiver::receive(HRTLab::Session *session) const
 // 
 //     sessionRxPtr[s] = rxPtr;
 // 
-    return this;
 }
 
 

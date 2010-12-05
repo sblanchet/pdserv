@@ -30,6 +30,7 @@ class Parameter: public Variable {
         virtual int setValue(const char *valbuf) const = 0;
 
     private:
+        Main * const main;
 };
 
 }

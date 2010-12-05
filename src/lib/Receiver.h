@@ -8,20 +8,20 @@
 #include "../Receiver.h"
 #include "ShmemDataStructures.h"
 
-namespace HRTLab {
-    class Session;
-}
-
 class Receiver: public HRTLab::Receiver {
     public:
-        Receiver();
+        Receiver(unsigned int tid);
         ~Receiver();
 
     private:
         mutable TxFrame *rxPtr;
 
+        std::map<const HRTLab::Signal *, size_t> offset;
+        const char *valueBuf;
+
         // Reimplemented from HRTLab::Receiver
-        const Receiver *receive(HRTLab::Session *) const;
+        void process(HRTLab::Session *);
+        const char *getValue(const HRTLab::Signal*) const;
 };
 
 #endif //LIB_RECEIVER_H

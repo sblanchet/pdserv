@@ -28,7 +28,13 @@ Parameter::Parameter(
         unsigned int ndims,
         const size_t *dim):
     Variable(path, dtype, ndims, dim),
-    mode(mode)
+    mode(mode), main(main)
 {
     main->newParameter(this);
+}
+
+//////////////////////////////////////////////////////////////////////
+Parameter::~Parameter()
+{
+    main->delParameter(this);
 }

@@ -30,9 +30,8 @@ class Task {
                 bool event, unsigned int decimation, size_t blocksize,
                 bool base64, size_t precision);
 
-        void process(MsrXml::Element *, const HRTLab::Receiver&);
-        void newSignalList(const HRTLab::Receiver&);
-        void newValues(MsrXml::Element *, const HRTLab::Receiver&);
+        void newSignalList(const HRTLab::Signal * const *s, size_t n);
+        void newSignalValues(MsrXml::Element *, const HRTLab::Receiver&);
 
         void sync();
 

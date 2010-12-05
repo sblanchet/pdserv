@@ -96,39 +96,20 @@ void Task::addSignal(const HRTLab::Signal *signal,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::newSignalList(const HRTLab::Receiver &receiver)
+void Task::newSignalList(const HRTLab::Signal * const *s, size_t n)
 {
     // Since it is not (should not be!) possible that required signal 
     // is not transmitted any more, only need to check for new signals
-    const HRTLab::Receiver::SignalList& signals =
-        receiver.getSignals();
-    HRTLab::Receiver::SignalList::const_iterator sit;
-    for (sit = signals.begin(); sit != signals.end(); sit++) {
-        SubscribedSet::iterator it = subscribedSet.find(*sit);
+    for (unsigned i = 0; i < n; i++) {
+        SubscribedSet::iterator it = subscribedSet.find(s[i]);
         if (it != subscribedSet.end())
-            activeSet[*sit] = &(it->second);
+            activeSet[s[i]] = &(it->second);
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::process(MsrXml::Element *parent, const HRTLab::Receiver &receiver)
-{
-    switch (receiver.type) {
-        case HRTLab::Receiver::NewSignals:
-            newSignalList(receiver);
-            break;
-
-        case HRTLab::Receiver::Data:
-            newValues(parent, receiver);
-            break;
-
-        default:
-            break;
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Task::newValues(MsrXml::Element *parent, const HRTLab::Receiver &receiver)
+void Task::newSignalValues(MsrXml::Element *parent,
+        const HRTLab::Receiver &receiver)
 {
     for (ActiveSet::iterator it = activeSet.begin();
             it != activeSet.end(); it++) {

@@ -6,6 +6,7 @@
 #define RECEIVER_H
 
 #include <list>
+#include <map>
 
 struct timespec;
 
@@ -16,17 +17,15 @@ class Signal;
 
 class Receiver {
     public:
-        Receiver();
+        Receiver(unsigned int tid);
         virtual ~Receiver();
 
-        unsigned int tid;
-        struct timespec *time;
-        enum {NewSignals, Data, NOOP} type;
+        unsigned int const tid;
+        unsigned int seqNo;
+        const struct timespec *time;
 
-        typedef std::list<const Signal*> SignalList;
-        const SignalList& getSignals() const;
-        
         virtual const char *getValue(const Signal*) const = 0;
+        virtual void process(Session *) = 0;
 
     private:
 };

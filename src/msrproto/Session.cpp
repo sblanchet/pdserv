@@ -139,11 +139,7 @@ void Session::requestOutput()
 void Session::expired()
 {
     // Read and process the incoming data
-    const HRTLab::Receiver& receiver = rxPdo();
-
-    dataTag.setAttribute("time", *receiver.time);
-
-    task[receiver.tid]->process(&dataTag, receiver);
+    rxPdo();
 
     if (!quiet and dataTag.hasChildren())
         outbuf << dataTag << std::flush;
@@ -215,13 +211,16 @@ void Session::disconnect()
 void Session::newSignalList(unsigned int tid,
         const HRTLab::Signal * const *v, size_t n)
 {
+    task[tid]->newSignalList(v, n);
 //    cout << __PRETTY_FUNCTION__ << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newPdoData(unsigned int tid, unsigned int seqNo,
-                const struct timespec *time)
+void Session::newSignalData(const HRTLab::Receiver &receiver)
 {
+    dataTag.setAttribute("time", *receiver.time);
+
+    task[receiver.tid]->newSignalValues(&dataTag, receiver);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -363,7 +362,7 @@ void Session::readChannel(const Attr &attr)
         }
 
         char buf[buflen];
-        main->poll(signalList, signalCount, buf);
+//        main->poll(signalList, signalCount, buf);
 
         MsrXml::Element channels("channels");
         for (size_t i = 0; i < signalCount; i++) {

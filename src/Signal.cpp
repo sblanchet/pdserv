@@ -25,8 +25,14 @@ Signal::Signal( Main *main,
         unsigned int ndims,
         const size_t *dim):
     Variable(path, dtype, ndims, dim),
-    decimation(decimation), task(task)
+    decimation(decimation), task(task), main(main)
 {
     main->newSignal(this);
 //    cout << __func__ << index << endl;
+}
+
+//////////////////////////////////////////////////////////////////////
+Signal::~Signal()
+{
+    main->delSignal(this);
 }

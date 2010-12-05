@@ -48,8 +48,6 @@ class Main: public HRTLab::Main {
         int setParameter(const HRTLab::Parameter *p, const char *data) const;
         void pollParameter(const Parameter *,
                 char *buf, struct timespec *) const;
-        void pollSignal(const Signal *,
-                char *buf, struct timespec *) const;
 
         static const double bufferTime = 2;
 
@@ -100,7 +98,7 @@ class Main: public HRTLab::Main {
                 size_t nelem, char *buf) const;
         int setParameters(const HRTLab::Parameter * const *p, size_t nelem,
                 const char *data) const;
-        HRTLab::Receiver *newReceiver(HRTLab::Session *);
+        HRTLab::Receiver *newReceiver(unsigned int tid);
 };
 
 #endif // LIB_MAIN_H

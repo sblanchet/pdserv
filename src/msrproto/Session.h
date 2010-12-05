@@ -94,8 +94,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         // Reimplemented from HRTLab::Session
         void newSignalList(unsigned int tid,
                 const HRTLab::Signal * const *, size_t n);
-        void newPdoData(unsigned int tid, unsigned int seqNo,
-                const struct timespec *t);
+        void newSignalData(const HRTLab::Receiver&);
 
         // Management variables
         bool writeAccess;

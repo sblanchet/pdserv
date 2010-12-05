@@ -84,6 +84,30 @@ int Main::newSignal(const Signal *s)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+const Main::Signals& Main::getSignals() const
+{
+    return signals;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Main::Parameters& Main::getParameters() const
+{
+    return parameters;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::delSignal(const Signal *s)
+{
+    variableMap.erase(s->path);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::delParameter(const Parameter *p)
+{
+    variableMap.erase(p->path);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 int Main::newParameter(const Parameter *p)
 {
     if (variableMap.find(p->path) != variableMap.end())
@@ -109,4 +133,27 @@ int Main::startProtocols()
     msrproto->join();
 
     return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::parametersChanged(const Parameter * const *p,
+                size_t nelem) const
+{
+//    msrproto->parametersChanged(p, nelem);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Signal *Main::getSignal(const std::string& path) const
+{
+    const VariableMap::const_iterator it(variableMap.find(path));
+    return dynamic_cast<const Signal*>(
+            it != variableMap.end() ? it->second : 0);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Parameter *Main::getParameter(const std::string& path) const
+{
+    const VariableMap::const_iterator it(variableMap.find(path));
+    return dynamic_cast<const Parameter*>(
+            it != variableMap.end() ? it->second : 0);
 }

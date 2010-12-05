@@ -25,11 +25,15 @@ class Session {
 
         SessionStatistics getStatistics() const;
 
-        const Receiver& rxPdo();
+        // These methods are called from within the context of rxPdo
+        virtual void newSignalList(unsigned int tid,
+                const Signal * const *, size_t n) = 0;
+        virtual void newSignalData(const Receiver&) = 0;
+
+        void rxPdo();
 
     protected:
         Main * const main;
-        Receiver * const receiver;
 
         size_t inBytes;
         size_t outBytes;
@@ -37,6 +41,7 @@ class Session {
         std::string client;
 
     private:
+        Receiver ** const receiver;
 
         struct timespec connectedTime;
 };
