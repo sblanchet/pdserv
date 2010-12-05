@@ -98,6 +98,8 @@ void Task::addSignal(const HRTLab::Signal *signal,
 /////////////////////////////////////////////////////////////////////////////
 void Task::newSignalList(const HRTLab::Signal * const *s, size_t n)
 {
+    return;
+
     // Since it is not (should not be!) possible that required signal 
     // is not transmitted any more, only need to check for new signals
     for (unsigned i = 0; i < n; i++) {
@@ -111,6 +113,7 @@ void Task::newSignalList(const HRTLab::Signal * const *s, size_t n)
 void Task::newSignalValues(MsrXml::Element *parent,
         const HRTLab::Receiver &receiver)
 {
+    return;
     for (ActiveSet::iterator it = activeSet.begin();
             it != activeSet.end(); it++) {
 

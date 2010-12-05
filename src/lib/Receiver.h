@@ -10,7 +10,7 @@
 
 class Receiver: public HRTLab::Receiver {
     public:
-        Receiver(unsigned int tid);
+        Receiver(unsigned int tid, TxFrame *start);
         ~Receiver();
 
     private:

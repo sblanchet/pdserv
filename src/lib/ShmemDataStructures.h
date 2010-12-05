@@ -7,6 +7,10 @@
 
 #include <ctime>
 
+namespace HRTLab {
+    class Signal;
+}
+
 class Signal;
 
 struct Instruction {
@@ -25,7 +29,7 @@ struct TxFrame {
         } pdo;
         struct {
             unsigned int count;
-            const Signal *signal[];
+            const HRTLab::Signal *signal[];
         } list;
     };
 };

@@ -2,11 +2,21 @@
  * $Id$
  *****************************************************************************/
 
+#include "config.h"
+#ifdef DEBUG
+#include <iostream>
+using std::cout;
+using std::cerr;
+using std::endl;
+#endif
+
 #include "Receiver.h"
 #include "../Session.h"
+#include "../Signal.h"
 
 ////////////////////////////////////////////////////////////////////////////
-Receiver::Receiver(unsigned int tid): HRTLab::Receiver(tid)
+Receiver::Receiver(unsigned int tid, TxFrame *start):
+    HRTLab::Receiver(tid), rxPtr(start)
 {
 }
 
@@ -24,37 +34,37 @@ const char *Receiver::getValue(const HRTLab::Signal *s) const
 ////////////////////////////////////////////////////////////////////////////
 void Receiver::process(HRTLab::Session *session)
 {
-//     while (rxPtr->next) {
-//         switch (rxPtr->type) {
-//             case TxFrame::PdoData:
-//                 session->newPdoData(rxPtr->pdo.seqNo, &rxPtr->pdo.time);
-//                 break;
-// 
-//             case TxFrame::PdoList:
-//                 {
-//                     HRTLab::Signal signalList[rxPtr->list.count];
-//                     size_t pdoMem = 0;
-//
-//                     for (size_t i = 0; i < rxPtr->list.count; i++) {
-//                         Signal *s  = rxPtr->list.signal[i];
-//                         signalList[i] = s;
-//                         signalOffset[s->index] = pdoMem;
-//                         pdoMem += s->memSize;
-//                     }
-//
-//                     session->newSignalList(this, signalList,
-//                             rxPtr->list.count);
-//                 }
-//                 break;
-//         }
-// 
-// //        cout << "Exchanging " << rxPtr << " with " << rxPtr->next << endl;
-//         rxPtr = rxPtr->next;
-// //        cout << "  next points to " << rxPtr->next << endl;
-//     }
-// 
-//     sessionRxPtr[s] = rxPtr;
-// 
+     while (rxPtr->next) {
+         switch (rxPtr->type) {
+             case TxFrame::PdoData:
+//                 cout << "session->newSignalData(*this);" << session << endl;
+                 seqNo = rxPtr->pdo.seqNo;
+                 time = &rxPtr->pdo.time;
+                 session->newSignalData(*this);
+                 break;
+ 
+             case TxFrame::PdoList:
+                 {
+                     size_t pdoMem = 0;
+
+                     for (size_t i = 0; i < rxPtr->list.count; i++) {
+                         const HRTLab::Signal *s = rxPtr->list.signal[i];
+
+                         offset[s] = pdoMem;
+                         pdoMem += s->memSize;
+                     }
+
+//                     cout << "session->newSignalList(tid," << endl;
+                     session->newSignalList(tid,
+                             rxPtr->list.signal, rxPtr->list.count);
+                 }
+                 break;
+         }
+ 
+ //        cout << "Exchanging " << rxPtr << " with " << rxPtr->next << endl;
+         rxPtr = rxPtr->next;
+ //        cout << "  next points to " << rxPtr->next << endl;
+     }
 }
 
 

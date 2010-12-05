@@ -48,7 +48,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     server(s), task(new Task*[main->nst]),
     dataTag("data"), outbuf(this), inbuf(this)
 {
-//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
     attach(ss);
 
     // Setup some internal variables
@@ -212,7 +212,6 @@ void Session::newSignalList(unsigned int tid,
         const HRTLab::Signal * const *v, size_t n)
 {
     task[tid]->newSignalList(v, n);
-//    cout << __PRETTY_FUNCTION__ << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////

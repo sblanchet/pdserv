@@ -15,6 +15,7 @@
 
 class Main;
 class Signal;
+class Receiver;
 
 class Task: public HRTLab::Task {
     public:
@@ -40,6 +41,8 @@ class Task: public HRTLab::Task {
         void unsubscribe(const Signal* const *, size_t n) const;
 
         void txPdo(const struct timespec *);
+
+        Receiver *newReceiver() const;
 
     private:
 

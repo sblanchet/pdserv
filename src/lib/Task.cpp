@@ -2,9 +2,19 @@
  * $Id$
  *****************************************************************************/
 
+#include "config.h"
+
+#ifdef DEBUG
+#include <iostream>
+using std::cout;
+using std::cerr;
+using std::endl;
+#endif
+
 #include "Task.h"
 #include "Main.h"
 #include "Signal.h"
+#include "Receiver.h"
 #include "Pointer.h"
 
 /////////////////////////////////////////////////////////////////////////////
@@ -44,6 +54,19 @@ void Task::init(void *shmem, void *shmem_end)
 
     txMemBegin = txFrame = ptr_align<TxFrame>(mailboxEnd);
     txMemEnd = shmem_end;
+
+    // Start with a dummy frame
+    txFrame->type = TxFrame::PdoList;
+    txFrame->list.count = 0;
+    nextTxFrame = &txFrame->next;
+    txFrame += 1;
+    txFrame->next = 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Receiver *Task::newReceiver() const
+{
+    return new Receiver(tid, txMemBegin);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -125,25 +148,20 @@ void Task::receive()
     do {
         const Signal *s = mailbox->signal;
         SignalSet &vs = subscriptionSet[s->subscriptionIndex];
-        SignalSet::iterator it = vs.find(s);
 
         switch (mailbox->instruction) {
             case Instruction::Insert:
-                if (it == vs.end()) {
-                    vs.insert(s);
-                    pdoMem += s->memSize;
-                    txPdoCount++;
+                vs.insert(s);
+                pdoMem += s->memSize;
+                txPdoCount++;
 //                    cout << "Instruction::Insert: " << v->path << endl;
-                }
                 break;
 
             case Instruction::Remove:
-                if (it != vs.end()) {
-                    vs.erase(it);
-                    pdoMem -= s->memSize;
-                    txPdoCount--;
+                vs.erase(s);
+                pdoMem -= s->memSize;
+                txPdoCount--;
 //                    cout << "Instruction::Remove: " << v->path << endl;
-                }
                 break;
 
             default:
@@ -164,7 +182,7 @@ void Task::receive()
     txFrame->next = 0;
     txFrame->type = TxFrame::PdoList;
     txFrame->list.count = txPdoCount;
-    const Signal **s = txFrame->list.signal;
+    const HRTLab::Signal **s = txFrame->list.signal;
     for (int i = 0; i < 4; i++) {
         for (SignalSet::const_iterator it = subscriptionSet[i].begin();
                 it != subscriptionSet[i].end(); it++) {
@@ -189,7 +207,7 @@ void Task::txPdo(const struct timespec *t)
 
     if ( txFrame->pdo.data + pdoMem >= txMemEnd) {
         txFrame = txMemBegin;
-//        cout << "rewind ";
+//        cout << "rewind " << endl;
     }
 
 //    cout << __func__ << " D " << (void*)txFrame;

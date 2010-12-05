@@ -322,6 +322,6 @@ Parameter *Main::newParameter(
 /////////////////////////////////////////////////////////////////////////////
 HRTLab::Receiver *Main::newReceiver(unsigned int tid)
 {
-    return new Receiver(tid);
+    return task[tid]->newReceiver();
 }
 
