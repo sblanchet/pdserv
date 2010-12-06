@@ -33,13 +33,11 @@ class Signal: public HRTLab::Signal {
 
         const size_t subscriptionIndex;
 
+        mutable std::set<const HRTLab::Session*> sessions;
+
     private:
 
         static const size_t index[HRTLab::Variable::maxWidth+1];
-
-        mutable ost::Semaphore mutex;
-
-        mutable std::set<const HRTLab::Session*> sessions;
 
         // Reimplemented from HRTLab::Variable
         void getValue(char *, struct timespec *) const;

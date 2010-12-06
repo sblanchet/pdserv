@@ -21,7 +21,7 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Task::Task(Session *s): session(s)
+Task::Task()
 {
 }
 
@@ -44,7 +44,6 @@ void Task::rmSignal(const HRTLab::Signal *signal)
         delete it->second.element;
         subscribedSet.erase(it);
         activeSet.erase(signal);
-        signal->unsubscribe(session);
     }
     else {
         for (SubscribedSet::iterator it = subscribedSet.begin();
@@ -54,7 +53,7 @@ void Task::rmSignal(const HRTLab::Signal *signal)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::addSignal(const HRTLab::Signal *signal,
+void Task::addSignal(const HRTLab::Signal *signal, unsigned int idx,
         bool event, unsigned int decimation, size_t blocksize,
         bool base64, size_t precision)
 {
@@ -89,10 +88,9 @@ void Task::addSignal(const HRTLab::Signal *signal,
         data + dataLen
     };
 
-    sd.element->setAttribute("c", session->getVariableIndex(signal));
+    sd.element->setAttribute("c", idx);
 
     subscribedSet[signal] = sd;
-    signal->subscribe(session);
 }
 
 /////////////////////////////////////////////////////////////////////////////

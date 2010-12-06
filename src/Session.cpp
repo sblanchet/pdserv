@@ -34,6 +34,8 @@ Session::Session(Main *m):
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
+    main->unsubscribe(this);
+
     for (unsigned int i = 0; i < main->nst; i++)
         delete receiver[i];
 

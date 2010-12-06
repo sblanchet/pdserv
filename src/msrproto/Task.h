@@ -22,11 +22,11 @@ class Session;
 
 class Task {
     public:
-        Task(Session *);
+        Task();
         ~Task();
 
         void rmSignal(const HRTLab::Signal *s);
-        void addSignal(const HRTLab::Signal *s,
+        void addSignal(const HRTLab::Signal *s, unsigned int idx,
                 bool event, unsigned int decimation, size_t blocksize,
                 bool base64, size_t precision);
 
@@ -36,7 +36,6 @@ class Task {
         void sync();
 
     private:
-        Session * const session;
 
         struct SignalData {
             const HRTLab::Signal *signal;

@@ -327,3 +327,11 @@ HRTLab::Receiver *Main::newReceiver(unsigned int tid)
     return task[tid]->newReceiver();
 }
 
+/////////////////////////////////////////////////////////////////////////////
+void Main::unsubscribe(const HRTLab::Session *session,
+        const HRTLab::Signal * const *s, size_t n)
+{
+    for (Task ** t = task; t != task + nst; t++)
+        (*t)->unsubscribe(session, s, n);
+}
+

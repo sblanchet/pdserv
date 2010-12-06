@@ -59,7 +59,7 @@ Session::Session( Server *s, ost::SocketService *ss,
 
     // Create enough tasks
     for (size_t i = 0; i < main->nst; i++) {
-        task[i] = new Task(this);
+        task[i] = new Task();
     }
 
     // Non-blocking read() and write()
@@ -624,6 +624,19 @@ void Session::xsad(const Attr &attr)
     bool foundReduction = false, foundBlocksize = false;
     std::list<unsigned int> indexList;
 
+    // Quiet will stop all transmission of <data> tags until
+    // sync is called
+    quiet = attr.isTrue("quiet");
+
+    // Calling sync will reset all the channel buffers so that they
+    // all start together again
+    if (attr.isTrue("sync")) {
+        for (Task **t = task; t != task + main->nst; t++) {
+            (*t)->sync();
+        }
+        quiet = false;
+    }
+
     if (attr.getUnsignedList("channels", indexList)) {
         for ( std::list<unsigned int>::const_iterator it(indexList.begin());
                 it != indexList.end(); it++) {
@@ -665,18 +678,6 @@ void Session::xsad(const Attr &attr)
         precision = 10;
     }
 
-    // Quiet will stop all transmission of <data> tags until
-    // sync is called
-    quiet = attr.isTrue("quiet");
-
-    // Calling sync will reset all the channel buffers so that they
-    // all start together again
-    if (attr.isTrue("sync")) {
-        for (Task **t = task; t != task + main->nst; t++) {
-            (*t)->sync();
-        }
-        quiet = false;
-    }
 
     const HRTLab::Signal *signals[channelList.size()];
     std::copy(channelList.begin(), channelList.end(), signals);
@@ -704,8 +705,9 @@ void Session::xsad(const Attr &attr)
             reduction = 1;
         }
 
-        task[(*sp)->task->tid]->addSignal(
-                *sp, event, reduction, blocksize, base64, precision);
+        task[(*sp)->task->tid]->addSignal( *sp, getVariableIndex(*sp),
+                event, reduction, blocksize, base64, precision);
+        (*sp)->subscribe(this);
     }
 }
 
@@ -726,11 +728,15 @@ void Session::xsod(const Attr &attr)
         const HRTLab::Signal *signals[channelList.size()];
         std::copy(channelList.begin(), channelList.end(), signals);
         for (const HRTLab::Signal **sp = signals;
-                sp != signals + channelList.size(); sp++)
+                sp != signals + channelList.size(); sp++) {
             task[(*sp)->task->tid]->rmSignal(*sp);
+            (*sp)->unsubscribe(this);
+        }
     }
     else {
-        for (size_t i = 0; i < main->nst; i++)
+        for (size_t i = 0; i < main->nst; i++) {
             task[i]->rmSignal(0);
+            main->unsubscribe(this);
+        }
     }
 }

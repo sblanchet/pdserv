@@ -31,7 +31,7 @@ Signal::Signal(Main *main,
         unsigned int ndims,
         const size_t *dim):
     HRTLab::Signal(main, task, decimation, path, dtype, ndims, dim),
-    addr(addr), task(task), subscriptionIndex(index[width]), mutex(1)
+    addr(addr), task(task), subscriptionIndex(index[width])
 {
     //cout << __func__ << " addr = " << addr << endl;
 }
@@ -39,25 +39,15 @@ Signal::Signal(Main *main,
 //////////////////////////////////////////////////////////////////////
 void Signal::subscribe(const HRTLab::Session *session) const
 {
-    ost::SemaphoreLock lock(mutex);
-
-    const Signal *s = this;
-    if (sessions.empty())
-        task->subscribe(&s, 1);
-
-    sessions.insert(session);
+    const HRTLab::Signal *s = this;
+    task->subscribe(session, &s, 1);
 }
 
 //////////////////////////////////////////////////////////////////////
 void Signal::unsubscribe(const HRTLab::Session *session) const
 {
-    ost::SemaphoreLock lock(mutex);
-
-    sessions.erase(session);
-
-    const Signal *s = this;
-    if (sessions.empty())
-        task->unsubscribe(&s, 1);
+    const HRTLab::Signal *s = this;
+    task->unsubscribe(session, &s, 1);
 }
 
 //////////////////////////////////////////////////////////////////////

@@ -70,46 +70,60 @@ Receiver *Task::newReceiver() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::subscribe(const Signal * const *s, size_t n) const
+void Task::subscribe(const HRTLab::Session *session,
+        const HRTLab::Signal * const *s, size_t n) const
 {
     ost::SemaphoreLock lock(mutex);
 
     while (n--) {
-        while (mailbox->instruction != Instruction::Clear)
-            ost::Thread::sleep(100);
+        const Signal *signal = dynamic_cast<const Signal *>(*s++);
+        if (signal->task != this)
+            continue;
 
-        txPdoCount++;
-        subscriptionSet[(*s)->subscriptionIndex].insert(*s);
-        mailbox->signal = *s;
-        pdoMem += (*s)->memSize;
-        mailbox->instruction = Instruction::Insert;
+        if (signal->sessions.empty()) {
+            while (mailbox->instruction != Instruction::Clear)
+                ost::Thread::sleep(100);
 
-        if (++mailbox == mailboxEnd)
-            mailbox = mailboxBegin;
+            txPdoCount++;
+            subscriptionSet[signal->subscriptionIndex].insert(signal);
+            mailbox->signal = signal;
+            pdoMem += signal->memSize;
+            mailbox->instruction = Instruction::Insert;
 
-        s++;
+            if (++mailbox == mailboxEnd)
+                mailbox = mailboxBegin;
+        }
+
+        signal->sessions.insert(session);
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::unsubscribe(const Signal * const *s, size_t n) const
+void Task::unsubscribe(const HRTLab::Session *session,
+        const HRTLab::Signal * const *s, size_t n) const
 {
     ost::SemaphoreLock lock(mutex);
 
     while (n--) {
-        while (mailbox->instruction != Instruction::Clear)
-            ost::Thread::sleep(100);
+        const Signal *signal = dynamic_cast<const Signal *>(*s++);
+        if (signal->task != this)
+            continue;
 
-        txPdoCount--;
-        subscriptionSet[(*s)->subscriptionIndex].erase(*s);
-        mailbox->signal = *s;
-        pdoMem -= (*s)->memSize;
-        mailbox->instruction = Instruction::Remove;
+        signal->sessions.erase(session);
 
-        if (++mailbox == mailboxEnd)
-            mailbox = mailboxBegin;
+        if (signal->sessions.empty()) {
+            while (mailbox->instruction != Instruction::Clear)
+                ost::Thread::sleep(100);
 
-        s++;
+            txPdoCount--;
+            subscriptionSet[signal->subscriptionIndex].erase(signal);
+            mailbox->signal = signal;
+            pdoMem -= signal->memSize;
+            mailbox->instruction = Instruction::Remove;
+
+            if (++mailbox == mailboxEnd)
+                mailbox = mailboxBegin;
+        }
     }
 }
 

@@ -33,8 +33,10 @@ class Task: public HRTLab::Task {
         size_t getShmemSpace(double t) const;
         void init(void *start, void *end);
 
-        void subscribe(const Signal* const *, size_t n) const;
-        void unsubscribe(const Signal* const *, size_t n) const;
+        void subscribe(const HRTLab::Session*,
+                const HRTLab::Signal* const *, size_t n) const;
+        void unsubscribe(const HRTLab::Session*,
+                const HRTLab::Signal* const * = 0, size_t n = 0) const;
 
         void txPdo(const struct timespec *);
 
