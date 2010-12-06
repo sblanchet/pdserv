@@ -31,7 +31,7 @@ class Signal: public Variable {
         virtual void subscribe(const Session *) const = 0;
         virtual void unsubscribe(const Session *) const = 0;
 
-    private:
+    protected:
 
         Main * const main;
 };

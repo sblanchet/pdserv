@@ -14,7 +14,7 @@ namespace HRTLab {
 class Signal;
 
 struct Instruction {
-    enum Type {Clear, Insert, Remove} instruction;
+    enum Type {Clear = 0, Insert, Remove} instruction;
     const Signal *signal;
 };
 

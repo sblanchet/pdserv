@@ -33,6 +33,7 @@ Signal::Signal(Main *main,
     HRTLab::Signal(main, task, decimation, path, dtype, ndims, dim),
     addr(addr), task(task), subscriptionIndex(index[width]), mutex(1)
 {
+    //cout << __func__ << " addr = " << addr << endl;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -62,5 +63,6 @@ void Signal::unsubscribe(const HRTLab::Session *session) const
 //////////////////////////////////////////////////////////////////////
 void Signal::getValue(char *buf, struct timespec *t) const
 {
-    task->poll(this, buf, t);
+    const HRTLab::Signal *s = this;
+    main->getValues(&s, 1, buf);
 }

@@ -339,7 +339,7 @@ void Session::readChannel(const Attr &attr)
     }
     else {
         size_t buflen = 0;
-        size_t bufOffset[signalCount];
+        std::map<const HRTLab::Signal*, size_t> bufOffset;
         const HRTLab::Signal *signalList[signalCount];
 
         typedef std::list<const HRTLab::Signal*> SignalList;
@@ -348,27 +348,31 @@ void Session::readChannel(const Attr &attr)
         for (size_t i = 0; i < signalCount; i++) {
             s = signal[i];
             orderedSignals[s->width - 1].push_back(s);
-            bufOffset[i] = buflen;
-            buflen += s->memSize;
         }
 
         index = 0;
         for (size_t w = 8; w; w /= 2) {
             for (SignalList::const_iterator it = orderedSignals[w-1].begin();
                     it != orderedSignals[w-1].end(); it++) {
-                signalList[index++] = *it;
+                s = *it;
+
+                signalList[index] = s;
+                bufOffset[s] = buflen;
+                buflen += s->memSize;
+
+                index++;
             }
         }
 
         char buf[buflen];
-//        main->poll(signalList, signalCount, buf);
+        main->getValues(signalList, signalCount, buf);
 
         MsrXml::Element channels("channels");
         for (size_t i = 0; i < signalCount; i++) {
             s = signal[i];
 
             MsrXml::Element *c = channels.createChild("channel");
-            c->setChannelAttributes(s, i, shortReply, buf + bufOffset[i]);
+            c->setChannelAttributes(s, i, shortReply, buf + bufOffset[s]);
         }
 
         outbuf << channels << std::flush;

@@ -33,10 +33,6 @@ class Task: public HRTLab::Task {
         size_t getShmemSpace(double t) const;
         void init(void *start, void *end);
 
-        void poll(const Signal *s, char *buf, struct timespec *) const;
-        void poll(const Signal * const *s, size_t n,
-                char *buf, struct timespec *) const;
-
         void subscribe(const Signal* const *, size_t n) const;
         void unsubscribe(const Signal* const *, size_t n) const;
 

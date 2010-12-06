@@ -70,19 +70,6 @@ Receiver *Task::newReceiver() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::poll(const Signal *s, char *buf, struct timespec *t) const
-{
-    poll(&s, 1, buf, t);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Task::poll(const Signal * const * s, size_t n,
-        char *buf, struct timespec *t) const
-{
-    ost::SemaphoreLock lock(mutex);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Task::subscribe(const Signal * const *s, size_t n) const
 {
     ost::SemaphoreLock lock(mutex);

@@ -94,7 +94,7 @@ class Main: public HRTLab::Main {
         // Reimplemented from HRTLab::Main
         int gettime(struct timespec *) const;
         void rxPdo(HRTLab::Session *);
-        int poll(const HRTLab::Signal * const *s,
+        void getValues(const HRTLab::Signal * const *s,
                 size_t nelem, char *buf) const;
         int setParameters(const HRTLab::Parameter * const *p, size_t nelem,
                 const char *data) const;

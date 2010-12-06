@@ -44,6 +44,8 @@ class Main {
         void delSignal(const Signal *);
         const Signals& getSignals() const;
         const Signal *getSignal(const std::string&) const;
+        virtual void getValues(
+                const Signal * const *, size_t nelem, char *buf) const = 0;
 
         typedef std::vector<const Parameter*> Parameters;
         int newParameter(const Parameter *);

@@ -172,7 +172,8 @@ void Main::pollParameter(const Parameter *,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::poll(const HRTLab::Signal * const *s, size_t nelem, char *buf) const
+void Main::getValues(
+        const HRTLab::Signal * const *s, size_t nelem, char *buf) const
 {
     ost::SemaphoreLock lock(sdoMutex);
 
@@ -195,8 +196,6 @@ int Main::poll(const HRTLab::Signal * const *s, size_t nelem, char *buf) const
         buf += len;
         s++;
     }
-
-    return sdo->errorCode;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -224,10 +223,12 @@ int Main::init()
         signalSize += (*it)->memSize;
     }
 
+    size_t sdoCount = std::max(signals.size(), parameters.size());
+
     shmem_len +=
         sizeof(*mtime) * parameters.size()
         + parameterSize + 8
-        + sizeof(*sdo)
+        + sizeof(*sdo) * sdoCount
         + std::max(parameterSize, signalSize);
 
     shmem = ::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
@@ -243,15 +244,15 @@ int Main::init()
     mtime         = ptr_align<struct timespec>(shmem);
     parameterData = ptr_align<char>(mtime + parameters.size());
     sdo           = ptr_align<SDOStruct>(parameterData + parameterSize);
-    sdoData       = ptr_align<char>(
-            sdo->signal + std::max(signals.size(), parameters.size()));
-//    cout
-//        << " shmem=" << shmem
-//        << " mtime=" << mtime
-//        << " parameterData=" << (void*)parameterData
-//        << " sdo=" << sdo
-//        << " sdoData=" << (void*)sdoData
-//        << endl;
+    sdoData       = ptr_align<char>(sdo->signal + sdoCount);
+
+    cout
+        << " shmem=" << shmem
+        << " mtime=" << mtime
+        << " parameterData=" << (void*)parameterData
+        << " sdo=" << sdo
+        << " sdoData=" << (void*)sdoData
+        << endl;
 
     char *buf = parameterData;
     for (size_t w = 8; w; w >>= 1) {
@@ -264,6 +265,7 @@ int Main::init()
         }
     }
 
+    buf = ptr_align<char>(sdoData + std::max(parameterSize, signalSize));
     for (unsigned int i = 0; i < nst; i++) {
         task[i]->init(buf, buf + taskMemSize[i]);
         buf += taskMemSize[i];
