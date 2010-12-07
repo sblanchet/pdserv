@@ -33,7 +33,8 @@ class Signal: public HRTLab::Signal {
 
         const size_t subscriptionIndex;
 
-        mutable std::set<const HRTLab::Session*> sessions;
+        typedef std::set<const HRTLab::Session*> SessionSet;
+        mutable SessionSet sessions;
 
     private:
 

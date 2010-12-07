@@ -340,6 +340,18 @@ HRTLab::Receiver *Main::newReceiver(unsigned int tid)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Main::subscribe(const HRTLab::Session *session,
+        const HRTLab::Signal * const *s, size_t n)
+{
+    size_t count = 0;
+    for (Task ** t = task; t != task + nst; t++) {
+        count += (*t)->subscribe(session, s, n);
+        if (count == n)
+            return;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Main::unsubscribe(const HRTLab::Session *session,
         const HRTLab::Signal * const *s, size_t n)
 {

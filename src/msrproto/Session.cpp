@@ -545,7 +545,7 @@ void Session::writeParameter(const Attr &attr)
         return;
     }
 
-    const HRTLab::Parameter *p;
+    const HRTLab::Parameter *p = 0;
 
     unsigned int index;
     std::string name;
@@ -553,9 +553,11 @@ void Session::writeParameter(const Attr &attr)
         p = main->getParameter(name);
     }
     else if (attr.getUnsigned("index", index)) {
-        p = parameter[index];
+        if (index < parameterCount)
+            p = parameter[index];
     }
-    else
+
+    if (!p)
         return;
     
     size_t startindex = 0;
@@ -694,27 +696,32 @@ void Session::xsad(const Attr &attr)
             if (!foundReduction)
                 // If user did not supply a reduction, limit to a 
                 // max of 10Hz automatically
-                reduction =
-                    std::max(1.0, 0.1 / (*sp)->task->sampleTime + 0.5);
+                reduction = 0.1 / (*sp)->task->sampleTime
+                    / (*sp)->decimation + 0.5;
         }
         else if (!foundReduction and !foundBlocksize) {
             // Quite possibly user input; choose reduction for 1Hz
-            reduction = std::max(1.0, 1.0 / (*sp)->task->sampleTime + 0.5);
+            reduction = 1.0 / (*sp)->task->sampleTime
+                / (*sp)->decimation + 0.5;
             blocksize = 1;
         }
         else if (foundReduction) {
             // Choose blocksize so that a datum is sent at 10Hz
-            blocksize =
-                std::max(1.0, 0.1 / (*sp)->task->sampleTime + 0.5);
+            blocksize = 0.1 / (*sp)->task->sampleTime
+                    / (*sp)->decimation + 0.5;
         }
         else if (foundBlocksize) {
             reduction = 1;
         }
 
+        if (!reduction) reduction = 1;
+        if (!blocksize) blocksize = 1;
+
         task[(*sp)->task->tid]->addSignal( *sp, getVariableIndex(*sp),
                 event, reduction, blocksize, base64, precision);
-        (*sp)->subscribe(this);
     }
+
+    main->subscribe(this, signals, channelList.size());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -736,8 +743,8 @@ void Session::xsod(const Attr &attr)
         for (const HRTLab::Signal **sp = signals;
                 sp != signals + channelList.size(); sp++) {
             task[(*sp)->task->tid]->rmSignal(*sp);
-            (*sp)->unsubscribe(this);
         }
+        main->unsubscribe(this, signals, channelList.size());
     }
     else {
         for (size_t i = 0; i < main->nst; i++) {

@@ -59,6 +59,8 @@ class Main {
         virtual int setParameters(const Parameter * const *p,
                 size_t nelem, const char *data) const = 0;
 
+        virtual void subscribe(const Session *,
+                const Signal * const * = 0, size_t n = 0) = 0;
         virtual void unsubscribe(const Session *,
                 const Signal * const * = 0, size_t n = 0) = 0;
 

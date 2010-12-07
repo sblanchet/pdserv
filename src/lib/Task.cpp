@@ -70,10 +70,11 @@ Receiver *Task::newReceiver() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::subscribe(const HRTLab::Session *session,
+size_t Task::subscribe(const HRTLab::Session *session,
         const HRTLab::Signal * const *s, size_t n) const
 {
     ost::SemaphoreLock lock(mutex);
+    size_t count = 0;
 
     while (n--) {
         const Signal *signal = dynamic_cast<const Signal *>(*s++);
@@ -82,7 +83,7 @@ void Task::subscribe(const HRTLab::Session *session,
 
         if (signal->sessions.empty()) {
             while (mailbox->instruction != Instruction::Clear)
-                ost::Thread::sleep(100);
+                ost::Thread::sleep(sampleTime * 1000 / 2);
 
             txPdoCount++;
             subscriptionSet[signal->subscriptionIndex].insert(signal);
@@ -95,25 +96,41 @@ void Task::subscribe(const HRTLab::Session *session,
         }
 
         signal->sessions.insert(session);
+        count++;
     }
+
+    return count;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::unsubscribe(const HRTLab::Session *session,
+size_t Task::unsubscribe(const HRTLab::Session *session,
         const HRTLab::Signal * const *s, size_t n) const
 {
+//    cout << __PRETTY_FUNCTION__ << n << endl;
+    if (!s) {
+        const HRTLab::Signal *s[signals.size()];
+
+        std::copy(signals.begin(), signals.end(), s);
+        return unsubscribe(session, s, signals.size());
+    }
+
     ost::SemaphoreLock lock(mutex);
+    size_t count = 0;
 
     while (n--) {
         const Signal *signal = dynamic_cast<const Signal *>(*s++);
         if (signal->task != this)
             continue;
 
-        signal->sessions.erase(session);
+        Signal::SessionSet::const_iterator it(signal->sessions.find(session));
 
+        if (it == signal->sessions.end())
+            continue;
+
+        signal->sessions.erase(it);
         if (signal->sessions.empty()) {
             while (mailbox->instruction != Instruction::Clear)
-                ost::Thread::sleep(100);
+                ost::Thread::sleep(sampleTime * 1000 / 2);
 
             txPdoCount--;
             subscriptionSet[signal->subscriptionIndex].erase(signal);
@@ -124,7 +141,11 @@ void Task::unsubscribe(const HRTLab::Session *session,
             if (++mailbox == mailboxEnd)
                 mailbox = mailboxBegin;
         }
+
+        count++;
     }
+
+    return count;
 }
 
 /////////////////////////////////////////////////////////////////////////////
