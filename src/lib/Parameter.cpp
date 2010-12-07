@@ -52,11 +52,14 @@ int Parameter::copy(unsigned int tid, char checkOnly,
 //////////////////////////////////////////////////////////////////////
 int Parameter::setValue(const char *valbuf) const
 {
-    return main->setParameter(this, valbuf);
+    const HRTLab::Parameter *p = this;
+    return
+        static_cast<const HRTLab::Main*>(main)->setParameters(&p, 1, valbuf);
 }
 
 //////////////////////////////////////////////////////////////////////
 void Parameter::getValue(char *buf, struct timespec* t) const
 {
-    main->pollParameter(this, buf, t);
+    const HRTLab::Parameter *p = this;
+    static_cast<const HRTLab::Main*>(main)->getValues(&p, 1, buf, t);
 }

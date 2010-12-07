@@ -54,5 +54,5 @@ void Signal::unsubscribe(const HRTLab::Session *session) const
 void Signal::getValue(char *buf, struct timespec *t) const
 {
     const HRTLab::Signal *s = this;
-    main->getValues(&s, 1, buf);
+    main->getValues(&s, 1, buf, t);
 }

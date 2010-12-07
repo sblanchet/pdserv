@@ -43,12 +43,6 @@ class Main: public HRTLab::Main {
                 unsigned int ndims = 1,
                 const unsigned int dim[] = 0);
 
-//        // Methods used by the clients to post instructions to the real-time
-//        // process
-        int setParameter(const HRTLab::Parameter *p, const char *data) const;
-        void pollParameter(const Parameter *,
-                char *buf, struct timespec *) const;
-
         static const double bufferTime = 2;
 
     private:
@@ -74,6 +68,7 @@ class Main: public HRTLab::Main {
             };
         } *sdo;
         mutable ost::Semaphore sdoMutex;
+        struct timespec *sdoTaskTime;
         char *sdoData;
 
         char *parameterData;
@@ -95,7 +90,9 @@ class Main: public HRTLab::Main {
         int gettime(struct timespec *) const;
         void rxPdo(HRTLab::Session *);
         void getValues(const HRTLab::Signal * const *s,
-                size_t nelem, char *buf) const;
+                size_t nelem, char *buf, struct timespec * = 0) const;
+        void getValues(const HRTLab::Parameter * const *p,
+                size_t nelem, char *buf, struct timespec * = 0) const;
         int setParameters(const HRTLab::Parameter * const *p, size_t nelem,
                 const char *data) const;
         HRTLab::Receiver *newReceiver(unsigned int tid);

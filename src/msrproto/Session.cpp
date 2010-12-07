@@ -337,7 +337,8 @@ void Session::readChannel(const Attr &attr)
         s = main->getSignal(path);
     }
     else if (attr.getUnsigned("index", index)) {
-        s = Session::signal[index];
+        if (index < signalCount)
+            s = Session::signal[index];
     }
     else {
         size_t buflen = 0;
@@ -382,13 +383,16 @@ void Session::readChannel(const Attr &attr)
     }
 
     // A single signal was requested
-    char buf[s->memSize];
-    s->getValue(buf);
+    if (s) {
+        char buf[s->memSize];
+        s->getValue(buf);
 
-    MsrXml::Element channel("channel");
-    channel.setChannelAttributes(s, variableIndexMap[signal], shortReply, buf);
+        MsrXml::Element channel("channel");
+        channel.setChannelAttributes(
+                s, variableIndexMap[signal], shortReply, buf);
 
-    outbuf << channel << std::flush;
+        outbuf << channel << std::flush;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -406,7 +410,8 @@ void Session::readParameter(const Attr &attr)
         p = main->getParameter(name);
     }
     else if (attr.getUnsigned("index", index)) {
-        p = parameter[index];
+        if (index < parameterCount)
+            p = parameter[index];
     }
     else {
         MsrXml::Element parameters("parameters");
@@ -420,9 +425,9 @@ void Session::readParameter(const Attr &attr)
     
     if (p) {
         MsrXml::Element parameter("parameter");
-        parameter.setParameterAttributes(p, variableIndexMap[p],
-                flags, shortReply, hex);
-        outbuf << p << std::flush;
+        parameter.setParameterAttributes(
+                p, variableIndexMap[p], flags, shortReply, hex);
+        outbuf << parameter << std::flush;
     }
 }
 

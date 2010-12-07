@@ -62,13 +62,6 @@ int Main::gettime(struct timespec* t) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(const HRTLab::Parameter *p,
-        const char *data) const
-{
-    return setParameters(&p, 1, data);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 int Main::setParameters(const HRTLab::Parameter * const *p, size_t nelem,
         const char *data) const
 {
@@ -79,11 +72,11 @@ int Main::setParameters(const HRTLab::Parameter * const *p, size_t nelem,
         delay = std::min(delay, (size_t)(task[i]->sampleTime * 1000 / 2));
 
     size_t len = 0;
-    for (size_t i = 0; i < nelem; i++)
-        len += p[i]->memSize;
-
-    for (size_t i = 0; i < nelem; i++)
+    for (size_t i = 0; i < nelem; i++) {
         sdo->parameter[i] = dynamic_cast<const Parameter*>(p[i]);
+        len += p[i]->memSize;
+    }
+
     std::copy(data, data+len, sdoData);
     sdo->count = nelem;
     sdo->type = SDOStruct::WriteParameter;
@@ -120,6 +113,7 @@ bool Main::processSdo(unsigned int tid, const struct timespec *time) const
             for (unsigned i = 0; i < sdo->count; i++) {
                 const Signal *s = sdo->signal[i];
                 if (s->task->tid == tid) {
+                    sdoTaskTime[task[tid]->tid] = *time;
 //                    cout << "copying from " << (void*)s->addr << " to "
 //                        << (void*)data
 //                        << " for " << s->path << endl;
@@ -174,20 +168,30 @@ void Main::update(int st, const struct timespec *time) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::pollParameter(const Parameter *,
-                char *buf, struct timespec *) const
+void Main::getValues(const HRTLab::Parameter * const *p, size_t nelem,
+                char *buf, struct timespec *time) const
 {
+    ost::SemaphoreLock lock(sdoMutex);
+    while (nelem--) {
+        const Parameter *param = dynamic_cast<const Parameter *>(*p++);
+        std::copy(param->shmemAddr, param->shmemAddr + param->memSize, buf);
+        buf += param->memSize;
+        if (time)
+            *time++ = param->mtime;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::getValues(
-        const HRTLab::Signal * const *s, size_t nelem, char *buf) const
+void Main::getValues( const HRTLab::Signal * const *s, size_t nelem,
+        char *buf, struct timespec *time) const
 {
     ost::SemaphoreLock lock(sdoMutex);
     size_t delay = 10;
+    size_t dataSize = 0;
 
     for (unsigned i = 0; i < nelem; i++) {
         sdo->signal[i] = dynamic_cast<const Signal*>(s[i]);
+        dataSize += s[i]->memSize;
         delay = std::max(delay, (size_t)(s[i]->task->sampleTime * 1000 / 2));
     }
     sdo->count = nelem;
@@ -195,21 +199,12 @@ void Main::getValues(
     sdo->reqId++;
 
     do {
-//        cout << " delay of " << delay << endl;
         ost::Thread::sleep(delay);
     } while (sdo->reqId != sdo->replyId);
 
-    char *p = sdoData;
-    while (nelem--) {
-        size_t len = (*s)->memSize;
-
-//        cout << "copying from " << (void*)p << " to " << (void*)buf
-//            << " for " << (*s)->path << endl;
-        std::copy(p, p + len, buf);
-        p += len;
-        buf += len;
-        s++;
-    }
+    std::copy(sdoData, sdoData + dataSize, buf);
+    while (time and nelem--)
+        *time++ = sdoTaskTime[(*s++)->task->tid];
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -243,6 +238,7 @@ int Main::init()
         sizeof(*mtime) * parameters.size()
         + parameterSize + 8
         + sizeof(*sdo) * sdoCount
+        + sizeof(*sdoTaskTime) * nst
         + std::max(parameterSize, signalSize);
 
     shmem = ::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
@@ -258,13 +254,15 @@ int Main::init()
     mtime         = ptr_align<struct timespec>(shmem);
     parameterData = ptr_align<char>(mtime + parameters.size());
     sdo           = ptr_align<SDOStruct>(parameterData + parameterSize);
-    sdoData       = ptr_align<char>(sdo->signal + sdoCount);
+    sdoTaskTime   = ptr_align<struct timespec>(sdo->signal + sdoCount);
+    sdoData       = ptr_align<char>(sdoTaskTime + nst);
 
     cout
         << " shmem=" << shmem
         << " mtime=" << mtime
         << " parameterData=" << (void*)parameterData
         << " sdo=" << sdo
+        << " sdoTaskTime=" << sdoTaskTime
         << " sdoData=" << (void*)sdoData
         << endl;
 

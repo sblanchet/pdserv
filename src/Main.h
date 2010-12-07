@@ -44,8 +44,11 @@ class Main {
         void delSignal(const Signal *);
         const Signals& getSignals() const;
         const Signal *getSignal(const std::string&) const;
-        virtual void getValues(
-                const Signal * const *, size_t nelem, char *buf) const = 0;
+
+        virtual void getValues( const Signal * const *, size_t nelem,
+                char *buf, struct timespec * = 0) const = 0;
+        virtual void getValues(const Parameter * const *, size_t nelem,
+                char *buf, struct timespec * = 0) const = 0;
 
         typedef std::vector<const Parameter*> Parameters;
         int newParameter(const Parameter *);
@@ -53,7 +56,6 @@ class Main {
         const Parameters& getParameters() const;
         const Parameter *getParameter(const std::string&) const;
 
-        int setParameter(const Parameter *p, const char *data) const;
         virtual int setParameters(const Parameter * const *p,
                 size_t nelem, const char *data) const = 0;
 
