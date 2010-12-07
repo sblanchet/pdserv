@@ -48,7 +48,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     server(s), task(new Task*[main->nst]),
     dataTag("data"), outbuf(this), inbuf(this)
 {
-    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
 
     // Setup some internal variables
     writeAccess = false;
@@ -79,6 +79,11 @@ Session::Session( Server *s, ost::SocketService *ss,
         parameter[idx] = p;
     }
 
+    // Non-blocking read() and write()
+    setCompletion(false);
+
+    attach(ss);
+
     // Greet the new client
     MsrXml::Element greeting("connected");
     greeting.setAttribute("name", "MSR");
@@ -88,11 +93,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     greeting.setAttribute("recievebufsize", 100000000);
     outbuf << greeting << std::flush;
 
-    // Non-blocking read() and write()
-    setCompletion(false);
     expired();
-
-    attach(ss);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -383,7 +384,6 @@ void Session::readChannel(const Attr &attr)
     // A single signal was requested
     char buf[s->memSize];
     s->getValue(buf);
-    //static_cast<const HRTLab::Variable*>(s)->getValue(buf, 0);
 
     MsrXml::Element channel("channel");
     channel.setChannelAttributes(s, variableIndexMap[signal], shortReply, buf);

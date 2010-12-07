@@ -73,6 +73,10 @@ int Main::setParameters(const HRTLab::Parameter * const *p, size_t nelem,
         const char *data) const
 {
     ost::SemaphoreLock lock(sdoMutex);
+    size_t delay = ~0U;
+
+    for (size_t i = 0; i < nst; i++)
+        delay = std::min(delay, (size_t)(task[i]->sampleTime * 1000 / 2));
 
     size_t len = 0;
     for (size_t i = 0; i < nelem; i++)
@@ -86,7 +90,7 @@ int Main::setParameters(const HRTLab::Parameter * const *p, size_t nelem,
     sdo->reqId++;
 
     do {
-        ost::Thread::sleep(100);
+        ost::Thread::sleep(delay);
     } while (sdo->reqId != sdo->replyId);
 
     if (!sdo->errorCode)
@@ -115,10 +119,14 @@ bool Main::processSdo(unsigned int tid, const struct timespec *time) const
         case SDOStruct::PollSignal:
             for (unsigned i = 0; i < sdo->count; i++) {
                 const Signal *s = sdo->signal[i];
-                if (s->task->tid == tid)
+                if (s->task->tid == tid) {
+//                    cout << "copying from " << (void*)s->addr << " to "
+//                        << (void*)data
+//                        << " for " << s->path << endl;
                     std::copy((const char *)s->addr,
                             (const char *)s->addr + s->memSize,
                             data);
+                }
                 else
                     finished = false;
                 data += s->memSize;
@@ -176,21 +184,27 @@ void Main::getValues(
         const HRTLab::Signal * const *s, size_t nelem, char *buf) const
 {
     ost::SemaphoreLock lock(sdoMutex);
+    size_t delay = 10;
 
-    for (unsigned i = 0; i < nelem; i++)
+    for (unsigned i = 0; i < nelem; i++) {
         sdo->signal[i] = dynamic_cast<const Signal*>(s[i]);
+        delay = std::max(delay, (size_t)(s[i]->task->sampleTime * 1000 / 2));
+    }
     sdo->count = nelem;
     sdo->type = SDOStruct::PollSignal;
     sdo->reqId++;
 
     do {
-        ost::Thread::sleep(100);
+//        cout << " delay of " << delay << endl;
+        ost::Thread::sleep(delay);
     } while (sdo->reqId != sdo->replyId);
 
     char *p = sdoData;
     while (nelem--) {
         size_t len = (*s)->memSize;
 
+//        cout << "copying from " << (void*)p << " to " << (void*)buf
+//            << " for " << (*s)->path << endl;
         std::copy(p, p + len, buf);
         p += len;
         buf += len;
