@@ -49,7 +49,6 @@ Session::Session( Server *s, ost::SocketService *ss,
     dataTag("data"), outbuf(this), inbuf(this)
 {
     cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
-    attach(ss);
 
     // Setup some internal variables
     writeAccess = false;
@@ -61,18 +60,6 @@ Session::Session( Server *s, ost::SocketService *ss,
     for (size_t i = 0; i < main->nst; i++) {
         task[i] = new Task();
     }
-
-    // Non-blocking read() and write()
-    setCompletion(false);
-
-    // Greet the new client
-    MsrXml::Element greeting("connected");
-    greeting.setAttribute("name", "MSR");
-    greeting.setAttribute("host", "localhost");
-    greeting.setAttribute("version", MSR_VERSION);
-    greeting.setAttribute("features", MSR_FEATURES);
-    greeting.setAttribute("recievebufsize", 100000000);
-    outbuf << greeting << std::flush;
 
     const HRTLab::Main::Signals& signals = main->getSignals();
     signalCount = signals.size();
@@ -92,7 +79,20 @@ Session::Session( Server *s, ost::SocketService *ss,
         parameter[idx] = p;
     }
 
+    // Greet the new client
+    MsrXml::Element greeting("connected");
+    greeting.setAttribute("name", "MSR");
+    greeting.setAttribute("host", "localhost");
+    greeting.setAttribute("version", MSR_VERSION);
+    greeting.setAttribute("features", MSR_FEATURES);
+    greeting.setAttribute("recievebufsize", 100000000);
+    outbuf << greeting << std::flush;
+
+    // Non-blocking read() and write()
+    setCompletion(false);
     expired();
+
+    attach(ss);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -152,7 +152,7 @@ void Session::expired()
 /////////////////////////////////////////////////////////////////////////////
 void Session::pending()
 {
-    //cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     int n, count;
     size_t inputLen = 0;
 
@@ -160,7 +160,8 @@ void Session::pending()
         count = inbuf.free();
         n = receive(inbuf.bufptr(), count);
 
-        //cout << std::string(inbuf.bufptr(), n);
+//        cout << std::string(inbuf.bufptr(), n);
+
         // No more data available or there was an error
         if (n <= 0)
             break;
