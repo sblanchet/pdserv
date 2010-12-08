@@ -31,7 +31,7 @@ class Server:public ost::Thread {
 
         void broadcast(Session *s, const MsrXml::Element&);
 
-        void parameterChanged(const HRTLab::Parameter* const *, size_t n);
+        void parametersChanged(const HRTLab::Parameter* const *, size_t n);
 
         void sessionClosed(Session *s);
 

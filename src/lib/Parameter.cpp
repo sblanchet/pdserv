@@ -28,6 +28,9 @@ Parameter::Parameter(
     HRTLab::Parameter(main, path, mode, dtype, ndims, dim),
     addr(addr), main(main)
 {
+    mtime.tv_sec = 0;
+    mtime.tv_nsec = 0;
+
     trigger = copy;
 }
 
@@ -40,6 +43,7 @@ Parameter::~Parameter()
 int Parameter::copy(unsigned int tid, char checkOnly,
         void *dst, const void *src, size_t len, void *)
 {
+    cout << __PRETTY_FUNCTION__ << checkOnly << endl;
     if (checkOnly)
         return 0;
 
@@ -50,9 +54,9 @@ int Parameter::copy(unsigned int tid, char checkOnly,
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::setValue(const char *valbuf) const
+int Parameter::setValue(const char *valbuf)
 {
-    const HRTLab::Parameter *p = this;
+    HRTLab::Parameter *p = this;
     return
         static_cast<const HRTLab::Main*>(main)->setParameters(&p, 1, valbuf);
 }

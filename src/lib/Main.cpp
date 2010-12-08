@@ -62,7 +62,7 @@ int Main::gettime(struct timespec* t) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameters(const HRTLab::Parameter * const *p, size_t nelem,
+int Main::setParameters(HRTLab::Parameter * const *p, size_t nelem,
         const char *data) const
 {
     ost::SemaphoreLock lock(sdoMutex);
@@ -86,8 +86,11 @@ int Main::setParameters(const HRTLab::Parameter * const *p, size_t nelem,
         ost::Thread::sleep(delay);
     } while (sdo->reqId != sdo->replyId);
 
-    if (!sdo->errorCode)
+    if (!sdo->errorCode) {
+        for (size_t i = 0; i < nelem; i++)
+            dynamic_cast<Parameter*>(p[i])->mtime = sdo->time;
         parametersChanged(p, nelem);
+    }
     
     return sdo->errorCode;
 }
@@ -107,7 +110,6 @@ bool Main::processSdo(unsigned int tid, const struct timespec *time) const
 
     bool finished = true;
     char *data = sdoData;
-    struct timespec t;
     switch (sdo->type) {
         case SDOStruct::PollSignal:
             for (unsigned i = 0; i < sdo->count; i++) {
@@ -128,11 +130,13 @@ bool Main::processSdo(unsigned int tid, const struct timespec *time) const
             break;
 
         case SDOStruct::WriteParameter:
-            gettime(&t);
+            gettime(&sdo->time);
             for (unsigned idx = 0; idx != sdo->count; idx++) {
                 const Parameter *p = sdo->parameter[idx];
                 sdo->errorCode =
                     (*p->trigger)(tid, 1, 0, data, p->memSize, p->priv_data);
+                cout << "SDOStruct::WriteParameter:check " << p->path
+                    << " errorcode " << sdo->errorCode << endl;
 
                 data += p->memSize;
 
@@ -142,14 +146,17 @@ bool Main::processSdo(unsigned int tid, const struct timespec *time) const
                 }
             }
 
+            cout << "SDOStruct::WriteParameter: errorcode " << sdo->errorCode << endl;
             if (sdo->errorCode)
                 break;
 
             data = sdoData;
             for (unsigned idx = 0; idx != sdo->count; idx++) {
                 const Parameter *p = sdo->parameter[idx];
+                cout << "SDOStruct::WriteParameter:copy " << p->path << endl;
 
-                (*p->trigger)(tid, 1, p->addr, data, p->memSize, p->priv_data);
+                (*p->trigger)(tid, 0, p->addr, data, p->memSize, p->priv_data);
+                std::copy(data, data + p->memSize, p->shmemAddr);
                 data += p->memSize;
             }
             break;

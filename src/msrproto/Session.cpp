@@ -72,9 +72,9 @@ Session::Session( Server *s, ost::SocketService *ss,
 
     const HRTLab::Main::Parameters& parameters = main->getParameters();
     parameterCount = parameters.size();
-    parameter = new const HRTLab::Parameter*[parameterCount];
+    parameter = new HRTLab::Parameter*[parameterCount];
     for (unsigned idx = 0; idx < parameterCount; idx++) {
-        const HRTLab::Parameter *p = parameters[idx];
+        HRTLab::Parameter *p = parameters[idx];
         variableIndexMap[parameters[idx]] = idx;
         parameter[idx] = p;
     }
@@ -113,14 +113,12 @@ void Session::broadcast(Session *s, const MsrXml::Element &element)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::parameterChanged(const HRTLab::Parameter * const *p, size_t n) 
+void Session::parametersChanged(const HRTLab::Parameter * const *p, size_t n) 
 {
     MsrXml::Element pu("pu");
     while (n--) {
-        if (*p) {
-//            pu.setAttribute("index", variableIndex[*p++]);
-            outbuf << pu << std::flush;
-        }
+        pu.setAttribute("index", getVariableIndex(*p++));
+        outbuf << pu << std::flush;
     }
 }
 
@@ -549,7 +547,7 @@ void Session::writeParameter(const Attr &attr)
         return;
     }
 
-    const HRTLab::Parameter *p = 0;
+    HRTLab::Parameter *p = 0;
 
     unsigned int index;
     std::string name;

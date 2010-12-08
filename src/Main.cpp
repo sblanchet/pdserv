@@ -72,7 +72,7 @@ void Main::getSessionStatistics(std::list<SessionStatistics>& stats) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::newSignal(const Signal *s)
+int Main::newSignal(Signal *s)
 {
     if (variableMap.find(s->path) != variableMap.end())
         return -EEXIST;
@@ -99,16 +99,18 @@ const Main::Parameters& Main::getParameters() const
 void Main::delSignal(const Signal *s)
 {
     variableMap.erase(s->path);
+    //FIXME: also remove from signals
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::delParameter(const Parameter *p)
 {
     variableMap.erase(p->path);
+    //FIXME: also remove from parameters
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::newParameter(const Parameter *p)
+int Main::newParameter(Parameter *p)
 {
     if (variableMap.find(p->path) != variableMap.end())
         return -EEXIST;
@@ -139,7 +141,7 @@ int Main::startProtocols()
 void Main::parametersChanged(const Parameter * const *p,
                 size_t nelem) const
 {
-//    msrproto->parametersChanged(p, nelem);
+    msrproto->parametersChanged(p, nelem);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -151,9 +153,9 @@ const Signal *Main::getSignal(const std::string& path) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const Parameter *Main::getParameter(const std::string& path) const
+Parameter *Main::getParameter(const std::string& path) const
 {
     const VariableMap::const_iterator it(variableMap.find(path));
-    return dynamic_cast<const Parameter*>(
+    return dynamic_cast<Parameter*>(
             it != variableMap.end() ? it->second : 0);
 }

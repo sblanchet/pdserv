@@ -66,7 +66,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         ~Session();
 
         void broadcast(Session *s, const MsrXml::Element &element);
-        void parameterChanged(const HRTLab::Parameter* const *, size_t n);
+        void parametersChanged(const HRTLab::Parameter* const *, size_t n);
         void requestOutput();
 
         void processCommand(const char *command, const Attr &attr);
@@ -83,7 +83,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         const HRTLab::Signal **signal;
 
         size_t parameterCount;
-        const HRTLab::Parameter **parameter;
+        HRTLab::Parameter **parameter;
 
         // Reimplemented from SocketPort
         void expired();

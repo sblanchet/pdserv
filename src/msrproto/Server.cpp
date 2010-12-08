@@ -75,10 +75,10 @@ void Server::getSessionStatistics(
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::parameterChanged(const HRTLab::Parameter * const *p, size_t n)
+void Server::parametersChanged(const HRTLab::Parameter * const *p, size_t n)
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
-        (*it)->parameterChanged(p, n);
+        (*it)->parametersChanged(p, n);
 }

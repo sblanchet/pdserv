@@ -93,7 +93,7 @@ class Main: public HRTLab::Main {
                 size_t nelem, char *buf, struct timespec * = 0) const;
         void getValues(const HRTLab::Parameter * const *p,
                 size_t nelem, char *buf, struct timespec * = 0) const;
-        int setParameters(const HRTLab::Parameter * const *p, size_t nelem,
+        int setParameters(HRTLab::Parameter * const *p, size_t nelem,
                 const char *data) const;
         HRTLab::Receiver *newReceiver(unsigned int tid);
         void subscribe(const HRTLab::Session *,

@@ -34,7 +34,7 @@ class Parameter: public HRTLab::Parameter {
         const Main * const main;
 
         // Reimplemented from HRTLab::Parameter
-        int setValue(const char *valbuf) const;
+        int setValue(const char *valbuf);
         void getValue(char *, struct timespec *t) const;
 
         // A default function used when paramcheck or paramupdate are not
