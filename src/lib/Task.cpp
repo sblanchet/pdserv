@@ -96,6 +96,7 @@ size_t Task::subscribe(const HRTLab::Session *session,
         }
 
         signal->sessions.insert(session);
+        sessionSubscription[session].insert(signal);
         count++;
     }
 
@@ -106,12 +107,13 @@ size_t Task::subscribe(const HRTLab::Session *session,
 size_t Task::unsubscribe(const HRTLab::Session *session,
         const HRTLab::Signal * const *s, size_t n) const
 {
-//    cout << __PRETTY_FUNCTION__ << n << endl;
+//    cout << __PRETTY_FUNCTION__ << s<< ' ' << n << endl;
     if (!s) {
-        const HRTLab::Signal *s[signals.size()];
+        const SignalSet& signalSet = sessionSubscription[session];
+        const HRTLab::Signal *s[signalSet.size()];
 
-        std::copy(signals.begin(), signals.end(), s);
-        return unsubscribe(session, s, signals.size());
+        std::copy(signalSet.begin(), signalSet.end(), s);
+        return unsubscribe(session, s, signalSet.size());
     }
 
     ost::SemaphoreLock lock(mutex);
@@ -127,7 +129,9 @@ size_t Task::unsubscribe(const HRTLab::Session *session,
         if (it == signal->sessions.end())
             continue;
 
+        sessionSubscription[session].erase(signal);
         signal->sessions.erase(it);
+
         if (signal->sessions.empty()) {
             while (mailbox->instruction != Instruction::Clear)
                 ost::Thread::sleep(sampleTime * 1000 / 2);

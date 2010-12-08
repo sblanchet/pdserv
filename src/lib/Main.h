@@ -97,9 +97,9 @@ class Main: public HRTLab::Main {
                 const char *data) const;
         HRTLab::Receiver *newReceiver(unsigned int tid);
         void subscribe(const HRTLab::Session *,
-                const HRTLab::Signal * const * = 0, size_t n = 0);
+                const HRTLab::Signal * const *, size_t n) const;
         void unsubscribe(const HRTLab::Session *,
-                const HRTLab::Signal * const * = 0, size_t n = 0);
+                const HRTLab::Signal * const * = 0, size_t n = 0) const;
 };
 
 #endif // LIB_MAIN_H

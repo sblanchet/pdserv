@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <set>
+#include <map>
 #include <cc++/thread.h>
 
 #include "../Task.h"
@@ -53,6 +54,10 @@ class Task: public HRTLab::Task {
         typedef std::set<const Signal*> SignalSet;
         SignalSet signals;
         mutable SignalSet subscriptionSet[4];
+
+        typedef std::map<const HRTLab::Session*, SignalSet>
+            SessionSubscription;
+        mutable SessionSubscription sessionSubscription;
 
         unsigned int seqNo;
 //        std::map<const Session*, SignalSet> session;
