@@ -27,10 +27,10 @@ class Task {
 
         void rmSignal(const HRTLab::Signal *s);
         void addSignal(const HRTLab::Signal *s, unsigned int idx,
-                bool event, unsigned int decimation, size_t blocksize,
-                bool base64, size_t precision);
+                bool event, bool sync, unsigned int decimation,
+                size_t blocksize, bool base64, size_t precision);
 
-        void newSignalList(const HRTLab::Signal * const *s, size_t n);
+        bool newSignalList(const HRTLab::Signal * const *s, size_t n);
         void newSignalValues(MsrXml::Element *, const HRTLab::Receiver&);
 
         void sync();
@@ -41,6 +41,7 @@ class Task {
             const HRTLab::Signal *signal;
             MsrXml::Element *element;
             bool event;
+            bool sync;
             unsigned int decimation;
             unsigned int trigger;
             size_t blocksize;

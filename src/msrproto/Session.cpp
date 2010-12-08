@@ -213,7 +213,11 @@ void Session::disconnect()
 void Session::newSignalList(unsigned int tid,
         const HRTLab::Signal * const *v, size_t n)
 {
-    task[tid]->newSignalList(v, n);
+    if (task[tid]->newSignalList(v, n)) {
+        for (size_t i = 0; i < main->nst; i++) {
+            task[i]->sync();
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -629,21 +633,13 @@ void Session::xsad(const Attr &attr)
     unsigned int reduction, blocksize, precision = 10;
     bool base64 = attr.isEqual("coding", "Base64");
     bool event = attr.isTrue("event");
+    bool sync = attr.isTrue("sync");
     bool foundReduction = false, foundBlocksize = false;
     std::list<unsigned int> indexList;
 
     // Quiet will stop all transmission of <data> tags until
     // sync is called
-    quiet = attr.isTrue("quiet");
-
-    // Calling sync will reset all the channel buffers so that they
-    // all start together again
-    if (attr.isTrue("sync")) {
-        for (Task **t = task; t != task + main->nst; t++) {
-            (*t)->sync();
-        }
-        quiet = false;
-    }
+    quiet = !sync and attr.isTrue("quiet");
 
     if (attr.getUnsignedList("channels", indexList)) {
         for ( std::list<unsigned int>::const_iterator it(indexList.begin());
@@ -652,8 +648,14 @@ void Session::xsad(const Attr &attr)
             channelList.push_back(signal[*it]);
         }
     }
-    else
+    else {
+        if (sync) {
+            for (size_t i = 0; i < main->nst; i++) {
+                task[i]->sync();
+            }
+        }
         return;
+    }
 
     if (attr.getUnsigned("reduction", reduction)) {
         if (!reduction) {
@@ -718,7 +720,7 @@ void Session::xsad(const Attr &attr)
         if (!blocksize) blocksize = 1;
 
         task[(*sp)->task->tid]->addSignal( *sp, getVariableIndex(*sp),
-                event, reduction, blocksize, base64, precision);
+                event, sync, reduction, blocksize, base64, precision);
     }
 
     main->subscribe(this, signals, channelList.size());

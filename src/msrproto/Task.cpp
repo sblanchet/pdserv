@@ -54,7 +54,7 @@ void Task::rmSignal(const HRTLab::Signal *signal)
 
 /////////////////////////////////////////////////////////////////////////////
 void Task::addSignal(const HRTLab::Signal *signal, unsigned int idx,
-        bool event, unsigned int decimation, size_t blocksize,
+        bool event, bool sync, unsigned int decimation, size_t blocksize,
         bool base64, size_t precision)
 {
     SubscribedSet::iterator it = subscribedSet.find(signal);
@@ -75,6 +75,7 @@ void Task::addSignal(const HRTLab::Signal *signal, unsigned int idx,
         signal,
         new MsrXml::Element("F"),
         event,
+        sync,
         decimation,
         0,      // trigger
         blocksize,
@@ -94,24 +95,31 @@ void Task::addSignal(const HRTLab::Signal *signal, unsigned int idx,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::newSignalList(const HRTLab::Signal * const *s, size_t n)
+bool Task::newSignalList(const HRTLab::Signal * const *s, size_t n)
 {
-    return;
+    bool sync = false;
 
     // Since it is not (should not be!) possible that required signal 
     // is not transmitted any more, only need to check for new signals
-    for (unsigned i = 0; i < n; i++) {
-        SubscribedSet::iterator it = subscribedSet.find(s[i]);
-        if (it != subscribedSet.end())
-            activeSet[s[i]] = &(it->second);
+    for (; n--; s++) {
+        SubscribedSet::iterator it = subscribedSet.find(*s);
+        if (it != subscribedSet.end()) {
+            activeSet[*s] = &(it->second);
+            if (it->second.sync) {
+                sync = true;
+                it->second.sync = false;
+            }
+        }
     }
+
+
+    return sync;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Task::newSignalValues(MsrXml::Element *parent,
         const HRTLab::Receiver &receiver)
 {
-    return;
     for (ActiveSet::iterator it = activeSet.begin();
             it != activeSet.end(); it++) {
 
@@ -156,3 +164,4 @@ void Task::sync()
         sd->data_pptr = sd->data_bptr;
     }
 }
+
