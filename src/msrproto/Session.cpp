@@ -239,26 +239,26 @@ void Session::processCommand(const char *command, const Attr &attr)
         void (Session::*func)(const Attr &attr);
     } cmds[] = {
         // First list most common commands
-        { 4, "ping",                    &Session::ping,},
-        { 2, "rs",                      &Session::readStatistics},
-        { 2, "wp",                      &Session::writeParameter,},
-        { 2, "rp",                      &Session::readParameter,},
-        { 4, "xsad",                    &Session::xsad,},
-        { 4, "xsod",                    &Session::xsod,},
-        { 4, "echo",                    &Session::echo,},
+        { 4, "ping",                    &Session::ping                  },
+        { 2, "rs",                      &Session::readStatistics        },
+        { 2, "wp",                      &Session::writeParameter        },
+        { 2, "rp",                      &Session::readParameter         },
+        { 4, "xsad",                    &Session::xsad                  },
+        { 4, "xsod",                    &Session::xsod                  },
+        { 4, "echo",                    &Session::echo                  },
 
         // Now comes the rest
-        { 2, "rc",                      &Session::readChannel,},
-        { 2, "rk",                      &Session::readChannel,},
-        { 3, "rpv",                     &Session::readParamValues,},
-        { 9, "broadcast",               &Session::broadcast,},
-        {11, "remote_host",             &Session::remoteHost,},
-        {12, "read_kanaele",            &Session::readChannel,},
-        {12, "read_statics",            &Session::readStatistics,},
-        {14, "read_parameter",          &Session::readParameter,},
-        {15, "read_statistics",         &Session::readStatistics,},
-        {15, "write_parameter",         &Session::writeParameter,},
-        {17, "read_param_values",       &Session::readParamValues,},
+        { 2, "rc",                      &Session::readChannel           },
+        { 2, "rk",                      &Session::readChannel           },
+        { 3, "rpv",                     &Session::readParamValues       },
+        { 9, "broadcast",               &Session::broadcast             },
+        {11, "remote_host",             &Session::remoteHost            },
+        {12, "read_kanaele",            &Session::readChannel           },
+        {12, "read_statics",            &Session::readStatistics        },
+        {14, "read_parameter",          &Session::readParameter },
+        {15, "read_statistics",         &Session::readStatistics        },
+        {15, "write_parameter",         &Session::writeParameter        },
+        {17, "read_param_values",       &Session::readParamValues       },
         {0,},
     };
 
@@ -645,7 +645,8 @@ void Session::xsad(const Attr &attr)
         for ( std::list<unsigned int>::const_iterator it(indexList.begin());
                 it != indexList.end(); it++) {
 
-            channelList.push_back(signal[*it]);
+            if (*it < signalCount)
+                channelList.push_back(signal[*it]);
         }
     }
     else {
@@ -737,7 +738,8 @@ void Session::xsod(const Attr &attr)
     if (attr.getUnsignedList("channels", intList)) {
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
-            channelList.push_back(signal[*it]);
+            if (*it < signalCount)
+                channelList.push_back(signal[*it]);
         }
 
         const HRTLab::Signal *signals[channelList.size()];

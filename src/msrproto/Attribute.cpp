@@ -176,8 +176,10 @@ bool Attr::getUnsignedList(const char *name,
         unsigned int i;
         char comma;
 
-        is >> i >> comma;
-        intList.push_back(i);
+        is >> i;
+        if (is)
+            intList.push_back(i);
+        is >> comma;
     }
 
     return true;
