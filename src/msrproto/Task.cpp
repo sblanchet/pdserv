@@ -68,6 +68,7 @@ void Task::addSignal(const HRTLab::Signal *signal, unsigned int idx,
         bool event, bool sync, unsigned int decimation, size_t blocksize,
         bool base64, size_t precision)
 {
+//    cout << __PRETTY_FUNCTION__ << signal->path << endl;
     SubscribedSet::iterator it = subscribedSet.find(signal);
     if (it != subscribedSet.end()) {
         delete[] it->second.data_bptr;
@@ -114,12 +115,13 @@ bool Task::newSignalList(const HRTLab::Signal * const *s, size_t n)
     // is not transmitted any more, only need to check for new signals
     for (; n--; s++) {
         SubscribedSet::iterator it = subscribedSet.find(*s);
-        if (it != subscribedSet.end()) {
-            activeSet[*s] = &(it->second);
-            if (it->second.sync) {
-                sync = true;
-                it->second.sync = false;
-            }
+        if (it == subscribedSet.end())
+            continue;
+
+        activeSet[*s] = &(it->second);
+        if (it->second.sync) {
+            sync = true;
+            it->second.sync = false;
         }
     }
 

@@ -87,7 +87,7 @@ Session::Session( Server *s, ost::SocketService *ss,
     // Greet the new client
     MsrXml::Element greeting("connected");
     greeting.setAttribute("name", "MSR");
-    greeting.setAttribute("host", "localhost");
+    greeting.setAttribute("host", "localhost"); // FIXME
     greeting.setAttribute("version", MSR_VERSION);
     greeting.setAttribute("features", MSR_FEATURES);
     greeting.setAttribute("recievebufsize", 100000000);

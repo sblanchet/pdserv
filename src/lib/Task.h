@@ -70,6 +70,8 @@ class Task: public HRTLab::Task {
 //
         Instruction *mailboxBegin, *mailboxEnd;
         mutable Instruction *mailbox;
+
+        void mail(Instruction::Type, const Signal * = 0) const;
 //
 //        struct TxFrame {
 //            TxFrame *next;

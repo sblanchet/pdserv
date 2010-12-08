@@ -70,11 +70,25 @@ Receiver *Task::newReceiver() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Task::mail(Instruction::Type instruction, const Signal *signal) const
+{
+    while (mailbox->instruction != Instruction::Clear)
+        ost::Thread::sleep(sampleTime * 1000 / 2);
+
+    mailbox->signal = signal;
+    mailbox->instruction = instruction;
+
+    if (++mailbox == mailboxEnd)
+        mailbox = mailboxBegin;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 size_t Task::subscribe(const HRTLab::Session *session,
         const HRTLab::Signal * const *s, size_t n) const
 {
     ost::SemaphoreLock lock(mutex);
     size_t count = 0;
+    bool reqSignalList = true;
 
     while (n--) {
         const Signal *signal = dynamic_cast<const Signal *>(*s++);
@@ -82,23 +96,22 @@ size_t Task::subscribe(const HRTLab::Session *session,
             continue;
 
         if (signal->sessions.empty()) {
-            while (mailbox->instruction != Instruction::Clear)
-                ost::Thread::sleep(sampleTime * 1000 / 2);
+            reqSignalList = false;
 
             txPdoCount++;
-            subscriptionSet[signal->subscriptionIndex].insert(signal);
-            mailbox->signal = signal;
             pdoMem += signal->memSize;
-            mailbox->instruction = Instruction::Insert;
+            subscriptionSet[signal->subscriptionIndex].insert(signal);
 
-            if (++mailbox == mailboxEnd)
-                mailbox = mailboxBegin;
+            mail(Instruction::Insert, signal);
         }
 
         signal->sessions.insert(session);
         sessionSubscription[session].insert(signal);
         count++;
     }
+
+    if (count and reqSignalList)
+        mail(Instruction::SignalList);
 
     return count;
 }
@@ -173,25 +186,27 @@ void Task::receive()
 {
     do {
         const Signal *s = mailbox->signal;
-        SignalSet &vs = subscriptionSet[s->subscriptionIndex];
+        if (s) {
+            SignalSet &vs = subscriptionSet[s->subscriptionIndex];
 
-        switch (mailbox->instruction) {
-            case Instruction::Insert:
-                vs.insert(s);
-                pdoMem += s->memSize;
-                txPdoCount++;
-//                    cout << "Instruction::Insert: " << v->path << endl;
-                break;
+            switch (mailbox->instruction) {
+                case Instruction::Insert:
+                    vs.insert(s);
+                    pdoMem += s->memSize;
+                    txPdoCount++;
+//                    cout << "Instruction::Insert: " << x->path << endl;
+                    break;
 
-            case Instruction::Remove:
-                vs.erase(s);
-                pdoMem -= s->memSize;
-                txPdoCount--;
+                case Instruction::Remove:
+                    vs.erase(s);
+                    pdoMem -= s->memSize;
+                    txPdoCount--;
 //                    cout << "Instruction::Remove: " << v->path << endl;
-                break;
+                    break;
 
-            default:
-                break;
+                default:
+                    break;
+            }
         }
 
         mailbox->instruction = Instruction::Clear;
