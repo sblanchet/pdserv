@@ -36,19 +36,30 @@ Task::~Task()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::rmSignal(const HRTLab::Signal *signal)
+void Task::rmSignal(const HRTLab::Signal * const *signal, size_t n)
 {
-    if (signal) {
-        SubscribedSet::iterator it = subscribedSet.find(signal);
+    if (!signal) {
+        // Remove all signals
+
+        n = subscribedSet.size();
+        size_t i = 0;
+
+        const HRTLab::Signal *signal[n];
+        for (SubscribedSet::const_iterator it = subscribedSet.begin();
+                it != subscribedSet.end(); it++)
+            signal[i++] = it->first;
+        return rmSignal(signal, subscribedSet.size());
+    }
+
+    for (; n--; signal++) {
+        SubscribedSet::iterator it = subscribedSet.find(*signal);
+        if (it == subscribedSet.end())
+            continue;
+
         delete[] it->second.data_bptr;
         delete it->second.element;
         subscribedSet.erase(it);
-        activeSet.erase(signal);
-    }
-    else {
-        for (SubscribedSet::iterator it = subscribedSet.begin();
-                it != subscribedSet.end(); it++)
-            rmSignal(it->first);
+        activeSet.erase(*signal);
     }
 }
 

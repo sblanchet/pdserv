@@ -742,16 +742,14 @@ void Session::xsod(const Attr &attr)
 
         const HRTLab::Signal *signals[channelList.size()];
         std::copy(channelList.begin(), channelList.end(), signals);
-        for (const HRTLab::Signal **sp = signals;
-                sp != signals + channelList.size(); sp++) {
-            task[(*sp)->task->tid]->rmSignal(*sp);
-        }
+        for (Task **t = task; t != task + main->nst; t++)
+            (*t)->rmSignal(signals, channelList.size());
+
         main->unsubscribe(this, signals, channelList.size());
     }
     else {
-        for (size_t i = 0; i < main->nst; i++) {
-            task[i]->rmSignal(0);
-            main->unsubscribe(this);
-        }
+        for (Task **t = task; t != task + main->nst; t++)
+            (*t)->rmSignal();
+        main->unsubscribe(this);
     }
 }

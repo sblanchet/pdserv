@@ -25,7 +25,7 @@ class Task {
         Task();
         ~Task();
 
-        void rmSignal(const HRTLab::Signal *s);
+        void rmSignal(const HRTLab::Signal * const *s = 0, size_t n = 0);
         void addSignal(const HRTLab::Signal *s, unsigned int idx,
                 bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
