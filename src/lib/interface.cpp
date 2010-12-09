@@ -41,8 +41,13 @@ struct variable *hrtlab_signal(
         const size_t dim[]
         )
 {
-    HRTLab::Variable *v = reinterpret_cast<Main*>(hrtlab)->newSignal(
-                path, datatype, addr, tid, decimation, n, dim);
+    Main *main = reinterpret_cast<Main*>(hrtlab);
+
+    if (tid >= main->nst)
+        return 0;
+
+    HRTLab::Variable *v = new Signal(main->task[tid],
+            decimation, path, datatype, addr, n, dim);
 
     return reinterpret_cast<struct variable *>(v);
 }
@@ -60,8 +65,8 @@ struct variable *hrtlab_parameter(
         void *_priv_data = 0
         )
 {
-    Main *main = reinterpret_cast<Main*>(hrtlab);
-    Parameter *p = main->newParameter( path, datatype, addr, mode, n, dim);
+    Parameter *p = new Parameter(reinterpret_cast<Main*>(hrtlab),
+            path, mode, datatype, addr, n, dim);
     p->trigger = _trigger;
     p->priv_data = _priv_data;
 

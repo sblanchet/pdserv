@@ -19,7 +19,6 @@ using std::endl;
 //////////////////////////////////////////////////////////////////////
 Parameter::Parameter(
         Main *main,
-        size_t index,
         const char *path,
         unsigned int mode,
         enum si_datatype_t dtype,
@@ -27,14 +26,10 @@ Parameter::Parameter(
         unsigned int ndims,
         const size_t *dim):
     HRTLab::Parameter(main, path, mode, dtype, ndims, dim),
-    index(index), addr(addr), main(main)
+    index(main->getParameters().size()), addr(addr)
 {
+    main->newParameter(this);
     trigger = copy;
-}
-
-//////////////////////////////////////////////////////////////////////
-Parameter::~Parameter()
-{
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -48,20 +43,6 @@ int Parameter::copy(unsigned int tid, char checkOnly,
     std::copy( reinterpret_cast<const char*>(src), 
             reinterpret_cast<const char*>(src)+len,
             reinterpret_cast<char*>(dst));
+
     return 0;
-}
-
-//////////////////////////////////////////////////////////////////////
-int Parameter::setValue(const char *valbuf) const
-{
-    const HRTLab::Parameter *p = this;
-    return
-        static_cast<const HRTLab::Main*>(main)->setParameters(&p, 1, valbuf);
-}
-
-//////////////////////////////////////////////////////////////////////
-void Parameter::getValue(char *buf, struct timespec* t) const
-{
-    const HRTLab::Parameter *p = this;
-    static_cast<const HRTLab::Main*>(main)->getValues(&p, 1, buf, t);
 }

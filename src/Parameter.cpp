@@ -5,7 +5,6 @@
 #include "config.h"
 
 #include <ctime>
-#include <algorithm>
 
 #include "Parameter.h"
 #include "Main.h"
@@ -28,7 +27,7 @@ Parameter::Parameter(
         unsigned int ndims,
         const size_t *dim):
     Variable(path, dtype, ndims, dim),
-    mode(mode), main(main)
+    main(main), mode(mode)
 {
     main->newParameter(this);
 }
@@ -36,5 +35,20 @@ Parameter::Parameter(
 //////////////////////////////////////////////////////////////////////
 Parameter::~Parameter()
 {
-    main->delParameter(this);
+//    main->delParameter(this);
+}
+
+
+//////////////////////////////////////////////////////////////////////
+int Parameter::setValue(const char *valbuf) const
+{
+    const Parameter* p = this;
+    return main->setParameters(&p, 1, valbuf);
+}
+
+//////////////////////////////////////////////////////////////////////
+void Parameter::getValue(char *buf, struct timespec* t) const
+{
+    const Parameter * p = this;
+    main->getValues(&p, 1, buf, t);
 }

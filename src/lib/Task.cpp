@@ -19,7 +19,7 @@ using std::endl;
 
 /////////////////////////////////////////////////////////////////////////////
 Task::Task(Main *main, unsigned int tid, double sampleTime):
-    HRTLab::Task(main, tid, sampleTime), main(main), mutex(1)
+    HRTLab::Task(main, tid, sampleTime), mutex(1)
 {
     pdoMem = 0;
     txPdoCount = 0;
@@ -32,6 +32,12 @@ Task::~Task()
     for (SignalSet::const_iterator it = signals.begin();
             it != signals.end(); it++)
         delete *it;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Task::SignalSet& Task::getSignalSet() const
+{
+    return signals;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -166,19 +172,9 @@ size_t Task::unsubscribe(const HRTLab::Session *session,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Signal *Task::newSignal(
-        const char *path,
-        enum si_datatype_t datatype,
-        const void *addr,
-        unsigned int decimation,
-        unsigned int ndims,
-        const unsigned int dim[])
+void Task::newSignal(const Signal* s)
 {
-    Signal *s = new Signal(main, this, signals.size(),
-            decimation, path, datatype, addr, ndims, dim);
     signals.insert(s);
-
-    return s;
 }
 
 /////////////////////////////////////////////////////////////////////////////

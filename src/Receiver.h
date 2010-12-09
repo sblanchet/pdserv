@@ -5,9 +5,6 @@
 #ifndef RECEIVER_H
 #define RECEIVER_H
 
-#include <list>
-#include <map>
-
 struct timespec;
 
 namespace HRTLab {

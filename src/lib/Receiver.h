@@ -5,6 +5,8 @@
 #ifndef LIB_RECEIVER_H
 #define LIB_RECEIVER_H
 
+#include <map>
+
 #include "../Receiver.h"
 #include "ShmemDataStructures.h"
 

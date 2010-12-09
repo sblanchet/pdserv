@@ -6,7 +6,6 @@
 
 #include "Session.h"
 #include "Main.h"
-#include "Signal.h"
 #include "Receiver.h"
 
 #ifdef DEBUG

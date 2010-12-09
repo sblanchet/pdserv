@@ -15,8 +15,7 @@ class Main;
 
 class Parameter: public Variable {
     public:
-        Parameter (
-                Main *main,
+        Parameter ( Main *main,
                 const char *path,
                 unsigned int mode,
                 enum si_datatype_t dtype,
@@ -25,12 +24,16 @@ class Parameter: public Variable {
 
         virtual ~Parameter();
 
+        const Main * const main;
+
         const unsigned int mode;
 
-        virtual int setValue(const char *valbuf) const = 0;
+        int setValue(const char *valbuf) const;
 
-    private:
-        Main * const main;
+        // Reimplemented from HRTLab::Variable
+        void getValue(char *buf, struct timespec* t = 0) const;
+
+    protected:
 };
 
 }

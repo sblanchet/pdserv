@@ -11,8 +11,8 @@
 #include "XmlDoc.h"
 #include "../Variable.h"
 #include "../Parameter.h"
-#include "../Task.h"
 #include "../Signal.h"
+#include "../Task.h"
 
 #include <stdint.h>
 #include <iomanip>

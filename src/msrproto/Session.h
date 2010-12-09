@@ -36,7 +36,6 @@
 
 #include <cc++/socketport.h> 
 #include <string>
-#include <vector>
 #include <map>
 
 #include "rtlab/etl_data_info.h"

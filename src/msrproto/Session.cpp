@@ -417,9 +417,10 @@ void Session::readParameter(const Attr &attr)
     }
     else {
         MsrXml::Element parameters("parameters");
-        for (size_t i = 0; i < parameterCount; i++)
+        for (size_t i = 0; i < parameterCount; i++) {
             parameters.createChild("parameter")->setParameterAttributes(
                     parameter[i], i, flags, shortReply, hex);
+        }
 
         outbuf << parameters << std::flush;
         return;

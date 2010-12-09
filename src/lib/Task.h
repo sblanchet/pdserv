@@ -23,13 +23,9 @@ class Task: public HRTLab::Task {
         Task(Main *main, unsigned int tid, double sampleTime);
         ~Task();
 
-        Signal *newSignal(
-                const char *path,
-                enum si_datatype_t datatype,
-                const void *addr,
-                unsigned int decimation,
-                unsigned int ndims = 1,
-                const unsigned int dim[] = 0);
+        typedef std::set<const Signal*> SignalSet;
+        void newSignal(const Signal*);
+        const SignalSet& getSignalSet() const;
 
         size_t getShmemSpace(double t) const;
         void init(void *start, void *end);
@@ -44,14 +40,10 @@ class Task: public HRTLab::Task {
         Receiver *newReceiver() const;
 
     private:
-
-        Main * const main;
-
         mutable ost::Semaphore mutex;
         mutable size_t pdoMem;
         mutable size_t txPdoCount;
 
-        typedef std::set<const Signal*> SignalSet;
         SignalSet signals;
         mutable SignalSet subscriptionSet[4];
 

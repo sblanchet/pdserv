@@ -7,7 +7,6 @@
 
 #include <string>
 #include <ctime>
-#include <vector>
 
 #include "SessionStatistics.h"
 

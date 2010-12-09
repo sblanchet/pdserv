@@ -9,7 +9,6 @@
 
 #include "XmlDoc.h"
 #include "Task.h"
-#include "Session.h"
 
 #ifdef DEBUG
 #include <iostream>

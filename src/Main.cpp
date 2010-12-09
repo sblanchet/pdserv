@@ -5,18 +5,11 @@
 #include "config.h"
 
 #include <cerrno>
-#include <cstdio>
-#include <cstring>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/time.h>
 
 #include "Main.h"
-#include "Task.h"
 #include "Signal.h"
 #include "Parameter.h"
-#include "Session.h"
-#include "etlproto/Server.h"
+//#include "etlproto/Server.h"
 #include "msrproto/Server.h"
 
 #ifdef DEBUG
@@ -31,8 +24,7 @@ using namespace HRTLab;
 /////////////////////////////////////////////////////////////////////////////
 Main::Main( const char *name, const char *version,
         double baserate, unsigned int nst):
-    name(name), version(version), baserate(baserate), nst(nst),
-    task(new Task*[nst])
+    name(name), version(version), baserate(baserate), nst(nst)
 {
     msrproto = 0;
 }
@@ -42,13 +34,9 @@ Main::~Main()
 {
     delete msrproto;
 
-    for (Signals::const_iterator it = signals.begin();
-            it != signals.end(); it++)
-        delete *it;
-
-    for (Parameters::const_iterator it = parameters.begin();
-            it != parameters.end(); it++)
-        delete *it;
+    for (VariableMap::const_iterator it = variableMap.begin();
+            it != variableMap.end(); it++)
+        delete it->second;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -93,20 +81,6 @@ const Main::Signals& Main::getSignals() const
 const Main::Parameters& Main::getParameters() const
 {
     return parameters;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::delSignal(const Signal *s)
-{
-    variableMap.erase(s->path);
-    //FIXME: also remove from signals
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::delParameter(const Parameter *p)
-{
-    variableMap.erase(p->path);
-    //FIXME: also remove from parameters
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -7,8 +7,8 @@
 using namespace HRTLab;
 
 /////////////////////////////////////////////////////////////////////////////
-Task::Task(const Main *m, unsigned int tid, double sampleTime):
-    tid(tid), sampleTime(sampleTime), main(m)
+Task::Task(Main *m, unsigned int tid, double sampleTime):
+    main(m), tid(tid), sampleTime(sampleTime)
 {
 }
 

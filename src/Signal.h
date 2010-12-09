@@ -2,8 +2,8 @@
  * $Id$
  *****************************************************************************/
 
-#ifndef SIGNAL
-#define SIGNAL
+#ifndef SIGNAL_H
+#define SIGNAL_H
 
 #include "Variable.h"
 
@@ -15,8 +15,7 @@ class Session;
 
 class Signal: public Variable {
     public:
-        Signal( Main *main,
-                const Task *task,
+        Signal( Task *task,
                 unsigned int decimation,
                 const char *path,
                 enum si_datatype_t dtype,
@@ -31,11 +30,13 @@ class Signal: public Variable {
         virtual void subscribe(const Session *) const = 0;
         virtual void unsubscribe(const Session *) const = 0;
 
-    protected:
+        // Reimplemented from HRTLab::Variable
+        void getValue(char *, struct timespec * = 0) const;
 
-        Main * const main;
+    private:
+
 };
 
 }
 
-#endif //SIGNAL
+#endif //SIGNAL_H

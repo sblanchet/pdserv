@@ -39,22 +39,20 @@ class Main {
 
         virtual int gettime(struct timespec *) const;
 
-        typedef std::vector<const Signal*> Signals;
-        int newSignal(Signal *);
-        void delSignal(const Signal *);
-        const Signals& getSignals() const;
-        const Signal *getSignal(const std::string&) const;
-
         virtual void getValues( const Signal * const *, size_t nelem,
                 char *buf, struct timespec * = 0) const = 0;
-        virtual void getValues(const Parameter * const *, size_t nelem,
+        virtual void getValues( const Parameter * const *, size_t nelem,
                 char *buf, struct timespec * = 0) const = 0;
 
+        typedef std::vector<const Signal*> Signals;
+        const Signals& getSignals() const;
+        const Signal *getSignal(const std::string&) const;
+        int newSignal(Signal *);
+
         typedef std::vector<const Parameter*> Parameters;
-        int newParameter(Parameter *);
-        void delParameter(const Parameter *);
         const Parameters& getParameters() const;
         const Parameter *getParameter(const std::string&) const;
+        int newParameter(Parameter *);
 
         virtual int setParameters(const Parameter * const *p,
                 size_t nelem, const char *data) const = 0;
@@ -71,6 +69,8 @@ class Main {
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 
     protected:
+        Signals signals;
+        Parameters parameters;
 
         void parametersChanged(const Parameter * const *p,
                 size_t nelem) const;
@@ -79,13 +79,8 @@ class Main {
 
     private:
 
-        Task ** const task;
-
         MsrProto::Server *msrproto;
 ////    EtlProto::Server etlproto(this);
-
-        Signals signals;
-        Parameters parameters;
 
         typedef std::map<const std::string, Variable*> VariableMap;
         VariableMap variableMap;

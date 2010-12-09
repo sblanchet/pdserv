@@ -19,9 +19,7 @@ class Main;
 
 class Signal: public HRTLab::Signal {
     public:
-        Signal( Main *main,
-                const Task *task,
-                size_t index,
+        Signal( Task *task,
                 unsigned int decimation,
                 const char *path,
                 enum si_datatype_t dtype,
@@ -40,11 +38,7 @@ class Signal: public HRTLab::Signal {
         mutable SessionSet sessions;
 
     private:
-
         static const size_t dataTypeIndex[HRTLab::Variable::maxWidth+1];
-
-        // Reimplemented from HRTLab::Variable
-        void getValue(char *, struct timespec *) const;
 
         // Reimplemented from HRTLab::Signal
         void subscribe(const HRTLab::Session *) const;

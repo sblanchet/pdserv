@@ -6,7 +6,6 @@
 
 #include "Signal.h"
 #include "Task.h"
-#include "Main.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -22,19 +21,18 @@ const size_t Signal::dataTypeIndex[HRTLab::Variable::maxWidth+1] = {
 };
 
 //////////////////////////////////////////////////////////////////////
-Signal::Signal(Main *main,
-        const Task *task,
-        size_t index,
+Signal::Signal( Task *task,
         unsigned int decimation,
         const char *path,
         enum si_datatype_t dtype,
         const void *addr,
         unsigned int ndims,
         const size_t *dim):
-    HRTLab::Signal(main, task, decimation, path, dtype, ndims, dim),
-    index(index), addr(addr), task(task),
+    HRTLab::Signal(task, decimation, path, dtype, ndims, dim),
+    index(task->getSignalSet().size()), addr(addr), task(task),
     subscriptionIndex(dataTypeIndex[width])
 {
+    task->newSignal(this);
     //cout << __func__ << " addr = " << addr << endl;
 }
 
@@ -50,11 +48,4 @@ void Signal::unsubscribe(const HRTLab::Session *session) const
 {
     const HRTLab::Signal *s = this;
     task->unsubscribe(session, &s, 1);
-}
-
-//////////////////////////////////////////////////////////////////////
-void Signal::getValue(char *buf, struct timespec *t) const
-{
-    const HRTLab::Signal *s = this;
-    main->getValues(&s, 1, buf, t);
 }

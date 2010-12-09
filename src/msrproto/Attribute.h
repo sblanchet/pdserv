@@ -5,8 +5,8 @@
 #ifndef MSRATTRIBUTE_H
 #define MSRATTRIBUTE_H
 
-#include <map>
 #include <list>
+#include <map>
 #include <string>
 
 namespace MsrProto {

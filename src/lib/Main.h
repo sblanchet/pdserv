@@ -23,32 +23,19 @@ class Main: public HRTLab::Main {
                 int (*gettime)(struct timespec*));
         ~Main();
 
+        Task ** const task;
+
         int init();
+        void newParameter(Parameter*);
         void update(int st, const struct timespec *time) const;
-
-        Signal *newSignal(
-                const char *path,
-                enum si_datatype_t datatype,
-                const void *addr,
-                unsigned int tid,
-                unsigned int decimation,
-                unsigned int ndims = 1,
-                const unsigned int dim[] = 0);
-
-        Parameter *newParameter(
-                const char *path,
-                enum si_datatype_t datatype,
-                void *addr,
-                unsigned int mode,
-                unsigned int ndims = 1,
-                const unsigned int dim[] = 0);
 
         static const double bufferTime = 2;
 
     private:
-        Task ** const task;
-
         mutable ost::Semaphore mutex;
+
+        typedef std::list<Parameter*> Parameters;
+        Parameters parameters;
 
         int pid;
 
@@ -74,9 +61,6 @@ class Main: public HRTLab::Main {
         char *parameterData;
 
         struct timespec *mtime;
-
-        typedef std::vector<Parameter*> ParameterList;
-        ParameterList parameters;
 
         // Methods used by the real-time process to interpret inbox
         // instructions from the clients

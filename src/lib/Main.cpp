@@ -44,10 +44,6 @@ Main::Main(int argc, const char *argv[],
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
-    for (ParameterList::const_iterator it = parameters.begin();
-            it != parameters.end(); it++)
-        delete *it;
-
     for (size_t i = 0; i < nst; i++)
         delete task[i];
     delete[] task;
@@ -135,8 +131,6 @@ bool Main::processSdo(unsigned int tid, const struct timespec *time) const
                 const Parameter *p = sdo->parameter[idx];
                 sdo->errorCode =
                     (*p->trigger)(tid, 1, 0, data, p->memSize, p->priv_data);
-                cout << "SDOStruct::WriteParameter:check " << p->path
-                    << " errorcode " << sdo->errorCode << endl;
 
                 data += p->memSize;
 
@@ -146,14 +140,12 @@ bool Main::processSdo(unsigned int tid, const struct timespec *time) const
                 }
             }
 
-            cout << "SDOStruct::WriteParameter: errorcode " << sdo->errorCode << endl;
             if (sdo->errorCode)
                 break;
 
             data = sdoData;
             for (unsigned idx = 0; idx != sdo->count; idx++) {
                 const Parameter *p = sdo->parameter[idx];
-                cout << "SDOStruct::WriteParameter:copy " << p->path << endl;
 
                 (*p->trigger)(tid, 0, p->addr, data, p->memSize, p->priv_data);
                 std::copy(data, data + p->memSize, p->shmemAddr);
@@ -224,9 +216,9 @@ int Main::init()
         shmem_len += taskMemSize[i];
     }
 
-    std::list<Parameter*> p[HRTLab::Variable::maxWidth+1];
+    Parameters p[HRTLab::Variable::maxWidth+1];
     size_t parameterSize = 0;
-    for (ParameterList::const_iterator it = parameters.begin();
+    for (Parameters::const_iterator it = parameters.begin();
             it != parameters.end(); it++) {
         p[(*it)->width].push_back(*it);
         parameterSize += (*it)->memSize;
@@ -275,7 +267,7 @@ int Main::init()
 
     char *buf = parameterData;
     for (size_t w = 8; w; w >>= 1) {
-        std::list<Parameter*>::iterator it;
+        Parameters::iterator it;
         for (it = p[w].begin(); it != p[w].end(); it++) {
             (*it)->shmemAddr = buf;
             std::copy((const char *)(*it)->addr,
@@ -307,37 +299,9 @@ int Main::init()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Signal *Main::newSignal(
-        const char *path,
-        enum si_datatype_t datatype,
-        const void *addr,
-        unsigned int tid,
-        unsigned int decimation,
-        unsigned int ndims,
-        const size_t dim[]
-        )
+void Main::newParameter(Parameter *p)
 {
-    if (tid >= nst)
-        return 0;
-
-    return
-        task[tid]->newSignal( path, datatype, addr, decimation, ndims, dim);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Parameter *Main::newParameter(
-        const char *path,
-        enum si_datatype_t datatype,
-        void *addr,
-        unsigned int mode,
-        unsigned int ndims,
-        const size_t dim[]
-        )
-{
-    Parameter *p = new Parameter(this, parameters.size(), path, mode, datatype, addr, ndims, dim);
     parameters.push_back(p);
-
-    return p;
 }
 
 /////////////////////////////////////////////////////////////////////////////
