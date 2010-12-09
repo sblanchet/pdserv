@@ -16,7 +16,7 @@ using std::endl;
 #endif
 
 //////////////////////////////////////////////////////////////////////
-const size_t Signal::index[HRTLab::Variable::maxWidth+1] = {
+const size_t Signal::dataTypeIndex[HRTLab::Variable::maxWidth+1] = {
     3 /*0*/, 3 /*1*/, 2 /*2*/, 3 /*3*/,
     1 /*4*/, 3 /*5*/, 3 /*6*/, 3 /*7*/, 0 /*8*/
 };
@@ -24,6 +24,7 @@ const size_t Signal::index[HRTLab::Variable::maxWidth+1] = {
 //////////////////////////////////////////////////////////////////////
 Signal::Signal(Main *main,
         const Task *task,
+        size_t index,
         unsigned int decimation,
         const char *path,
         enum si_datatype_t dtype,
@@ -31,7 +32,8 @@ Signal::Signal(Main *main,
         unsigned int ndims,
         const size_t *dim):
     HRTLab::Signal(main, task, decimation, path, dtype, ndims, dim),
-    addr(addr), task(task), subscriptionIndex(index[width])
+    index(index), addr(addr), task(task),
+    subscriptionIndex(dataTypeIndex[width])
 {
     //cout << __func__ << " addr = " << addr << endl;
 }

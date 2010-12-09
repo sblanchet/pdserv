@@ -19,6 +19,7 @@ using std::endl;
 //////////////////////////////////////////////////////////////////////
 Parameter::Parameter(
         Main *main,
+        size_t index,
         const char *path,
         unsigned int mode,
         enum si_datatype_t dtype,
@@ -26,7 +27,7 @@ Parameter::Parameter(
         unsigned int ndims,
         const size_t *dim):
     HRTLab::Parameter(main, path, mode, dtype, ndims, dim),
-    addr(addr), main(main)
+    index(index), addr(addr), main(main)
 {
     mtime.tv_sec = 0;
     mtime.tv_nsec = 0;

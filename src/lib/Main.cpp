@@ -334,7 +334,7 @@ Parameter *Main::newParameter(
         const size_t dim[]
         )
 {
-    Parameter *p = new Parameter(this, path, mode, datatype, addr, ndims, dim);
+    Parameter *p = new Parameter(this, parameters.size(), path, mode, datatype, addr, ndims, dim);
     parameters.push_back(p);
 
     return p;

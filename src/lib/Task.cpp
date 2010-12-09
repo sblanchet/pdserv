@@ -174,8 +174,8 @@ Signal *Task::newSignal(
         unsigned int ndims,
         const unsigned int dim[])
 {
-    Signal *s = 
-        new Signal(main, this, decimation, path, datatype, addr, ndims, dim);
+    Signal *s = new Signal(main, this, signals.size(),
+            decimation, path, datatype, addr, ndims, dim);
     signals.insert(s);
 
     return s;

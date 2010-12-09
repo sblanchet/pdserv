@@ -14,6 +14,7 @@ class Main;
 class Parameter: public HRTLab::Parameter {
     public:
         Parameter ( Main *main,
+                size_t index,
                 const char *path,
                 unsigned int mode,
                 enum si_datatype_t dtype,
@@ -22,6 +23,8 @@ class Parameter: public HRTLab::Parameter {
                 const size_t *dim = 0);
 
         ~Parameter();
+
+        const size_t index;
 
         void * const addr;      // Pointer to the real address
 

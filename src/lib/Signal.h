@@ -21,12 +21,15 @@ class Signal: public HRTLab::Signal {
     public:
         Signal( Main *main,
                 const Task *task,
+                size_t index,
                 unsigned int decimation,
                 const char *path,
                 enum si_datatype_t dtype,
                 const void *addr,
                 unsigned int ndims = 1,
                 const size_t *dim = 0);
+
+        const size_t index;
 
         const void * const addr;
         const Task * const task;
@@ -38,7 +41,7 @@ class Signal: public HRTLab::Signal {
 
     private:
 
-        static const size_t index[HRTLab::Variable::maxWidth+1];
+        static const size_t dataTypeIndex[HRTLab::Variable::maxWidth+1];
 
         // Reimplemented from HRTLab::Variable
         void getValue(char *, struct timespec *) const;
