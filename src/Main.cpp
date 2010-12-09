@@ -153,7 +153,7 @@ const Signal *Main::getSignal(const std::string& path) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Parameter *Main::getParameter(const std::string& path) const
+const Parameter *Main::getParameter(const std::string& path) const
 {
     const VariableMap::const_iterator it(variableMap.find(path));
     return dynamic_cast<Parameter*>(

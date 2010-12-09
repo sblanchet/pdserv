@@ -27,7 +27,7 @@ class Parameter: public Variable {
 
         const unsigned int mode;
 
-        virtual int setValue(const char *valbuf) = 0;
+        virtual int setValue(const char *valbuf) const = 0;
 
     private:
         Main * const main;

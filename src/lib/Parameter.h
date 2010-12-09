@@ -29,7 +29,6 @@ class Parameter: public HRTLab::Parameter {
         void * const addr;      // Pointer to the real address
 
         char *shmemAddr;
-        struct timespec mtime;
         paramtrigger_t trigger;
         void *priv_data;
 
@@ -37,7 +36,7 @@ class Parameter: public HRTLab::Parameter {
         const Main * const main;
 
         // Reimplemented from HRTLab::Parameter
-        int setValue(const char *valbuf);
+        int setValue(const char *valbuf) const;
         void getValue(char *, struct timespec *t) const;
 
         // A default function used when paramcheck or paramupdate are not

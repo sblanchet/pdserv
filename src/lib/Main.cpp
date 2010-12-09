@@ -62,7 +62,7 @@ int Main::gettime(struct timespec* t) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameters(HRTLab::Parameter * const *p, size_t nelem,
+int Main::setParameters(const HRTLab::Parameter * const *p, size_t nelem,
         const char *data) const
 {
     ost::SemaphoreLock lock(sdoMutex);
@@ -88,7 +88,7 @@ int Main::setParameters(HRTLab::Parameter * const *p, size_t nelem,
 
     if (!sdo->errorCode) {
         for (size_t i = 0; i < nelem; i++)
-            dynamic_cast<Parameter*>(p[i])->mtime = sdo->time;
+            mtime[dynamic_cast<const Parameter*>(p[i])->index] = sdo->time;
         parametersChanged(p, nelem);
     }
     
@@ -184,7 +184,7 @@ void Main::getValues(const HRTLab::Parameter * const *p, size_t nelem,
         std::copy(param->shmemAddr, param->shmemAddr + param->memSize, buf);
         buf += param->memSize;
         if (time)
-            *time++ = param->mtime;
+            *time++ = mtime[param->index];
     }
 }
 

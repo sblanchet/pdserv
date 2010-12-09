@@ -83,7 +83,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         const HRTLab::Signal **signal;
 
         size_t parameterCount;
-        HRTLab::Parameter **parameter;
+        const HRTLab::Parameter **parameter;
 
         // Reimplemented from SocketPort
         void expired();

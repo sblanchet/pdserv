@@ -72,9 +72,9 @@ Session::Session( Server *s, ost::SocketService *ss,
 
     const HRTLab::Main::Parameters& parameters = main->getParameters();
     parameterCount = parameters.size();
-    parameter = new HRTLab::Parameter*[parameterCount];
+    parameter = new const HRTLab::Parameter*[parameterCount];
     for (unsigned idx = 0; idx < parameterCount; idx++) {
-        HRTLab::Parameter *p = parameters[idx];
+        const HRTLab::Parameter *p = parameters[idx];
         variableIndexMap[parameters[idx]] = idx;
         parameter[idx] = p;
     }
@@ -547,7 +547,7 @@ void Session::writeParameter(const Attr &attr)
         return;
     }
 
-    HRTLab::Parameter *p = 0;
+    const HRTLab::Parameter *p = 0;
 
     unsigned int index;
     std::string name;

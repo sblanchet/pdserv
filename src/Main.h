@@ -50,13 +50,13 @@ class Main {
         virtual void getValues(const Parameter * const *, size_t nelem,
                 char *buf, struct timespec * = 0) const = 0;
 
-        typedef std::vector<Parameter*> Parameters;
+        typedef std::vector<const Parameter*> Parameters;
         int newParameter(Parameter *);
         void delParameter(const Parameter *);
         const Parameters& getParameters() const;
-        Parameter *getParameter(const std::string&) const;
+        const Parameter *getParameter(const std::string&) const;
 
-        virtual int setParameters(Parameter * const *p,
+        virtual int setParameters(const Parameter * const *p,
                 size_t nelem, const char *data) const = 0;
 
         virtual void subscribe(const Session *,
