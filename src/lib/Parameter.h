@@ -31,12 +31,12 @@ class Parameter: public HRTLab::Parameter {
         paramtrigger_t trigger;
         void *priv_data;
 
-        void copyValue(const char *valbuf, const struct timespec& t);
+        void copyValue(const char *valbuf, const struct timespec& t) const;
 
     private:
 
         mutable ost::Semaphore mutex;
-        struct timespec mtime;
+        mutable struct timespec mtime;
         char *valueBuf;
 
         // A default function used when paramcheck or paramupdate are not

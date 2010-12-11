@@ -99,7 +99,7 @@ int Main::setParameters(const HRTLab::Parameter * const *p,
         const char *src = sdoData;
         for ( const Parameter **param = sdo->parameter;
                 param != sdo->parameter + count; param++) {
-            parameters[(*param)->index]->copyValue(src, sdo->time);
+            (*param)->copyValue(src, sdo->time);
             src += (*param)->memSize;
         }
         parametersChanged(p, count);
@@ -227,10 +227,11 @@ int Main::init()
     struct timespec t = {0,0};
 
     size_t parameterSize = 0;
-    for (Parameters::iterator it = parameters.begin();
+    for (HRTLab::Main::Parameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {
-        (*it)->copyValue((*it)->addr, t);
-        parameterSize += (*it)->memSize;
+        const Parameter *p = dynamic_cast<const Parameter*>(*it);
+        p->copyValue(p->addr, t);
+        parameterSize += p->memSize;
     }
 
     for (unsigned int i = 0; i < nst; i++) {
@@ -239,13 +240,12 @@ int Main::init()
     }
 
     size_t signalSize = 0;
-    const HRTLab::Main::Signals& signals = getSignals();
     for (HRTLab::Main::Signals::const_iterator it = signals.begin();
             it != signals.end(); it++) {
         signalSize += (*it)->memSize;
     }
 
-    size_t sdoCount = std::max(signals.size(), parameters.size());
+    size_t sdoCount = std::max(signals.size(), getParameters().size());
 
     shmem_len += sizeof(*sdo) * sdoCount
         + sizeof(*sdoTaskTime) * nst
@@ -292,12 +292,6 @@ int Main::init()
     pid = getpid();
 
     return startProtocols();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::newParameter(Parameter *p)
-{
-    parameters.push_back(p);
 }
 
 /////////////////////////////////////////////////////////////////////////////

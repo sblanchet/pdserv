@@ -29,7 +29,6 @@ Parameter::Parameter(
     index(main->getParameters().size() - 1),
     addr(reinterpret_cast<char*>(addr)), mutex(1)
 {
-    main->newParameter(this);
     trigger = copy;
 
     valueBuf = new char[memSize];
@@ -42,7 +41,7 @@ Parameter::~Parameter()
 }
 
 //////////////////////////////////////////////////////////////////////
-void Parameter::copyValue(const char* src, const struct timespec& time)
+void Parameter::copyValue(const char* src, const struct timespec& time) const
 {
     ost::SemaphoreLock lock(mutex);
 

@@ -26,16 +26,12 @@ class Main: public HRTLab::Main {
         Task ** const task;
 
         int init();
-        void newParameter(Parameter*);
         void update(int st, const struct timespec *time) const;
 
         static const double bufferTime = 2;
 
     private:
         mutable ost::Semaphore mutex;
-
-        typedef std::vector<Parameter*> Parameters;
-        Parameters parameters;
 
         int pid;
 
