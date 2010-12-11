@@ -28,10 +28,7 @@ class Parameter: public Variable {
 
         const unsigned int mode;
 
-        int setValue(const char *valbuf) const;
-
-        // Reimplemented from HRTLab::Variable
-        void getValue(char *buf, struct timespec* t = 0) const;
+        int setValue(const char *buf) const;
 
     protected:
 };

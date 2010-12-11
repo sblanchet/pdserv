@@ -58,23 +58,36 @@ int Main::gettime(struct timespec* t) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameters(const HRTLab::Parameter * const *p, size_t nelem,
-        const char *data) const
+int Main::setParameters(const HRTLab::Parameter * const *p,
+        size_t count, const char *data) const
 {
     ost::SemaphoreLock lock(sdoMutex);
+
     size_t delay = ~0U;
 
     for (size_t i = 0; i < nst; i++)
         delay = std::min(delay, (size_t)(task[i]->sampleTime * 1000 / 2));
 
-    size_t len = 0;
-    for (size_t i = 0; i < nelem; i++) {
-        sdo->parameter[i] = dynamic_cast<const Parameter*>(p[i]);
-        len += p[i]->memSize;
+    // Write the parameters into the shared memory sorted from widest
+    // to narrowest data type width. This ensures that the data is
+    // allways aligned correctly.
+    size_t idx = 0;
+    char *dst = sdoData;
+    for (size_t width = HRTLab::Variable::maxWidth; width; width >>= 1) {
+        const char *src = data;
+        for (const HRTLab::Parameter * const* param = p;
+                param != p + count; param++) {
+            if ((*param)->width == width) {
+                sdo->parameter[idx++] =
+                    dynamic_cast<const Parameter*>((*param));
+                std::copy(src, src + (*param)->memSize, dst);
+                dst += (*param)->memSize;
+            }
+            src += (*param)->memSize;
+        }
     }
 
-    std::copy(data, data+len, sdoData);
-    sdo->count = nelem;
+    sdo->count = count;
     sdo->type = SDOStruct::WriteParameter;
     sdo->reqId++;
 
@@ -83,9 +96,13 @@ int Main::setParameters(const HRTLab::Parameter * const *p, size_t nelem,
     } while (sdo->reqId != sdo->replyId);
 
     if (!sdo->errorCode) {
-        for (size_t i = 0; i < nelem; i++)
-            mtime[dynamic_cast<const Parameter*>(p[i])->index] = sdo->time;
-        parametersChanged(p, nelem);
+        const char *src = sdoData;
+        for ( const Parameter **param = sdo->parameter;
+                param != sdo->parameter + count; param++) {
+            parameters[(*param)->index]->copyValue(src, sdo->time);
+            src += (*param)->memSize;
+        }
+        parametersChanged(p, count);
     }
     
     return sdo->errorCode;
@@ -148,7 +165,6 @@ bool Main::processSdo(unsigned int tid, const struct timespec *time) const
                 const Parameter *p = sdo->parameter[idx];
 
                 (*p->trigger)(tid, 0, p->addr, data, p->memSize, p->priv_data);
-                std::copy(data, data + p->memSize, p->shmemAddr);
                 data += p->memSize;
             }
             break;
@@ -172,11 +188,9 @@ void Main::getValues(const HRTLab::Parameter * const *p, size_t nelem,
 {
     ost::SemaphoreLock lock(sdoMutex);
     while (nelem--) {
-        const Parameter *param = dynamic_cast<const Parameter *>(*p++);
-        std::copy(param->shmemAddr, param->shmemAddr + param->memSize, buf);
-        buf += param->memSize;
-        if (time)
-            *time++ = mtime[param->index];
+        (*p)->getValue(buf, time ? time++ : 0);
+        buf += (*p)->memSize;
+        p++;
     }
 }
 
@@ -210,18 +224,18 @@ void Main::getValues( const HRTLab::Signal * const *s, size_t nelem,
 int Main::init()
 {
     size_t taskMemSize[nst];
+    struct timespec t = {0,0};
+
+    size_t parameterSize = 0;
+    for (Parameters::iterator it = parameters.begin();
+            it != parameters.end(); it++) {
+        (*it)->copyValue((*it)->addr, t);
+        parameterSize += (*it)->memSize;
+    }
 
     for (unsigned int i = 0; i < nst; i++) {
         taskMemSize[i] = ptr_align(task[i]->getShmemSpace(bufferTime));
         shmem_len += taskMemSize[i];
-    }
-
-    Parameters p[HRTLab::Variable::maxWidth+1];
-    size_t parameterSize = 0;
-    for (Parameters::const_iterator it = parameters.begin();
-            it != parameters.end(); it++) {
-        p[(*it)->width].push_back(*it);
-        parameterSize += (*it)->memSize;
     }
 
     size_t signalSize = 0;
@@ -233,10 +247,7 @@ int Main::init()
 
     size_t sdoCount = std::max(signals.size(), parameters.size());
 
-    shmem_len +=
-        sizeof(*mtime) * parameters.size()
-        + parameterSize + 8
-        + sizeof(*sdo) * sdoCount
+    shmem_len += sizeof(*sdo) * sdoCount
         + sizeof(*sdoTaskTime) * nst
         + std::max(parameterSize, signalSize);
 
@@ -250,33 +261,18 @@ int Main::init()
     }
     ::memset(shmem, 0, shmem_len);
 
-    mtime         = ptr_align<struct timespec>(shmem);
-    parameterData = ptr_align<char>(mtime + parameters.size());
-    sdo           = ptr_align<SDOStruct>(parameterData + parameterSize);
+    sdo           = ptr_align<SDOStruct>(shmem);
     sdoTaskTime   = ptr_align<struct timespec>(sdo->signal + sdoCount);
     sdoData       = ptr_align<char>(sdoTaskTime + nst);
 
     cout
         << " shmem=" << shmem
-        << " mtime=" << mtime
-        << " parameterData=" << (void*)parameterData
         << " sdo=" << sdo
         << " sdoTaskTime=" << sdoTaskTime
         << " sdoData=" << (void*)sdoData
         << endl;
 
-    char *buf = parameterData;
-    for (size_t w = 8; w; w >>= 1) {
-        Parameters::iterator it;
-        for (it = p[w].begin(); it != p[w].end(); it++) {
-            (*it)->shmemAddr = buf;
-            std::copy((const char *)(*it)->addr,
-                    (const char *)(*it)->addr + (*it)->memSize, buf);
-            buf += (*it)->memSize;
-        }
-    }
-
-    buf = ptr_align<char>(sdoData + std::max(parameterSize, signalSize));
+    char* buf = ptr_align<char>(sdoData + std::max(parameterSize, signalSize));
     for (unsigned int i = 0; i < nst; i++) {
         task[i]->init(buf, buf + taskMemSize[i]);
         buf += taskMemSize[i];

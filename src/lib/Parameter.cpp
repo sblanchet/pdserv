@@ -26,10 +26,35 @@ Parameter::Parameter(
         unsigned int ndims,
         const size_t *dim):
     HRTLab::Parameter(main, path, mode, dtype, ndims, dim),
-    index(main->getParameters().size()), addr(addr)
+    index(main->getParameters().size() - 1),
+    addr(reinterpret_cast<char*>(addr)), mutex(1)
 {
     main->newParameter(this);
     trigger = copy;
+
+    valueBuf = new char[memSize];
+}
+
+//////////////////////////////////////////////////////////////////////
+Parameter::~Parameter()
+{
+    delete[] valueBuf;
+}
+
+//////////////////////////////////////////////////////////////////////
+void Parameter::copyValue(const char* src, const struct timespec& time)
+{
+    ost::SemaphoreLock lock(mutex);
+
+    std::copy(src, src + memSize, valueBuf);
+    mtime = time;
+}
+
+//////////////////////////////////////////////////////////////////////
+void Parameter::getValue(char* dst, struct timespec *time) const
+{
+    ost::SemaphoreLock lock(mutex);
+    std::copy(valueBuf, valueBuf + memSize, dst);
 }
 
 //////////////////////////////////////////////////////////////////////

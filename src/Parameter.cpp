@@ -45,10 +45,3 @@ int Parameter::setValue(const char *valbuf) const
     const Parameter* p = this;
     return main->setParameters(&p, 1, valbuf);
 }
-
-//////////////////////////////////////////////////////////////////////
-void Parameter::getValue(char *buf, struct timespec* t) const
-{
-    const Parameter * p = this;
-    main->getValues(&p, 1, buf, t);
-}

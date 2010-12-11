@@ -34,7 +34,7 @@ class Main: public HRTLab::Main {
     private:
         mutable ost::Semaphore mutex;
 
-        typedef std::list<Parameter*> Parameters;
+        typedef std::vector<Parameter*> Parameters;
         Parameters parameters;
 
         int pid;
@@ -57,10 +57,6 @@ class Main: public HRTLab::Main {
         mutable ost::Semaphore sdoMutex;
         struct timespec *sdoTaskTime;
         char *sdoData;
-
-        char *parameterData;
-
-        struct timespec *mtime;
 
         // Methods used by the real-time process to interpret inbox
         // instructions from the clients
