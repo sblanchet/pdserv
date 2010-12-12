@@ -5,6 +5,8 @@
 #ifndef MSRTASK_H
 #define MSRTASK_H
 
+#include <set>
+
 namespace HRTLab {
     class Main;
     class Receiver;
@@ -19,13 +21,14 @@ namespace MsrXml {
 namespace MsrProto {
 
 class Session;
+class SubscriptionChange;
 
 class Task {
     public:
-        Task();
+        Task(SubscriptionChange&);
         ~Task();
 
-        void rmSignal(const HRTLab::Signal * const *s = 0, size_t n = 0);
+        void delSignal(const HRTLab::Signal *s = 0);
         void addSignal(const HRTLab::Signal *s, unsigned int idx,
                 bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
@@ -33,9 +36,12 @@ class Task {
         bool newSignalList(const HRTLab::Signal * const *s, size_t n);
         void newSignalValues(MsrXml::Element *, const HRTLab::Receiver&);
 
+
         void sync();
 
     private:
+
+        SubscriptionChange& subscriptionChange;
 
         struct SignalData {
             const HRTLab::Signal *signal;

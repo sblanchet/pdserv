@@ -9,6 +9,7 @@
 
 #include "XmlDoc.h"
 #include "Task.h"
+#include "SubscriptionChange.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -20,7 +21,7 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Task::Task()
+Task::Task(SubscriptionChange& s): subscriptionChange(s)
 {
 }
 
@@ -35,31 +36,25 @@ Task::~Task()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::rmSignal(const HRTLab::Signal * const *signal, size_t n)
+void Task::delSignal(const HRTLab::Signal *signal)
 {
     if (!signal) {
-        // Remove all signals
+        while (!subscribedSet.empty())
+            delSignal(subscribedSet.begin()->first);
 
-        n = subscribedSet.size();
-        size_t i = 0;
-
-        const HRTLab::Signal *signal[n];
-        for (SubscribedSet::const_iterator it = subscribedSet.begin();
-                it != subscribedSet.end(); it++)
-            signal[i++] = it->first;
-        return rmSignal(signal, subscribedSet.size());
+        return;
     }
 
-    for (; n--; signal++) {
-        SubscribedSet::iterator it = subscribedSet.find(*signal);
-        if (it == subscribedSet.end())
-            continue;
+    SubscribedSet::iterator it = subscribedSet.find(signal);
+    if (it == subscribedSet.end())
+        return;
 
-        delete[] it->second.data_bptr;
-        delete it->second.element;
-        subscribedSet.erase(it);
-        activeSet.erase(*signal);
-    }
+    delete[] it->second.data_bptr;
+    delete it->second.element;
+    subscribedSet.erase(it);
+    activeSet.erase(signal);
+
+    subscriptionChange.unsubscribe(signal);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -69,7 +64,10 @@ void Task::addSignal(const HRTLab::Signal *signal, unsigned int idx,
 {
 //    cout << __PRETTY_FUNCTION__ << signal->path << endl;
     SubscribedSet::iterator it = subscribedSet.find(signal);
-    if (it != subscribedSet.end()) {
+    if (it == subscribedSet.end()) {
+        subscriptionChange.subscribe(signal);
+    }
+    else {
         delete[] it->second.data_bptr;
         delete it->second.element;
     }

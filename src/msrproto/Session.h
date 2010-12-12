@@ -33,10 +33,12 @@
 #include "Inbuf.h"
 #include "Outbuf.h"
 #include "XmlDoc.h"
+#include "SubscriptionChange.h"
 
 #include <cc++/socketport.h> 
 #include <string>
 #include <map>
+#include <set>
 
 #include "rtlab/etl_data_info.h"
 
@@ -77,6 +79,8 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         Task ** const task;
 
         std::map<const void *, size_t> variableIndexMap;
+
+        SubscriptionChange subscriptionChange;
 
         size_t signalCount;
         const HRTLab::Signal **signal;

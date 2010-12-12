@@ -45,7 +45,7 @@ using namespace MsrProto;
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), HRTLab::Session(main),
-    server(s), task(new Task*[main->nst]),
+    server(s), task(new Task*[main->nst]), subscriptionChange(main, this),
     dataTag("data"), outbuf(this), inbuf(this)
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
@@ -58,7 +58,7 @@ Session::Session( Server *s, ost::SocketService *ss,
 
     // Create enough tasks
     for (size_t i = 0; i < main->nst; i++) {
-        task[i] = new Task();
+        task[i] = new Task(subscriptionChange);
     }
 
     const HRTLab::Main::Signals& signals = main->getSignals();
@@ -178,6 +178,7 @@ void Session::pending()
         return;
     }
 
+    subscriptionChange.process();
     //cout << __LINE__ << " Data left in buffer: "
         //<< std::string(inbuf.bptr(), inbuf.eptr() - inbuf.bptr()) << endl;
 }
@@ -722,8 +723,6 @@ void Session::xsad(const Attr &attr)
         task[(*sp)->task->tid]->addSignal( *sp, getVariableIndex(*sp),
                 event, sync, reduction, blocksize, base64, precision);
     }
-
-    main->subscribe(this, signals, channelList.size());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -737,20 +736,14 @@ void Session::xsod(const Attr &attr)
     if (attr.getUnsignedList("channels", intList)) {
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
-            if (*it < signalCount)
-                channelList.push_back(signal[*it]);
+            if (*it < signalCount) {
+                const HRTLab::Signal *s = signal[*it];
+                task[s->task->tid]->delSignal(s);
+            }
         }
-
-        const HRTLab::Signal *signals[channelList.size()];
-        std::copy(channelList.begin(), channelList.end(), signals);
-        for (Task **t = task; t != task + main->nst; t++)
-            (*t)->rmSignal(signals, channelList.size());
-
-        main->unsubscribe(this, signals, channelList.size());
     }
     else {
         for (Task **t = task; t != task + main->nst; t++)
-            (*t)->rmSignal();
-        main->unsubscribe(this);
+            (*t)->delSignal();
     }
 }
