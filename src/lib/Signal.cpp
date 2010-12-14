@@ -29,8 +29,8 @@ Signal::Signal( Task *task,
         unsigned int ndims,
         const size_t *dim):
     HRTLab::Signal(task, decimation, path, dtype, ndims, dim),
-    index(task->getSignalSet().size()), addr(addr), task(task),
-    subscriptionIndex(dataTypeIndex[width])
+    addr(reinterpret_cast<const char *>(addr)),
+    task(task), subscriptionIndex(dataTypeIndex[width])
 {
     task->newSignal(this);
     //cout << __func__ << " addr = " << addr << endl;

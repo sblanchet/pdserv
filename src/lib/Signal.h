@@ -27,9 +27,7 @@ class Signal: public HRTLab::Signal {
                 unsigned int ndims = 1,
                 const size_t *dim = 0);
 
-        const size_t index;
-
-        const void * const addr;
+        const char * const addr;
         const Task * const task;
 
         const size_t subscriptionIndex;

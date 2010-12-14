@@ -22,51 +22,52 @@ Task::Task(Main *main, unsigned int tid, double sampleTime):
     HRTLab::Task(main, tid, sampleTime), mutex(1)
 {
     pdoMem = 0;
-    txPdoCount = 0;
     seqNo = 0;
+    copyList = 0;
+    signalCount = 0;
+    signalMemSize = 0;
+    copyListId = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Task::~Task()
 {
-    for (SignalSet::const_iterator it = signals.begin();
-            it != signals.end(); it++)
-        delete *it;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Task::SignalSet& Task::getSignalSet() const
-{
-    return signals;
+    delete copyList;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 size_t Task::getShmemSpace(double T) const
 {
-    size_t len = 0;
-    for (SignalSet::const_iterator it = signals.begin();
-            it != signals.end(); it++)
-        len += (*it)->memSize;
-
-    return (signals.size() + 1) * sizeof(Instruction)
-        + std::max(10U, (size_t)(T / sampleTime + 0.5)) * len;
+    return sizeof(SignalList) + signalCount * sizeof(*activeSet->list)
+        +  signalMemSize * std::max(10U, (size_t)(T / sampleTime + 0.5));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::init(void *shmem, void *shmem_end)
+void Task::prepare(void *shmem, void *shmem_end)
 {
-    mailboxBegin = mailbox = ptr_align<Instruction>(shmem);
-    mailboxEnd = mailboxBegin + signals.size() + 1;
+    activeSet = ptr_align<SignalList>(shmem);
+    activeSet->requestId = 0;
+    activeSet->reply = 0;
 
-    txMemBegin = txFrame = ptr_align<TxFrame>(mailboxEnd);
+    txMemBegin = txFrame = ptr_align<TxFrame>(activeSet->list + signalCount);
     txMemEnd = shmem_end;
 
     // Start with a dummy frame
-    txFrame->type = TxFrame::PdoList;
-    txFrame->list.count = 0;
     nextTxFrame = &txFrame->next;
     txFrame += 1;
     txFrame->next = 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::rt_init()
+{
+    copyList = new CopyList[signalCount+1];
+    copyList[0].src = 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::nrt_init()
+{
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -76,16 +77,34 @@ Receiver *Task::newReceiver() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::mail(Instruction::Type instruction, const Signal *signal) const
+void Task::newSignalList(size_t count) const
 {
-    while (mailbox->instruction != Instruction::Clear)
+    CopyList *cl = activeSet->list;
+    size_t idx = 0;
+    const HRTLab::Signal *signals[count];
+    activeSet->pdoMemSize = 0;
+    for (size_t i = 0; i < 4; i++) {
+        for (SignalSet::const_iterator it = subscriptionSet[i].begin();
+                it != subscriptionSet[i].end(); it++) {
+            cl->src = (*it)->addr;
+            cl->len = (*it)->memSize;
+            cl++;
+
+//            (*it)->offset = activeSet->pdoMemSize;
+            activeSet->pdoMemSize += (*it)->memSize;
+
+            signals[idx++] = *it;
+        }
+    }
+
+    activeSet->requestId++;
+    activeSet->count = count;
+
+    do {
         ost::Thread::sleep(sampleTime * 1000 / 2);
+    } while (activeSet->requestId != activeSet->reply);
 
-    mailbox->signal = signal;
-    mailbox->instruction = instruction;
-
-    if (++mailbox == mailboxEnd)
-        mailbox = mailboxBegin;
+//    main->newSignalList(this, activeSet->requestId, signals, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -94,7 +113,7 @@ size_t Task::subscribe(const HRTLab::Session *session,
 {
     ost::SemaphoreLock lock(mutex);
     size_t count = 0;
-    bool reqSignalList = true;
+    bool reqSignalList = false;
 
     while (n--) {
         const Signal *signal = dynamic_cast<const Signal *>(*s++);
@@ -102,13 +121,9 @@ size_t Task::subscribe(const HRTLab::Session *session,
             continue;
 
         if (signal->sessions.empty()) {
-            reqSignalList = false;
+            reqSignalList = true;
 
-            txPdoCount++;
-            pdoMem += signal->memSize;
             subscriptionSet[signal->subscriptionIndex].insert(signal);
-
-            mail(Instruction::Insert, signal);
         }
 
         signal->sessions.insert(session);
@@ -116,8 +131,8 @@ size_t Task::subscribe(const HRTLab::Session *session,
         count++;
     }
 
-    if (count and reqSignalList)
-        mail(Instruction::SignalList);
+    if (reqSignalList)
+        newSignalList(count);
 
     return count;
 }
@@ -128,45 +143,37 @@ size_t Task::unsubscribe(const HRTLab::Session *session,
 {
 //    cout << __PRETTY_FUNCTION__ << s<< ' ' << n << endl;
     if (!s) {
-        const SignalSet& signalSet = sessionSubscription[session];
-        const HRTLab::Signal *s[signalSet.size()];
+        const SignalSet& subscribed = sessionSubscription[session];
+        n = subscribed.size();
+        const HRTLab::Signal *s[n];
 
-        std::copy(signalSet.begin(), signalSet.end(), s);
-        return unsubscribe(session, s, signalSet.size());
+        std::copy(subscribed.begin(), subscribed.end(), s);
+        sessionSubscription.erase(session);
+        unsubscribe(session, s, n);
+        return n;
     }
 
     ost::SemaphoreLock lock(mutex);
     size_t count = 0;
+    bool update = false;
 
     while (n--) {
         const Signal *signal = dynamic_cast<const Signal *>(*s++);
         if (signal->task != this)
             continue;
 
-        Signal::SessionSet::const_iterator it(signal->sessions.find(session));
-
-        if (it == signal->sessions.end())
-            continue;
-
         sessionSubscription[session].erase(signal);
-        signal->sessions.erase(it);
+        subscriptionSet[signal->subscriptionIndex].erase(signal);
 
-        if (signal->sessions.empty()) {
-            while (mailbox->instruction != Instruction::Clear)
-                ost::Thread::sleep(sampleTime * 1000 / 2);
-
-            txPdoCount--;
-            subscriptionSet[signal->subscriptionIndex].erase(signal);
-            mailbox->signal = signal;
-            pdoMem -= signal->memSize;
-            mailbox->instruction = Instruction::Remove;
-
-            if (++mailbox == mailboxEnd)
-                mailbox = mailboxBegin;
-        }
+        signal->sessions.erase(session);
+        if (signal->sessions.empty())
+            update = true;
 
         count++;
     }
+
+    if (update)
+        newSignalList(count);
 
     return count;
 }
@@ -174,102 +181,39 @@ size_t Task::unsubscribe(const HRTLab::Session *session,
 /////////////////////////////////////////////////////////////////////////////
 void Task::newSignal(const Signal* s)
 {
-    signals.insert(s);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Task::receive()
-{
-    do {
-        const Signal *s = mailbox->signal;
-        if (s) {
-            SignalSet &vs = subscriptionSet[s->subscriptionIndex];
-
-            switch (mailbox->instruction) {
-                case Instruction::Insert:
-                    vs.insert(s);
-                    pdoMem += s->memSize;
-                    txPdoCount++;
-//                    cout << "Instruction::Insert: " << x->path << endl;
-                    break;
-
-                case Instruction::Remove:
-                    vs.erase(s);
-                    pdoMem -= s->memSize;
-                    txPdoCount--;
-//                    cout << "Instruction::Remove: " << v->path << endl;
-                    break;
-
-                default:
-                    break;
-            }
-        }
-
-        mailbox->instruction = Instruction::Clear;
-
-        if (++mailbox == mailboxEnd)
-            mailbox = mailboxBegin;
-
-    } while (mailbox->instruction != Instruction::Clear);
-
-    if (txFrame->list.signal + txPdoCount >= txMemEnd)
-        txFrame = txMemBegin;
-
-//    cout << __func__ << " L " << (void*)txFrame;
-    txFrame->next = 0;
-    txFrame->type = TxFrame::PdoList;
-    txFrame->list.count = txPdoCount;
-    const HRTLab::Signal **s = txFrame->list.signal;
-    for (int i = 0; i < 4; i++) {
-        for (SignalSet::const_iterator it = subscriptionSet[i].begin();
-                it != subscriptionSet[i].end(); it++) {
-//            cout << ' ' << (*it)->index;
-            *s++ = *it;
-        }
-    }
-//    cout << endl;
-
-    *nextTxFrame = txFrame;
-
-//    cout << "Setting " << nextTxFrame << " to " << txFrame << endl;
-    nextTxFrame = &txFrame->next;
-    txFrame = ptr_align<TxFrame>(s);
+    signalCount++;
+    signalMemSize += s->memSize;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Task::txPdo(const struct timespec *t)
 {
-    if (mailbox->instruction != Instruction::Clear)
-        receive();
-
-    if ( txFrame->pdo.data + pdoMem >= txMemEnd) {
-        txFrame = txMemBegin;
-//        cout << "rewind " << endl;
+    if (activeSet->requestId != activeSet->reply) {
+        std::copy(activeSet->list, activeSet->list + activeSet->count,
+                copyList);
+        copyList[activeSet->count].src = 0;
+        pdoMem = activeSet->pdoMemSize;
+        copyListId = activeSet->requestId;
+        activeSet->reply = activeSet->requestId;
     }
 
-//    cout << __func__ << " D " << (void*)txFrame;
+    if ( txFrame->data + pdoMem >= txMemEnd) {
+        txFrame = txMemBegin;
+    }
 
     txFrame->next = 0;
-    txFrame->type = TxFrame::PdoData;
-    txFrame->pdo.seqNo = seqNo++;
-    txFrame->pdo.time = *t;
+    txFrame->signalListNo = copyListId;
+    txFrame->seqNo = seqNo++;
+    txFrame->time = *t;
 
-    char *p = txFrame->pdo.data;
-    for (int i = 0; i < 4; i++) {
-        for (SignalSet::const_iterator it = subscriptionSet[i].begin();
-                it != subscriptionSet[i].end(); it++) {
-            const Signal *s = *it;
-            std::copy((const char*)s->addr,
-                    (const char *)s->addr + s->memSize, p);
-            p += s->memSize;
-//            cout << ' ' << s->index;
-        }
+    char *p = txFrame->data;
+    for (CopyList *cl = copyList; cl->src; cl++) {
+        std::copy(cl->src, cl->src + cl->len, p);
+        p += cl->len;
     }
-//    cout << endl;
 
     *nextTxFrame = txFrame;
 
-//    cout << "Setting " << nextTxFrame << " to " << txFrame << endl;
     nextTxFrame = &txFrame->next;
     txFrame = ptr_align<TxFrame>(p);
 }

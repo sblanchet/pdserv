@@ -24,8 +24,6 @@ class Parameter: public HRTLab::Parameter {
 
         ~Parameter();
 
-        const size_t index;
-
         char * const addr;      // Pointer to the real address
 
         paramtrigger_t trigger;

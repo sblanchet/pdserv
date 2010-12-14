@@ -23,12 +23,12 @@ class Task: public HRTLab::Task {
         Task(Main *main, unsigned int tid, double sampleTime);
         ~Task();
 
-        typedef std::set<const Signal*> SignalSet;
         void newSignal(const Signal*);
-        const SignalSet& getSignalSet() const;
 
         size_t getShmemSpace(double t) const;
-        void init(void *start, void *end);
+        void prepare(void *start, void *end);
+        void rt_init();
+        void nrt_init();
 
         size_t subscribe(const HRTLab::Session*,
                 const HRTLab::Signal* const *, size_t n) const;
@@ -41,10 +41,12 @@ class Task: public HRTLab::Task {
 
     private:
         mutable ost::Semaphore mutex;
-        mutable size_t pdoMem;
-        mutable size_t txPdoCount;
 
-        SignalSet signals;
+        size_t signalCount;
+        size_t signalMemSize;
+        size_t pdoMem;
+
+        typedef std::set<const Signal*> SignalSet;
         mutable SignalSet subscriptionSet[4];
 
         typedef std::map<const HRTLab::Session*, SignalSet>
@@ -52,41 +54,26 @@ class Task: public HRTLab::Task {
         mutable SessionSubscription sessionSubscription;
 
         unsigned int seqNo;
-//        std::map<const Session*, SignalSet> session;
-//        std::map<const Signal *, std::set<const Session*> > variableSessions;
-//
-//        struct Instruction {
-//            enum Type {Clear, Insert, Remove} instruction;
-//            const Signal *signal;
-//        };
-//
-        Instruction *mailboxBegin, *mailboxEnd;
-        mutable Instruction *mailbox;
 
-        void mail(Instruction::Type, const Signal * = 0) const;
-//
-//        struct TxFrame {
-//            TxFrame *next;
-//            enum {PdoData = 1, PdoList} type;
-//            union {
-//                struct {
-//                    unsigned int seqNo;
-//                    struct timespec time;
-//                    char data[];
-//                } pdo;
-//                struct {
-//                    unsigned int count;
-//                    const Signal *signal[];
-//                } list;
-//            };
-//        };
-//
+        unsigned int copyListId;
+        struct CopyList {
+            const char *src;
+            size_t len;
+        } *copyList;
+
+        struct SignalList {
+            unsigned int requestId;
+            unsigned int reply;
+            size_t pdoMemSize;
+            unsigned int count;
+            struct CopyList list[];
+        };
+        SignalList *activeSet;
+
         TxFrame *txMemBegin, *txFrame, **nextTxFrame;
         const void *txMemEnd;
-//        std::map<const Session*, TxFrame *> sessionRxPtr;
-//
-//        void deliver(Instruction::Type t, const Signal *v);
-        void receive();
+
+        void newSignalList(size_t n) const;
 };
 
 #endif // LIB_TASK_H

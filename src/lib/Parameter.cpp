@@ -26,10 +26,12 @@ Parameter::Parameter(
         unsigned int ndims,
         const size_t *dim):
     HRTLab::Parameter(main, path, mode, dtype, ndims, dim),
-    index(main->getParameters().size() - 1),
     addr(reinterpret_cast<char*>(addr)), mutex(1)
 {
     trigger = copy;
+
+    mtime.tv_sec = 0;
+    mtime.tv_nsec = 0;
 
     valueBuf = new char[memSize];
 }
@@ -54,6 +56,8 @@ void Parameter::getValue(char* dst, struct timespec *time) const
 {
     ost::SemaphoreLock lock(mutex);
     std::copy(valueBuf, valueBuf + memSize, dst);
+    if (time)
+        *time = mtime;
 }
 
 //////////////////////////////////////////////////////////////////////

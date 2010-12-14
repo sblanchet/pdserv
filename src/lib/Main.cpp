@@ -274,7 +274,7 @@ int Main::init()
 
     char* buf = ptr_align<char>(sdoData + std::max(parameterSize, signalSize));
     for (unsigned int i = 0; i < nst; i++) {
-        task[i]->init(buf, buf + taskMemSize[i]);
+        task[i]->prepare(buf, buf + taskMemSize[i]);
         buf += taskMemSize[i];
     }
 
@@ -286,8 +286,13 @@ int Main::init()
     }
     else if (pid) {
         // Parent here; go back to the caller
+        for (unsigned int i = 0; i < nst; i++)
+            task[i]->rt_init();
         return 0;
     }
+
+    for (unsigned int i = 0; i < nst; i++)
+        task[i]->nrt_init();
 
     pid = getpid();
 
@@ -319,4 +324,3 @@ void Main::unsubscribe(const HRTLab::Session *session,
     for (Task ** t = task; t != task + nst; t++)
         (*t)->unsubscribe(session, s, n);
 }
-

@@ -5,10 +5,10 @@
 #ifndef LIB_RECEIVER_H
 #define LIB_RECEIVER_H
 
-#include <map>
-
 #include "../Receiver.h"
 #include "ShmemDataStructures.h"
+
+#include <map>
 
 class Receiver: public HRTLab::Receiver {
     public:
@@ -18,8 +18,7 @@ class Receiver: public HRTLab::Receiver {
     private:
         mutable TxFrame *rxPtr;
 
-        std::map<const HRTLab::Signal *, size_t> offset;
-        const char *valueBuf;
+        mutable std::map<const HRTLab::Signal*, size_t> offset;
 
         // Reimplemented from HRTLab::Receiver
         void process(HRTLab::Session *);
