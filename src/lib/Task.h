@@ -37,9 +37,15 @@ class Task: public HRTLab::Task {
 
         void txPdo(const struct timespec *);
 
-        Receiver *newReceiver() const;
+        Receiver *newReceiver();
+        void receiverDeleted(Receiver *);
 
     private:
+        Main * const main;
+
+        typedef std::set<Receiver*> ReceiverSet;
+        ReceiverSet receiverSet;
+
         mutable ost::Semaphore mutex;
 
         size_t signalCount;

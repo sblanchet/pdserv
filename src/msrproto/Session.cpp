@@ -145,6 +145,8 @@ void Session::expired()
 
     dataTag.releaseChildren();
 
+    subscriptionChange.process();
+
     setTimer(100);      // Wakeup in 100ms again
 }
 
@@ -154,6 +156,7 @@ void Session::pending()
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     int n, count;
     size_t inputLen = 0;
+    bool detectOutput = getDetectOutput();
 
     do {
         count = inbuf.free();
@@ -174,7 +177,11 @@ void Session::pending()
 
     if (!inputLen) {
         // End of stream
-        delete this;
+        setTimer(0);
+        if (detectOutput)
+            setDetectPending(false);
+        else
+            delete this;
         return;
     }
 
@@ -187,10 +194,12 @@ void Session::pending()
 void Session::output()
 {
     //cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+
     ssize_t n = send(outbuf.bufptr(), outbuf.size());
 
     // In case of error, exit
-    if (n <= 0) {
+    if (!getDetectPending() || n <= 0) {
+        setTimer(0);
         delete this;
         return;
     }
@@ -209,10 +218,10 @@ void Session::disconnect()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalList(unsigned int tid,
+void Session::newSignalList(const HRTLab::Task *_task,
         const HRTLab::Signal * const *v, size_t n)
 {
-    if (task[tid]->newSignalList(v, n)) {
+    if (task[_task->tid]->newSignalList(v, n)) {
         for (size_t i = 0; i < main->nst; i++) {
             task[i]->sync();
         }

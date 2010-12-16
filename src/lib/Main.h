@@ -8,8 +8,10 @@
 #include "../Main.h"
 
 #include <cc++/thread.h>
+#include <set>
 #include "rtlab/rtlab.h"
 
+class Receiver;
 class Parameter;
 class Signal;
 class Task;
@@ -27,6 +29,9 @@ class Main: public HRTLab::Main {
 
         int init();
         void update(int st, const struct timespec *time) const;
+
+//        void newSignalList(unsigned int listId,
+//                const HRTLab::Signal * const *, size_t n) const;
 
         static const double bufferTime = 2;
 

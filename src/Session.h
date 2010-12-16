@@ -25,7 +25,7 @@ class Session {
         SessionStatistics getStatistics() const;
 
         // These methods are called from within the context of rxPdo
-        virtual void newSignalList(unsigned int tid,
+        virtual void newSignalList(const Task *,
                 const Signal * const *, size_t n) = 0;
         virtual void newSignalData(const Receiver&) = 0;
 

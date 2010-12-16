@@ -95,7 +95,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         void disconnect();
 
         // Reimplemented from HRTLab::Session
-        void newSignalList(unsigned int tid,
+        void newSignalList(const HRTLab::Task *task,
                 const HRTLab::Signal * const *, size_t n);
         void newSignalData(const HRTLab::Receiver&);
 

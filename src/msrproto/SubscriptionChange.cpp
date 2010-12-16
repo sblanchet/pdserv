@@ -29,6 +29,7 @@ SubscriptionChange::SubscriptionChange(HRTLab::Main *main,
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionChange::subscribe(const HRTLab::Signal *s)
 {
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     unsubscribeSet.erase(s);
     subscribeSet.insert(s);
 
@@ -38,6 +39,7 @@ void SubscriptionChange::subscribe(const HRTLab::Signal *s)
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionChange::unsubscribe(const HRTLab::Signal *s)
 {
+    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     unsubscribeSet.insert(s);
     subscribeSet.erase(s);
 
@@ -47,16 +49,22 @@ void SubscriptionChange::unsubscribe(const HRTLab::Signal *s)
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionChange::process()
 {
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     if (!state or --state)
         return;
 
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     const HRTLab::Signal *ins[subscribeSet.size()];
     std::copy(subscribeSet.begin(), subscribeSet.end(), ins);
 
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     const HRTLab::Signal *del[unsubscribeSet.size()];
     std::copy(unsubscribeSet.begin(), unsubscribeSet.end(), del);
 
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     main->unsubscribe(session, del, unsubscribeSet.size());
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     main->subscribe(session, ins, subscribeSet.size());
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
 }
 

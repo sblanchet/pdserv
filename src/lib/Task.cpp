@@ -19,7 +19,7 @@ using std::endl;
 
 /////////////////////////////////////////////////////////////////////////////
 Task::Task(Main *main, unsigned int tid, double sampleTime):
-    HRTLab::Task(main, tid, sampleTime), mutex(1)
+    HRTLab::Task(main, tid, sampleTime), main(main), mutex(1)
 {
     pdoMem = 0;
     seqNo = 0;
@@ -71,9 +71,20 @@ void Task::nrt_init()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Receiver *Task::newReceiver() const
+Receiver *Task::newReceiver()
 {
-    return new Receiver(tid, txMemBegin);
+    ost::SemaphoreLock lock(mutex);
+    Receiver *r = new Receiver(this, tid, txMemBegin);
+    receiverSet.insert(r);
+
+    return r;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::receiverDeleted(Receiver *r)
+{
+    ost::SemaphoreLock lock(mutex);
+    receiverSet.erase(r);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -100,11 +111,14 @@ void Task::newSignalList(size_t count) const
     activeSet->requestId++;
     activeSet->count = count;
 
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+    for (ReceiverSet::iterator it = receiverSet.begin();
+            it != receiverSet.end(); it++)
+        (*it)->newSignalList(activeSet->requestId, signals, count);
+
     do {
         ost::Thread::sleep(sampleTime * 1000 / 2);
     } while (activeSet->requestId != activeSet->reply);
-
-//    main->newSignalList(this, activeSet->requestId, signals, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -113,7 +127,7 @@ size_t Task::subscribe(const HRTLab::Session *session,
 {
     ost::SemaphoreLock lock(mutex);
     size_t count = 0;
-    bool reqSignalList = false;
+    bool update = false;
 
     while (n--) {
         const Signal *signal = dynamic_cast<const Signal *>(*s++);
@@ -121,7 +135,8 @@ size_t Task::subscribe(const HRTLab::Session *session,
             continue;
 
         if (signal->sessions.empty()) {
-            reqSignalList = true;
+//            cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+            update = true;
 
             subscriptionSet[signal->subscriptionIndex].insert(signal);
         }
@@ -131,7 +146,7 @@ size_t Task::subscribe(const HRTLab::Session *session,
         count++;
     }
 
-    if (reqSignalList)
+    if (update)
         newSignalList(count);
 
     return count;
@@ -195,6 +210,7 @@ void Task::txPdo(const struct timespec *t)
         pdoMem = activeSet->pdoMemSize;
         copyListId = activeSet->requestId;
         activeSet->reply = activeSet->requestId;
+//        cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     }
 
     if ( txFrame->data + pdoMem >= txMemEnd) {
