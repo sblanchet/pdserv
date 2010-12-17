@@ -74,8 +74,23 @@ void Task::nrt_init()
 Receiver *Task::newReceiver()
 {
     ost::SemaphoreLock lock(mutex);
+
     Receiver *r = new Receiver(this, tid, txMemBegin);
     receiverSet.insert(r);
+
+    size_t count = 0;
+    for (size_t i = 0; i < 4; i++)
+        count += subscriptionSet[i].size();
+
+    const HRTLab::Signal *s[count];
+    count = 0;
+    for (size_t i = 0; i < 4; i++) {
+        std::copy(subscriptionSet[i].begin(), subscriptionSet[i].end(),
+                s + count);
+        count += subscriptionSet[i].size();
+    }
+
+    r->newSignalList(activeSet->requestId, s, count);
 
     return r;
 }
@@ -125,6 +140,7 @@ void Task::newSignalList(size_t count) const
 size_t Task::subscribe(const HRTLab::Session *session,
         const HRTLab::Signal * const *s, size_t n) const
 {
+//    cout << __PRETTY_FUNCTION__ << s << ' ' << n << endl;
     ost::SemaphoreLock lock(mutex);
     size_t count = 0;
     bool update = false;
@@ -146,6 +162,7 @@ size_t Task::subscribe(const HRTLab::Session *session,
         count++;
     }
 
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << count << endl;
     if (update)
         newSignalList(count);
 
@@ -156,7 +173,7 @@ size_t Task::subscribe(const HRTLab::Session *session,
 size_t Task::unsubscribe(const HRTLab::Session *session,
         const HRTLab::Signal * const *s, size_t n) const
 {
-//    cout << __PRETTY_FUNCTION__ << s<< ' ' << n << endl;
+//    cout << __PRETTY_FUNCTION__ << s << ' ' << n << endl;
     if (!s) {
         const SignalSet& subscribed = sessionSubscription[session];
         n = subscribed.size();
@@ -167,6 +184,8 @@ size_t Task::unsubscribe(const HRTLab::Session *session,
         unsubscribe(session, s, n);
         return n;
     }
+    else if (!n)
+        return 0;
 
     ost::SemaphoreLock lock(mutex);
     size_t count = 0;
@@ -178,14 +197,16 @@ size_t Task::unsubscribe(const HRTLab::Session *session,
             continue;
 
         sessionSubscription[session].erase(signal);
-        subscriptionSet[signal->subscriptionIndex].erase(signal);
 
         signal->sessions.erase(session);
-        if (signal->sessions.empty())
+        if (signal->sessions.empty()) {
             update = true;
-
-        count++;
+            subscriptionSet[signal->subscriptionIndex].erase(signal);
+        }
+        else
+            count++;
     }
+//    cout << __PRETTY_FUNCTION__ << " update = " << update << endl;
 
     if (update)
         newSignalList(count);

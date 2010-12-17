@@ -39,7 +39,7 @@ void SubscriptionChange::subscribe(const HRTLab::Signal *s)
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionChange::unsubscribe(const HRTLab::Signal *s)
 {
-    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+//    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     unsubscribeSet.insert(s);
     subscribeSet.erase(s);
 

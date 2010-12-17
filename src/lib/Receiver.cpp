@@ -23,6 +23,8 @@ Receiver::Receiver(Task *task, unsigned int tid, TxFrame *start):
     HRTLab::Receiver(tid), task(task), mutex(1), rxPtr(start)
 {
     currentListId = ~0U;
+     while (rxPtr->next)
+         rxPtr = rxPtr->next;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -48,7 +50,7 @@ void Receiver::process(HRTLab::Session *session)
      while (rxPtr->next) {
          //cout << __LINE__ << __PRETTY_FUNCTION__ << rxPtr->seqNo << endl;
          if (currentListId != rxPtr->signalListNo) {
-             //cout << __LINE__ << "looking for " << rxPtr->signalListNo << endl;
+//             cout << __LINE__ << "looking for " << rxPtr->signalListNo << endl;
              ost::SemaphoreLock lock(mutex);
 
              currentListId = rxPtr->signalListNo;
@@ -85,12 +87,15 @@ void Receiver::process(HRTLab::Session *session)
 void Receiver::newSignalList(unsigned int listId,
         const HRTLab::Signal * const *s, size_t n)
 {
-    //cout << __LINE__ << __func__ << ' ' << n << endl;
+//    cout << __LINE__ << __func__ << ' ' << listId << ' ' << n << endl;
     ost::SemaphoreLock lock(mutex);
     const HRTLab::Signal **signals = new const HRTLab::Signal*[n+1];
 
     std::copy(s, s+n, signals);
     signals[n] = 0;
+
+//    for (size_t i = 0; i < n; i++)
+//        cout << s[i]->path << endl;
 
     listIdQ.push(ListIdPair(listId, signals));
 }

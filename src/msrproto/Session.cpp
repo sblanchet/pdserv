@@ -180,8 +180,10 @@ void Session::pending()
         setTimer(0);
         if (detectOutput)
             setDetectPending(false);
-        else
+        else {
+            setDetectOutput(false);
             delete this;
+        }
         return;
     }
 
