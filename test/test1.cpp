@@ -39,6 +39,8 @@ int main(int argc, const char *argv[])
     unsigned int var1_dims[] = {2,3,4};
     struct timespec time;
     double dbl[3] = { 13,14,15};
+    double dbltime;
+    double tick = 10;
     uint32_t param[] = {1,2,3,4};
 
 //    assert(!hrtlab_signal(hrtlab, 0, 1, "/path/to/variable", "var1",
@@ -50,6 +52,11 @@ int main(int argc, const char *argv[])
     assert(hrtlab_signal(hrtlab, 0, 1, "/path/to/double",
             si_double_T, dbl, 1, NULL));
 
+    assert(hrtlab_signal(hrtlab, 0, 1, "/Time",
+            si_double_T, &dbltime, 1, NULL));
+
+    struct variable *p1 = hrtlab_parameter(hrtlab, "/Taskinfo/Abtastfrequenz", 0666,
+            si_double_T, &tick, 1, 0, 0, 0);
     struct variable *p = hrtlab_parameter(hrtlab, "/path/to/param", 0666,
             si_uint32_T, param, 4, 0, copy_param, (void*)10);
     assert(p);
@@ -67,6 +74,7 @@ int main(int argc, const char *argv[])
         dbl[0] += param[0];
         var1[5][0][0] += param[1];
         clock_gettime(CLOCK_REALTIME, &time);
+        dbltime = time.tv_sec + time.tv_nsec * 1.0e-9;
         hrtlab_update(hrtlab, 0, &time);
     }
 
