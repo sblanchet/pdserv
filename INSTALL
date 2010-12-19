@@ -1,4 +1,30 @@
+Dependencies:
+============
+- cmake
+- g++ development environment
+- CommonC++ development version
+- pkg-config (optional)
+
+Installation instructions:
+=========================
 To install this library, execute the following commands:
 cmake .         # <-- Note the dot at the end, this is not a mistake!
 make
 make install
+
+The default installation paths are:
+prefix=/opt/etherlab
+sysconfdir=${prefix}/etc
+exec_prefix=${prefix}/bin
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+To change these paths, call cmake with one or more of the following options:
+cmake
+        -DPREFIX=${prefix}
+        -DSYSCONFDIR=${sysconfdir}
+        -DEXECDIR=${exec_prefix}
+        -DLIBDIR=${libdir}
+        -DINCLUDEDIR=${includedir}
+        .
+

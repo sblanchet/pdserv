@@ -4,16 +4,76 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(pdcomserv)
 SET (CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE)
 
-ENABLE_TESTING()
-
-INCLUDE (InstallRequiredSystemLibraries)
-
+# Project version
 SET (MAJOR_VERSION 0)
 SET (MINOR_VERSION 99)
 SET (PATCH_LEVEL 0)
 SET (VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL})
 #SET (${PROJECT_NAME}_SOVERSION "SOVERSION")
 #    ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL})
+
+
+# Project path options
+IF (NOT PREFIX)         # Project root
+    SET (PREFIX "/opt/etherlab")
+ENDIF ()
+
+IF (SYSCONFDIR)         # configuration files
+    SET (ABS_SYSCONFDIR "${SYSCONFDIR}")
+    SET (PC_SYSCONFDIR "${SYSCONFDIR}")
+ELSE ()
+    SET (ABS_SYSCONFDIR ${PREFIX}/etc)
+    SET (PC_SYSCONFDIR "\${prefix}/etc")
+ENDIF ()
+
+IF (INCLUDEDIR)         # include files
+    SET (ABS_INCLUDEDIR "${INCLUDEDIR}")
+    SET (PC_INCLUDEDIR "${INCLUDEDIR}")
+ELSE ()
+    SET (ABS_INCLUDEDIR ${PREFIX}/include)
+    SET (PC_INCLUDEDIR "\${prefix}/include")
+ENDIF ()
+
+IF (EXECDIR)            # executables
+    SET (ABS_EXECDIR "${EXECDIR}")
+    SET (PC_EXECDIR "${EXECDIR}")
+ELSE ()
+    SET (ABS_EXECDIR ${PREFIX}/bin)
+    SET (PC_EXECDIR "\${prefix}/bin")
+ENDIF ()
+
+IF (LIBDIR)             # libraries
+    SET (ABS_LIBDIR "${LIBDIR}")
+    SET (PC_LIBDIR "${LIBDIR}")
+ELSE ()
+    SET (ABS_LIBDIR ${PREFIX}/lib)
+    SET (PC_LIBDIR "\${prefix}/lib")
+ENDIF ()
+
+# Make sure that the project options are remembered
+SET (PREFIX "${PREFIX}" CACHE PATH
+    "Root directory for the project" FORCE)
+SET (SYSCONFDIR "${SYSCONFDIR}" CACHE PATH
+    "Directory for configuration files" FORCE)
+SET (INCLUDEDIR "${INCLUDEDIR}" CACHE PATH
+    "Directory for header files" FORCE)
+SET (EXECDIR "${EXECDIR}" CACHE PATH
+    "Directory for executables" FORCE)
+SET (LIBDIR "${LIBDIR}" CACHE PATH
+    "Directory for libraries" FORCE)
+
+#SET (PC_SYSCONFDIR "${PC_SYSCONFDIR}" CACHE PATH
+#    "Directory for configuration files" FORCE)
+#SET (PC_INCLUDEDIR "${PC_INCLUDEDIR}" CACHE PATH
+#    "Directory for header files" FORCE)
+#SET (PC_EXECDIR "${PC_EXECDIR}" CACHE PATH
+#    "Directory for executables" FORCE)
+#SET (PC_LIBDIR "${PC_LIBDIR}" CACHE PATH
+#    "Directory for libraries" FORCE)
+
+ENABLE_TESTING()
+
+INCLUDE (InstallRequiredSystemLibraries)
 
 
 SET (CPACK_PACKAGE_DESCRIPTION_SUMMARY "Process data communications library")
@@ -35,19 +95,6 @@ SET (CPACK_SOURCE_IGNORE_FILES
 
 INCLUDE (CPack)
 ADD_CUSTOM_TARGET (dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
-
-
-IF (CMAKE_INSTALL_PREFIX STREQUAL "/usr/local")
-    SET (CMAKE_INSTALL_PREFIX "/opt/etherlab")
-ENDIF ()
-
-IF (NOT SYSCONFDIR)
-    SET (SYSCONFDIR ${CMAKE_INSTALL_PREFIX}/etc)
-ENDIF ()
-
-IF (NOT LIBDIR)
-    SET (LIBDIR ${CMAKE_INSTALL_PREFIX}/lib)
-ENDIF ()
 
 # Search for mercurial, used to add ID information to the library
 SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
@@ -76,7 +123,7 @@ INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include")
 ADD_SUBDIRECTORY (src)
 ADD_SUBDIRECTORY (test)
 
-INSTALL (DIRECTORY "${PROJECT_SOURCE_DIR}/include"
+INSTALL (DIRECTORY "${ABS_INCLUDEDIR}"
     DESTINATION .
     PATTERN "*~" EXCLUDE
     PATTERN "*.orig" EXCLUDE)

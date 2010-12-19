@@ -1,8 +1,8 @@
-prefix=@CMAKE_INSTALL_PREFIX@
-exec_prefix=${prefix}/bin
-libdir=${prefix}/lib
-includedir=${prefix}/include
-sysconfdir=@SYSCONFDIR@
+prefix=@PREFIX@
+exec_prefix=@PC_EXECDIR@
+libdir=@PC_LIBDIR@
+includedir=@PC_INCLUDEDIR@
+sysconfdir=@PC_SYSCONFDIR@
 
 Name: @PROJECT_NAME@
 Description: Process data communications library
