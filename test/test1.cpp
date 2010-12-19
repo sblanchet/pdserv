@@ -1,4 +1,4 @@
-#include "rtlab/rtlab.h"
+#include "pdcomserv/pdcomserv.h"
 #include <stdint.h>
 #include <cstring>
 #include <stdio.h>
@@ -34,7 +34,7 @@ int gettime(struct timespec *t)
 
 int main(int argc, const char *argv[])
 {
-    struct hrtlab *hrtlab = hrtlab_create(argc, argv, argv[0], "1.0", 0.1, 1, 0,
+    struct pdcomserv *pdcomserv = pdcomserv_create(argc, argv, argv[0], "1.0", 0.1, 1, 0,
             gettime);
     unsigned int var1_dims[] = {2,3,4};
     struct timespec time;
@@ -43,25 +43,25 @@ int main(int argc, const char *argv[])
     double tick = 10;
     uint32_t param[] = {1,2,3,4};
 
-//    assert(!hrtlab_signal(hrtlab, 0, 1, "/path/to/variable", "var1",
+//    assert(!pdcomserv_signal(pdcomserv, 0, 1, "/path/to/variable", "var1",
 //            si_uint16_T, 3, var1_dims, var1));
 
-    assert(hrtlab_signal(hrtlab, 0, 1, "/path/to/var2",
+    assert(pdcomserv_signal(pdcomserv, 0, 1, "/path/to/var2",
             si_uint16_T, var1+5, 1, NULL));
 
-    assert(hrtlab_signal(hrtlab, 0, 1, "/path/to/double",
+    assert(pdcomserv_signal(pdcomserv, 0, 1, "/path/to/double",
             si_double_T, dbl, 1, NULL));
 
-    assert(hrtlab_signal(hrtlab, 0, 1, "/Time",
+    assert(pdcomserv_signal(pdcomserv, 0, 1, "/Time",
             si_double_T, &dbltime, 1, NULL));
 
-    struct variable *p1 = hrtlab_parameter(hrtlab, "/Taskinfo/Abtastfrequenz", 0666,
+    struct variable *p1 = pdcomserv_parameter(pdcomserv, "/Taskinfo/Abtastfrequenz", 0666,
             si_double_T, &tick, 1, 0, 0, 0);
-    struct variable *p = hrtlab_parameter(hrtlab, "/path/to/param", 0666,
+    struct variable *p = pdcomserv_parameter(pdcomserv, "/path/to/param", 0666,
             si_uint32_T, param, 4, 0, copy_param, (void*)10);
     assert(p);
 
-    assert(!hrtlab_init(hrtlab));
+    assert(!pdcomserv_init(pdcomserv));
 
     // Need to be root
     //assert(!mlockall(MCL_CURRENT|MCL_FUTURE));
@@ -75,10 +75,10 @@ int main(int argc, const char *argv[])
         var1[5][0][0] += param[1];
         clock_gettime(CLOCK_REALTIME, &time);
         dbltime = time.tv_sec + time.tv_nsec * 1.0e-9;
-        hrtlab_update(hrtlab, 0, &time);
+        pdcomserv_update(pdcomserv, 0, &time);
     }
 
-    hrtlab_exit(hrtlab);
+    pdcomserv_exit(pdcomserv);
 
     return 0;
 }

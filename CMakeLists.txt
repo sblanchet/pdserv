@@ -54,6 +54,8 @@ IF (NOT PREFIX)         # Project root
     SET (PREFIX "/opt/etherlab")
 ENDIF ()
 
+SET(CMAKE_INSTALL_PREFIX ${PREFIX})
+
 IF (SYSCONFDIR)         # configuration files
     SET (ABS_SYSCONFDIR "${SYSCONFDIR}")
     SET (PC_SYSCONFDIR "${SYSCONFDIR}")
@@ -132,26 +134,14 @@ MERCURIAL_HG_INFO (${PROJECT_SOURCE_DIR} Package)
 FIND_PACKAGE (PkgConfig REQUIRED)
 PKG_CHECK_MODULES (LIBCCEXT2 REQUIRED libccext2)
 
-# The following flags are used when calling cmake with CMAKE_BUILD_TYPE
-# eg: cmake -DCMAKE_BUILD_TYPE=Release
-#SET (CMAKE_CXX_FLAGS_Debug "-DDEBUG -g")
-#SET (CMAKE_CXX_FLAGS_Release "-O2")
-#SET (CMAKE_CXX_FLAGS_RelWithDebInfo "-g -O2")
-#SET (CMAKE_CXX_FLAGS_MinSizeRel "")
-
 ADD_DEFINITIONS ("-Wall -ansi")
-# IF (Debug)
-#     ADD_DEFINITIONS ("-DDEBUG -g")
-# ELSE (Debug)
-#     ADD_DEFINITIONS ("-O2")
-# ENDIF (Debug)
 
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include")
 ADD_SUBDIRECTORY (src)
 ADD_SUBDIRECTORY (test)
 
-INSTALL (DIRECTORY "${ABS_INCLUDEDIR}"
-    DESTINATION .
+INSTALL (DIRECTORY include
+    DESTINATION "${ABS_INCLUDEDIR}"
     PATTERN "*~" EXCLUDE
     PATTERN "*.orig" EXCLUDE)
 

@@ -29,7 +29,6 @@
 
 #include <cc++/thread.h>
 #include <set>
-#include "rtlab/rtlab.h"
 
 class Receiver;
 class Parameter;

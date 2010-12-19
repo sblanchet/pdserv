@@ -31,7 +31,7 @@
 #include <cc++/thread.h>
 
 #include "../Task.h"
-#include "rtlab/etl_data_info.h"
+#include "pdcomserv/etl_data_info.h"
 #include "ShmemDataStructures.h"
 
 class Main;

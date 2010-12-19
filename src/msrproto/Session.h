@@ -60,7 +60,7 @@
 #include <map>
 #include <set>
 
-#include "rtlab/etl_data_info.h"
+#include "pdcomserv/etl_data_info.h"
 
 namespace HRTLab {
     class Variable;

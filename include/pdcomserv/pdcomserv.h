@@ -1,7 +1,7 @@
-#ifndef _HRTLAB_H
-#define _HRTLAB_H
+#ifndef PDCOMSERV_H
+#define PDCOMSERV_H
 
-#include <rtlab/etl_data_info.h>
+#include "etl_data_info.h"
 #include <stddef.h>
 
 #ifdef __cplusplus
@@ -9,18 +9,18 @@ extern "C" {
 #endif
 
 /** Structure declaration */
-struct hrtlab;
+struct pdcomserv;
 struct variable;
 
-/** Initialise hrtlab library
+/** Initialise pdcomserv library
  *
  * This is the first call that initialises the library. It should be called
  * before any other library calls
  * returns:
  *      NULL on error
- *      pointer to struct hrtlab on success
+ *      pointer to struct pdcomserv on success
  */
-struct hrtlab* hrtlab_create(
+struct pdcomserv* pdcomserv_create(
         int argc,               /**< Argument count */
         const char *argv[],     /**< Arguments */
         const char *name,       /**< Name of the process */
@@ -57,8 +57,8 @@ struct hrtlab* hrtlab_create(
  *   @dim = {2,3,4}
  *   
  */
-struct variable* hrtlab_signal(
-        struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
+struct variable* pdcomserv_signal(
+        struct pdcomserv* pdcomserv,    /**< Pointer to pdcomserv structure */
         unsigned int tid,         /**< Task Id of the signal */
         unsigned int decimation,  /**< Decimation with which the signal is
                                    * calculated */
@@ -74,7 +74,7 @@ struct variable* hrtlab_signal(
 
 /** Callback on a parameter update event
  *
- * See \hrtlab_set_parameter_trigger
+ * See \pdcomserv_set_parameter_trigger
  *
  * This function is responsible for copying the data from @src to @dst
  *
@@ -92,7 +92,7 @@ typedef int (*paramtrigger_t)(
 
 /** Register a parameter
  *
- * This call registers a parameter. See @hrtlab_signal for the description of
+ * This call registers a parameter. See @pdcomserv_signal for the description of
  * similar function arguments.
  *
  * During the registration of a parameter, the caller has the chance to
@@ -115,8 +115,8 @@ typedef int (*paramtrigger_t)(
  * events at the same time for example. Incidentally @dst is the address
  * specified by @addr during registration. The return value is ignored.
  */
-struct variable *hrtlab_parameter(
-        struct hrtlab* hrtlab,    /**< Pointer to hrtlab structure */
+struct variable *pdcomserv_parameter(
+        struct pdcomserv* pdcomserv,    /**< Pointer to pdcomserv structure */
         const char *path,         /**< Parameter path */
         unsigned int mode,        /**< Access mode, same as unix file mode */
         enum si_datatype_t datatype, /**< Parameter data type */
@@ -134,22 +134,22 @@ struct variable *hrtlab_parameter(
 /** Set an optional alias for a variable
  *
  * Sometimes it it easier to find a variable by its alias. Use this
- * function after calling either @hrtlab_signal or @hrtlab_parameter
+ * function after calling either @pdcomserv_signal or @pdcomserv_parameter
  * to set the alias name for a variable.
  */
-void hrtlab_set_alias(
+void pdcomserv_set_alias(
         struct variable *variable, /**< Parameter or Signal address */
         const char *alias       /**< Variable's alias */
         );
 
 /** Set the optional unit of a variable */
-void hrtlab_set_unit(
+void pdcomserv_set_unit(
         struct variable *variable, /**< Parameter or Signal address */
         const char *unit        /**< Variable's unit */
         );
 
 /** Set the optional comment of a variable */
-void hrtlab_set_comment(
+void pdcomserv_set_comment(
         struct variable *variable, /**< Parameter or Signal address */
         const char *comment     /**< Variable's comment */
         );
@@ -162,12 +162,12 @@ void hrtlab_set_comment(
  * that communicates with the rest of the world.
  *
  * Since the new process lives in a separate memory space, all parameters must
- * have been initialised beforehand. After calling @hrtlab_init, parameters
+ * have been initialised beforehand. After calling @pdcomserv_init, parameters
  * should not be changed any more. They can only be updated though a call by
  * the library.
  */
-int hrtlab_init(
-        struct hrtlab* hrtlab     /**< Pointer to hrtlab structure */
+int pdcomserv_init(
+        struct pdcomserv* pdcomserv     /**< Pointer to pdcomserv structure */
         );
 
 /** Update variables
@@ -175,20 +175,20 @@ int hrtlab_init(
  * Call this function at the end of the calculation cycle to update
  * variables
  */
-void hrtlab_update(
-        struct hrtlab* hrtlab,  /**< Pointer to hrtlab structure */
+void pdcomserv_update(
+        struct pdcomserv* pdcomserv,  /**< Pointer to pdcomserv structure */
         int st,                 /**< Sample task id to update */
         const struct timespec *t /**< Current model time.
                                   * If NULL, zero is assumed */
         );
 
-/** Cleanup hrtlab */
-void hrtlab_exit(
-        struct hrtlab*           /**< Pointer to hrtlab structure */
+/** Cleanup pdcomserv */
+void pdcomserv_exit(
+        struct pdcomserv*           /**< Pointer to pdcomserv structure */
         );
 
 #ifdef __cplusplus
 }
 #endif // __cplusplus
 
-#endif // _HRTLAB_H
+#endif // PDCOMSERV_H

@@ -28,7 +28,7 @@
 #include <ctime>
 #include <cc++/thread.h>
 #include "../Parameter.h"
-#include "rtlab/rtlab.h"
+#include "pdcomserv/pdcomserv.h"
 
 class Main;
 

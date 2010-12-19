@@ -25,7 +25,7 @@
 #ifndef VARIABLE
 #define VARIABLE
 
-#include "rtlab/etl_data_info.h"
+#include "pdcomserv/etl_data_info.h"
 
 #include <cstddef>
 #include <string>

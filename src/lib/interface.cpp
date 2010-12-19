@@ -25,33 +25,34 @@
 #include "Main.h"
 #include "Signal.h"
 #include "Parameter.h"
+#include <pdcomserv/pdcomserv.h>
 
 /////////////////////////////////////////////////////////////////////////////
-struct hrtlab* hrtlab_create(int argc, const char *argv[], 
+struct pdcomserv* pdcomserv_create(int argc, const char *argv[], 
         const char *name, const char *version, double baserate,
         unsigned int nst, const unsigned int decimation[],
         int (*gettime)(struct timespec*))
 {
-    return reinterpret_cast<struct hrtlab*>(
+    return reinterpret_cast<struct pdcomserv*>(
             new Main(argc, argv, name, version, baserate, nst,
                 decimation, gettime));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void hrtlab_exit(struct hrtlab* hrtlab)
+void pdcomserv_exit(struct pdcomserv* pdcomserv)
 {
-    delete reinterpret_cast<Main*>(hrtlab);
+    delete reinterpret_cast<Main*>(pdcomserv);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void hrtlab_update(struct hrtlab* hrtlab, int st, const struct timespec *t)
+void pdcomserv_update(struct pdcomserv* pdcomserv, int st, const struct timespec *t)
 {
-    reinterpret_cast<Main*>(hrtlab)->update(st, t);
+    reinterpret_cast<Main*>(pdcomserv)->update(st, t);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-struct variable *hrtlab_signal(
-        struct hrtlab* hrtlab,
+struct variable *pdcomserv_signal(
+        struct pdcomserv* pdcomserv,
         unsigned int tid,
         unsigned int decimation,
         const char *path,
@@ -61,7 +62,7 @@ struct variable *hrtlab_signal(
         const size_t dim[]
         )
 {
-    Main *main = reinterpret_cast<Main*>(hrtlab);
+    Main *main = reinterpret_cast<Main*>(pdcomserv);
 
     if (tid >= main->nst)
         return 0;
@@ -73,8 +74,8 @@ struct variable *hrtlab_signal(
 }
 
 /////////////////////////////////////////////////////////////////////////////
-struct variable *hrtlab_parameter(
-        struct hrtlab* hrtlab,
+struct variable *pdcomserv_parameter(
+        struct pdcomserv* pdcomserv,
         const char *path,
         unsigned int mode,
         enum si_datatype_t datatype,
@@ -85,7 +86,7 @@ struct variable *hrtlab_parameter(
         void *_priv_data = 0
         )
 {
-    Parameter *p = new Parameter(reinterpret_cast<Main*>(hrtlab),
+    Parameter *p = new Parameter(reinterpret_cast<Main*>(pdcomserv),
             path, mode, datatype, addr, n, dim);
     p->trigger = _trigger;
     p->priv_data = _priv_data;
@@ -95,25 +96,25 @@ struct variable *hrtlab_parameter(
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void hrtlab_set_alias( struct variable *var, const char *_alias)
+void pdcomserv_set_alias( struct variable *var, const char *_alias)
 {
     reinterpret_cast<HRTLab::Variable*>(var)->alias = _alias;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void hrtlab_set_unit( struct variable *var, const char *_unit)
+void pdcomserv_set_unit( struct variable *var, const char *_unit)
 {
     reinterpret_cast<HRTLab::Variable*>(var)->unit = _unit;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void hrtlab_set_comment( struct variable *var, const char *_comment)
+void pdcomserv_set_comment( struct variable *var, const char *_comment)
 {
     reinterpret_cast<HRTLab::Variable*>(var)->comment = _comment;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int hrtlab_init(struct hrtlab* hrtlab)
+int pdcomserv_init(struct pdcomserv* pdcomserv)
 {
-    return reinterpret_cast<Main*>(hrtlab)->init();
+    return reinterpret_cast<Main*>(pdcomserv)->init();
 }
