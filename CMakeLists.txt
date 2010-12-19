@@ -1,7 +1,43 @@
-# cmake file for building process data communications server
+#############################################################################
+#
+#  $Id$
+#
+#  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
+#
+#  This is the main cmake file for building process data communications server
+#
+#  The following options can be specified on the command line of cmake to
+#  change the installation paths (Defaults are in <>)
+#       -DPREFIX=</opt/etherlab>
+#       -DINCLUDEDIR=<${prefix}/include>
+#       -DEXECDIR=<${prefix}/bin>
+#       -DLIBDIR=<${prefix}/lib>
+#
+#  For debugging, use the
+#       -DCMAKE_BUILD_TYPE=Debug|Release|RelWithDebInfo|MinSizeRel
+#  option
+#
+#  This file is part of the pdcomserv package.
+#
+#  pdcomserv is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  pdcomserv is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with pdcomserv. See COPYING. If not, see
+#  <http://www.gnu.org/licenses/>.
+#
+#############################################################################
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-PROJECT(pdcomserv)
+
+CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
+PROJECT (pdcomserv)
 SET (CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE)
 
 # Project version
@@ -61,15 +97,6 @@ SET (EXECDIR "${EXECDIR}" CACHE PATH
     "Directory for executables" FORCE)
 SET (LIBDIR "${LIBDIR}" CACHE PATH
     "Directory for libraries" FORCE)
-
-#SET (PC_SYSCONFDIR "${PC_SYSCONFDIR}" CACHE PATH
-#    "Directory for configuration files" FORCE)
-#SET (PC_INCLUDEDIR "${PC_INCLUDEDIR}" CACHE PATH
-#    "Directory for header files" FORCE)
-#SET (PC_EXECDIR "${PC_EXECDIR}" CACHE PATH
-#    "Directory for executables" FORCE)
-#SET (PC_LIBDIR "${PC_LIBDIR}" CACHE PATH
-#    "Directory for libraries" FORCE)
 
 ENABLE_TESTING()
 
