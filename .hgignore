@@ -14,3 +14,7 @@ rtlab-*-Linux*
 test/test1
 config.h
 TAGS
+*.so
+*.so.*
+*.orig
+*.pc

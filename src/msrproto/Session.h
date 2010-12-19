@@ -6,12 +6,12 @@
 #define MSRSESSION_H
 
 // Version der MSR_LIBRARIES 
-#define VERSION  6
-#define PATCHLEVEL 0
-#define SUBLEVEL  10
+#define _VERSION  6
+#define _PATCHLEVEL 0
+#define _SUBLEVEL  10
 
 
-#define MSR_VERSION (((VERSION) << 16) + ((PATCHLEVEL) << 8) + (SUBLEVEL))
+#define MSR_VERSION (((_VERSION) << 16) + ((_PATCHLEVEL) << 8) + (_SUBLEVEL))
 
 //Liste der Features der aktuellen rtlib-Version, wichtig, muß aktuell gehalten werden
 //da der Testmanager sich auf die Features verläßt

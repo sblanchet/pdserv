@@ -4,6 +4,11 @@
 // Repository Version
 #define PKGID @Package_HG_ID@
 
-#cmakedefine DEBUG
+#define MAJOR_VERSION @MAJOR_VERSION@
+#define MINOR_VERSION @MINOR_VERSION@
+#define PATCHLEVEL    @PATCHLEVEL@
+#define PROJECT_NAME  "@PROJECT_NAME@"
+
+//#CMAKEDEFINE DEBUG
 
 #endif //CONFIG_H

@@ -33,7 +33,7 @@ class Main: public HRTLab::Main {
 //        void newSignalList(unsigned int listId,
 //                const HRTLab::Signal * const *, size_t n) const;
 
-        static const double bufferTime = 2;
+        static const double bufferTime;
 
     private:
         mutable ost::Semaphore mutex;

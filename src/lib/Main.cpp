@@ -25,6 +25,9 @@ using std::endl;
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
+const double Main::bufferTime = 2.0;
+
+/////////////////////////////////////////////////////////////////////////////
 Main::Main(int argc, const char *argv[],
         const char *name, const char *version,
         double baserate,
@@ -265,12 +268,12 @@ int Main::init()
     sdoTaskTime   = ptr_align<struct timespec>(sdo->signal + sdoCount);
     sdoData       = ptr_align<char>(sdoTaskTime + nst);
 
-    cout
-        << " shmem=" << shmem
-        << " sdo=" << sdo
-        << " sdoTaskTime=" << sdoTaskTime
-        << " sdoData=" << (void*)sdoData
-        << endl;
+//    cout
+//        << " shmem=" << shmem
+//        << " sdo=" << sdo
+//        << " sdoTaskTime=" << sdoTaskTime
+//        << " sdoData=" << (void*)sdoData
+//        << endl;
 
     char* buf = ptr_align<char>(sdoData + std::max(parameterSize, signalSize));
     for (unsigned int i = 0; i < nst; i++) {

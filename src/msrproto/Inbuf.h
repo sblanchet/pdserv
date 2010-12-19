@@ -35,7 +35,7 @@ class Inbuf {
         char *buf, *bptr, *eptr, *pptr;
 
         enum ParseState {
-            FindStart, GetCommand, GetToken, GetAttribute, GetQuote, GetValue,
+            FindStart, GetCommand, GetToken, GetAttribute, GetQuote, GetValue
         };
         ParseState parseState;
 

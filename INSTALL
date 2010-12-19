@@ -1,0 +1,4 @@
+To install this library, execute the following commands:
+cmake .         # <-- Note the dot at the end, this is not a mistake!
+make
+make install

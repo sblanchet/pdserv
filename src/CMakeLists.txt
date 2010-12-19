@@ -1,10 +1,9 @@
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -O2 -I/usr/include/libxml2")
-#add_definitions(-DPKGID=${Package_HG_ID})
 
-include_directories(${RTLAB_SOURCE_DIR}/include)
-include_directories(${RTLAB_SOURCE_DIR})
+INCLUDE_DIRECTORIES(${RTLAB_SOURCE_DIR})
+INCLUDE_DIRECTORIES(${LIBCCEXT2_INCLUDE_DIRS})
+INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR})      # for config.h
 
-add_library( rtlab SHARED
+ADD_LIBRARY( ${PROJECT_NAME} SHARED
     SessionStatistics.h
     Task.cpp Task.h
     Session.cpp Session.h
@@ -25,7 +24,6 @@ add_library( rtlab SHARED
     #etlproto/Server.cpp etlproto/Server.h
     #etlproto/Session.cpp etlproto/Session.h
 
-    #msrproto/TSession.cpp msrproto/TSession.h
     msrproto/Session.cpp msrproto/Session.h
     msrproto/SubscriptionChange.cpp msrproto/SubscriptionChange.h
     msrproto/Outbuf.cpp msrproto/Outbuf.h
@@ -36,9 +34,26 @@ add_library( rtlab SHARED
     msrproto/XmlDoc.cpp msrproto/XmlDoc.h
     )
 
-target_link_libraries(rtlab ccext2 xml2)
+#SET (${PROJECT_NAME}_SOVERSION 3;3;3;3)
+#    ${${PROJECT_NAME}_MAJOR_VERSION}
+#    ${${PROJECT_NAME}_MINOR_VERSION}
+#    ${${PROJECT_NAME}_PATCH_LEVEL}
+#    0)
+
+SET_TARGET_PROPERTIES ( ${PROJECT_NAME} PROPERTIES
+    VERSION ${VERSION}
+    CLEAN_DIRECT_OUTPUT 1)
+
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBCCEXT2_LIBRARIES})
+INSTALL(TARGETS ${PROJECT_NAME} DESTINATION lib LIBRARY)
 
 IF (UNIX)
     ADD_CUSTOM_TARGET(tags etags *.cpp *.h */*.cpp */*.h)
     ADD_CUSTOM_TARGET(etags DEPENDS tags)
 ENDIF (UNIX)
+
+CONFIGURE_FILE (
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/libpdcomserv.pc.in"
+    "libpdcomserv.pc" @ONLY
+    )
+INSTALL (FILES "libpdcomserv.pc" DESTINATION ${LIBDIR}/pkgconfig)
