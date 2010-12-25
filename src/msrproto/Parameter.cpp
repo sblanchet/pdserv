@@ -26,6 +26,7 @@
 
 #include "Parameter.h"
 #include "XmlDoc.h"
+#include "PrintVariable.h"
 #include "../Task.h"
 #include "../Parameter.h"
 
@@ -45,7 +46,9 @@ Parameter::Parameter( const HRTLab::Parameter *p,
         unsigned int index, unsigned int sigOffset, size_t nelem):
     index(index),
     mainParam(p), nelem(nelem), memSize(p->width),
-    bufferOffset(sigOffset * p->width), persistent(false)
+    bufferOffset(sigOffset * p->width),
+    printFunc(getPrintFunc(p->dtype)),
+    persistent(false)
 {
     cout << __PRETTY_FUNCTION__ << index << endl;
     ///cout << s->path << '[' << endl;
@@ -72,7 +75,8 @@ Parameter::Parameter( const HRTLab::Parameter *p,
 /////////////////////////////////////////////////////////////////////////////
 Parameter::Parameter( const HRTLab::Parameter *p, unsigned int index):
     index(index), mainParam(p), nelem(p->nelem), memSize(p->memSize),
-    bufferOffset(0), persistent(false)
+    bufferOffset(0), printFunc(getPrintFunc(p->dtype)),
+    persistent(false)
 {
 }
 
@@ -93,7 +97,7 @@ void Parameter::setXmlAttributes( MsrXml::Element *element,
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>
 
-    element->setVariableAttributes(mainParam, index, path(), nelem, shortReply);
+    setVariableAttributes(element, mainParam, index, path(), nelem, shortReply);
 
     if (!shortReply) {
         element->setAttribute("flags",
@@ -107,10 +111,11 @@ void Parameter::setXmlAttributes( MsrXml::Element *element,
     element->setAttribute("mtime", mtime);
 
     if (hex)
-        element->hexDecValueAttr(
-                "hexvalue", data + bufferOffset, mainParam, nelem);
+        hexDecAttribute(element, "hexvalue",
+                mainParam, nelem, data + bufferOffset);
     else
-        element->csvValueAttr("value", data + bufferOffset, mainParam, nelem);
+        csvAttribute(element, "value",
+                printFunc, mainParam, nelem, data + bufferOffset);
     return;
 
 }

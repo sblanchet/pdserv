@@ -26,6 +26,7 @@
 
 #include "Channel.h"
 #include "XmlDoc.h"
+#include "PrintVariable.h"
 #include "../Task.h"
 #include "../Signal.h"
 
@@ -44,7 +45,8 @@ using namespace MsrProto;
 Channel::Channel( const HRTLab::Signal *s, unsigned int index,
         unsigned int sigOffset):
     index(index), signal(s), nelem(1), memSize(s->width),
-    bufferOffset(sigOffset * s->width)
+    bufferOffset(sigOffset * s->width),
+    printFunc(getPrintFunc(s->dtype))
 {
     cout << __PRETTY_FUNCTION__ << index << endl;
     ///cout << s->path << '[' << endl;
@@ -71,7 +73,7 @@ Channel::Channel( const HRTLab::Signal *s, unsigned int index,
 /////////////////////////////////////////////////////////////////////////////
 Channel::Channel( const HRTLab::Signal *s, unsigned int index):
     index(index), signal(s), nelem(s->nelem), memSize(s->memSize),
-    bufferOffset(0)
+    bufferOffset(0), printFunc(getPrintFunc(s->dtype))
 {
 }
 
@@ -95,7 +97,7 @@ void Channel::setXmlAttributes( MsrXml::Element *element,
     size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
 
 
-    element->setVariableAttributes(signal, index, path(), nelem, shortReply);
+    setVariableAttributes(element, signal, index, path(), nelem, shortReply);
 
     if (shortReply)
         return;
@@ -104,7 +106,8 @@ void Channel::setXmlAttributes( MsrXml::Element *element,
     element->setAttribute("bufsize", bufsize);
     element->setAttribute("HZ", freq);
 
-    element->csvValueAttr("value", data + bufferOffset, signal, nelem);
+    csvAttribute(element, "value",
+            printFunc, signal, nelem, data + bufferOffset);
 }
 
 /////////////////////////////////////////////////////////////////////////////

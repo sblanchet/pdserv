@@ -27,6 +27,7 @@
 
 #include <string>
 #include <list>
+#include "PrintVariable.h"
 
 namespace HRTLab {
     class Parameter;
@@ -59,6 +60,8 @@ class Parameter {
         const size_t nelem;
         const size_t memSize;
         const size_t bufferOffset;
+
+        const PrintFunc printFunc;
 
     private:
 

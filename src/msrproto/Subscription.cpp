@@ -28,6 +28,7 @@
 #include "../Receiver.h"
 //
 #include "XmlDoc.h"
+#include "PrintVariable.h"
 //#include "Task.h"
 #include "Channel.h"
 #include "SubscriptionManager.h"
@@ -80,9 +81,7 @@ void Subscription::set( bool _event, bool sync, unsigned int _decimation,
     blocksize = _blocksize;
 
     precision = _precision;
-    printValue = _base64
-            ? &MsrXml::Element::base64ValueAttr
-            : &MsrXml::Element::csvValueAttr;
+    base64 = _base64;
 
     size_t dataLen = blocksize * channel->memSize;
     if (data_eptr != data_bptr + dataLen) {
@@ -121,8 +120,15 @@ void Subscription::newValue(MsrXml::Element *parent,
         std::copy(dataBuf, dataBuf + channel->memSize, data_pptr);
         data_pptr += channel->memSize;
         if (data_pptr == data_eptr) {
-            (element.*(printValue))("d", data_bptr, channel->signal,
-                    channel->nelem * blocksize, precision);
+
+            if (base64)
+                base64Attribute(&element, "d", channel->signal,
+                        channel->nelem * blocksize, data_bptr);
+            else
+                csvAttribute(&element, "d",
+                        channel->printFunc, channel->signal,
+                        channel->nelem * blocksize, data_bptr);
+
             parent->appendChild(&element);
             data_pptr = data_bptr;
         }
@@ -131,8 +137,12 @@ void Subscription::newValue(MsrXml::Element *parent,
         trigger = decimation;
 
         std::copy(dataBuf, dataBuf + channel->memSize, data_bptr);
-        (element.*(printValue))("d", data_bptr,
-                channel->signal, channel->nelem, precision);
+        if (base64)
+            base64Attribute(&element, "d",
+                    channel->signal, channel->nelem, data_bptr);
+        else
+            csvAttribute(&element, "d", channel->printFunc,
+                    channel->signal, channel->nelem, data_bptr);
         parent->appendChild(&element);
     }
 }

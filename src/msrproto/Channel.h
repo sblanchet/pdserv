@@ -26,6 +26,7 @@
 #define MSRCHANNEL_H
 
 #include <string>
+#include "PrintVariable.h"
 
 namespace HRTLab {
     class Signal;
@@ -55,6 +56,8 @@ class Channel {
         const size_t nelem;
         const size_t memSize;
         const size_t bufferOffset;
+
+        const PrintFunc printFunc;
 
     private:
 

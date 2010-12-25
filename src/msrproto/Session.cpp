@@ -31,6 +31,7 @@
 #include "../Receiver.h"
 
 #include "Session.h"
+#include "PrintVariable.h"
 #include "Server.h"
 #include "Task.h"
 #include "Channel.h"
@@ -476,7 +477,7 @@ void Session::readParamValues(const Attr &attr)
 
         char buf[(*it)->memSize];
         (*it)->getValue(buf);
-        v.append(MsrXml::toCSV((*it)->mainParam, (*it)->nelem, buf));
+        v.append(toCSV((*it)->printFunc, (*it)->mainParam, (*it)->nelem, buf));
     }
 
     param_values.setAttribute("value", v);

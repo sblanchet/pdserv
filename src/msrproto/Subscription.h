@@ -26,16 +26,13 @@
 #define SUBSCRIPTION_H
 
 #include <set>
+#include "XmlDoc.h"
 
 namespace HRTLab {
 //    class Main;
 //    class Receiver;
 //    class Signal;
 //    class Parameter;
-}
-
-namespace MsrXml {
-    class Element;
 }
 
 namespace MsrProto {
@@ -68,9 +65,7 @@ class Subscription {
         size_t blocksize;
 
         size_t precision;
-        void (MsrXml::Element::*printValue)( const char *attribute,
-                const char* data, const HRTLab::Variable *v, size_t count,
-                size_t precision);
+        bool base64;
 
         char *data_bptr;
         char *data_pptr;
