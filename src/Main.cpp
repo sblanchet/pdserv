@@ -118,7 +118,7 @@ int Main::newParameter(Parameter *p)
 /////////////////////////////////////////////////////////////////////////////
 int Main::startProtocols()
 {
-    msrproto = new MsrProto::Server(this);
+    msrproto = new MsrProto::Server(this, traditionalMSR);
 
 //    EtlProto::Server etlproto(this);
 

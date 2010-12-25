@@ -26,9 +26,11 @@
 #define MSRSERVER_H
 
 #include <set>
+#include <map>
+#include <vector>
+#include <list>
 #include <cc++/thread.h>
 
-#include "Session.h"
 #include "../SessionStatistics.h"
 
 namespace HRTLab {
@@ -43,10 +45,12 @@ namespace MsrXml {
 namespace MsrProto {
 
 class Session;
+class Channel;
+class Parameter;
 
 class Server:public ost::Thread {
     public:
-        Server(HRTLab::Main *main);
+        Server(HRTLab::Main *main, bool traditional);
         ~Server();
 
         void broadcast(Session *s, const MsrXml::Element&);
@@ -58,10 +62,31 @@ class Server:public ost::Thread {
         void getSessionStatistics(
                 std::list<HRTLab::SessionStatistics>& stats) const;
 
+        typedef std::vector<const Channel*> Channels;
+        const Channels& getChannels() const;
+        const Channel* getChannel(const std::string&) const;
+        const Channel* getChannel(unsigned int) const;
+
+        typedef std::vector<const Parameter*> Parameters;
+        const Parameters& getParameters() const;
+        const Parameters& getParameters(const HRTLab::Parameter *p) const;
+        const Parameter* getParameter(const std::string&) const;
+        const Parameter* getParameter(unsigned int) const;
+
     private:
 
         HRTLab::Main * const main;
         std::set<Session*> sessions;
+
+        Channels channel;
+        typedef std::map<const std::string, Channel*> ChannelMap;
+        ChannelMap channelMap;
+
+        Parameters parameter;
+        typedef std::map<const std::string, Parameter*> ParameterMap;
+        ParameterMap parameterMap;
+
+        std::map<const HRTLab::Parameter*, Parameters> mainParameterMap;
 
         mutable ost::Semaphore mutex;
 

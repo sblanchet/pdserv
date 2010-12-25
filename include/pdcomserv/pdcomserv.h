@@ -154,6 +154,11 @@ void pdcomserv_set_comment(
         const char *comment     /**< Variable's comment */
         );
 
+///** Make the parameter or signal persistent */
+//void pdcomserv_set_persistent(
+//        struct variable *variable, /**< Parameter or Signal address */
+//        unsigned int value
+//        );
 
 /** Finish initialisation
  *

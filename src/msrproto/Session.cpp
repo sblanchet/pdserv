@@ -33,6 +33,8 @@
 #include "Session.h"
 #include "Server.h"
 #include "Task.h"
+#include "Channel.h"
+#include "Parameter.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -65,7 +67,8 @@ using namespace MsrProto;
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), HRTLab::Session(main),
-    server(s), task(new Task*[main->nst]), subscriptionChange(main, this),
+    server(s), task(new Task*[main->nst]),
+    subscriptionManager(main, this),
     dataTag("data"), outbuf(this), inbuf(this)
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
@@ -78,25 +81,7 @@ Session::Session( Server *s, ost::SocketService *ss,
 
     // Create enough tasks
     for (size_t i = 0; i < main->nst; i++) {
-        task[i] = new Task(subscriptionChange);
-    }
-
-    const HRTLab::Main::Signals& signals = main->getSignals();
-    signalCount = signals.size();
-    signal = new const HRTLab::Signal*[signalCount];
-    for (unsigned idx = 0; idx < signalCount; idx++) {
-        const HRTLab::Signal *s = signals[idx];
-        variableIndexMap[s] = idx;
-        signal[idx] = s;
-    }
-
-    const HRTLab::Main::Parameters& parameters = main->getParameters();
-    parameterCount = parameters.size();
-    parameter = new const HRTLab::Parameter*[parameterCount];
-    for (unsigned idx = 0; idx < parameterCount; idx++) {
-        const HRTLab::Parameter *p = parameters[idx];
-        variableIndexMap[parameters[idx]] = idx;
-        parameter[idx] = p;
+        task[i] = new Task(subscriptionManager);
     }
 
     // Non-blocking read() and write()
@@ -135,10 +120,14 @@ void Session::broadcast(Session *s, const MsrXml::Element &element)
 /////////////////////////////////////////////////////////////////////////////
 void Session::parametersChanged(const HRTLab::Parameter * const *p, size_t n) 
 {
-    MsrXml::Element pu("pu");
     while (n--) {
-        pu.setAttribute("index", getVariableIndex(*p++));
-        outbuf << pu << std::flush;
+        const Server::Parameters& parameters = server->getParameters(*p++);
+        for (Server::Parameters::const_iterator it = parameters.begin();
+                it != parameters.end(); it++) {
+            MsrXml::Element pu("pu");
+            pu.setAttribute("index", (*it)->index);
+            outbuf << pu << std::flush;
+        }
     }
 }
 
@@ -165,7 +154,7 @@ void Session::expired()
 
     dataTag.releaseChildren();
 
-    subscriptionChange.process();
+    subscriptionManager.process();
 
     setTimer(100);      // Wakeup in 100ms again
 }
@@ -207,7 +196,7 @@ void Session::pending()
         return;
     }
 
-    subscriptionChange.process();
+    subscriptionManager.process();
     //cout << __LINE__ << " Data left in buffer: "
         //<< std::string(inbuf.bptr(), inbuf.eptr() - inbuf.bptr()) << endl;
 }
@@ -362,54 +351,60 @@ void Session::ping(const Attr &attr)
 /////////////////////////////////////////////////////////////////////////////
 void Session::readChannel(const Attr &attr)
 {
-    const HRTLab::Signal *s = 0;
+    const Channel *c = 0;
     bool shortReply = attr.isTrue("short");
     std::string path;
     unsigned int index;
 
     if (attr.getString("name", path)) {
-        s = main->getSignal(path);
+        c = server->getChannel(path);
     }
     else if (attr.getUnsigned("index", index)) {
-        if (index < signalCount)
-            s = Session::signal[index];
+        c = server->getChannel(index);
     }
     else {
         size_t buflen = 0;
+        const HRTLab::Signal *mainSignal = 0;
+        const Server::Channels& channel = server->getChannels();
         std::map<const HRTLab::Signal*, size_t> bufOffset;
-        const HRTLab::Signal *signalList[signalCount];
 
         typedef std::list<const HRTLab::Signal*> SignalList;
-        SignalList orderedSignals[HRTLab::Variable::maxWidth];
+        SignalList orderedSignals[HRTLab::Variable::maxWidth + 1];
 
-        for (size_t i = 0; i < signalCount; i++) {
-            s = signal[i];
-            orderedSignals[s->width - 1].push_back(s);
+        for (size_t i = 0; i < channel.size(); i++) {
+            mainSignal = channel[i]->signal;
+            if (bufOffset.find(mainSignal) != bufOffset.end())
+                continue;
+
+            bufOffset[mainSignal] = 0;
+            orderedSignals[mainSignal->width].push_back(mainSignal);
         }
+
+        const HRTLab::Signal *signalList[bufOffset.size()];
 
         index = 0;
         for (size_t w = 8; w; w /= 2) {
-            for (SignalList::const_iterator it = orderedSignals[w-1].begin();
-                    it != orderedSignals[w-1].end(); it++) {
-                s = *it;
+            for (SignalList::const_iterator it = orderedSignals[w].begin();
+                    it != orderedSignals[w].end(); it++) {
+                mainSignal = *it;
 
-                signalList[index] = s;
-                bufOffset[s] = buflen;
-                buflen += s->memSize;
+                signalList[index] = mainSignal;
+                bufOffset[mainSignal] = buflen;
+                buflen += mainSignal->memSize;
 
                 index++;
             }
         }
 
         char buf[buflen];
-        main->getValues(signalList, signalCount, buf);
+        main->getValues(signalList, bufOffset.size(), buf);
 
         MsrXml::Element channels("channels");
-        for (size_t i = 0; i < signalCount; i++) {
-            s = signal[i];
-
-            MsrXml::Element *c = channels.createChild("channel");
-            c->setChannelAttributes(s, i, shortReply, buf + bufOffset[s]);
+        for (size_t i = 0; i < channel.size(); i++) {
+            MsrXml::Element *el = channels.createChild("channel");
+            c = channel[i];
+            c->setXmlAttributes(el, shortReply,
+                    buf + bufOffset[c->signal]);
         }
 
         outbuf << channels << std::flush;
@@ -417,13 +412,13 @@ void Session::readChannel(const Attr &attr)
     }
 
     // A single signal was requested
-    if (s) {
-        char buf[s->memSize];
-        s->getValue(buf);
+    if (c) {
+        char buf[c->signal->memSize];
+
+        c->signal->getValue(buf);
 
         MsrXml::Element channel("channel");
-        channel.setChannelAttributes(
-                s, variableIndexMap[signal], shortReply, buf);
+        c->setXmlAttributes(&channel, shortReply, buf);
 
         outbuf << channel << std::flush;
     }
@@ -432,7 +427,7 @@ void Session::readChannel(const Attr &attr)
 /////////////////////////////////////////////////////////////////////////////
 void Session::readParameter(const Attr &attr)
 {
-    const HRTLab::Parameter *p = 0;
+    const Parameter *p = 0;
     bool shortReply = attr.isTrue("short");
     bool hex = attr.isTrue("hex");
     std::string name;
@@ -441,18 +436,19 @@ void Session::readParameter(const Attr &attr)
         ? MSR_R | MSR_W | MSR_WOP | MSR_MONOTONIC : MSR_R | MSR_MONOTONIC;
 
     if (attr.getString("name", name)) {
-        p = main->getParameter(name);
+        p = server->getParameter(name);
     }
     else if (attr.getUnsigned("index", index)) {
-        if (index < parameterCount)
-            p = parameter[index];
+        p = server->getParameter(index);
     }
     else {
+        const Server::Parameters& parameter = server->getParameters();
         MsrXml::Element parameters("parameters");
-        for (size_t i = 0; i < parameterCount; i++) {
-            parameters.createChild("parameter")->setParameterAttributes(
-                    parameter[i], i, flags, shortReply, hex);
-        }
+
+        for (Server::Parameters::const_iterator it = parameter.begin();
+                it != parameter.end(); it++)
+            (*it)->setXmlAttributes( parameters.createChild("parameter"),
+                    shortReply, hex, flags);
 
         outbuf << parameters << std::flush;
         return;
@@ -460,8 +456,9 @@ void Session::readParameter(const Attr &attr)
     
     if (p) {
         MsrXml::Element parameter("parameter");
-        parameter.setParameterAttributes(
-                p, variableIndexMap[p], flags, shortReply, hex);
+        p->setXmlAttributes( &parameter, shortReply, hex, flags);
+//        parameter.setParameterAttributes(
+//                p, variableIndexMap[p], flags, shortReply, hex);
         outbuf << parameter << std::flush;
     }
 }
@@ -470,13 +467,16 @@ void Session::readParameter(const Attr &attr)
 void Session::readParamValues(const Attr &attr)
 {
     MsrXml::Element param_values("param_values");
+    const Server::Parameters& parameter = server->getParameters();
     std::string v;
 
-    for (size_t idx = 0; idx < parameterCount; idx++) {
-        if (idx) v.append(1,'|');
-        char buf[parameter[idx]->memSize];
-        parameter[idx]->getValue(buf);
-        v.append(MsrXml::toCSV(parameter[idx], buf));
+    for (Server::Parameters::const_iterator it = parameter.begin();
+            it != parameter.end(); it++) {
+        if (it != parameter.begin()) v.append(1,'|');
+
+        char buf[(*it)->memSize];
+        (*it)->getValue(buf);
+        v.append(MsrXml::toCSV((*it)->mainParam, (*it)->nelem, buf));
     }
 
     param_values.setAttribute("value", v);
@@ -580,16 +580,15 @@ void Session::writeParameter(const Attr &attr)
         return;
     }
 
-    const HRTLab::Parameter *p = 0;
+    const Parameter *p = 0;
 
     unsigned int index;
     std::string name;
     if (attr.getString("name", name)) {
-        p = main->getParameter(name);
+        p = server->getParameter(name);
     }
     else if (attr.getUnsigned("index", index)) {
-        if (index < parameterCount)
-            p = parameter[index];
+        p = server->getParameter(index);
     }
 
     if (!p)
@@ -613,7 +612,7 @@ void Session::writeParameter(const Attr &attr)
             0,10,11,12,13,14,15
         };
 
-        for (char *c = valbuf + p->width * startindex;
+        for (char *c = valbuf + p->mainParam->width * startindex;
                 c < valbuf + p->memSize; c++) {
             unsigned char c1 = *s++ - '0';
             unsigned char c2 = *s++ - '0';
@@ -626,8 +625,8 @@ void Session::writeParameter(const Attr &attr)
     }
     else if (attr.find("value", s)) {
         double v;
-        Convert converter(p->dtype,
-                valbuf + startindex * p->width);
+        Convert converter(p->mainParam->dtype,
+                valbuf + startindex * p->mainParam->width);
         char c;
         std::istringstream is(s);
 
@@ -649,38 +648,26 @@ void Session::writeParameter(const Attr &attr)
 
     if (p->setValue(valbuf)) {
         // If an error occurred, tell this client to reread the value
-
-        MsrXml::Element pu("pu");
-        pu.setAttribute("index", variableIndexMap[p]);
-
-        outbuf << pu << std::flush;
+        parametersChanged(&p->mainParam, 1);
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::xsad(const Attr &attr)
 {
-    std::list<const HRTLab::Signal*> channelList;
     unsigned int reduction, blocksize, precision = 10;
     bool base64 = attr.isEqual("coding", "Base64");
     bool event = attr.isTrue("event");
     bool sync = attr.isTrue("sync");
     bool foundReduction = false, foundBlocksize = false;
     std::list<unsigned int> indexList;
+    const Server::Channels& channel = server->getChannels();
 
     // Quiet will stop all transmission of <data> tags until
     // sync is called
     quiet = !sync and attr.isTrue("quiet");
 
-    if (attr.getUnsignedList("channels", indexList)) {
-        for ( std::list<unsigned int>::const_iterator it(indexList.begin());
-                it != indexList.end(); it++) {
-
-            if (*it < signalCount)
-                channelList.push_back(signal[*it]);
-        }
-    }
-    else {
+    if (!attr.getUnsignedList("channels", indexList)) {
         if (sync) {
             for (size_t i = 0; i < main->nst; i++) {
                 task[i]->sync();
@@ -720,29 +707,30 @@ void Session::xsad(const Attr &attr)
         precision = 10;
     }
 
+    for (std::list<unsigned int>::const_iterator it = indexList.begin();
+            it != indexList.end(); it++) {
+        if (*it >= channel.size())
+            continue;
 
-    const HRTLab::Signal *signals[channelList.size()];
-    std::copy(channelList.begin(), channelList.end(), signals);
-    for (const HRTLab::Signal **sp = signals;
-            sp != signals + channelList.size(); sp++) {
+        const HRTLab::Signal *mainSignal = channel[*it]->signal;
 
         if (event) {
             if (!foundReduction)
                 // If user did not supply a reduction, limit to a 
                 // max of 10Hz automatically
-                reduction = 0.1 / (*sp)->task->sampleTime
-                    / (*sp)->decimation + 0.5;
+                reduction = 0.1 / mainSignal->task->sampleTime
+                    / mainSignal->decimation + 0.5;
         }
         else if (!foundReduction and !foundBlocksize) {
             // Quite possibly user input; choose reduction for 1Hz
-            reduction = 1.0 / (*sp)->task->sampleTime
-                / (*sp)->decimation + 0.5;
+            reduction = 1.0 / mainSignal->task->sampleTime
+                / mainSignal->decimation + 0.5;
             blocksize = 1;
         }
         else if (foundReduction) {
             // Choose blocksize so that a datum is sent at 10Hz
-            blocksize = 0.1 / (*sp)->task->sampleTime
-                    / (*sp)->decimation + 0.5;
+            blocksize = 0.1 / mainSignal->task->sampleTime
+                    / mainSignal->decimation + 0.5;
         }
         else if (foundBlocksize) {
             reduction = 1;
@@ -751,7 +739,7 @@ void Session::xsad(const Attr &attr)
         if (!reduction) reduction = 1;
         if (!blocksize) blocksize = 1;
 
-        task[(*sp)->task->tid]->addSignal( *sp, getVariableIndex(*sp),
+        task[mainSignal->task->tid]->addChannel( channel[*it],
                 event, sync, reduction, blocksize, base64, precision);
     }
 }
@@ -759,22 +747,22 @@ void Session::xsad(const Attr &attr)
 /////////////////////////////////////////////////////////////////////////////
 void Session::xsod(const Attr &attr)
 {
-    std::list<const HRTLab::Signal*> channelList;
     std::list<unsigned int> intList;
 
 //    cout << __LINE__ << "xsod: " << endl;
 
     if (attr.getUnsignedList("channels", intList)) {
+        const Server::Channels& channel = server->getChannels();
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
-            if (*it < signalCount) {
-                const HRTLab::Signal *s = signal[*it];
-                task[s->task->tid]->delSignal(s);
+            if (*it < channel.size()) {
+                const Channel *c = channel[*it];
+                task[c->signal->task->tid]->delChannel(c);
             }
         }
     }
     else {
         for (Task **t = task; t != task + main->nst; t++)
-            (*t)->delSignal();
+            (*t)->delChannel();
     }
 }

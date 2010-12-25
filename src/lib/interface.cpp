@@ -25,7 +25,7 @@
 #include "Main.h"
 #include "Signal.h"
 #include "Parameter.h"
-#include <pdcomserv/pdcomserv.h>
+#include "pdcomserv/pdcomserv.h"
 
 /////////////////////////////////////////////////////////////////////////////
 struct pdcomserv* pdcomserv_create(int argc, const char *argv[], 

@@ -25,10 +25,13 @@
 #include "config.h"
 
 #include <cerrno>
+#include <cstring>
+#include <cstdlib>
 #include <sys/mman.h>
 
 #include <sys/types.h>
 #include <unistd.h>             // fork()
+#include <cc++/cmdoptns.h>
 
 #include "Main.h"
 #include "Task.h"
@@ -44,6 +47,12 @@ using std::cerr;
 using std::endl;
 #endif
 
+static ost::CommandOption *optionList = 0;
+
+ost::CommandOptionNoArg traditional(
+        "traditional", "t", "Traditional MSR", false, &optionList
+        );
+
 /////////////////////////////////////////////////////////////////////////////
 const double Main::bufferTime = 2.0;
 
@@ -56,12 +65,26 @@ Main::Main(int argc, const char *argv[],
     HRTLab::Main(name, version, baserate, nst),
     task(new Task*[nst]), mutex(1), sdoMutex(1), rttime(gettime)
 {
+    char *_argv[argc];
+    for (int i = 0; i < argc; i++) {
+        _argv[i] = strdup(argv[i]);
+    }
+
+    ost::CommandOptionParse *args = ost::makeCommandOptionParse(
+            argc, _argv, STR(PROJECT_NAME) " options");
+
     for (size_t i = 0; i < nst; i++)
         task[i] =
             new Task(this, i, baserate * (decimation ? decimation[i] : 1));
 
     shmem_len = 0;
     shmem = 0;
+    traditionalMSR = traditional.numSet;
+
+    delete args;
+    for (int i = 0; i < argc; i++) {
+        free(_argv[i]);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////

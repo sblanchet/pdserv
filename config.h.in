@@ -41,6 +41,6 @@
 
 #define STR(x) #x
 
-//#CMAKEDEFINE DEBUG
+#cmakedefine DEBUG
 
 #endif //CONFIG_H

@@ -29,7 +29,9 @@
 
 #include "XmlDoc.h"
 #include "Task.h"
-#include "SubscriptionChange.h"
+#include "Channel.h"
+#include "SubscriptionManager.h"
+#include "Subscription.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -41,86 +43,56 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Task::Task(SubscriptionChange& s): subscriptionChange(s)
+Task::Task(SubscriptionManager& s): subscriptionManager(s)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Task::~Task()
 {
-    for (SubscribedSet::const_iterator it = subscribedSet.begin();
-            it != subscribedSet.end(); it++) {
-        delete[] it->second.data_bptr;
-        delete it->second.element;
-    }
+    delChannel();
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::delSignal(const HRTLab::Signal *signal)
+void Task::delChannel(const Channel *c)
 {
-    if (!signal) {
-        while (!subscribedSet.empty())
-            delSignal(subscribedSet.begin()->first);
+    if (!c) {
+        ChannelSubscriptionMap::const_iterator it;
+        for (it = channelSubscriptionMap.begin();
+                it != channelSubscriptionMap.end(); it++)
+            delete it->second;
 
-        return;
+        activeSet.clear();
+        channelSubscriptionMap.clear();
     }
+    else {
+        ChannelSubscriptionMap::iterator it =
+            channelSubscriptionMap.find(c);
 
-    SubscribedSet::iterator it = subscribedSet.find(signal);
-    if (it == subscribedSet.end())
-        return;
+        if (it == channelSubscriptionMap.end())
+            return;
 
-    delete[] it->second.data_bptr;
-    delete it->second.element;
-    subscribedSet.erase(it);
-    activeSet.erase(signal);
-
-    subscriptionChange.unsubscribe(signal);
+        activeSet[c->signal].erase(it->second);
+        delete it->second;
+        channelSubscriptionMap.erase(it);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::addSignal(const HRTLab::Signal *signal, unsigned int idx,
+void Task::addChannel(const Channel *c,
         bool event, bool sync, unsigned int decimation, size_t blocksize,
         bool base64, size_t precision)
 {
 //    cout << __PRETTY_FUNCTION__ << signal->path << endl;
-    SubscribedSet::iterator it = subscribedSet.find(signal);
-    if (it == subscribedSet.end()) {
-        subscriptionChange.subscribe(signal);
+    ChannelSubscriptionMap::iterator it = channelSubscriptionMap.find(c);
+    Subscription *subscription = channelSubscriptionMap[c];
+    if (!subscription) {
+        subscription = new Subscription(c, subscriptionManager);
+        channelSubscriptionMap[c] = subscription;
+        activeSet[c->signal].insert(subscription);
     }
-    else {
-        delete[] it->second.data_bptr;
-        delete it->second.element;
-    }
 
-    if (event)
-        // Event triggering
-        blocksize = 1;
-    else if (!blocksize)
-        blocksize = 1;
-
-    size_t dataLen = blocksize * signal->memSize;
-    char *data = new char[dataLen];
-    SignalData sd = {
-        signal,
-        new MsrXml::Element("F"),
-        event,
-        sync,
-        decimation,
-        0,      // trigger
-        blocksize,
-        signal->memSize,
-        (base64
-         ? &MsrXml::Element::base64ValueAttr
-         : &MsrXml::Element::csvValueAttr),
-        precision,
-        data,
-        data,
-        data + dataLen
-    };
-
-    sd.element->setAttribute("c", idx);
-
-    subscribedSet[signal] = sd;
+    subscription->set(event, sync, decimation, blocksize, base64, precision);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -131,17 +103,15 @@ bool Task::newSignalList(const HRTLab::Signal * const *s, size_t n)
     // Since it is not (should not be!) possible that required signal 
     // is not transmitted any more, only need to check for new signals
     for (; n--; s++) {
-        SubscribedSet::iterator it = subscribedSet.find(*s);
-        if (it == subscribedSet.end())
+        ActiveSet::iterator it = activeSet.find(*s);
+        if (it == activeSet.end())
             continue;
 
-        activeSet[*s] = &(it->second);
-        if (it->second.sync) {
-            sync = true;
-            it->second.sync = false;
-        }
+        for (SubscriptionSet::const_iterator sd = it->second.begin();
+                sd != it->second.end(); sd++)
+            if ((*sd)->activate())
+                sync = true;
     }
-
 
     return sync;
 }
@@ -153,33 +123,9 @@ void Task::newSignalValues(MsrXml::Element *parent,
     for (ActiveSet::iterator it = activeSet.begin();
             it != activeSet.end(); it++) {
 
-        SignalData *sd = it->second;
-
-        if (sd->trigger and --sd->trigger)
-            continue;
-
-        const char* dataBuf = receiver.getValue(sd->signal);
-
-        if (!sd->event) {
-            sd->trigger = sd->decimation;
-
-            std::copy(dataBuf, dataBuf + sd->sigMemSize, sd->data_pptr);
-            sd->data_pptr += sd->sigMemSize;
-            if (sd->data_pptr == sd->data_eptr) {
-                (sd->element->*(sd->printValue))("d", sd->signal,
-                        sd->data_bptr, sd->precision, sd->blocksize);
-                parent->appendChild(sd->element);
-                sd->data_pptr = sd->data_bptr;
-            }
-        }
-        else if (!std::equal(sd->data_bptr, sd->data_eptr, dataBuf)) {
-            sd->trigger = sd->decimation;
-
-            std::copy(dataBuf, dataBuf + sd->sigMemSize, sd->data_bptr);
-            (sd->element->*(sd->printValue))("d", sd->signal,
-                    sd->data_bptr, sd->precision, 1);
-            parent->appendChild(sd->element);
-        }
+        for (SubscriptionSet::const_iterator sd = it->second.begin();
+                sd != it->second.end(); sd++)
+            (*sd)->newValue(parent, receiver);
     }
 }
 
@@ -188,10 +134,9 @@ void Task::sync()
 {
     for (ActiveSet::iterator it = activeSet.begin();
             it != activeSet.end(); it++) {
-        SignalData *sd = it->second;
 
-        sd->trigger = sd->decimation;
-        sd->data_pptr = sd->data_bptr;
+        for (SubscriptionSet::const_iterator sd = it->second.begin();
+                sd != it->second.end(); sd++)
+            (*sd)->sync();
     }
 }
-

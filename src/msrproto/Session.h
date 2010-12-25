@@ -53,7 +53,8 @@
 #include "Inbuf.h"
 #include "Outbuf.h"
 #include "XmlDoc.h"
-#include "SubscriptionChange.h"
+#include "Server.h"
+#include "SubscriptionManager.h"
 
 #include <cc++/socketport.h> 
 #include <string>
@@ -74,7 +75,6 @@ namespace MsrXml {
 
 namespace MsrProto {
 
-class Server;
 class Task;
 
 class Session: public ost::SocketPort, public HRTLab::Session {
@@ -100,13 +100,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
 
         std::map<const void *, size_t> variableIndexMap;
 
-        SubscriptionChange subscriptionChange;
-
-        size_t signalCount;
-        const HRTLab::Signal **signal;
-
-        size_t parameterCount;
-        const HRTLab::Parameter **parameter;
+        SubscriptionManager subscriptionManager;
 
         // Reimplemented from SocketPort
         void expired();

@@ -33,19 +33,25 @@
 #include <map>
 #include <list>
 #include <ctime>
+#include <ctime>
+#include "pdcomserv/etl_data_info.h"
 
 namespace HRTLab {
     class Variable;
-    class Signal;
-    class Parameter;
+//    class Parameter;
 }
+//
+//namespace MsrProto {
+//class Signal;
+//}
 
 namespace MsrXml {
 
 class Element;
 
-std::string toCSV( const HRTLab::Variable *v,
-        const char *data, size_t precision = 10, size_t n = 1);
+std::string toCSV( const HRTLab::Variable *v, size_t count,
+        const char *data, size_t precision = 16);
+
 
 class Element {
     public:
@@ -85,22 +91,23 @@ class Element {
             void setAttribute(const char *name, const T& value,
                     std::ios::fmtflags flags = std::ios::dec);
 
-        void base64ValueAttr( const char *name, const HRTLab::Variable *v,
-                const char* data, size_t precision = 10, size_t n = 1);
-        void csvValueAttr(    const char *name, const HRTLab::Variable *v,
-                const char* data, size_t precision = 10, size_t n = 1);
-        void hexDecValueAttr(  const char *name, const HRTLab::Variable *v,
-                const char* data, size_t n = 1);
+        void base64ValueAttr( const char *attribute, const char* data,
+                const HRTLab::Variable *v, size_t count,
+                size_t precision = 16);
+        void csvValueAttr( const char *attribute, const char* data,
+                const HRTLab::Variable *v, size_t count,
+                size_t precision = 16);
+        void hexDecValueAttr( const char *attribute, const char* data,
+                const HRTLab::Variable *v, size_t count,
+                size_t precision = 16);
 
         /** Special functions to set Parameter and Channel
          * attributes */
-        void setCommonAttributes(const HRTLab::Variable*,
-                unsigned int index, bool shortReply);
-        void setParameterAttributes( const HRTLab::Parameter *p,
-                unsigned int index, unsigned int flags, bool shortReply,
-                bool hex);
-        void setChannelAttributes( const HRTLab::Signal *s,
-                unsigned int index, bool shortReply, const char *data);
+        void setVariableAttributes(const HRTLab::Variable*,
+                unsigned int index,
+                const std::string& path,
+                size_t nelem,
+                bool shortReply);
 
         /** Printing functions */
         void print(std::ostream& os, size_t indent = 0) const;

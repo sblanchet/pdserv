@@ -41,15 +41,17 @@ namespace MsrXml {
 namespace MsrProto {
 
 class Session;
-class SubscriptionChange;
+class Channel;
+class SubscriptionManager;
+class Subscription;
 
 class Task {
     public:
-        Task(SubscriptionChange&);
+        Task(SubscriptionManager&);
         ~Task();
 
-        void delSignal(const HRTLab::Signal *s = 0);
-        void addSignal(const HRTLab::Signal *s, unsigned int idx,
+        void delChannel(const Channel *c = 0);
+        void addChannel(const Channel *c,
                 bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
 
@@ -61,31 +63,32 @@ class Task {
 
     private:
 
-        SubscriptionChange& subscriptionChange;
+        SubscriptionManager& subscriptionManager;
 
-        struct SignalData {
-            const HRTLab::Signal *signal;
-            MsrXml::Element *element;
-            bool event;
-            bool sync;
-            unsigned int decimation;
-            unsigned int trigger;
-            size_t blocksize;
-            size_t sigMemSize;
-            void (MsrXml::Element::*printValue)(const char *,
-                    const HRTLab::Variable *v, const char* data,
-                    size_t precision, size_t n);
-            size_t precision;
-            char *data_bptr;
-            char *data_pptr;
-            char *data_eptr;
-        };
+//        struct SignalData {
+//            const Signal *signal;
+//            MsrXml::Element *element;
+//            bool event;
+//            bool sync;
+//            unsigned int decimation;
+//            unsigned int trigger;
+//            size_t blocksize;
+//            size_t sigMemSize;
+//            void (MsrXml::Element::*printValue)(const char *,
+//                    const HRTLab::Variable *v, const char* data,
+//                    size_t precision, size_t n);
+//            size_t precision;
+//            char *data_bptr;
+//            char *data_pptr;
+//            char *data_eptr;
+//        };
 
-        typedef std::map<const HRTLab::Signal *, SignalData*> ActiveSet;
+        typedef std::set<Subscription*> SubscriptionSet;
+        typedef std::map<const HRTLab::Signal *, SubscriptionSet> ActiveSet;
         ActiveSet activeSet;
 
-        typedef std::map<const HRTLab::Signal*, SignalData> SubscribedSet;
-        SubscribedSet subscribedSet;
+        typedef std::map<const Channel *, Subscription*> ChannelSubscriptionMap;
+        ChannelSubscriptionMap channelSubscriptionMap;
 };
 
 }

@@ -46,14 +46,14 @@ int main(int argc, const char *argv[])
 //    assert(!pdcomserv_signal(pdcomserv, 0, 1, "/path/to/variable", "var1",
 //            si_uint16_T, 3, var1_dims, var1));
 
-    assert(pdcomserv_signal(pdcomserv, 0, 1, "/path/to/var2",
-            si_uint16_T, var1+5, 1, NULL));
-
     assert(pdcomserv_signal(pdcomserv, 0, 1, "/path/to/double",
-            si_double_T, dbl, 1, NULL));
+            si_double_T, dbl, 3, NULL));
 
     assert(pdcomserv_signal(pdcomserv, 0, 1, "/Time",
             si_double_T, &dbltime, 1, NULL));
+
+    assert(pdcomserv_signal(pdcomserv, 0, 1, "/path/to/var2",
+            si_uint16_T, var1, 3, var1_dims));
 
     struct variable *p1 = pdcomserv_parameter(pdcomserv, "/Taskinfo/Abtastfrequenz", 0666,
             si_double_T, &tick, 1, 0, 0, 0);
@@ -72,6 +72,7 @@ int main(int argc, const char *argv[])
         usleep(100000);
         var1[1][0][0] = i++;
         dbl[0] += param[0];
+        dbl[2] += param[2];
         var1[5][0][0] += param[1];
         clock_gettime(CLOCK_REALTIME, &time);
         dbltime = time.tv_sec + time.tv_nsec * 1.0e-9;

@@ -47,8 +47,11 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     #etlproto/Server.cpp etlproto/Server.h
     #etlproto/Session.cpp etlproto/Session.h
 
+    msrproto/Channel.cpp msrproto/Channel.h
+    msrproto/Parameter.cpp msrproto/Parameter.h
+    msrproto/Subscription.cpp msrproto/Subscription.h
     msrproto/Session.cpp msrproto/Session.h
-    msrproto/SubscriptionChange.cpp msrproto/SubscriptionChange.h
+    msrproto/SubscriptionManager.cpp msrproto/SubscriptionManager.h
     msrproto/Outbuf.cpp msrproto/Outbuf.h
     msrproto/Inbuf.cpp msrproto/Inbuf.h
     msrproto/Attribute.cpp msrproto/Attribute.h

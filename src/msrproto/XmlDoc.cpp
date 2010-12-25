@@ -25,15 +25,18 @@
 #include "config.h"
 
 #include "XmlDoc.h"
+
+//#include "Signal.h"
 #include "../Variable.h"
-#include "../Parameter.h"
-#include "../Signal.h"
-#include "../Task.h"
+//#include "../Parameter.h"
+//#include "../Signal.h"
+//#include "../Task.h"
 
 #include <stdint.h>
 #include <iomanip>
 #include <algorithm>
 #include <cstring>
+#include <cstdio>
 
 #ifdef DEBUG
 #include <iostream>
@@ -192,10 +195,32 @@ void Element::setAttributeCheck(const char *a, const char *v, size_t n)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::csvValueAttr(const char *attribute, const HRTLab::Variable *v,
-        const char* data, size_t precision, size_t n)
+void Element::csvValueAttr( const char *attribute, const char* data,
+        const HRTLab::Variable *v, size_t count, size_t precision)
 {
-    setAttribute(attribute, toCSV(v, data, precision, n));
+    setAttribute(attribute, toCSV(v, count, data, precision));
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void print_double(std::ostringstream& os,
+        const char *data, size_t n)
+{
+    char buf[30];
+
+    snprintf(buf, sizeof(buf), "%.*g", os.precision(), ((double*)data)[n]);
+
+    os << buf;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void print_single(std::ostringstream& os,
+        const char *data, size_t n)
+{
+    char buf[30];
+
+    snprintf(buf, sizeof(buf), "%.*g", os.precision(), ((float*)data)[n]);
+
+    os << buf;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -207,13 +232,12 @@ void print(std::ostringstream& os,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string MsrXml::toCSV(const HRTLab::Variable *v,
-        const char* data, size_t precision, size_t n)
+std::string MsrXml::toCSV(const HRTLab::Variable *v, size_t count,
+        const char* data, size_t precision)
 {
     std::ostringstream os;
     os.imbue(std::locale::classic());
     os.precision(precision);
-    size_t count = v->nelem * n;
 
     void (*printfunc)(std::ostringstream& os,
         const char *data, size_t n);
@@ -228,8 +252,8 @@ std::string MsrXml::toCSV(const HRTLab::Variable *v,
         case si_sint32_T:   printfunc = print<int32_t>;        break;
         case si_uint64_T:   printfunc = print<uint64_t>;       break;
         case si_sint64_T:   printfunc = print<int64_t>;        break;
-        case si_double_T:   printfunc = print<double>;         break;
-        case si_single_T:   printfunc = print<float>;          break;
+        case si_double_T:   printfunc = print_double;          break;
+        case si_single_T:   printfunc = print_single;          break;
         default:            printfunc = 0;                     break;
     }
 
@@ -242,8 +266,8 @@ std::string MsrXml::toCSV(const HRTLab::Variable *v,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::hexDecValueAttr( const char *attr, const HRTLab::Variable *v,
-        const char* data, size_t n)
+void Element::hexDecValueAttr( const char *attr, const char *data,
+        const HRTLab::Variable *v, size_t count, size_t precision)
 {
     std::string s;
     const char *hexValue[256] = {
@@ -274,30 +298,32 @@ void Element::hexDecValueAttr( const char *attr, const HRTLab::Variable *v,
         "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", 
         "FA", "FB", "FC", "FD", "FE", "FF"};
 
-    s.reserve(v->memSize*2 + 1);
+    size_t charCount = v->width * count * 2;
 
-    for (size_t i = 0; i < v->memSize * n; i++)
+    s.reserve(charCount + 1);
+
+    for (size_t i = 0; i < charCount; i++)
         s.append(hexValue[static_cast<unsigned char>(data[i])], 2);
 
     setAttribute(attr, s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::base64ValueAttr(const char *attr, const HRTLab::Variable *v,
-        const char* data, size_t precision, size_t n)
+void Element::base64ValueAttr(const char *attr, const char* data,
+        const HRTLab::Variable *v, size_t count, size_t precision)
 {
     static const char *base64Chr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz0123456789+/";
-    n *= v->memSize;
-    size_t len = (n + 2 - ((n + 2) % 3)) / 3 * 4;
+    count *= v->memSize;
+    size_t len = (count + 2 - ((count + 2) % 3)) / 3 * 4;
     char s[len + 1];
     char *p = s;
     size_t i = 0;
-    size_t rem = n % 3;
+    size_t rem = count % 3;
     const unsigned char *udata = reinterpret_cast<const unsigned char*>(data);
 
     // First convert all characters in chunks of 3
-    while (i != n - rem) {
+    while (i != count - rem) {
         *p++ = base64Chr[  udata[i  ]         >> 2];
         *p++ = base64Chr[((udata[i  ] & 0x03) << 4) + (udata[i+1] >> 4)];
         *p++ = base64Chr[((udata[i+1] & 0x0f) << 2) + (udata[i+2] >> 6)];
@@ -330,74 +356,18 @@ void Element::base64ValueAttr(const char *attr, const HRTLab::Variable *v,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::setParameterAttributes( const HRTLab::Parameter *p,
-        unsigned int index, unsigned int flags, bool shortReply, bool hex)
-{
-    struct timespec mtime;
-    char data[p->memSize];
-
-    p->getValue(data, &mtime);
-
-    // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
-    //            index="30" value="0"/>
-
-    setCommonAttributes(p, index, shortReply);
-
-    if (!shortReply) {
-        // flags= Add 0x100 for dependent variables
-        // FIX
-        setAttribute("flags", flags,
-                std::ios::hex | std::ios::showbase);
-    }
-
-    // mtime=
-    setAttribute("mtime", mtime);
-
-    if (hex)
-        hexDecValueAttr("hexvalue", p, data);
-    else
-        csvValueAttr("value", p, data);
-    return;
-
-    // persistent=
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Element::setChannelAttributes( const HRTLab::Signal *s,
-        unsigned int index, bool shortReply, const char *data)
-{
-    // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
-    //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
-    double freq = 1.0 / s->task->sampleTime / s->decimation;
-
-    // The MSR protocoll wants a bufsize, the maximum number of
-    // values that can be retraced. This artificial limitation does
-    // not exist any more. Instead, choose a buffer size so that
-    // at a maximum of 1 second has to be stored.
-    size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
-
-
-    setCommonAttributes(s, index, shortReply);
-
-    if (shortReply)
-        return;
-
-    // bufsize=
-    setAttribute("bufsize", bufsize);
-    setAttribute("HZ", freq);
-
-    csvValueAttr("value", s, data);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Element::setCommonAttributes(const HRTLab::Variable *v,
-        unsigned int index, bool shortReply)
+void Element::setVariableAttributes(
+        const HRTLab::Variable *v,
+        unsigned int index,
+        const std::string& path,
+        size_t nelem,
+        bool shortReply)
 {
     // name=
     // value=
     // index=
     setAttribute("index", index);
-    setAttributeCheck("name", v->path);
+    setAttributeCheck("name", path);
 
     if (shortReply)
         return;
@@ -438,36 +408,46 @@ void Element::setCommonAttributes(const HRTLab::Variable *v,
     // cnum=
     // rnum=
     // orientation=
-    if (v->nelem > 1) {
-        setAttribute("anz",v->nelem);
+    if (nelem > 1) {
+        setAttribute("anz",nelem);
         const char *orientation;
         size_t cnum, rnum;
-        switch (v->ndims) {
-            case 1:
-                {
-                    cnum = v->nelem;
-                    rnum = 1;
-                    orientation = "VECTOR";
-                }
-                break;
+        if (v->nelem != nelem) {
+            // Traditional version where an n-dim array is split into a set
+            // of individual vectors
+            orientation = "VECTOR";
+            rnum = 1;
+            cnum = nelem;
+        }
+        else {
+            // Transmit either a vector or a matrix
+            switch (v->ndims) {
+                case 1:
+                    {
+                        cnum = v->nelem;
+                        rnum = 1;
+                        orientation = "VECTOR";
+                    }
+                    break;
 
-            case 2:
-                {
-                    const size_t *dim = v->getDim();
-                    cnum = dim[1];
-                    rnum = dim[0];
-                    orientation = "MATRIX_ROW_MAJOR";
-                }
-                break;
+                case 2:
+                    {
+                        const size_t *dim = v->getDim();
+                        cnum = dim[1];
+                        rnum = dim[0];
+                        orientation = "MATRIX_ROW_MAJOR";
+                    }
+                    break;
 
-            default:
-                {
-                    const size_t *dim = v->getDim();
-                    cnum = dim[v->ndims - 1];
-                    rnum = v->nelem / cnum;
-                    orientation = "MATRIX_ROW_MAJOR";
-                }
-                break;
+                default:
+                    {
+                        const size_t *dim = v->getDim();
+                        cnum = dim[v->ndims - 1];
+                        rnum = v->nelem / cnum;
+                        orientation = "MATRIX_ROW_MAJOR";
+                    }
+                    break;
+            }
         }
         setAttribute("cnum", cnum);
         setAttribute("rnum", rnum);
@@ -475,11 +455,11 @@ void Element::setCommonAttributes(const HRTLab::Variable *v,
     }
 
     // unit=
-    if (v->unit.size())
+    if (!v->unit.empty())
         setAttributeCheck("unit", v->unit);
 
     // text=
-    if (v->comment.size())
+    if (!v->comment.empty())
         setAttributeCheck("text", v->comment);
 
     // hide=

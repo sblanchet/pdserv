@@ -91,6 +91,7 @@ class Main {
     protected:
         Signals signals;
         Parameters parameters;
+        bool traditionalMSR;
 
         void parametersChanged(const Parameter * const *p,
                 size_t nelem) const;

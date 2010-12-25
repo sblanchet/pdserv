@@ -22,39 +22,46 @@
  *
  *****************************************************************************/
 
-#ifndef SUBSCRIPTIONCHANGE_H
-#define SUBSCRIPTIONCHANGE_H
+#ifndef MSRCHANNEL_H
+#define MSRCHANNEL_H
 
-#include <set>
+#include <string>
 
 namespace HRTLab {
     class Signal;
-    class Main;
-    class Session;
+    class Receiver;
+}
+
+namespace MsrXml {
+    class Element;
 }
 
 namespace MsrProto {
 
-class SubscriptionChange {
+class Channel {
     public:
-        SubscriptionChange(HRTLab::Main *main,
-                const HRTLab::Session *);
+        Channel( const HRTLab::Signal *s, unsigned int index);
+        Channel( const HRTLab::Signal *s, unsigned int index,
+                unsigned int sigOffset);
+        ~Channel();
 
-        void subscribe(const HRTLab::Signal *s);
-        void unsubscribe(const HRTLab::Signal *s);
+        void setXmlAttributes(MsrXml::Element*, bool shortReply,
+                    const char *signalBuf) const;
 
-        void process();
+        std::string path() const;
+
+        const unsigned int index;
+        const HRTLab::Signal * const signal;
+        const size_t nelem;
+        const size_t memSize;
+        const size_t bufferOffset;
 
     private:
-        HRTLab::Main * const main;
-        const HRTLab::Session * const session;
 
-        unsigned int state;
+        std::string extension;
 
-        typedef std::set<const HRTLab::Signal*> SignalSet;
-        SignalSet unsubscribeSet;
-        SignalSet subscribeSet;
 };
 
 }
-#endif //SUBSCRIPTIONCHANGE_H
+
+#endif //MSRCHANNEL_H
