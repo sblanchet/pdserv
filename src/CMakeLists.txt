@@ -57,7 +57,6 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     msrproto/Inbuf.cpp msrproto/Inbuf.h
     msrproto/Attribute.cpp msrproto/Attribute.h
     msrproto/Server.cpp msrproto/Server.h
-    msrproto/Task.cpp msrproto/Task.h
     msrproto/XmlDoc.cpp msrproto/XmlDoc.h
     )
 

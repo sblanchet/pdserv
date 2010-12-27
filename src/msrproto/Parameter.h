@@ -53,7 +53,8 @@ class Parameter {
         void setXmlAttributes(MsrXml::Element*, bool shortReply,
                     bool hex, unsigned int flags) const;
         void getValue(char *) const;
-        bool setValue(const char *) const;
+        int setHexValue(const char *str, size_t startindex) const;
+        int setDoubleValue(const char *, size_t startindex) const;
 
         const unsigned int index;
         const HRTLab::Parameter * const mainParam;

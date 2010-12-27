@@ -99,7 +99,7 @@ class Task: public HRTLab::Task {
         TxFrame *txMemBegin, *txFrame, **nextTxFrame;
         const void *txMemEnd;
 
-        void newSignalList(size_t n) const;
+        void newSignalList(ssize_t n) const;
 };
 
 #endif // LIB_TASK_H

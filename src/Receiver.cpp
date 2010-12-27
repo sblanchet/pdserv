@@ -37,7 +37,7 @@ using std::endl;
 using namespace HRTLab;
 
 /////////////////////////////////////////////////////////////////////////////
-Receiver::Receiver(unsigned int tid): tid(tid)
+Receiver::Receiver(const Task *task): task(task)
 {
 }
 

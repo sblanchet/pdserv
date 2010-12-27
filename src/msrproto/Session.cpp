@@ -33,7 +33,6 @@
 #include "Session.h"
 #include "PrintVariable.h"
 #include "Server.h"
-#include "Task.h"
 #include "Channel.h"
 #include "Parameter.h"
 
@@ -68,8 +67,7 @@ using namespace MsrProto;
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), HRTLab::Session(main),
-    server(s), task(new Task*[main->nst]),
-    subscriptionManager(main, this),
+    server(s), subscriptionManager(this),
     dataTag("data"), outbuf(this), inbuf(this)
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
@@ -78,12 +76,8 @@ Session::Session( Server *s, ost::SocketService *ss,
     writeAccess = false;
     echoOn = false;
     quiet = false;
+    requestState = 0;
     dataTag.setAttribute("level", 0);
-
-    // Create enough tasks
-    for (size_t i = 0; i < main->nst; i++) {
-        task[i] = new Task(subscriptionManager);
-    }
 
     // Non-blocking read() and write()
     setCompletion(false);
@@ -107,9 +101,6 @@ Session::~Session()
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     server->sessionClosed(this);
-    for (size_t i = 0; i < main->nst; i++) {
-        delete task[i];
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -133,29 +124,58 @@ void Session::parametersChanged(const HRTLab::Parameter * const *p, size_t n)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-size_t Session::getVariableIndex(const HRTLab::Variable *v) const
-{
-    return variableIndexMap.find(v)->second;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Session::requestOutput()
 {
     setDetectOutput(true);
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::requestSignal(const HRTLab::Signal *s, bool state)
+{
+    requestState = 2;
+    signalRequest[s] = state;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::processSignalRequest()
+{
+    size_t insIdx = 0;
+    size_t delIdx = 0;
+    const HRTLab::Signal *ins[signalRequest.size()];
+    const HRTLab::Signal *del[signalRequest.size()];
+    for (SignalRequest::const_iterator it = signalRequest.begin();
+            it != signalRequest.end(); it++) {
+        if (it->second) 
+            ins[insIdx++] = it->first;
+        else
+            del[delIdx++] = it->first;
+    }
+
+    signalRequest.clear();
+
+    main->unsubscribe(this, del, delIdx);
+    main->subscribe(this, ins, insIdx);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
-    // Read and process the incoming data
-    rxPdo();
+    if (getDetectPending()) {
+        // Read and process the incoming data
+        rxPdo();
 
-    if (!quiet and dataTag.hasChildren())
-        outbuf << dataTag << std::flush;
+        if (!quiet and dataTag.hasChildren())
+            outbuf << dataTag << std::flush;
 
-    dataTag.releaseChildren();
+        dataTag.releaseChildren();
 
-    subscriptionManager.process();
+        if (!--requestState)
+            processSignalRequest();
+    }
+    else /*if (!getDetectPending())*/ {
+        delete this;
+        return;
+    }
 
     setTimer(100);      // Wakeup in 100ms again
 }
@@ -166,7 +186,6 @@ void Session::pending()
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     int n, count;
     size_t inputLen = 0;
-    bool detectOutput = getDetectOutput();
 
     do {
         count = inbuf.free();
@@ -187,17 +206,10 @@ void Session::pending()
 
     if (!inputLen) {
         // End of stream
-        setTimer(0);
-        if (detectOutput)
-            setDetectPending(false);
-        else {
-            setDetectOutput(false);
-            delete this;
-        }
+        setDetectPending(false);
         return;
     }
 
-    subscriptionManager.process();
     //cout << __LINE__ << " Data left in buffer: "
         //<< std::string(inbuf.bptr(), inbuf.eptr() - inbuf.bptr()) << endl;
 }
@@ -210,9 +222,8 @@ void Session::output()
     ssize_t n = send(outbuf.bufptr(), outbuf.size());
 
     // In case of error, exit
-    if (!getDetectPending() || n <= 0) {
-        setTimer(0);
-        delete this;
+    if (n <= 0) {
+        setDetectOutput(false);
         return;
     }
 
@@ -230,22 +241,21 @@ void Session::disconnect()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalList(const HRTLab::Task *_task,
-        const HRTLab::Signal * const *v, size_t n)
+void Session::newSignalList(const HRTLab::Task *task,
+        const HRTLab::Signal * const *s, size_t n)
 {
-    if (task[_task->tid]->newSignalList(v, n)) {
-        for (size_t i = 0; i < main->nst; i++) {
-            task[i]->sync();
-        }
-    }
+    subscriptionManager.newSignalList(task, s, n);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalData(const HRTLab::Receiver &receiver)
+void Session::newSignalData(const HRTLab::Receiver &receiver, const char *data)
 {
+    if (quiet)
+        return;
+
     dataTag.setAttribute("time", *receiver.time);
 
-    task[receiver.tid]->newSignalValues(&dataTag, receiver);
+    subscriptionManager.newSignalData(&dataTag, receiver, data);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -458,8 +468,6 @@ void Session::readParameter(const Attr &attr)
     if (p) {
         MsrXml::Element parameter("parameter");
         p->setXmlAttributes( &parameter, shortReply, hex, flags);
-//        parameter.setParameterAttributes(
-//                p, variableIndexMap[p], flags, shortReply, hex);
         outbuf << parameter << std::flush;
     }
 }
@@ -539,39 +547,6 @@ void Session::remoteHost(const Attr &attr)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-class Convert {
-    public:
-        Convert(si_datatype_t t, char *buf): buf(buf) {
-            switch (t) {
-                case si_boolean_T: conv = setTo<bool>;     break;
-                case si_uint8_T:   conv = setTo<uint8_t>;  break;
-                case si_sint8_T:   conv = setTo<int8_t>;   break;
-                case si_uint16_T:  conv = setTo<uint16_t>; break;
-                case si_sint16_T:  conv = setTo<int16_t>;  break;
-                case si_uint32_T:  conv = setTo<uint32_t>; break;
-                case si_sint32_T:  conv = setTo<int32_t>;  break;
-                case si_uint64_T:  conv = setTo<uint64_t>; break;
-                case si_sint64_T:  conv = setTo<int64_t>;  break;
-                case si_single_T:  conv = setTo<float>;    break;
-                case si_double_T:  conv = setTo<double>;   break;
-                default:           conv = 0;               break;
-            }
-        }
-        void set(size_t idx, double val) {
-            (*conv)(buf, idx, val);
-        }
-
-    private:
-        char * const buf;
-        void (*conv)(char *, size_t, double);
-
-        template<class T>
-        static void setTo(char *dst, size_t idx, double src) {
-            reinterpret_cast<T*>(dst)[idx] = src;
-        }
-};
-
-/////////////////////////////////////////////////////////////////////////////
 void Session::writeParameter(const Attr &attr)
 {
     if (!writeAccess) {
@@ -601,53 +576,18 @@ void Session::writeParameter(const Attr &attr)
             return;
     }
 
-    char valbuf[p->memSize];
-    p->getValue(valbuf);
-
+    int errno;
     char *s;
     if (attr.find("hexvalue", s)) {
-        static const char hexNum[] = {
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
-            0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-            0,10,11,12,13,14,15
-        };
-
-        for (char *c = valbuf + p->mainParam->width * startindex;
-                c < valbuf + p->memSize; c++) {
-            unsigned char c1 = *s++ - '0';
-            unsigned char c2 = *s++ - '0';
-            if (std::max(c1,c2) >= sizeof(hexNum))
-                return;
-            *c = hexNum[c1] << 4 | hexNum[c2];
-        }
-        // FIXME: actually the setting operation must also check for
-        // endianness!
+        errno = p->setHexValue(s, startindex);
     }
     else if (attr.find("value", s)) {
-        double v;
-        Convert converter(p->mainParam->dtype,
-                valbuf + startindex * p->mainParam->width);
-        char c;
-        std::istringstream is(s);
-
-        is.imbue(std::locale::classic());
-
-        for (size_t i = 0; i < p->nelem - startindex; i++) {
-            is >> v;
-
-            if (!is)
-                break;
-
-            converter.set(i, v);
-
-            is >> c;
-        }
+        errno = p->setDoubleValue(s, startindex);
     }
     else
         return;
 
-    if (p->setValue(valbuf)) {
+    if (errno) {
         // If an error occurred, tell this client to reread the value
         parametersChanged(&p->mainParam, 1);
     }
@@ -669,11 +609,8 @@ void Session::xsad(const Attr &attr)
     quiet = !sync and attr.isTrue("quiet");
 
     if (!attr.getUnsignedList("channels", indexList)) {
-        if (sync) {
-            for (size_t i = 0; i < main->nst; i++) {
-                task[i]->sync();
-            }
-        }
+        if (sync)
+            subscriptionManager.sync();
         return;
     }
 
@@ -728,19 +665,19 @@ void Session::xsad(const Attr &attr)
                 / mainSignal->decimation + 0.5;
             blocksize = 1;
         }
-        else if (foundReduction) {
+        else if (foundReduction and !foundBlocksize) {
             // Choose blocksize so that a datum is sent at 10Hz
             blocksize = 0.1 / mainSignal->task->sampleTime
                     / mainSignal->decimation + 0.5;
         }
-        else if (foundBlocksize) {
+        else if (!foundReduction and foundBlocksize) {
             reduction = 1;
         }
 
         if (!reduction) reduction = 1;
         if (!blocksize) blocksize = 1;
 
-        task[mainSignal->task->tid]->addChannel( channel[*it],
+        subscriptionManager.subscribe( channel[*it],
                 event, sync, reduction, blocksize, base64, precision);
     }
 }
@@ -757,13 +694,11 @@ void Session::xsod(const Attr &attr)
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
             if (*it < channel.size()) {
-                const Channel *c = channel[*it];
-                task[c->signal->task->tid]->delChannel(c);
+                subscriptionManager.unsubscribe(channel[*it]);
             }
         }
     }
     else {
-        for (Task **t = task; t != task + main->nst; t++)
-            (*t)->delChannel();
+        subscriptionManager.unsubscribe();
     }
 }

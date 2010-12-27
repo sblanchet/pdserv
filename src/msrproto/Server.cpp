@@ -62,7 +62,7 @@ Server::Server(HRTLab::Main *main, bool traditional):
         idx = 0;
         for (HRTLab::Main::Signals::const_iterator it = mainSignals.begin();
                 it != mainSignals.end(); it++) {
-            cout << __PRETTY_FUNCTION__ << (*it)->path << endl;
+//            cout << __PRETTY_FUNCTION__ << (*it)->path << endl;
             for (size_t i = 0; i < (*it)->nelem; idx++, i++) {
                 Channel *c = new Channel(*it, idx, i);
                 channel[idx] = c;
@@ -86,7 +86,7 @@ Server::Server(HRTLab::Main *main, bool traditional):
         idx = 0;
         for (HRTLab::Main::Parameters::const_iterator it = mainParameters.begin();
                 it != mainParameters.end(); it++) {
-            cout << __PRETTY_FUNCTION__ << (*it)->path << endl;
+//            cout << __PRETTY_FUNCTION__ << (*it)->path << endl;
             const HRTLab::Parameter *mainParam = *it;
             size_t vectorLen = mainParam->getDim()[mainParam->ndims - 1];
             Parameter *p = 0;

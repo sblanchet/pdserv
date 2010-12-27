@@ -30,9 +30,6 @@
 #include "../Variable.h"
 
 #include <stdint.h>
-//#include <iomanip>
-//#include <algorithm>
-//#include <cstring>
 #include <cstdio>
 
 #ifdef DEBUG

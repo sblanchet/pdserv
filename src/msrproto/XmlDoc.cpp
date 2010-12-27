@@ -25,18 +25,12 @@
 #include "config.h"
 
 #include "XmlDoc.h"
-
-//#include "Signal.h"
 #include "../Variable.h"
-//#include "../Parameter.h"
-//#include "../Signal.h"
-//#include "../Task.h"
 
 #include <stdint.h>
 #include <iomanip>
 #include <algorithm>
 #include <cstring>
-#include <cstdio>
 
 #ifdef DEBUG
 #include <iostream>

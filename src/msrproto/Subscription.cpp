@@ -46,19 +46,17 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Subscription::Subscription(const Channel* channel, SubscriptionManager& sm):
-    channel(channel), subscriptionManager(sm), element("F")
+Subscription::Subscription(const Channel* channel):
+    channel(channel), element("F")
 {
-    subscriptionManager.subscribe(channel);
     element.setAttribute("c", channel->index);
     data_bptr = 0;
-    active = false;
+    inactive = true;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Subscription::~Subscription()
 {
-    subscriptionManager.unsubscribe(channel);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -67,9 +65,10 @@ void Subscription::set( bool _event, bool sync, unsigned int _decimation,
 {
 //    cout << __PRETTY_FUNCTION__ << signal->path << endl;
 
+    inactive = true;
     event = _event;
     _sync = sync;
-    decimation = _decimation;
+    decimation = _decimation ? _decimation-1 : 0;
     trigger = 0;
 
     if (event)
@@ -93,34 +92,29 @@ void Subscription::set( bool _event, bool sync, unsigned int _decimation,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Subscription::activate()
+size_t Subscription::getOffset() const
 {
-    bool sync = _sync;
-
-    active = true;
-    _sync = false;
-
-    return sync;
+    return offset - channel->bufferOffset;
 }
 
-
 /////////////////////////////////////////////////////////////////////////////
-void Subscription::newValue(MsrXml::Element *parent,
-        const HRTLab::Receiver &receiver)
+void Subscription::newValue(MsrXml::Element *parent, const char *dataBuf)
 {
-    if (!active or (trigger and --trigger))
+//    cout << __func__ << channel->path() << ' ' << trigger << endl;
+    if (inactive or (trigger and trigger--))
         return;
 
-    const char* dataBuf =
-        receiver.getValue(channel->signal) + channel->bufferOffset;
+    dataBuf += offset;
+//    cout << __func__ << channel->path() << offset << ' ' << *(double*)dataBuf << endl;
 
     if (!event) {
         trigger = decimation;
 
         std::copy(dataBuf, dataBuf + channel->memSize, data_pptr);
         data_pptr += channel->memSize;
-        if (data_pptr == data_eptr) {
+//        cout << ' ' << (data_eptr - data_pptr) / channel->memSize << endl;
 
+        if (data_pptr == data_eptr) {
             if (base64)
                 base64Attribute(&element, "d", channel->signal,
                         channel->nelem * blocksize, data_bptr);
@@ -131,6 +125,7 @@ void Subscription::newValue(MsrXml::Element *parent,
 
             parent->appendChild(&element);
             data_pptr = data_bptr;
+//            cout << "sent " << channel->path() << endl;
         }
     }
     else if (!std::equal(data_bptr, data_eptr, dataBuf)) {
@@ -148,8 +143,25 @@ void Subscription::newValue(MsrXml::Element *parent,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+bool Subscription::activate(size_t bufOffset)
+{
+    bool sync = _sync;
+
+    offset = bufOffset + channel->bufferOffset;
+//    cout << "offset for " << channel->path() << ' ' << offset << endl;
+
+    inactive = false;
+    _sync = false;
+
+    return sync;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Subscription::sync()
 {
+    if (inactive)
+        return;
+
     data_pptr = data_bptr;
     trigger = decimation;
 }

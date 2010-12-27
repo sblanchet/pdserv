@@ -31,6 +31,8 @@
 #include "../Parameter.h"
 
 #include <sstream>
+#include <cerrno>
+#include <stdint.h>
 
 #ifdef DEBUG
 #include <iostream>
@@ -50,7 +52,7 @@ Parameter::Parameter( const HRTLab::Parameter *p,
     printFunc(getPrintFunc(p->dtype)),
     persistent(false)
 {
-    cout << __PRETTY_FUNCTION__ << index << endl;
+    //cout << __PRETTY_FUNCTION__ << index << endl;
     ///cout << s->path << '[' << endl;
 
     std::ostringstream os;
@@ -69,7 +71,7 @@ Parameter::Parameter( const HRTLab::Parameter *p,
 
     extension = os.str();
 
-    cout << p->path << '[' << index << "] = " << path() << endl;
+    //cout << p->path << '[' << index << "] = " << path() << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -136,12 +138,99 @@ void Parameter::getValue(char *buf) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Parameter::setValue(const char *buf) const
+int Parameter::setHexValue(const char *s, size_t startindex) const
 {
-    char value[mainParam->memSize];
+    if (startindex >= nelem)
+        return -ERANGE;
 
+    char value[mainParam->memSize];
+    static const char hexNum[] = {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
+        0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+        0,10,11,12,13,14,15
+    };
+
+    // Copy the original contents
     mainParam->getValue(value);
-    std::copy(buf, buf + memSize, value + bufferOffset);
+
+    char *valueStart = value + bufferOffset + mainParam->width * startindex;
+    char *valueEnd = valueStart + memSize;
+    for (char *c = valueStart; *s and c < valueEnd; c++) {
+        unsigned char c1 = *s++ - '0';
+        unsigned char c2 = *s++ - '0';
+        if (std::max(c1,c2) >= sizeof(hexNum))
+            return -EINVAL;
+        *c = hexNum[c1] << 4 | hexNum[c2];
+    }
+    // FIXME: actually the setting operation must also check for
+    // endianness!
+
+    return mainParam->setValue(value);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+class Convert {
+    public:
+        Convert(si_datatype_t t, char *buf): buf(buf) {
+            switch (t) {
+                case si_boolean_T: conv = setTo<bool>;     break;
+                case si_uint8_T:   conv = setTo<uint8_t>;  break;
+                case si_sint8_T:   conv = setTo<int8_t>;   break;
+                case si_uint16_T:  conv = setTo<uint16_t>; break;
+                case si_sint16_T:  conv = setTo<int16_t>;  break;
+                case si_uint32_T:  conv = setTo<uint32_t>; break;
+                case si_sint32_T:  conv = setTo<int32_t>;  break;
+                case si_uint64_T:  conv = setTo<uint64_t>; break;
+                case si_sint64_T:  conv = setTo<int64_t>;  break;
+                case si_single_T:  conv = setTo<float>;    break;
+                case si_double_T:  conv = setTo<double>;   break;
+                default:           conv = 0;               break;
+            }
+        }
+        void set(size_t idx, double val) {
+            (*conv)(buf, idx, val);
+        }
+
+    private:
+        char * const buf;
+        void (*conv)(char *, size_t, double);
+
+        template<class T>
+        static void setTo(char *dst, size_t idx, double src) {
+            reinterpret_cast<T*>(dst)[idx] = src;
+        }
+};
+
+/////////////////////////////////////////////////////////////////////////////
+int Parameter::setDoubleValue(const char *buf, size_t startindex) const
+{
+    if (startindex >= nelem)
+        return -ERANGE;
+
+    char value[mainParam->memSize];
+    mainParam->getValue(value);
+
+    std::istringstream is(buf);
+    is.imbue(std::locale::classic());
+    Convert converter(mainParam->dtype,
+            value + bufferOffset + startindex * mainParam->width);
+
+    char c;
+    double v;
+    for (size_t i = 0; i < nelem - startindex; i++) {
+        is >> v;
+
+        if (!is)
+            break;
+
+        converter.set(i, v);
+
+        is >> c;
+        if (c != ',' or c != ';' or !isspace(c))
+            return -EINVAL;
+    }
+
     return mainParam->setValue(value);
 }
 

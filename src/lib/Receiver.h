@@ -37,7 +37,7 @@ class Task;
 
 class Receiver: public HRTLab::Receiver {
     public:
-        Receiver(Task *task, unsigned int tid, TxFrame *start);
+        Receiver(Task *task, /*unsigned int tid,*/ TxFrame *start);
         ~Receiver();
 
         void newSignalList(unsigned int listId,

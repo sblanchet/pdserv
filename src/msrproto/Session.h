@@ -75,8 +75,6 @@ namespace MsrXml {
 
 namespace MsrProto {
 
-class Task;
-
 class Session: public ost::SocketPort, public HRTLab::Session {
     public:
         Session(
@@ -92,15 +90,17 @@ class Session: public ost::SocketPort, public HRTLab::Session {
 
         void processCommand(const char *command, const Attr &attr);
 
-        size_t getVariableIndex(const HRTLab::Variable *v) const;
+        void requestSignal(const HRTLab::Signal *s, bool state);
 
     private:
         Server * const server;
-        Task ** const task;
-
-        std::map<const void *, size_t> variableIndexMap;
 
         SubscriptionManager subscriptionManager;
+
+        unsigned int requestState;
+        typedef std::map<const HRTLab::Signal*, bool> SignalRequest;
+        SignalRequest signalRequest;
+        void processSignalRequest();
 
         // Reimplemented from SocketPort
         void expired();
@@ -111,7 +111,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         // Reimplemented from HRTLab::Session
         void newSignalList(const HRTLab::Task *task,
                 const HRTLab::Signal * const *, size_t n);
-        void newSignalData(const HRTLab::Receiver&);
+        void newSignalData(const HRTLab::Receiver&, const char *data);
 
         // Management variables
         bool writeAccess;

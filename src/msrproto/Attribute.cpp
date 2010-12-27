@@ -22,12 +22,21 @@
  *
  *****************************************************************************/
 
+#include "config.h"
+
 #include "Attribute.h"
 
 #include <cstring>
 #include <algorithm>
 #include <sstream>
 #include <locale>
+
+#ifdef DEBUG
+#include <iostream>
+using std::cout;
+using std::cerr;
+using std::endl;
+#endif
 
 using namespace MsrProto;
 
@@ -96,7 +105,7 @@ bool Attr::isEqual(const char *name, const char *s) const
 {
     char *value;
 
-    if (find(name, value))
+    if (find(name, value) and value)
         return !strcasecmp(value, s);
 
     return false;
@@ -110,14 +119,21 @@ bool Attr::isTrue(const char *name) const
     if (!(find(name, value)))
         return false;
 
+    // Binary attribute, e.g <xsad sync>
+    if (!value)
+        return true;
+
     size_t len = strlen(value);
 
+    // Binary attribute, e.g <xsad sync=1 >
     if (len == 1)
         return *value == '1';
 
+    // Binary attribute, e.g <xsad sync="true">
     if (len == 4)
         return !strncasecmp(value, "true", 4);
 
+    // Binary attribute, e.g <xsad sync='on'/>
     if (len == 2)
         return !strncasecmp(value, "on", 2);
 
@@ -131,7 +147,7 @@ bool Attr::getString(const char *name, std::string &s) const
 
     s.clear();
 
-    if (!(find(name, value)))
+    if (!(find(name, value)) or !value)
         return false;
 
     char *pptr, *eptr = value + strlen(value);
@@ -173,7 +189,7 @@ bool Attr::getUnsigned(const char *name, unsigned int &i) const
 {
     char *value;
 
-    if (!(find(name, value)))
+    if (!(find(name, value)) or !value)
         return false;
 
     i = strtoul(value, 0, 0);
@@ -186,7 +202,7 @@ bool Attr::getUnsignedList(const char *name,
 {
     char *value;
 
-    if (!(find(name, value)))
+    if (!(find(name, value)) or !value)
         return false;
 
     std::istringstream is(value);

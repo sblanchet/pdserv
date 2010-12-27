@@ -39,8 +39,8 @@ using std::endl;
 #include "../Signal.h"
 
 ////////////////////////////////////////////////////////////////////////////
-Receiver::Receiver(Task *task, unsigned int tid, TxFrame *start):
-    HRTLab::Receiver(tid), task(task), mutex(1), rxPtr(start)
+Receiver::Receiver(Task *task, /*unsigned int tid,*/ TxFrame *start):
+    HRTLab::Receiver(task), task(task), mutex(1), rxPtr(start)
 {
     currentListId = ~0U;
      while (rxPtr->next)
@@ -98,7 +98,7 @@ void Receiver::process(HRTLab::Session *session)
 
          seqNo = rxPtr->seqNo;
          time = &rxPtr->time;
-         session->newSignalData(*this);
+         session->newSignalData(*this, rxPtr->data);
          rxPtr = rxPtr->next;
      }
 }

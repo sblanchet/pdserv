@@ -32,8 +32,6 @@
 #include <string>
 #include <map>
 #include <list>
-#include <ctime>
-#include <ctime>
 #include "pdcomserv/etl_data_info.h"
 
 namespace HRTLab {
@@ -79,16 +77,6 @@ class Element {
         template<class T>
             void setAttribute(const char *name, const T& value,
                     std::ios::fmtflags flags = std::ios::dec);
-
-//        void base64ValueAttr(PrintFunc, const char *attribute, const char* data,
-//                const HRTLab::Variable *v, size_t count,
-//                size_t precision = 16);
-//        void csvValueAttr(PrintFunc, const char *attribute, const char* data,
-//                const HRTLab::Variable *v, size_t count,
-//                size_t precision = 16);
-//        void hexDecValueAttr(PrintFunc, const char *attribute, const char* data,
-//                const HRTLab::Variable *v, size_t count,
-//                size_t precision = 16);
 
         /** Printing functions */
         void print(std::ostream& os, size_t indent = 0) const;

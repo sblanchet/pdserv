@@ -48,7 +48,7 @@ Channel::Channel( const HRTLab::Signal *s, unsigned int index,
     bufferOffset(sigOffset * s->width),
     printFunc(getPrintFunc(s->dtype))
 {
-    cout << __PRETTY_FUNCTION__ << index << endl;
+    //cout << __PRETTY_FUNCTION__ << index << endl;
     ///cout << s->path << '[' << endl;
 
     std::ostringstream os;
@@ -67,7 +67,7 @@ Channel::Channel( const HRTLab::Signal *s, unsigned int index,
 
     extension = os.str();
 
-    cout << s->path << '[' << index << "] = " << path() << endl;
+    //cout << s->path << '[' << index << "] = " << path() << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////

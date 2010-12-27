@@ -31,13 +31,14 @@ namespace HRTLab {
 
 class Session;
 class Signal;
+class Task;
 
 class Receiver {
     public:
-        Receiver(unsigned int tid);
+        Receiver(const Task*);
         virtual ~Receiver();
 
-        unsigned int const tid;
+        const Task *task;
         unsigned int seqNo;
         const struct timespec *time;
 

@@ -28,36 +28,30 @@
 #include <set>
 #include "XmlDoc.h"
 
-namespace HRTLab {
-//    class Main;
-//    class Receiver;
-//    class Signal;
-//    class Parameter;
-}
-
 namespace MsrProto {
 
 class Subscription {
     public:
-        Subscription(const Channel *, SubscriptionManager&);
+        Subscription(const Channel *);
         ~Subscription();
 
         const Channel *channel;
 
-        bool activate();
+        size_t getOffset() const;
+        bool activate(size_t bufOffset);
         void sync();
-        void newValue(MsrXml::Element *parent,
-                const HRTLab::Receiver &receiver);
+
+        void newValue(MsrXml::Element *, const char *buf);
 
         void set(bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
 
     private:
-        SubscriptionManager& subscriptionManager;
         MsrXml::Element element;
 
         bool _sync;
-        bool active;
+        bool inactive;
+        size_t offset;
 
         bool event;
         unsigned int decimation;

@@ -95,7 +95,7 @@ Receiver *Task::newReceiver()
 {
     ost::SemaphoreLock lock(mutex);
 
-    Receiver *r = new Receiver(this, tid, txMemBegin);
+    Receiver *r = new Receiver(this, txMemBegin);
     receiverSet.insert(r);
 
     size_t count = 0;
@@ -123,12 +123,15 @@ void Task::receiverDeleted(Receiver *r)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::newSignalList(size_t count) const
+void Task::newSignalList(ssize_t diff) const
 {
-    CopyList *cl = activeSet->list;
-    size_t idx = 0;
-    const HRTLab::Signal *signals[count];
+    activeSet->count += diff;
     activeSet->pdoMemSize = 0;
+
+    size_t idx = 0;
+    CopyList *cl = activeSet->list;
+    const HRTLab::Signal *signals[activeSet->count];
+
     for (size_t i = 0; i < 4; i++) {
         for (SignalSet::const_iterator it = subscriptionSet[i].begin();
                 it != subscriptionSet[i].end(); it++) {
@@ -143,14 +146,14 @@ void Task::newSignalList(size_t count) const
         }
     }
 
-    activeSet->requestId++;
-    activeSet->count = count;
 
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     for (ReceiverSet::iterator it = receiverSet.begin();
             it != receiverSet.end(); it++)
-        (*it)->newSignalList(activeSet->requestId, signals, count);
+        (*it)->newSignalList(
+                activeSet->requestId + 1, signals, activeSet->count);
 
+    activeSet->requestId++;
     do {
         ost::Thread::sleep(sampleTime * 1000 / 2);
     } while (activeSet->requestId != activeSet->reply);
@@ -163,7 +166,7 @@ size_t Task::subscribe(const HRTLab::Session *session,
 //    cout << __PRETTY_FUNCTION__ << s << ' ' << n << endl;
     ost::SemaphoreLock lock(mutex);
     size_t count = 0;
-    bool update = false;
+    ssize_t diff = 0;
 
     while (n--) {
         const Signal *signal = dynamic_cast<const Signal *>(*s++);
@@ -172,8 +175,7 @@ size_t Task::subscribe(const HRTLab::Session *session,
 
         if (signal->sessions.empty()) {
 //            cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
-            update = true;
-
+            diff++;
             subscriptionSet[signal->subscriptionIndex].insert(signal);
         }
 
@@ -183,8 +185,8 @@ size_t Task::subscribe(const HRTLab::Session *session,
     }
 
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << count << endl;
-    if (update)
-        newSignalList(count);
+    if (diff)
+        newSignalList(diff);
 
     return count;
 }
@@ -209,7 +211,7 @@ size_t Task::unsubscribe(const HRTLab::Session *session,
 
     ost::SemaphoreLock lock(mutex);
     size_t count = 0;
-    bool update = false;
+    ssize_t diff = 0;
 
     while (n--) {
         const Signal *signal = dynamic_cast<const Signal *>(*s++);
@@ -220,16 +222,15 @@ size_t Task::unsubscribe(const HRTLab::Session *session,
 
         signal->sessions.erase(session);
         if (signal->sessions.empty()) {
-            update = true;
+            diff--;
             subscriptionSet[signal->subscriptionIndex].erase(signal);
         }
-        else
-            count++;
+        count++;
     }
-//    cout << __PRETTY_FUNCTION__ << " update = " << update << endl;
+//    cout << __PRETTY_FUNCTION__ << ' '  << diff << endl;
 
-    if (update)
-        newSignalList(count);
+    if (diff)
+        newSignalList(diff);
 
     return count;
 }
