@@ -219,16 +219,18 @@ int Parameter::setDoubleValue(const char *buf, size_t startindex) const
     char c;
     double v;
     for (size_t i = 0; i < nelem - startindex; i++) {
+        if (i) {
+            is >> c;
+            if (c != ',' and c != ';' and !isspace(c))
+                return -EINVAL;
+        }
+
         is >> v;
 
         if (!is)
             break;
 
         converter.set(i, v);
-
-        is >> c;
-        if (c != ',' or c != ';' or !isspace(c))
-            return -EINVAL;
     }
 
     return mainParam->setValue(value);
