@@ -94,7 +94,7 @@ void Subscription::set( bool _event, bool sync, unsigned int _decimation,
 /////////////////////////////////////////////////////////////////////////////
 size_t Subscription::getOffset() const
 {
-    return offset - channel->bufferOffset;
+    return inactive ? ~0U : offset - channel->bufferOffset;
 }
 
 /////////////////////////////////////////////////////////////////////////////
