@@ -27,6 +27,7 @@
 
 #include <string>
 #include <list>
+#include <stdint.h>
 #include "PrintVariable.h"
 
 namespace HRTLab {
@@ -65,6 +66,30 @@ class Parameter {
         const PrintFunc printFunc;
 
     private:
+
+        class Converter {
+            public:
+                Converter(Parameter *);
+
+                void setbuf(char *b) const;
+
+                int readDoubleList(const char *val, size_t startindex) const;
+                int readHexValue(const char *val, size_t startindex) const;
+
+            private:
+                const Parameter * const parameter;
+
+                mutable char * dataBuf;
+                void (*append)(char *&, double);
+
+                template<class T>
+                static void setTo(char *&dst, double src) {
+                    *reinterpret_cast<T*>(dst) = src;
+                    dst += sizeof(T);
+                }
+        };
+
+        Converter converter;
 
         bool persistent;
 

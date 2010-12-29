@@ -50,6 +50,7 @@ Parameter::Parameter( const HRTLab::Parameter *p,
     mainParam(p), nelem(nelem), memSize(p->width),
     bufferOffset(sigOffset * p->width),
     printFunc(getPrintFunc(p->dtype)),
+    converter(this),
     persistent(false)
 {
     //cout << __PRETTY_FUNCTION__ << index << endl;
@@ -78,7 +79,7 @@ Parameter::Parameter( const HRTLab::Parameter *p,
 Parameter::Parameter( const HRTLab::Parameter *p, unsigned int index):
     index(index), mainParam(p), nelem(p->nelem), memSize(p->memSize),
     bufferOffset(0), printFunc(getPrintFunc(p->dtype)),
-    persistent(false)
+    converter(this), persistent(false)
 {
 }
 
@@ -140,85 +141,66 @@ void Parameter::getValue(char *buf) const
 /////////////////////////////////////////////////////////////////////////////
 int Parameter::setHexValue(const char *s, size_t startindex) const
 {
-    if (startindex >= nelem)
-        return -ERANGE;
-
+    int rv;
     char value[mainParam->memSize];
-    static const char hexNum[] = {
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
-        0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-        0,10,11,12,13,14,15
-    };
-
-    // Copy the original contents
-    mainParam->getValue(value);
-
-    char *valueStart = value + bufferOffset + mainParam->width * startindex;
-    char *valueEnd = valueStart + memSize;
-    for (char *c = valueStart; *s and c < valueEnd; c++) {
-        unsigned char c1 = *s++ - '0';
-        unsigned char c2 = *s++ - '0';
-        if (std::max(c1,c2) >= sizeof(hexNum))
-            return -EINVAL;
-        *c = hexNum[c1] << 4 | hexNum[c2];
-    }
-    // FIXME: actually the setting operation must also check for
-    // endianness!
+    converter.setbuf(value);
+    if ((rv = converter.readHexValue(s, startindex)))
+        return rv;
 
     return mainParam->setValue(value);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-class Convert {
-    public:
-        Convert(si_datatype_t t, char *buf): buf(buf) {
-            switch (t) {
-                case si_boolean_T: conv = setTo<bool>;     break;
-                case si_uint8_T:   conv = setTo<uint8_t>;  break;
-                case si_sint8_T:   conv = setTo<int8_t>;   break;
-                case si_uint16_T:  conv = setTo<uint16_t>; break;
-                case si_sint16_T:  conv = setTo<int16_t>;  break;
-                case si_uint32_T:  conv = setTo<uint32_t>; break;
-                case si_sint32_T:  conv = setTo<int32_t>;  break;
-                case si_uint64_T:  conv = setTo<uint64_t>; break;
-                case si_sint64_T:  conv = setTo<int64_t>;  break;
-                case si_single_T:  conv = setTo<float>;    break;
-                case si_double_T:  conv = setTo<double>;   break;
-                default:           conv = 0;               break;
-            }
-        }
-        void set(size_t idx, double val) {
-            (*conv)(buf, idx, val);
-        }
-
-    private:
-        char * const buf;
-        void (*conv)(char *, size_t, double);
-
-        template<class T>
-        static void setTo(char *dst, size_t idx, double src) {
-            reinterpret_cast<T*>(dst)[idx] = src;
-        }
-};
-
-/////////////////////////////////////////////////////////////////////////////
 int Parameter::setDoubleValue(const char *buf, size_t startindex) const
 {
-    if (startindex >= nelem)
+    int rv;
+    char value[mainParam->memSize];
+    converter.setbuf(value);
+    if ((rv = converter.readDoubleList(buf, startindex)))
+        return rv;
+
+    return mainParam->setValue(value);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Parameter::Converter::Converter(Parameter *p): parameter(p) {
+    switch (parameter->mainParam->dtype) {
+        case si_boolean_T: append = setTo<bool>;     break;
+        case si_uint8_T:   append = setTo<uint8_t>;  break;
+        case si_sint8_T:   append = setTo<int8_t>;   break;
+        case si_uint16_T:  append = setTo<uint16_t>; break;
+        case si_sint16_T:  append = setTo<int16_t>;  break;
+        case si_uint32_T:  append = setTo<uint32_t>; break;
+        case si_sint32_T:  append = setTo<int32_t>;  break;
+        case si_uint64_T:  append = setTo<uint64_t>; break;
+        case si_sint64_T:  append = setTo<int64_t>;  break;
+        case si_single_T:  append = setTo<float>;    break;
+        case si_double_T:  append = setTo<double>;   break;
+        default:           append = 0;               break;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Parameter::Converter::setbuf(char *b) const
+{
+    parameter->mainParam->getValue(b);
+    dataBuf = b + parameter->bufferOffset;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Parameter::Converter::readDoubleList(const char *buf, size_t startindex) const
+{
+    if (startindex >= parameter->nelem)
         return -ERANGE;
 
-    char value[mainParam->memSize];
-    mainParam->getValue(value);
+    dataBuf += startindex * parameter->mainParam->width;
 
     std::istringstream is(buf);
     is.imbue(std::locale::classic());
-    Convert converter(mainParam->dtype,
-            value + bufferOffset + startindex * mainParam->width);
 
     char c;
     double v;
-    for (size_t i = 0; i < nelem - startindex; i++) {
+    for (size_t i = 0; i < parameter->nelem - startindex; i++) {
         if (i) {
             is >> c;
             if (c != ',' and c != ';' and !isspace(c))
@@ -230,9 +212,36 @@ int Parameter::setDoubleValue(const char *buf, size_t startindex) const
         if (!is)
             break;
 
-        converter.set(i, v);
+        (*append)(dataBuf, v);
     }
 
-    return mainParam->setValue(value);
+    return 0;
 }
 
+/////////////////////////////////////////////////////////////////////////////
+int Parameter::Converter::readHexValue(const char *s, size_t startindex) const
+{
+    if (startindex >= parameter->nelem)
+        return -ERANGE;
+
+    static const char hexNum[] = {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
+        0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+        0,10,11,12,13,14,15
+    };
+
+    char *valueStart = dataBuf + startindex * parameter->mainParam->width;
+    char *valueEnd = valueStart + parameter->memSize;
+    for (char *c = valueStart; *s and c < valueEnd; c++) {
+        unsigned char c1 = *s++ - '0';
+        unsigned char c2 = *s++ - '0';
+        if (std::max(c1,c2) >= sizeof(hexNum))
+            return -EINVAL;
+        *c = hexNum[c1] << 4 | hexNum[c2];
+    }
+    // FIXME: actually the setting operation must also check for
+    // endianness!
+
+    return 0;
+}
