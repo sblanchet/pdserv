@@ -51,7 +51,6 @@ Subscription::Subscription(const Channel* channel):
 {
     element.setAttribute("c", channel->index);
     data_bptr = 0;
-    inactive = true;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -64,8 +63,6 @@ void Subscription::set( bool _event, bool sync, unsigned int _decimation,
         size_t _blocksize, bool _base64, size_t _precision)
 {
 //    cout << __PRETTY_FUNCTION__ << signal->path << endl;
-
-    inactive = true;
     event = _event;
     _sync = sync;
     decimation = _decimation ? _decimation-1 : 0;
@@ -92,19 +89,13 @@ void Subscription::set( bool _event, bool sync, unsigned int _decimation,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-size_t Subscription::getOffset() const
-{
-    return inactive ? ~0U : offset - channel->bufferOffset;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Subscription::newValue(MsrXml::Element *parent, const char *dataBuf)
 {
 //    cout << __func__ << channel->path() << ' ' << trigger << endl;
-    if (inactive or (trigger and trigger--))
+    if (trigger and trigger--)
         return;
 
-    dataBuf += offset;
+    dataBuf += channel->bufferOffset;
 //    cout << __func__ << channel->path() << offset << ' ' << *(double*)dataBuf << endl;
 
     if (!event) {
@@ -143,25 +134,13 @@ void Subscription::newValue(MsrXml::Element *parent, const char *dataBuf)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Subscription::activate(size_t bufOffset)
+bool Subscription::sync()
 {
     bool sync = _sync;
 
-    offset = bufOffset + channel->bufferOffset;
-//    cout << "offset for " << channel->path() << ' ' << offset << endl;
-
-    inactive = false;
     _sync = false;
-
-    return sync;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Subscription::sync()
-{
-    if (inactive)
-        return;
-
     data_pptr = data_bptr;
     trigger = decimation;
+
+    return sync;
 }

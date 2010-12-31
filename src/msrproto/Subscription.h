@@ -37,9 +37,7 @@ class Subscription {
 
         const Channel *channel;
 
-        size_t getOffset() const;
-        bool activate(size_t bufOffset);
-        void sync();
+        bool sync();
 
         void newValue(MsrXml::Element *, const char *buf);
 
@@ -50,8 +48,6 @@ class Subscription {
         MsrXml::Element element;
 
         bool _sync;
-        bool inactive;
-        size_t offset;
 
         bool event;
         unsigned int decimation;

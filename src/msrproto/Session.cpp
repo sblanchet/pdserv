@@ -67,7 +67,7 @@ using namespace MsrProto;
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), HRTLab::Session(main),
-    server(s), subscriptionManager(this),
+    server(s), subscriptionManager(main->nst),
     dataTag("data"), outbuf(this), inbuf(this)
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
@@ -244,18 +244,22 @@ void Session::disconnect()
 void Session::newSignalList(const HRTLab::Task *task,
         const HRTLab::Signal * const *s, size_t n)
 {
-    subscriptionManager.newSignalList(task, s, n);
+    if (!subscriptionManager[task->tid].newSignalList(s, n))
+        return;
+
+    for (size_t i = 0; i < main->nst; i++)
+        subscriptionManager[i].sync();
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalData(const HRTLab::Receiver &receiver, const char *data)
+void Session::newSignalData(const HRTLab::Receiver &receiver)
 {
     if (quiet)
         return;
 
     dataTag.setAttribute("time", *receiver.time);
 
-    subscriptionManager.newSignalData(&dataTag, receiver, data);
+    subscriptionManager[receiver.task->tid].newSignalData(&dataTag, receiver);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -610,7 +614,8 @@ void Session::xsad(const Attr &attr)
 
     if (!attr.getUnsignedList("channels", indexList)) {
         if (sync)
-            subscriptionManager.sync();
+            for (size_t i = 0; i < main->nst; i++)
+                subscriptionManager[i].sync();
         return;
     }
 
@@ -677,8 +682,12 @@ void Session::xsad(const Attr &attr)
         if (!reduction) reduction = 1;
         if (!blocksize) blocksize = 1;
 
-        subscriptionManager.subscribe( channel[*it],
-                event, sync, reduction, blocksize, base64, precision);
+        size_t tid = mainSignal->task->tid;
+        if (subscriptionManager[tid].subscribe( channel[*it], event,
+                    sync, reduction, blocksize, base64, precision)) {
+            signalRequest[mainSignal] = true;
+            requestState = 2;
+        }
     }
 }
 
@@ -694,11 +703,18 @@ void Session::xsod(const Attr &attr)
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
             if (*it < channel.size()) {
-                subscriptionManager.unsubscribe(channel[*it]);
+                size_t tid = channel[*it]->signal->task->tid;
+                if (subscriptionManager[tid].unsubscribe(channel[*it])) {
+                    signalRequest[channel[*it]->signal] = false; 
+                    requestState = 2;
+                }
             }
         }
     }
     else {
-        subscriptionManager.unsubscribe();
+        for (size_t i = 0; i < main->nst; i++)
+            subscriptionManager[i].unsubscribe();
+        signalRequest.clear();
+        main->unsubscribe(this);
     }
 }

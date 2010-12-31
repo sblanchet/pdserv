@@ -60,6 +60,7 @@
 #include <string>
 #include <map>
 #include <set>
+#include <vector>
 
 #include "pdcomserv/etl_data_info.h"
 
@@ -95,7 +96,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
     private:
         Server * const server;
 
-        SubscriptionManager subscriptionManager;
+        std::vector<SubscriptionManager> subscriptionManager;
 
         unsigned int requestState;
         typedef std::map<const HRTLab::Signal*, bool> SignalRequest;
@@ -111,7 +112,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         // Reimplemented from HRTLab::Session
         void newSignalList(const HRTLab::Task *task,
                 const HRTLab::Signal * const *, size_t n);
-        void newSignalData(const HRTLab::Receiver&, const char *data);
+        void newSignalData(const HRTLab::Receiver&);
 
         // Management variables
         bool writeAccess;

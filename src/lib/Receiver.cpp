@@ -98,7 +98,7 @@ void Receiver::process(HRTLab::Session *session)
 
          seqNo = rxPtr->seqNo;
          time = &rxPtr->time;
-         session->newSignalData(*this, rxPtr->data);
+         session->newSignalData(*this);
          rxPtr = rxPtr->next;
      }
 }

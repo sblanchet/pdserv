@@ -47,7 +47,7 @@ class Session {
         // These methods are called from within the context of rxPdo
         virtual void newSignalList(const Task *,
                 const Signal * const *, size_t n) = 0;
-        virtual void newSignalData(const Receiver&, const char *data) = 0;
+        virtual void newSignalData(const Receiver&) = 0;
 
         void rxPdo();
 

@@ -45,35 +45,34 @@ class Session;
 
 class SubscriptionManager {
     public:
-        SubscriptionManager(Session *);
         ~SubscriptionManager();
 
-        void unsubscribe(const Channel *s = 0);
-        void subscribe(const Channel *s,
+        bool unsubscribe(const Channel *s = 0);
+        bool subscribe(const Channel *s,
                 bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
-        void newSignalList(const HRTLab::Task *task,
-                const HRTLab::Signal * const *, size_t n);
-        void newSignalData(MsrXml::Element *parent,
-                const HRTLab::Receiver&, const char *data);
+        bool newSignalList( const HRTLab::Signal * const *, size_t n);
+        void newSignalData(MsrXml::Element *parent, const HRTLab::Receiver&);
 
         void sync();
 
-        bool active(const HRTLab::Signal *s) const;
-
-        typedef std::set<const Channel*> ChannelSet;
-        const ChannelSet& getActiveChannels(const HRTLab::Signal *s) const;
-
     private:
-        Session * const session;
+        class SignalSubscription:
+            public std::map<const Channel*, Subscription*> {
+                public:
+                    ~SignalSubscription();
 
-        typedef std::map<const Channel *, Subscription*>
-            ChannelSubscriptionMap;
-        typedef std::map<const HRTLab::Signal*, ChannelSubscriptionMap>
+                    void newSignalData(MsrXml::Element *parent, const char *);
+                    void clear();
+                    bool sync();
+            };
+
+        typedef std::map<const HRTLab::Signal*, SignalSubscription>
             SignalSubscriptionMap;
-        typedef std::map<const HRTLab::Task*, SignalSubscriptionMap>
-            TaskSubscription;
-        TaskSubscription taskSubscription;
+        SignalSubscriptionMap signalSubscriptionMap;
+
+        typedef std::set<const HRTLab::Signal*> ActiveSignalSet;
+        ActiveSignalSet activeSignalSet;
 };
 
 }

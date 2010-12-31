@@ -44,151 +44,117 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-SubscriptionManager::SubscriptionManager(Session *session):
-    session(session)
-{
-}
-
-/////////////////////////////////////////////////////////////////////////////
 SubscriptionManager::~SubscriptionManager()
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::subscribe(const Channel *c,
+bool SubscriptionManager::subscribe(const Channel *c,
         bool event, bool sync, unsigned int decimation,
         size_t blocksize, bool base64, size_t precision)
 {
-//    cout << __LINE__ << __PRETTY_FUNCTION__ << c->path() << c->signal->task << endl;
-    size_t offset = ~0U;
+    bool empty = signalSubscriptionMap[c->signal].empty();
+    //cout << __LINE__ << __PRETTY_FUNCTION__ << empty << endl;
 
-    SignalSubscriptionMap& signalSubscriptionMap =
-        taskSubscription[c->signal->task];
-    ChannelSubscriptionMap& csMap = signalSubscriptionMap[c->signal];
-
-    if (csMap.empty()) {
-        // This signal is not yet transferred from the real time process;
-        // get it
-        session->requestSignal(c->signal, true);
-    }
-    else {
-        offset = csMap.begin()->second->getOffset();
-    }
-
-    Subscription *subscription = csMap[c];
+    Subscription *subscription = signalSubscriptionMap[c->signal][c];
     if (!subscription) {
         subscription = new Subscription(c);
-        csMap[c] = subscription;
+        signalSubscriptionMap[c->signal][c] = subscription;
     }
-
     subscription->set(event, sync, decimation, blocksize, base64, precision);
 
-    if (offset != ~0U and subscription->activate(offset))
-        this->sync();
+    return empty;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::unsubscribe(const Channel *c)
+bool SubscriptionManager::unsubscribe(const Channel *c)
 {
     if (!c) {
-        for (TaskSubscription::const_iterator it = taskSubscription.begin();
-                it != taskSubscription.end(); it++) {
-            while (!it->second.empty()) {
-                SignalSubscriptionMap::const_iterator sit = it->second.begin();
-                while (!sit->second.empty()) {
-                    unsubscribe(sit->second.begin()->first);
-                }
-            }
-        }
-        return;
+        signalSubscriptionMap.clear();
+        return true;
     }
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << c->path() << endl;
 
-    SignalSubscriptionMap& signalSubscriptionMap =
-        taskSubscription[c->signal->task];
-
-    SignalSubscriptionMap::iterator sit =
-        signalSubscriptionMap.find(c->signal);
-
-    if (sit == signalSubscriptionMap.end())
-        return;
-
-    ChannelSubscriptionMap::iterator cit = sit->second.find(c);
-
-    if (cit == sit->second.end())
-        return;
-
-    delete cit->second;
-
-    sit->second.erase(cit);
-    if (sit->second.empty()) {
-        signalSubscriptionMap.erase(sit);
-        session->requestSignal(c->signal, false);
+    signalSubscriptionMap[c->signal].erase(c);
+    if (signalSubscriptionMap[c->signal].empty()) {
+        signalSubscriptionMap.erase(c->signal);
+        activeSignalSet.erase(c->signal);
+        return true;
     }
+    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::newSignalList(const HRTLab::Task *task,
+bool SubscriptionManager::newSignalList(
         const HRTLab::Signal * const *s, size_t n)
 {
 //    cout << __func__ << n << endl;
 
     bool sync = false;
-    size_t bufOffset = 0;
-    SignalSubscriptionMap& signalSubscriptionMap = taskSubscription[task];
-
 //    cout << __func__ << __LINE__ << signalSubscriptionMap.size() << endl;
+
     for (; n--; s++) {
-        SignalSubscriptionMap::const_iterator sit =
+        SignalSubscriptionMap::iterator sit =
             signalSubscriptionMap.find(*s);
 
 //        cout << __LINE__ << (*s)->path << bufOffset << endl;
-        if (sit != signalSubscriptionMap.end()) {
-            ChannelSubscriptionMap::const_iterator cit;
-            for (cit = sit->second.begin(); cit != sit->second.end(); cit++) {
-                Subscription *s = cit->second;
+        if (sit == signalSubscriptionMap.end())
+            continue;
 
-//                cout << __func__ << __LINE__ << endl;
-                if (s->activate(bufOffset))
-                    sync = true;
-            }
-        }
-        bufOffset += (*s)->memSize;
+        if (sit->second.sync())
+            sync = true;
+
+        activeSignalSet.insert(*s);
     }
 
-    if (sync)
-        this->sync();
+    return sync;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::newSignalData(MsrXml::Element *parent,
-        const HRTLab::Receiver& receiver, const char *data)
+        const HRTLab::Receiver& receiver)
 {
 //    cout << __func__ << receiver.seqNo << endl;
-    SignalSubscriptionMap& signalSubscriptionMap =
-        taskSubscription[receiver.task];
-
-    for (SignalSubscriptionMap::const_iterator sit = signalSubscriptionMap.begin();
-            sit != signalSubscriptionMap.end(); sit++) {
-        for (ChannelSubscriptionMap::const_iterator cit = sit->second.begin();
-                cit != sit->second.end(); cit++) {
-            cit->second->newValue(parent, data);
-        }
+    for (ActiveSignalSet::const_iterator sit = activeSignalSet.begin();
+            sit != activeSignalSet.end(); sit++) {
+        signalSubscriptionMap[*sit].newSignalData(
+                parent, receiver.getValue(*sit));
     }
-
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::sync()
 {
 //    cout << __func__ << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << endl;
-    for (TaskSubscription::const_iterator it = taskSubscription.begin();
-            it != taskSubscription.end(); it++) {
-        for (SignalSubscriptionMap::const_iterator sit = it->second.begin();
-                sit != it->second.end(); sit++) {
-            for (ChannelSubscriptionMap::const_iterator cit = sit->second.begin();
-                    cit != sit->second.end(); cit++)
-                cit->second->sync();
-        }
+    for (ActiveSignalSet::const_iterator sit = activeSignalSet.begin();
+            sit != activeSignalSet.end(); sit++) {
+        signalSubscriptionMap[*sit].sync();
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+SubscriptionManager::SignalSubscription::~SignalSubscription()
+{
+    for (const_iterator it = begin(); it != end(); it++)
+        delete it->second;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void SubscriptionManager::SignalSubscription::newSignalData(
+        MsrXml::Element *parent, const char *data)
+{
+    for (const_iterator it = begin(); it != end(); it++) {
+        it->second->newValue(parent, data);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool SubscriptionManager::SignalSubscription::sync()
+{
+    bool sync = false;
+    for (const_iterator it = begin(); it != end(); it++) {
+        if (it->second->sync())
+            sync = true;
+    }
+    return sync;
 }
