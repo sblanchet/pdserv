@@ -77,7 +77,6 @@ Session::Session( Server *s, ost::SocketService *ss,
     echoOn = false;
     quiet = false;
     requestState = 0;
-    dataTag.setAttribute("level", 0);
 
     // Non-blocking read() and write()
     setCompletion(false);
@@ -163,11 +162,6 @@ void Session::expired()
     if (getDetectPending()) {
         // Read and process the incoming data
         rxPdo();
-
-        if (!quiet and dataTag.hasChildren())
-            outbuf << dataTag << std::flush;
-
-        dataTag.releaseChildren();
 
         if (!--requestState)
             processSignalRequest();
@@ -257,9 +251,15 @@ void Session::newSignalData(const HRTLab::Receiver &receiver)
     if (quiet)
         return;
 
+    dataTag.setAttribute("level", receiver.task->tid);
     dataTag.setAttribute("time", *receiver.time);
 
     subscriptionManager[receiver.task->tid].newSignalData(&dataTag, receiver);
+
+    if (dataTag.hasChildren())
+        outbuf << dataTag << std::flush;
+
+    dataTag.releaseChildren();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -510,13 +510,11 @@ void Session::readStatistics(const Attr &attr)
     typedef std::list<HRTLab::SessionStatistics> StatList;
     StatList stats;
     main->getSessionStatistics(stats);
-    int index = 0;
 
     MsrXml::Element clients("clients");
     for (StatList::const_iterator it = stats.begin();
             it != stats.end(); it++) {
         MsrXml::Element *e = clients.createChild("client");
-        e->setAttribute("index", index++);
         e->setAttributeCheck("name", (*it).remote);
         e->setAttributeCheck("apname", (*it).client);
         e->setAttribute("countin", (*it).countIn);
