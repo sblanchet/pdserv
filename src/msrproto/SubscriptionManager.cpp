@@ -70,16 +70,19 @@ bool SubscriptionManager::subscribe(const Channel *c,
 bool SubscriptionManager::unsubscribe(const Channel *c)
 {
     if (!c) {
+        // The deleting is done in the destruction of SignalSubscriptionMap
         signalSubscriptionMap.clear();
         return true;
     }
-//    cout << __LINE__ << __PRETTY_FUNCTION__ << c->path() << endl;
+
+    Subscription *subscription = signalSubscriptionMap[c->signal][c];
+    delete signalSubscriptionMap[c->signal][c];
 
     signalSubscriptionMap[c->signal].erase(c);
     if (signalSubscriptionMap[c->signal].empty()) {
         signalSubscriptionMap.erase(c->signal);
         activeSignalSet.erase(c->signal);
-        return true;
+        return subscription;
     }
     return false;
 }
@@ -135,8 +138,10 @@ void SubscriptionManager::sync()
 /////////////////////////////////////////////////////////////////////////////
 SubscriptionManager::SignalSubscription::~SignalSubscription()
 {
-    for (const_iterator it = begin(); it != end(); it++)
+    for (const_iterator it = begin(); it != end(); it++) {
+        //cout << __func__ << it->second << endl;
         delete it->second;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////

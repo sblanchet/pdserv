@@ -694,7 +694,7 @@ void Session::xsod(const Attr &attr)
 {
     std::list<unsigned int> intList;
 
-//    cout << __LINE__ << "xsod: " << endl;
+    //cout << __LINE__ << "xsod: " << endl;
 
     if (attr.getUnsignedList("channels", intList)) {
         const Server::Channels& channel = server->getChannels();
