@@ -116,23 +116,24 @@ Server::Server(HRTLab::Main *main, bool traditional):
             const HRTLab::Parameter *mainParam = *it;
             size_t vectorLen = mainParam->getDim()[mainParam->ndims - 1];
             Parameter *p = 0;
-            for (size_t i = 0; i < (*it)->nelem; i++) {
-                if (!(i % vectorLen)) {
-                    p = new Parameter(mainParam, idx, vectorLen, i);
-                    if (root.insert(*it,
-                                makeExtension(*it, i, vectorLen).c_str(),
-                                0, p)) {
-                        parameter.push_back(p);
-                        idx++;
-                    }
-                    else
-                        delete p;
+            mainParameterMap[mainParam].reserve(1 + (*it)->nelem / vectorLen);
+            for (size_t i = 0; i < (*it)->nelem; i += vectorLen) {
+                p = new Parameter(mainParam, idx, vectorLen, i);
+                if (root.insert(*it,
+                            makeExtension(*it, i, vectorLen).c_str(),
+                            0, p)) {
+                    parameter.push_back(p);
+                    mainParameterMap[mainParam].push_back(p);
+                    idx++;
                 }
+                else
+                    delete p;
 
-                if (vectorLen > 1) {
-                    p = new Parameter(mainParam, idx, 1, i);
-                    if (root.insert(*it, makeExtension(*it, i).c_str(), 0, p)) {
+                for (size_t j = i; j < i + vectorLen; j++) {
+                    p = new Parameter(mainParam, idx, 1, j);
+                    if (root.insert(*it, makeExtension(*it, j).c_str(), 0, p)) {
                         parameter.push_back(p);
+                        mainParameterMap[mainParam].push_back(p);
                         idx++;
                     }
                     else

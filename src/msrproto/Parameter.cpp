@@ -47,8 +47,7 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 Parameter::Parameter( const HRTLab::Parameter *p,
         unsigned int index, unsigned int nelem, size_t parameterElement):
-    index(index),
-    mainParam(p), nelem(nelem), memSize(p->width),
+    index(index), mainParam(p), nelem(nelem), memSize(p->width),
     bufferOffset(parameterElement * p->width),
     printFunc(getPrintFunc(p->dtype)),
     converter(this), persistent(false)

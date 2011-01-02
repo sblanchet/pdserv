@@ -75,16 +75,13 @@ class Server:public ost::Thread {
         const Parameter* getParameter(unsigned int) const;
 
     private:
-
         HRTLab::Main * const main;
         std::set<Session*> sessions;
 
-        Channels channel;
-
         DirectoryNode root;
 
+        Channels channel;
         Parameters parameter;
-        typedef std::map<const std::string, Parameter*> ParameterMap;
 
         std::map<const HRTLab::Parameter*, Parameters> mainParameterMap;
 
