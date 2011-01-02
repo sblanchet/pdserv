@@ -39,16 +39,19 @@ namespace MsrXml {
 
 namespace MsrProto {
 
+class DirectoryNode;
+
 class Channel {
     public:
-        Channel( const HRTLab::Signal *s, unsigned int index);
-        Channel( const HRTLab::Signal *s, unsigned int index,
-                unsigned int sigOffset);
+        Channel( const HRTLab::Signal *s,
+                unsigned int channelIndex,
+                unsigned int signalOffset);
         ~Channel();
 
         void setXmlAttributes(MsrXml::Element*, bool shortReply,
                     const char *signalBuf) const;
 
+        void setNode(const DirectoryNode *node, const char *);
         std::string path() const;
 
         const unsigned int index;
@@ -61,8 +64,7 @@ class Channel {
 
     private:
 
-        std::string extension;
-
+        const DirectoryNode *node;
 };
 
 }

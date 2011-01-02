@@ -57,14 +57,13 @@ class SubscriptionManager {
         void sync();
 
     private:
-        class SignalSubscription:
+        struct SignalSubscription:
             public std::map<const Channel*, Subscription*> {
-                public:
-                    ~SignalSubscription();
+                ~SignalSubscription();
 
-                    void newSignalData(MsrXml::Element *parent, const char *);
-                    void clear();
-                    bool sync();
+                void newSignalData(MsrXml::Element *parent, const char *);
+                void clear();
+                bool sync();
             };
 
         typedef std::map<const HRTLab::Signal*, SignalSubscription>

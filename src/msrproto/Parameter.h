@@ -42,15 +42,17 @@ namespace MsrXml {
 namespace MsrProto {
 
 class Session;
+class DirectoryNode;
 
 class Parameter {
     public:
-        Parameter( const HRTLab::Parameter *s, unsigned int index);
         Parameter( const HRTLab::Parameter *s, unsigned int index,
-                unsigned int paramOffset, size_t nelem = 1);
+                unsigned int nelem, unsigned int parameterElement = 0);
         ~Parameter();
 
+        void setNode(const DirectoryNode *node, const char *);
         std::string path() const;
+
         void setXmlAttributes(MsrXml::Element*, bool shortReply,
                     bool hex, unsigned int flags) const;
         void getValue(char *) const;
@@ -66,6 +68,8 @@ class Parameter {
         const PrintFunc printFunc;
 
     private:
+
+        const DirectoryNode *node;
 
         class Converter {
             public:
@@ -92,9 +96,6 @@ class Parameter {
         Converter converter;
 
         bool persistent;
-
-        std::string extension;
-
 };
 
 }

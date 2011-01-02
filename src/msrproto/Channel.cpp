@@ -29,6 +29,7 @@
 #include "PrintVariable.h"
 #include "../Task.h"
 #include "../Signal.h"
+#include "Directory.h"
 
 #include <sstream>
 
@@ -42,39 +43,16 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Channel::Channel( const HRTLab::Signal *s, unsigned int index,
-        unsigned int sigOffset):
+Channel::Channel(
+        const HRTLab::Signal *s, unsigned int index, unsigned int sigOffset):
     index(index), signal(s), nelem(1), memSize(s->width),
     bufferOffset(sigOffset * s->width),
     printFunc(getPrintFunc(s->dtype))
 {
+
     //cout << __PRETTY_FUNCTION__ << index << endl;
-    ///cout << s->path << '[' << endl;
+//    cout << path() << ' ' << index << ' ' << sigOffset << endl;
 
-    std::ostringstream os;
-    const size_t *idx = signal->getDim();
-    size_t r = signal->nelem;
-    size_t n = sigOffset;
-    size_t x;
-
-    while (r > nelem) {
-        r /= *idx++;
-        x = n / r;
-        n -= x*r;
-
-        os << '/' << x;
-    }
-
-    extension = os.str();
-
-    //cout << s->path << '[' << index << "] = " << path() << endl;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Channel::Channel( const HRTLab::Signal *s, unsigned int index):
-    index(index), signal(s), nelem(s->nelem), memSize(s->memSize),
-    bufferOffset(0), printFunc(getPrintFunc(s->dtype))
-{
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -97,7 +75,7 @@ void Channel::setXmlAttributes( MsrXml::Element *element,
     size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
 
 
-    setVariableAttributes(element, signal, index, path(), nelem, shortReply);
+    setVariableAttributes(element, signal, index, node->path(), nelem, shortReply);
 
     if (shortReply)
         return;
@@ -111,7 +89,13 @@ void Channel::setXmlAttributes( MsrXml::Element *element,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Channel::setNode(const DirectoryNode *n, const char *name)
+{
+    node = n;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 std::string Channel::path() const
 {
-    return signal->path + extension;
+    return node->path();
 }

@@ -32,6 +32,7 @@
 #include <cc++/thread.h>
 
 #include "../SessionStatistics.h"
+#include "Directory.h"
 
 namespace HRTLab {
     class Main;
@@ -64,7 +65,7 @@ class Server:public ost::Thread {
 
         typedef std::vector<const Channel*> Channels;
         const Channels& getChannels() const;
-        const Channel* getChannel(const std::string&) const;
+        const Channel* getChannel(const char *) const;
         const Channel* getChannel(unsigned int) const;
 
         typedef std::vector<const Parameter*> Parameters;
@@ -79,12 +80,11 @@ class Server:public ost::Thread {
         std::set<Session*> sessions;
 
         Channels channel;
-        typedef std::map<const std::string, Channel*> ChannelMap;
-        ChannelMap channelMap;
+
+        DirectoryNode root;
 
         Parameters parameter;
         typedef std::map<const std::string, Parameter*> ParameterMap;
-        ParameterMap parameterMap;
 
         std::map<const HRTLab::Parameter*, Parameters> mainParameterMap;
 

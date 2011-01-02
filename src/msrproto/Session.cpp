@@ -372,7 +372,7 @@ void Session::readChannel(const Attr &attr)
     unsigned int index;
 
     if (attr.getString("name", path)) {
-        c = server->getChannel(path);
+        c = server->getChannel(path.c_str());
     }
     else if (attr.getUnsigned("index", index)) {
         c = server->getChannel(index);

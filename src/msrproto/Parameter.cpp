@@ -27,6 +27,7 @@
 #include "Parameter.h"
 #include "XmlDoc.h"
 #include "PrintVariable.h"
+#include "Directory.h"
 #include "../Task.h"
 #include "../Parameter.h"
 
@@ -45,42 +46,14 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Parameter::Parameter( const HRTLab::Parameter *p,
-        unsigned int index, unsigned int sigOffset, size_t nelem):
+        unsigned int index, unsigned int nelem, size_t parameterElement):
     index(index),
     mainParam(p), nelem(nelem), memSize(p->width),
-    bufferOffset(sigOffset * p->width),
+    bufferOffset(parameterElement * p->width),
     printFunc(getPrintFunc(p->dtype)),
-    converter(this),
-    persistent(false)
-{
-    //cout << __PRETTY_FUNCTION__ << index << endl;
-    ///cout << s->path << '[' << endl;
-
-    std::ostringstream os;
-    const size_t *idx = mainParam->getDim();
-    size_t r = mainParam->nelem;
-    size_t n = sigOffset;
-    size_t x;
-
-    while (r > nelem) {
-        r /= *idx++;
-        x = n / r;
-        n -= x*r;
-
-        os << '/' << x;
-    }
-
-    extension = os.str();
-
-    //cout << p->path << '[' << index << "] = " << path() << endl;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Parameter::Parameter( const HRTLab::Parameter *p, unsigned int index):
-    index(index), mainParam(p), nelem(p->nelem), memSize(p->memSize),
-    bufferOffset(0), printFunc(getPrintFunc(p->dtype)),
     converter(this), persistent(false)
 {
+    //cout << __PRETTY_FUNCTION__ << index << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -124,9 +97,15 @@ void Parameter::setXmlAttributes( MsrXml::Element *element,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Parameter::setNode(const DirectoryNode *n, const char *name)
+{
+    node = n;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 std::string Parameter::path() const
 {
-    return mainParam->path + extension;
+    return node->path();
 }
 
 /////////////////////////////////////////////////////////////////////////////
