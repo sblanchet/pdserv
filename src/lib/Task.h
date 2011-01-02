@@ -50,9 +50,9 @@ class Task: public HRTLab::Task {
         void rt_init();
         void nrt_init();
 
-        size_t subscribe(const HRTLab::Session*,
+        size_t subscribe(HRTLab::Session*,
                 const HRTLab::Signal* const *, size_t n) const;
-        size_t unsubscribe(const HRTLab::Session*,
+        size_t unsubscribe(HRTLab::Session*,
                 const HRTLab::Signal* const * = 0, size_t n = 0) const;
 
         void txPdo(const struct timespec *);

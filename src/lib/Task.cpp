@@ -36,6 +36,7 @@ using std::endl;
 #include "Signal.h"
 #include "Receiver.h"
 #include "Pointer.h"
+#include "../Session.h"
 
 /////////////////////////////////////////////////////////////////////////////
 Task::Task(Main *main, unsigned int tid, double sampleTime):
@@ -160,7 +161,7 @@ void Task::newSignalList(ssize_t diff) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-size_t Task::subscribe(const HRTLab::Session *session,
+size_t Task::subscribe(HRTLab::Session *session,
         const HRTLab::Signal * const *s, size_t n) const
 {
 //    cout << __PRETTY_FUNCTION__ << s << ' ' << n << endl;
@@ -187,12 +188,25 @@ size_t Task::subscribe(const HRTLab::Session *session,
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << count << endl;
     if (diff)
         newSignalList(diff);
+    else {
+        size_t idx = 0;
+        const HRTLab::Signal *signals[activeSet->count];
+
+        for (size_t i = 0; i < 4; i++) {
+            for (SignalSet::const_iterator it = subscriptionSet[i].begin();
+                    it != subscriptionSet[i].end(); it++) {
+                signals[idx++] = *it;
+            }
+        }
+
+        session->newSignalList(this, signals, activeSet->count);
+    }
 
     return count;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-size_t Task::unsubscribe(const HRTLab::Session *session,
+size_t Task::unsubscribe(HRTLab::Session *session,
         const HRTLab::Signal * const *s, size_t n) const
 {
 //    cout << __PRETTY_FUNCTION__ << s << ' ' << n << endl;

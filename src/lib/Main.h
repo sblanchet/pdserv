@@ -96,9 +96,9 @@ class Main: public HRTLab::Main {
         int setParameters(const HRTLab::Parameter * const *p, size_t nelem,
                 const char *data) const;
         HRTLab::Receiver *newReceiver(unsigned int tid);
-        void subscribe(const HRTLab::Session *,
+        void subscribe(HRTLab::Session *,
                 const HRTLab::Signal * const *, size_t n) const;
-        void unsubscribe(const HRTLab::Session *,
+        void unsubscribe(HRTLab::Session *,
                 const HRTLab::Signal * const * = 0, size_t n = 0) const;
 };
 

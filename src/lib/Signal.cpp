@@ -57,14 +57,14 @@ Signal::Signal( Task *task,
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::subscribe(const HRTLab::Session *session) const
+void Signal::subscribe(HRTLab::Session *session) const
 {
     const HRTLab::Signal *s = this;
     task->subscribe(session, &s, 1);
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::unsubscribe(const HRTLab::Session *session) const
+void Signal::unsubscribe(HRTLab::Session *session) const
 {
     const HRTLab::Signal *s = this;
     task->unsubscribe(session, &s, 1);

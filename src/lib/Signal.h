@@ -59,8 +59,8 @@ class Signal: public HRTLab::Signal {
         static const size_t dataTypeIndex[HRTLab::Variable::maxWidth+1];
 
         // Reimplemented from HRTLab::Signal
-        void subscribe(const HRTLab::Session *) const;
-        void unsubscribe(const HRTLab::Session *) const;
+        void subscribe(HRTLab::Session *) const;
+        void unsubscribe(HRTLab::Session *) const;
 };
 
 #endif //LIB_SIGNAL

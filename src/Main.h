@@ -77,9 +77,9 @@ class Main {
         virtual int setParameters(const Parameter * const *p,
                 size_t nelem, const char *data) const = 0;
 
-        virtual void subscribe(const Session *,
+        virtual void subscribe(Session *,
                 const Signal * const *, size_t n) const = 0;
-        virtual void unsubscribe(const Session *,
+        virtual void unsubscribe(Session *,
                 const Signal * const * = 0, size_t n = 0) const = 0;
 
         // Methods used by the clients to post instructions to the real-time
