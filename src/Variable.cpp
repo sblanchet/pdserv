@@ -42,7 +42,7 @@ Variable::Variable(
                 const char *path,
                 enum si_datatype_t dtype,
                 unsigned int ndims,
-                const size_t *dim):
+                const unsigned int *dim):
     path(path), dtype(dtype),
     ndims(dim ? ndims : 1),
     width(getDTypeSize(dtype)),
@@ -111,7 +111,7 @@ size_t Variable::getDTypeSize(enum si_datatype_t dtype)
 }
 
 //////////////////////////////////////////////////////////////////////
-size_t Variable::getNElem( unsigned int ndims, const size_t dim[])
+size_t Variable::getNElem( unsigned int ndims, const unsigned int dim[])
 {
     if (dim) {
         size_t n = 1;

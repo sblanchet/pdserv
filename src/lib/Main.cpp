@@ -66,12 +66,13 @@ Main::Main(int argc, const char *argv[],
     task(new Task*[nst]), mutex(1), sdoMutex(1), rttime(gettime)
 {
     char *_argv[argc];
+    char helpStr[] = STR(PROJECT_NAME) " options";
     for (int i = 0; i < argc; i++) {
         _argv[i] = strdup(argv[i]);
     }
 
     ost::CommandOptionParse *args = ost::makeCommandOptionParse(
-            argc, _argv, STR(PROJECT_NAME) " options");
+            argc, _argv, helpStr);
 
     for (size_t i = 0; i < nst; i++)
         task[i] =

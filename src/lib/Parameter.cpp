@@ -44,7 +44,7 @@ Parameter::Parameter(
         enum si_datatype_t dtype,
         void *addr,
         unsigned int ndims,
-        const size_t *dim):
+        const unsigned int *dim):
     HRTLab::Parameter(main, path, mode, dtype, ndims, dim),
     addr(reinterpret_cast<char*>(addr)), mutex(1)
 {

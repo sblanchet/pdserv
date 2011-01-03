@@ -24,6 +24,8 @@
 
 #include "config.h"
 
+#include <algorithm>
+
 #ifdef DEBUG
 #include <iostream>
 using std::cout;
@@ -60,7 +62,7 @@ Task::~Task()
 size_t Task::getShmemSpace(double T) const
 {
     return sizeof(SignalList) + signalCount * sizeof(*activeSet->list)
-        +  signalMemSize * std::max(10U, (size_t)(T / sampleTime + 0.5));
+        +  signalMemSize * std::max(10U, (unsigned int)(T / sampleTime + 0.5));
 }
 
 /////////////////////////////////////////////////////////////////////////////

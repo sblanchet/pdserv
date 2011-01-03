@@ -59,7 +59,7 @@ struct variable *pdcomserv_signal(
         enum si_datatype_t datatype,
         const void *addr,
         size_t n,
-        const size_t dim[]
+        const unsigned int dim[]
         )
 {
     Main *main = reinterpret_cast<Main*>(pdcomserv);
@@ -81,7 +81,7 @@ struct variable *pdcomserv_parameter(
         enum si_datatype_t datatype,
         void *addr,
         size_t n,
-        const size_t dim[],
+        const unsigned int dim[],
         paramtrigger_t _trigger = 0,
         void *_priv_data = 0
         )

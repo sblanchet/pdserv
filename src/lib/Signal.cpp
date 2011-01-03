@@ -47,7 +47,7 @@ Signal::Signal( Task *task,
         enum si_datatype_t dtype,
         const void *addr,
         unsigned int ndims,
-        const size_t *dim):
+        const unsigned int *dim):
     HRTLab::Signal(task, decimation, path, dtype, ndims, dim),
     addr(reinterpret_cast<const char *>(addr)),
     task(task), subscriptionIndex(dataTypeIndex[width])

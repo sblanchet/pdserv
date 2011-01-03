@@ -572,7 +572,7 @@ void Session::writeParameter(const Attr &attr)
     if (!p)
         return;
     
-    size_t startindex = 0;
+    unsigned int startindex = 0;
     if (attr.getUnsigned("startindex", startindex)) {
         if (startindex >= p->nelem)
             return;

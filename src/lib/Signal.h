@@ -45,7 +45,7 @@ class Signal: public HRTLab::Signal {
                 enum si_datatype_t dtype,
                 const void *addr,
                 unsigned int ndims = 1,
-                const size_t *dim = 0);
+                const unsigned int *dim = 0);
 
         const char * const addr;
         const Task * const task;

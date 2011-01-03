@@ -29,8 +29,8 @@
 template<class T>
 inline T* ptr_align(void *p)
 {
-    const size_t mask = sizeof(T*) - 1;
-    return reinterpret_cast<T*>(((unsigned)p + mask) & ~mask);
+    const unsigned long mask = sizeof(void*) - 1;
+    return reinterpret_cast<T*>(((unsigned long)p + mask) & ~mask);
 }
 
 /////////////////////////////////////////////////////////////////////////////

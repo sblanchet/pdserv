@@ -45,7 +45,7 @@ Parameter::Parameter(
         unsigned int mode,
         enum si_datatype_t dtype,
         unsigned int ndims,
-        const size_t *dim):
+        const unsigned int *dim):
     Variable(path, dtype, ndims, dim),
     main(main), mode(mode)
 {
