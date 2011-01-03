@@ -250,8 +250,8 @@ void MsrProto::setVariableAttributes(
         case si_sint32_T:  dtype = "TINT";      break;
         case si_uint64_T:  dtype = "TULINT";    break;
         case si_sint64_T:  dtype = "TLINT";     break;
-        case si_single_T:  dtype = "TDBL";      break;
-        case si_double_T:  dtype = "TFLT";      break;
+        case si_single_T:  dtype = "TFLT";      break;
+        case si_double_T:  dtype = "TDBL";      break;
         default:                                break;
     }
     element->setAttribute("typ", dtype);

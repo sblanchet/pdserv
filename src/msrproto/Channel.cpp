@@ -71,8 +71,8 @@ void Channel::setXmlAttributes( MsrXml::Element *element,
     // The MSR protocoll wants a bufsize, the maximum number of
     // values that can be retraced. This artificial limitation does
     // not exist any more. Instead, choose a buffer size so that
-    // at a maximum of 1 second has to be stored.
-    size_t bufsize = std::max( 1U, (size_t)(freq + 0.5));
+    // at a maximum of 10 seconds has to be stored.
+    size_t bufsize = 10 * std::max( 1U, (unsigned int)(freq + 0.5));
 
 
     setVariableAttributes(element, signal, index, node->path(), nelem, shortReply);
