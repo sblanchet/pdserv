@@ -91,9 +91,6 @@ void Receiver::process(HRTLab::Session *session)
                  _offset += s[count]->memSize;
              }
              session->newSignalList(task, s, count);
-
-             delete[] listIdQ.front().second;
-             listIdQ.pop();
          }
 
          seqNo = rxPtr->seqNo;
@@ -101,6 +98,12 @@ void Receiver::process(HRTLab::Session *session)
          session->newSignalData(*this);
          rxPtr = rxPtr->next;
      }
+}
+
+////////////////////////////////////////////////////////////////////////////
+void Receiver::resendSignalList()
+{
+    currentListId--;
 }
 
 ////////////////////////////////////////////////////////////////////////////

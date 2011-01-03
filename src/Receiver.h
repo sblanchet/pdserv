@@ -44,6 +44,7 @@ class Receiver {
 
         virtual const char *getValue(const Signal*) const = 0;
         virtual void process(Session *) = 0;
+        virtual void resendSignalList() = 0;
 
     private:
 };

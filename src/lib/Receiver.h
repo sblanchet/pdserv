@@ -40,6 +40,7 @@ class Receiver: public HRTLab::Receiver {
         Receiver(Task *task, /*unsigned int tid,*/ TxFrame *start);
         ~Receiver();
 
+        void resendSignalList();
         void newSignalList(unsigned int listId,
                 const HRTLab::Signal * const *, size_t n);
 

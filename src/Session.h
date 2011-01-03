@@ -50,6 +50,7 @@ class Session {
         virtual void newSignalData(const Receiver&) = 0;
 
         void rxPdo();
+        void resendSignalList(const Task *) const;
 
     protected:
         Main * const main;

@@ -188,19 +188,8 @@ size_t Task::subscribe(HRTLab::Session *session,
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << count << endl;
     if (diff)
         newSignalList(diff);
-    else {
-        size_t idx = 0;
-        const HRTLab::Signal *signals[activeSet->count];
-
-        for (size_t i = 0; i < 4; i++) {
-            for (SignalSet::const_iterator it = subscriptionSet[i].begin();
-                    it != subscriptionSet[i].end(); it++) {
-                signals[idx++] = *it;
-            }
-        }
-
-        session->newSignalList(this, signals, activeSet->count);
-    }
+    else
+        session->resendSignalList(this);
 
     return count;
 }

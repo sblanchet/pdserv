@@ -76,6 +76,14 @@ SessionStatistics Session::getStatistics() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::resendSignalList(const Task *task) const
+{
+    for (unsigned int i = 0; i < main->nst; i++)
+        if (receiver[i]->task == task)
+            receiver[i]->resendSignalList();
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::rxPdo()
 {
     for (unsigned int i = 0; i < main->nst; i++)
