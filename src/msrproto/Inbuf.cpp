@@ -39,11 +39,15 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Inbuf::Inbuf(Session *s, size_t bufMax): session(s), bufLenMax(bufMax)
+Inbuf::Inbuf(size_t bufMax): bufLenMax(bufMax)
 {
     parseState = FindStart;
-    buf = bptr = pptr = eptr = new char[bufIncrement];
-    bufEnd = buf + bufIncrement;
+    buf = new char[bufIncrement];
+    bufLen = bufIncrement;
+
+    begin = 0;
+    parsePos = 0;
+    inputEnd = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -55,232 +59,345 @@ Inbuf::~Inbuf()
 /////////////////////////////////////////////////////////////////////////////
 char *Inbuf::bufptr() const
 {
-    return eptr;
+    return buf + inputEnd;
 }
 
+/////////////////////////////////////////////////////////////////////////////
+const char *Inbuf::getCommand() const
+{
+    return commandPos ? buf + commandPos : 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Inbuf::find(const char *name, const char * &value) const
+{
+    std::pair<AttributeMap::const_iterator, AttributeMap::const_iterator>
+        ret(attribute.equal_range(*name));
+
+    for (AttributeMap::const_iterator it(ret.first); it != ret.second; it++) {
+        if (!strcasecmp(name, buf + it->second.namePos)) {
+            value = it->second.valuePos ? buf + it->second.valuePos : 0;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Inbuf::isEqual(const char *name, const char *s) const
+{
+    const char *value;
+
+    if (find(name, value) and value)
+        return !strcasecmp(value, s);
+
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Inbuf::isTrue(const char *name) const
+{
+    const char *value;
+
+    if (!(find(name, value)))
+        return false;
+
+    // Binary attribute, e.g <xsad sync>
+    if (!value)
+        return true;
+
+    size_t len = strlen(value);
+
+    // Binary attribute, e.g <xsad sync=1>
+    if (len == 1)
+        return *value == '1';
+
+    // Binary attribute, e.g <xsad sync="true">
+    if (len == 4)
+        return !strncasecmp(value, "true", 4);
+
+    // Binary attribute, e.g <xsad sync='on'/>
+    if (len == 2)
+        return !strncasecmp(value, "on", 2);
+
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Inbuf::getString(const char *name, std::string &s) const
+{
+    const char *value;
+
+    s.clear();
+
+    if (!(find(name, value)) or !value)
+        return false;
+
+    const char *pptr, *eptr = value + strlen(value);
+    while ((pptr = std::find(value, eptr, '&')) != eptr) {
+        s.append(value, pptr - value);
+        size_t len = eptr - pptr;
+        if (len >= 4 and !strncmp(pptr, "&gt;", 4)) {
+            s.append(1, '>');
+            value = pptr + 4;
+        }
+        else if (len >= 4 and !strncmp(pptr, "&lt;", 4)) {
+            s.append(1, '<');
+            value = pptr + 4;
+        }
+        else if (len >= 5 and !strncmp(pptr, "&amp;", 5)) {
+            s.append(1, '&');
+            value = pptr + 5;
+        }
+        else if (len >= 6 and !strncmp(pptr, "&quot;", 6)) {
+            s.append(1, '"');
+            value = pptr + 6;
+        }
+        else if (len >= 6 and !strncmp(pptr, "&apos;", 6)) {
+            s.append(1, '\'');
+            value = pptr + 6;
+        }
+        else {
+            s.append(1, '&');
+            value = pptr + 1;
+        }
+    }
+
+    s.append(value, eptr - value);
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Inbuf::getUnsigned(const char *name, unsigned int &i) const
+{
+    const char *value;
+
+    if (!(find(name, value)) or !value)
+        return false;
+
+    i = strtoul(value, 0, 0);
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Inbuf::getUnsignedList(const char *name,
+        std::list<unsigned int> &intList) const
+{
+    const char *value;
+
+    if (!(find(name, value)) or !value)
+        return false;
+
+    std::istringstream is(value);
+    is.imbue(std::locale::classic());
+
+    while (is) {
+        unsigned int i;
+        char comma;
+
+        is >> i;
+        if (is)
+            intList.push_back(i);
+        is >> comma;
+    }
+
+    return true;
+}
 /////////////////////////////////////////////////////////////////////////////
 size_t Inbuf::free() const
 {
-    return bufEnd - eptr;
+    return bufLen - inputEnd;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Inbuf::parse(size_t n)
+bool Inbuf::next()
 {
-    eptr += n;
-
-//    cout << __LINE__ << __PRETTY_FUNCTION__ << ' ' 
-//        << std::string(bptr, eptr - bptr) << endl;
-
-//    cout << "   ->" << std::string(buf, eptr - buf) << "<-";
-//    cout << "bptr:" << (void*)bptr << " eptr:" << (void*)eptr << endl;
-
-    tokenize();
-
-    if (bptr == eptr) {
-//        cout << "Finished parsing buffer; resetting it" << endl;
-        bptr = eptr = buf;
+    begin = parsePos;
+    parseState = FindStart;
+    if (begin >= inputEnd) {
+        begin = parsePos = inputEnd = 0;
+        return false;
     }
-    else if (eptr == bufEnd) {
-        // Command is not complete and there is not enough space at the end
-        // of the buffer for new data
-        ptrdiff_t delta = 0;
-//        cout << "not enough space " << std::string(buf, eptr - buf) << endl;
-//        cout << "not enough space " << std::string(bptr, eptr - bptr) << endl;
 
-        if (bptr == buf) {
-            // Buffer is completely full
-//            cout << "// Buffer is completely full" << endl;
-
-            size_t bufLen = bufEnd - buf;
-
-            if (bufLen < bufLenMax) {
-
-                bufLen += bufIncrement;
-
-                buf = new char[bufLen];
-                bufEnd = buf + bufLen;
-
-                delta = buf - bptr;
-
-                std::copy(bptr, eptr, buf);
-                eptr = buf + (eptr - bptr);
-
-                delete[] bptr;
-
-                bptr = buf;
-            }
-            else {
-                // Buffer size exceeded limit. Discard everything
-//                cout << "// Buffer size exceeded limit. Discard everything"
-//                    << endl;
-                eptr = buf;
-                parseState = FindStart;
-            }
-        }
-        else {
-            // There is some space before the current command.
-//            cout << "// There is some space before the current command." << endl;
-            std::copy(bptr, eptr, buf);
-
-            delta = buf - bptr;
-
-            eptr = buf + (eptr - bptr);
-            bptr = buf;
-//            cout << "    " << std::string(bptr, eptr - bptr) << endl;
-        }
-
-        // Because the pointers have moved, start parsing from the beginning
-        // again
-        attr.adjust(delta);
-        commandPtr += delta;
-        pptr += delta;
-        attrName += delta;
-        attrValue += delta;
-//        cout << "adjusted " << delta << commandPtr << endl;
-    }
+    return newData(0);
 }
 
-
 /////////////////////////////////////////////////////////////////////////////
-void Inbuf::tokenize()
+bool Inbuf::newData(size_t n)
 {
+    inputEnd += n;
+
+    if (inputEnd == bufLen) {
+        bufLen += bufIncrement;
+
+        if (bufLen > bufLenMax) {
+            bufLen = bufIncrement;
+            parseState = FindStart;
+            begin = parsePos = inputEnd = 0;
+        }
+
+        char *data = new char[bufLen];
+        std::copy(buf, buf + inputEnd, data);
+        
+        delete[] buf;
+        buf = data;
+    }
+
     while (true) {
         switch (parseState) {
             case FindStart:
                 //cout << __LINE__ << "FindStart" << endl;
 
-                attr.clear();
+                attribute.clear();
                 
                 // Move forward in the buffer until '<' is found
-                bptr = std::find(bptr, eptr, '<');
-                if (bptr == eptr)
-                    return;
+                parsePos = std::find(buf + parsePos, buf + inputEnd, '<') - buf;
+                if (begin == inputEnd) {
+                    begin = parsePos = inputEnd = 0;
+                    return false;
+                }
 
-                pptr = bptr + 1;
-                commandPtr = pptr;
-                parseState = GetCommand;
-                //cout << "Found command at " << (void*)commandPtr << endl;
-                // no break here
-
-            case GetCommand:
-                //cout << __LINE__ << "GetCommand" << endl;
-                while (pptr != eptr and (isalpha(*pptr) or *pptr == '_'))
-                    pptr++;
-
-                if (pptr == eptr)
-                    return;
-
+                begin = parsePos;
+                commandPos = 0;
                 parseState = GetToken;
+
+                parsePos = begin + 1;
+                attrNamePos = parsePos;
                 // no break here
 
             case GetToken:
-                //cout << __LINE__ << "GetToken" << endl;
-                while (pptr != eptr and isspace(*pptr))
-                    *pptr++ = '\0';
+                do {
+                    if (parsePos == inputEnd)
+                        return false;
+                    if (!isalpha(buf[parsePos]) and buf[parsePos] != '_')
+                        break;
+                    parsePos++;
+                } while (1);
 
-                if (pptr == eptr)
-                    return;
+                // Decide what to do with the next character
+                if (buf[parsePos] == '=') {
+                    parseState = GetQuote;
+                }
+                else {
+                    if (!commandPos and attrNamePos != parsePos)
+                        commandPos = attrNamePos;
 
-                if (!isalpha(*pptr)) {
-                    if (*pptr == '>') {
-                        *pptr = '\0';
-                        bptr = pptr + 1;
-                        //cout << __LINE__ << "processCommand()" << endl;
-                        //cout << "Command is " << std::string(commandPtr) << endl;
-                        session->processCommand(commandPtr, attr);
+                    if (buf[parsePos] == '>') {
+                        buf[parsePos++] = 0;
+
+                        std::pair<char, AttributePos> ap( buf[attrNamePos],
+                                AttributePos(attrNamePos, 0));
+                        attribute.insert(ap);
+                        begin = parsePos;
+                        parseState = FindStart;
+                        return true;
                     }
-                    else if (*pptr == '/') {
-                        if (eptr - pptr < 2)
-                            return;
+                    else if (buf[parsePos] == '/') {
+                        if (inputEnd - parsePos < 2)
+                            return false;
 
-                        if (pptr[1] == '>') {
-                            *pptr = '\0';
-                            bptr = pptr + 2;
-                            //cout << __LINE__ << "processCommand()" << endl;
-                            //cout << "Command is " << std::string(commandPtr) << endl;
-                            session->processCommand(commandPtr, attr);
+                        if (buf[parsePos+1] != '>') {
+                            // Error: start over again
+                            parsePos++; // Skip the first '/' only
+                            parseState = FindStart;
+                            break;
                         }
-                        else {
-                            bptr = pptr + 1;
+
+                        buf[parsePos] = 0;
+                        parsePos += 2;
+
+                        std::pair<char, AttributePos> ap( buf[attrNamePos],
+                                AttributePos(attrNamePos, 0));
+                        attribute.insert(ap);
+                        parseState = FindStart;
+                        return true;
+                    }
+                    else if (isspace(buf[parsePos])) {
+                        if (parsePos == attrNamePos) {
+                            // No new attribute - discard
+                            parseState = FindStart;
+                            break;
                         }
+
+                        buf[parsePos] = 0;
+                        std::pair<char, AttributePos> ap( buf[attrNamePos],
+                                AttributePos(attrNamePos, 0));
+                        attribute.insert(ap);
+                        parseState = SkipSpace;
                     }
                     else {
-                        bptr = pptr;
+                        parseState = FindStart;
                     }
-                    parseState = FindStart;
-                    break;
                 }
 
-                attrName = pptr;
-                parseState = GetAttribute;
+                buf[parsePos++] = 0;
+                break;
 
-            case GetAttribute:
-                //cout << __LINE__ << "GetAttribute" << endl;
-                while (pptr != eptr and isalpha(*pptr))
-                    pptr++;
+            case SkipSpace:
+                //cout << __LINE__ << "GetCommand" << endl;
+                do {
+                    if (parsePos == inputEnd)
+                        return false;
+                    if (!isspace(buf[parsePos]))
+                        break;
+                    parsePos++;
+                } while(1);
 
-                if (pptr == eptr)
-                    return;
-
-                if (*pptr == '=') {
-                    // Value attribute
-                    *pptr++ = '\0';
-                }
-                else {
-                    if (isspace(*pptr)) {
-                        // Binary attribute
-                        *pptr++ = '\0';
-                        //cout << __LINE__ << "GetAttribute = "
-                            //<< std::string(attrName) << endl;
-                        attr.insert(attrName);
-                    }
-                    parseState = GetToken;
-                    break;
-                }
-
-                parseState = GetQuote;
-                // no break here
+                attrNamePos = parsePos;
+                parseState = GetToken;
+                break;
+                // no break
 
             case GetQuote:
-                //cout << __LINE__ << "GetQuote" << endl;
-                if (pptr == eptr)
-                    return;
+                if (parsePos == inputEnd)
+                    return false;
 
-                quote = *pptr;
-                if (quote != '\'' and quote != '"') {
+                if (buf[parsePos] == '\'' or buf[parsePos] == '"') {
+                    quote = buf[parsePos];
+                    attrValuePos = ++parsePos;
+                }
+                else {
                     quote = 0;
-                    attrValue = pptr;
-                }
-                else {
-                    attrValue = ++pptr;
+                    attrValuePos = parsePos;
                 }
 
-                parseState = GetValue;
-                // no break here
-
-            case GetValue:
-                //cout << __LINE__ << "GetValue" << endl;
-                if (quote)
-                    pptr = std::find(pptr, const_cast<char*>(eptr), quote);
-                else {
-                    while (pptr != eptr) {
-                        if (isspace(*pptr))
-                            break;
-                        pptr++;
-                    }
-                }
-
-                if (pptr == eptr)
-                    return;
-
-                *pptr++ = '\0';
-
-                //cout << __LINE__ << "GetAttribute = "
-                    //<< std::string(attrName) << '=' << std::string(attrValue) << endl;
-                attr.insert(attrName, attrValue);
+                parseState = GetAttribute;
+                // no break;
                 
-                parseState = GetToken;
+            case GetAttribute:
+                do {
+                    if (parsePos == inputEnd)
+                        return false;
+
+                    if (quote) {
+                        if (buf[parsePos] == quote)
+                            break;
+                    }
+                    else if (isspace(buf[parsePos]))
+                        break;
+                    else if (buf[parsePos] == '>') {
+                        parseState = FindStart;
+                        break;
+                    }
+                    else if (buf[parsePos] == '/') {
+                        parseState = GetToken;
+                        break;
+                    }
+
+                    parsePos++;
+                } while (1);
+
+                std::pair<char, AttributePos> ap( buf[attrNamePos],
+                        AttributePos(attrNamePos, attrValuePos));
+                attribute.insert(ap);
+                if (parseState != GetToken) {
+                    buf[parsePos++] = 0;
+                    if (parseState == FindStart)
+                        return true;
+                    parseState = SkipSpace;
+                }
+                break;
         }
     }
 }

@@ -89,7 +89,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         void parametersChanged(const HRTLab::Parameter* const *, size_t n);
         void requestOutput();
 
-        void processCommand(const char *command, const Attr &attr);
+        void processCommand();
 
         void requestSignal(const HRTLab::Signal *s, bool state);
 
@@ -127,18 +127,17 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         Inbuf inbuf;
 
         // Here are all the commands the MSR protocol supports
-        void broadcast(const Attr &);
-        void echo(const Attr &);
-        void ping(const Attr &);
-        void readChannel(const Attr &);
-        void readParameter(const Attr &);
-        void readParamValues(const Attr &);
-        void readStatistics(const Attr &);
-        void remoteHost(const Attr &);
-        void writeParameter(const Attr &);
-        void xsad(const Attr &);
-        void xsod(const Attr &);
-
+        void broadcast();
+        void echo();
+        void ping();
+        void readChannel();
+        void readParameter();
+        void readParamValues();
+        void readStatistics();
+        void remoteHost();
+        void writeParameter();
+        void xsad();
+        void xsod();
 };
 
 }

@@ -15,8 +15,8 @@ uint16_t var1[2][3][4] = {
     { {1,2,3,4}, {5,6,7}, },
 };
 
-int copy_param(unsigned int tid, char checkOnly, void* dst, const void* src, size_t len,
-        void *priv_data)
+int copy_param(unsigned int tid, char checkOnly,
+        void* dst, const void* src, size_t len, void *priv_data)
 {
     printf("copy_param checking %i\n", checkOnly);
     if (checkOnly)
@@ -34,8 +34,8 @@ int gettime(struct timespec *t)
 
 int main(int argc, const char *argv[])
 {
-    struct pdcomserv *pdcomserv = pdcomserv_create(argc, argv, argv[0], "1.0", 0.1, 1, 0,
-            gettime);
+    struct pdcomserv *pdcomserv =
+        pdcomserv_create(argc, argv, argv[0], "1.0", 0.1, 1, 0, gettime);
     unsigned int var1_dims[] = {2,3,4};
     struct timespec time;
     double dbl[3] = { 13,14,15};
@@ -55,8 +55,8 @@ int main(int argc, const char *argv[])
     assert(pdcomserv_signal(pdcomserv, 0, 1, "/path/to/var2",
             si_uint16_T, var1, 3, var1_dims));
 
-    struct variable *p1 = pdcomserv_parameter(pdcomserv, "/Taskinfo/Abtastfrequenz", 0666,
-            si_double_T, &tick, 1, 0, 0, 0);
+    struct variable *p1 = pdcomserv_parameter(pdcomserv,
+            "/Taskinfo/Abtastfrequenz", 0666, si_double_T, &tick, 1, 0, 0, 0);
     struct variable *p = pdcomserv_parameter(pdcomserv, "/path/to/param", 0666,
             si_uint32_T, param, 4, 0, copy_param, (void*)10);
     assert(p);

@@ -25,10 +25,11 @@
 #ifndef MSRINBUF_H
 #define MSRINBUF_H
 
-#include "Attribute.h"
-
 #include <stdint.h>
 #include <cstddef>
+#include <map>
+#include <list>
+#include <string>
 
 namespace MsrProto {
 
@@ -36,33 +37,53 @@ class Session;
 
 class Inbuf {
     public:
-        Inbuf(Session *, size_t max = bufIncrement * 1000);
+        Inbuf(size_t max = bufIncrement * 1000);
         ~Inbuf();
 
         char *bufptr() const;
         size_t free() const;
 
-        void parse(size_t n);
+        bool newData(size_t n);
+        bool next();
+
+        const char *getCommand() const;
+        bool find(const char *name, const char * &value) const;
+        bool isEqual(const char *name, const char *s) const;
+        bool isTrue(const char *name) const;
+        bool getString(const char *name, std::string &s) const;
+        bool getUnsigned(const char *name, unsigned int &i) const;
+        bool getUnsignedList(const char *name,
+                std::list<unsigned int> &i) const;
 
     private:
-        Session * const session;
         const size_t bufLenMax;
+
+        struct AttributePos {
+            AttributePos(size_t n, size_t v): namePos(n), valuePos(v) {}
+            const size_t namePos;
+            const size_t valuePos;
+        };
+        typedef std::multimap<char, AttributePos> AttributeMap;
+        AttributeMap attribute;
 
         void tokenize();
 
         static const size_t bufIncrement = 1024;
-        const char *bufEnd;
-        char *buf, *bptr, *eptr, *pptr;
+        size_t bufLen;
+        char *buf;
+
+        size_t begin;           // Start of an element
+        size_t parsePos;        // Current parsing position
+        size_t inputEnd;        // End of input data
 
         enum ParseState {
-            FindStart, GetCommand, GetToken, GetAttribute, GetQuote, GetValue
+            FindStart, GetToken, SkipSpace, GetAttribute, GetQuote
         };
         ParseState parseState;
 
-        const char *commandPtr, *attrName;
-        char *attrValue;
+        size_t commandPos;
+        size_t attrNamePos, attrValuePos;
         char quote;
-        Attr attr;
 };
 
 }

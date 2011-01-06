@@ -68,7 +68,7 @@ Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, HRTLab::Main *main):
     SocketPort(0, socket), HRTLab::Session(main),
     server(s), subscriptionManager(main->nst),
-    dataTag("data"), outbuf(this), inbuf(this)
+    dataTag("data"), outbuf(this)
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
 
@@ -179,7 +179,7 @@ void Session::pending()
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
     int n, count;
-    size_t inputLen = 0;
+    size_t _inBytes = inBytes;
 
     do {
         count = inbuf.free();
@@ -192,13 +192,16 @@ void Session::pending()
             break;
 
         inBytes += n;   // HRTLab::Session input byte counter
-        inputLen += n;  // Local input counter
 
-        inbuf.parse(n);
+        if (inbuf.newData(n)) {
+            do {
+                processCommand();
+            } while (inbuf.next());
+        }
 
     } while (n == count);
 
-    if (!inputLen) {
+    if (_inBytes == inBytes) {
         // End of stream
         setDetectPending(false);
         return;
@@ -263,14 +266,15 @@ void Session::newSignalData(const HRTLab::Receiver &receiver)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::processCommand(const char *command, const Attr &attr)
+void Session::processCommand()
 {
+    const char *command = inbuf.getCommand();
     size_t commandLen = strlen(command);
 
     static struct {
         size_t len;
         const char *name;
-        void (Session::*func)(const Attr &attr);
+        void (Session::*func)();
     } cmds[] = {
         // First list most common commands
         { 4, "ping",                    &Session::ping                  },
@@ -303,12 +307,13 @@ void Session::processCommand(const char *command, const Attr &attr)
                 and !strcmp(cmds[idx].name, command)) {
 
             // Call the method
-            (this->*cmds[idx].func)(attr);
+            (this->*cmds[idx].func)();
 
             // If "ack" attribute was set, send it back
-            if (attr.id) {
+            std::string id;
+            if (inbuf.getString("id", id)) {
                 MsrXml::Element ack("ack");
-                ack.setAttributeCheck("id", *attr.id);
+                ack.setAttributeCheck("id", id);
                 outbuf << ack << std::flush;
             }
 
@@ -326,7 +331,7 @@ void Session::processCommand(const char *command, const Attr &attr)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::broadcast(const Attr &attr)
+void Session::broadcast()
 {
     MsrXml::Element broadcast("broadcast");
     struct timespec ts;
@@ -336,45 +341,46 @@ void Session::broadcast(const Attr &attr)
 
     broadcast.setAttribute("time", ts);
 
-    if (attr.getString("action", s)) {
+    if (inbuf.getString("action", s)) {
         broadcast.setAttributeCheck("action", s);
     }
 
-    if (attr.getString("text",s)) {
+    if (inbuf.getString("text",s)) {
         broadcast.setAttributeCheck("text", s);
     }
     server->broadcast(this, broadcast);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::echo(const Attr &attr)
+void Session::echo()
 {
-    echoOn = attr.isTrue("value");
+    echoOn = inbuf.isTrue("value");
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::ping(const Attr &attr)
+void Session::ping()
 {
     MsrXml::Element ping("ping");
+    std::string id;
 
-    if (attr.id)
-        ping.setAttributeCheck("id", *attr.id);
+    if (inbuf.getString("id",id))
+        ping.setAttributeCheck("id", id);
 
     outbuf << ping << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readChannel(const Attr &attr)
+void Session::readChannel()
 {
     const Channel *c = 0;
-    bool shortReply = attr.isTrue("short");
+    bool shortReply = inbuf.isTrue("short");
     std::string path;
     unsigned int index;
 
-    if (attr.getString("name", path)) {
+    if (inbuf.getString("name", path)) {
         c = server->getChannel(path.c_str());
     }
-    else if (attr.getUnsigned("index", index)) {
+    else if (inbuf.getUnsigned("index", index)) {
         c = server->getChannel(index);
     }
     else {
@@ -440,20 +446,20 @@ void Session::readChannel(const Attr &attr)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readParameter(const Attr &attr)
+void Session::readParameter()
 {
     const Parameter *p = 0;
-    bool shortReply = attr.isTrue("short");
-    bool hex = attr.isTrue("hex");
+    bool shortReply = inbuf.isTrue("short");
+    bool hex = inbuf.isTrue("hex");
     std::string name;
     unsigned int index;
     unsigned int flags = writeAccess
         ? MSR_R | MSR_W | MSR_WOP | MSR_MONOTONIC : MSR_R | MSR_MONOTONIC;
 
-    if (attr.getString("name", name)) {
+    if (inbuf.getString("name", name)) {
         p = server->getParameter(name);
     }
-    else if (attr.getUnsigned("index", index)) {
+    else if (inbuf.getUnsigned("index", index)) {
         p = server->getParameter(index);
     }
     else {
@@ -477,7 +483,7 @@ void Session::readParameter(const Attr &attr)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readParamValues(const Attr &attr)
+void Session::readParamValues()
 {
     MsrXml::Element param_values("param_values");
     const Server::Parameters& parameter = server->getParameters();
@@ -498,7 +504,7 @@ void Session::readParamValues(const Attr &attr)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readStatistics(const Attr &attr)
+void Session::readStatistics()
 {
     // <clients>
     //   <client index="0" name="lansim"
@@ -526,15 +532,15 @@ void Session::readStatistics(const Attr &attr)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::remoteHost(const Attr &attr)
+void Session::remoteHost()
 {
-    attr.getString("name", HRTLab::Session::remoteHost);
+    inbuf.getString("name", HRTLab::Session::remoteHost);
 
-    attr.getString("applicationname", client);
+    inbuf.getString("applicationname", client);
 
-    writeAccess = attr.isEqual("access", "allow");
+    writeAccess = inbuf.isEqual("access", "allow");
 
-    if (writeAccess and attr.isTrue("isadmin")) {
+    if (writeAccess and inbuf.isTrue("isadmin")) {
         struct timespec ts;
         std::ostringstream os;
         main->gettime(&ts);
@@ -549,7 +555,7 @@ void Session::remoteHost(const Attr &attr)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::writeParameter(const Attr &attr)
+void Session::writeParameter()
 {
     if (!writeAccess) {
         MsrXml::Element warn("warn");
@@ -562,10 +568,10 @@ void Session::writeParameter(const Attr &attr)
 
     unsigned int index;
     std::string name;
-    if (attr.getString("name", name)) {
+    if (inbuf.getString("name", name)) {
         p = server->getParameter(name);
     }
-    else if (attr.getUnsigned("index", index)) {
+    else if (inbuf.getUnsigned("index", index)) {
         p = server->getParameter(index);
     }
 
@@ -573,17 +579,17 @@ void Session::writeParameter(const Attr &attr)
         return;
     
     unsigned int startindex = 0;
-    if (attr.getUnsigned("startindex", startindex)) {
+    if (inbuf.getUnsigned("startindex", startindex)) {
         if (startindex >= p->nelem)
             return;
     }
 
     int errno;
-    char *s;
-    if (attr.find("hexvalue", s)) {
+    const char *s;
+    if (inbuf.find("hexvalue", s)) {
         errno = p->setHexValue(s, startindex);
     }
-    else if (attr.find("value", s)) {
+    else if (inbuf.find("value", s)) {
         errno = p->setDoubleValue(s, startindex);
     }
     else
@@ -596,28 +602,28 @@ void Session::writeParameter(const Attr &attr)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::xsad(const Attr &attr)
+void Session::xsad()
 {
     unsigned int reduction, blocksize, precision = 10;
-    bool base64 = attr.isEqual("coding", "Base64");
-    bool event = attr.isTrue("event");
-    bool sync = attr.isTrue("sync");
+    bool base64 = inbuf.isEqual("coding", "Base64");
+    bool event = inbuf.isTrue("event");
+    bool sync = inbuf.isTrue("sync");
     bool foundReduction = false, foundBlocksize = false;
     std::list<unsigned int> indexList;
     const Server::Channels& channel = server->getChannels();
 
     // Quiet will stop all transmission of <data> tags until
     // sync is called
-    quiet = !sync and attr.isTrue("quiet");
+    quiet = !sync and inbuf.isTrue("quiet");
 
-    if (!attr.getUnsignedList("channels", indexList)) {
+    if (!inbuf.getUnsignedList("channels", indexList)) {
         if (sync)
             for (size_t i = 0; i < main->nst; i++)
                 subscriptionManager[i].sync();
         return;
     }
 
-    if (attr.getUnsigned("reduction", reduction)) {
+    if (inbuf.getUnsigned("reduction", reduction)) {
         if (!reduction) {
             MsrXml::Element warn("warn");
             warn.setAttribute("command", "xsad");
@@ -630,7 +636,7 @@ void Session::xsad(const Attr &attr)
         foundReduction = true;
     }
 
-    if (attr.getUnsigned("blocksize", blocksize)) {
+    if (inbuf.getUnsigned("blocksize", blocksize)) {
         if (!blocksize) {
             MsrXml::Element warn("warn");
             warn.setAttribute("command", "xsad");
@@ -644,7 +650,7 @@ void Session::xsad(const Attr &attr)
         foundBlocksize = true;
     }
 
-    if (!attr.getUnsigned("precision", precision)) {
+    if (!inbuf.getUnsigned("precision", precision)) {
         precision = 10;
     }
 
@@ -690,13 +696,13 @@ void Session::xsad(const Attr &attr)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::xsod(const Attr &attr)
+void Session::xsod()
 {
     std::list<unsigned int> intList;
 
     //cout << __LINE__ << "xsod: " << endl;
 
-    if (attr.getUnsignedList("channels", intList)) {
+    if (inbuf.getUnsignedList("channels", intList)) {
         const Server::Channels& channel = server->getChannels();
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
