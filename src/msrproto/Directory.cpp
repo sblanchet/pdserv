@@ -28,6 +28,7 @@
 #include "../Variable.h"
 #include "Channel.h"
 #include "Parameter.h"
+#include "XmlParser.h"
 #include <cstring>
 #include <cerrno>
 
@@ -41,26 +42,12 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Node::Node(const Node *parent): parent(parent)
-
-{
-}
-
-/////////////////////////////////////////////////////////////////////////////
-std::string Node::path() const
-{
-    return parent ? (parent->path() + '/' + name) : std::string();
-}
-
-/////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode::DirectoryNode(
         const DirectoryNode *parent, const std::string& _name,
         Channel *c, Parameter *p, const char *variableName):
-    Node(parent), channel(c), parameter(p)
+    parent(parent), name(_name), channel(c), parameter(p)
 {
-    Node::name = _name;
-
     if (channel)
         c->setNode(this, variableName);
     else if (parameter)
@@ -73,6 +60,12 @@ DirectoryNode::~DirectoryNode()
     for (Entry::const_iterator it = entry.begin();
             it != entry.end(); it++)
         delete it->second;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::string DirectoryNode::path() const
+{
+    return parent ? (parent->path() + '/' + name) : std::string();
 }
 
 /////////////////////////////////////////////////////////////////////////////

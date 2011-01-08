@@ -82,8 +82,17 @@ int main(int argc, const char *argv[])
     assert(inbuf.newData(strlen(s)));
     assert(inbuf.getCommand());
     assert(!strcmp(inbuf.getCommand(), "tag"));
+    assert(inbuf.isTrue("tag"));        // "tag" is also an attribute
     assert(inbuf.find("with", s));
     assert(!strcmp(s, "no-quot"));
+    assert(!inbuf.next());
+
+    s = "<with=no-quot-attr and=\"quoted /> > &quot; &apos;\" />";
+    strcpy( inbuf.bufptr(), s);
+    assert(inbuf.newData(strlen(s)));
+    assert(!inbuf.getCommand());        // There is no command
+    assert(inbuf.find("with", s));
+    assert(!strcmp(s, "no-quot-attr"));
     assert(!inbuf.next());
     return 0;
 }

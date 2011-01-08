@@ -39,25 +39,14 @@ class Channel;
 class Parameter;
 
 /////////////////////////////////////////////////////////////////////////////
-class Node {
-    public:
-        Node(const Node *parent = 0);
-
-        virtual std::string path() const;
-
-    protected:
-        const Node *parent;
-
-        std::string name;
-};
-
-/////////////////////////////////////////////////////////////////////////////
-class DirectoryNode: public Node {
+class DirectoryNode {
     public:
         DirectoryNode( const DirectoryNode *parent, const std::string &name,
                 Channel *channel = 0, Parameter *parameter = 0,
                 const char *variableName = 0);
         ~DirectoryNode();
+
+        std::string path() const;
 
         bool insert( const HRTLab::Variable *, const char *extendedPath,
                 Channel *c, Parameter *p,
@@ -67,9 +56,12 @@ class DirectoryNode: public Node {
         const Parameter *findParameter(const char *path) const;
 
     private:
+        const DirectoryNode *parent;
+        std::string name;
+
         static std::string splitPath(const char *&path);
 
-        typedef std::map<const std::string, Node*> Entry;
+        typedef std::map<const std::string, DirectoryNode*> Entry;
         Entry entry;
 
         const Channel * const channel;
