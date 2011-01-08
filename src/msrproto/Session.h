@@ -50,7 +50,7 @@
 */
 
 #include "../Session.h"
-#include "Inbuf.h"
+#include "XmlParser.h"
 #include "Outbuf.h"
 #include "XmlDoc.h"
 #include "Server.h"
@@ -124,7 +124,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
 
         // Input and output buffering
         Outbuf outbuf;
-        Inbuf inbuf;
+        XmlParser inbuf;
 
         // Here are all the commands the MSR protocol supports
         void broadcast();

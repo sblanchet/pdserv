@@ -11,7 +11,7 @@ ADD_EXECUTABLE(test1 test1.cpp)
 TARGET_LINK_LIBRARIES(test1 ${PROJECT_NAME})
 
 ADD_EXECUTABLE(parser
-    parser.cpp ${PROJECT_SOURCE_DIR}/src/msrproto/Inbuf.cpp)
+    parser.cpp ${PROJECT_SOURCE_DIR}/src/msrproto/XmlParser.cpp)
 
 #ADD_TEST(test1 test1)
 ADD_TEST(parser parser)

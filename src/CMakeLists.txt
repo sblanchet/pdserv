@@ -55,7 +55,7 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     msrproto/Session.cpp msrproto/Session.h
     msrproto/SubscriptionManager.cpp msrproto/SubscriptionManager.h
     msrproto/Outbuf.cpp msrproto/Outbuf.h
-    msrproto/Inbuf.cpp msrproto/Inbuf.h
+    msrproto/XmlParser.cpp msrproto/XmlParser.h
     msrproto/Attribute.cpp msrproto/Attribute.h
     msrproto/Server.cpp msrproto/Server.h
     msrproto/XmlDoc.cpp msrproto/XmlDoc.h

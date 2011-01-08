@@ -35,10 +35,10 @@ namespace MsrProto {
 
 class Session;
 
-class Inbuf {
+class XmlParser {
     public:
-        Inbuf(size_t max = bufIncrement * 1000);
-        ~Inbuf();
+        XmlParser(size_t max = bufIncrement * 1000);
+        ~XmlParser();
 
         char *bufptr() const;
         size_t free() const;

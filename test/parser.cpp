@@ -1,4 +1,4 @@
-#include "Inbuf.h"
+#include "XmlParser.h"
 #include <cstring>
 #include <assert.h>
 
@@ -11,7 +11,7 @@ using namespace MsrProto;
 
 int main(int argc, const char *argv[])
 {
-    Inbuf inbuf;
+    XmlParser inbuf;
     const char *s;
     char *buf;
 

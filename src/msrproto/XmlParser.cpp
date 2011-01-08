@@ -24,7 +24,7 @@
 
 #include "config.h"
 
-#include "Inbuf.h"
+#include "XmlParser.h"
 #include "Session.h"
 
 #include <algorithm>
@@ -39,7 +39,7 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Inbuf::Inbuf(size_t bufMax): bufLenMax(bufMax)
+XmlParser::XmlParser(size_t bufMax): bufLenMax(bufMax)
 {
     parseState = FindStart;
     buf = new char[bufIncrement];
@@ -51,25 +51,25 @@ Inbuf::Inbuf(size_t bufMax): bufLenMax(bufMax)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Inbuf::~Inbuf()
+XmlParser::~XmlParser()
 {
     delete[] buf;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-char *Inbuf::bufptr() const
+char *XmlParser::bufptr() const
 {
     return buf + inputEnd;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const char *Inbuf::getCommand() const
+const char *XmlParser::getCommand() const
 {
     return commandPos ? buf + commandPos : 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Inbuf::find(const char *name, const char * &value) const
+bool XmlParser::find(const char *name, const char * &value) const
 {
     std::pair<AttributeMap::const_iterator, AttributeMap::const_iterator>
         ret(attribute.equal_range(*name));
@@ -85,7 +85,7 @@ bool Inbuf::find(const char *name, const char * &value) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Inbuf::isEqual(const char *name, const char *s) const
+bool XmlParser::isEqual(const char *name, const char *s) const
 {
     const char *value;
 
@@ -96,7 +96,7 @@ bool Inbuf::isEqual(const char *name, const char *s) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Inbuf::isTrue(const char *name) const
+bool XmlParser::isTrue(const char *name) const
 {
     const char *value;
 
@@ -125,7 +125,7 @@ bool Inbuf::isTrue(const char *name) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Inbuf::getString(const char *name, std::string &s) const
+bool XmlParser::getString(const char *name, std::string &s) const
 {
     const char *value;
 
@@ -169,7 +169,7 @@ bool Inbuf::getString(const char *name, std::string &s) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Inbuf::getUnsigned(const char *name, unsigned int &i) const
+bool XmlParser::getUnsigned(const char *name, unsigned int &i) const
 {
     const char *value;
 
@@ -181,7 +181,7 @@ bool Inbuf::getUnsigned(const char *name, unsigned int &i) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Inbuf::getUnsignedList(const char *name,
+bool XmlParser::getUnsignedList(const char *name,
         std::list<unsigned int> &intList) const
 {
     const char *value;
@@ -205,13 +205,13 @@ bool Inbuf::getUnsignedList(const char *name,
     return true;
 }
 /////////////////////////////////////////////////////////////////////////////
-size_t Inbuf::free() const
+size_t XmlParser::free() const
 {
     return bufLen - inputEnd;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Inbuf::next()
+bool XmlParser::next()
 {
     begin = parsePos;
     parseState = FindStart;
@@ -224,7 +224,7 @@ bool Inbuf::next()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Inbuf::newData(size_t n)
+bool XmlParser::newData(size_t n)
 {
     inputEnd += n;
 
