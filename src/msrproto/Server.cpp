@@ -44,135 +44,93 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-std::string makeExtension(
-        const HRTLab::Variable *variable,
-        unsigned int signalOffset, unsigned int nelem = 1)
-{
-    std::ostringstream os;
-    const size_t *idx = variable->getDim();
-    size_t r = variable->nelem;
-    size_t n = signalOffset;
-    size_t x;
-
-    while (r > nelem) {
-        r /= *idx++;
-        x = n / r;
-        n -= x*r;
-
-        os << '/' << x;
-    }
-
-    return os.str();
-}
-
-/////////////////////////////////////////////////////////////////////////////
 Server::Server(HRTLab::Main *main, bool traditional):
-    main(main), root(0, ""), mutex(1)
+    main(main), mutex(1)
 {
     const HRTLab::Main::Signals& mainSignals = main->getSignals();
     const HRTLab::Main::Parameters& mainParameters = main->getParameters();
 
     //FIXME
-    if (1 || traditional) {
-        // Stop at variables with <hide>; continue at <unhide>
-        size_t idx = 0;
-        for (HRTLab::Main::Signals::const_iterator it = mainSignals.begin();
-                it != mainSignals.end(); it++)
-            idx += (*it)->nelem;
+    traditional = 1;
 
-        channel.reserve(idx);
-        idx = 0;
-        for (HRTLab::Main::Signals::const_iterator it = mainSignals.begin();
-                it != mainSignals.end(); it++) {
-//            cout << __PRETTY_FUNCTION__ << (*it)->path << endl;
-            for (size_t i = 0; i < (*it)->nelem; i++) {
-                Channel *c = new Channel(*it, idx, i);
-                if ( root.insert(*it, makeExtension(*it, i).c_str(), c, 0)) {
-                    channel.push_back(c);
-                    idx++;
-                }
-                else
-                    delete c;
-            }
-        }
-
-        if (!main->getSignal("/Time"));
-
-        idx = 0;
-        for (HRTLab::Main::Parameters::const_iterator it = mainParameters.begin();
-                it != mainParameters.end(); it++) {
-            idx += (*it)->nelem
-                + ((*it)->nelem > 1
-                        ? (*it)->nelem / (*it)->getDim()[(*it)->ndims - 1]
-                        : 0);
-        }
-
-
-        parameter.reserve(idx);
-        idx = 0;
-        for (HRTLab::Main::Parameters::const_iterator it = mainParameters.begin();
-                it != mainParameters.end(); it++) {
-//            cout << __PRETTY_FUNCTION__ << (*it)->path << endl;
-            const HRTLab::Parameter *mainParam = *it;
-            size_t vectorLen = mainParam->getDim()[mainParam->ndims - 1];
-            Parameter *p = 0;
-            mainParameterMap[mainParam].reserve(1 + (*it)->nelem / vectorLen);
-            for (size_t i = 0; i < (*it)->nelem; i += vectorLen) {
-                p = new Parameter(mainParam, idx, vectorLen, i);
-                if (root.insert(*it,
-                            makeExtension(*it, i, vectorLen).c_str(),
-                            0, p)) {
-                    parameter.push_back(p);
-                    mainParameterMap[mainParam].push_back(p);
-                    idx++;
-                }
-                else
-                    delete p;
-
-                for (size_t j = i; j < i + vectorLen; j++) {
-                    p = new Parameter(mainParam, idx, 1, j);
-                    if (root.insert(*it, makeExtension(*it, j).c_str(), 0, p)) {
-                        parameter.push_back(p);
-                        mainParameterMap[mainParam].push_back(p);
-                        idx++;
-                    }
-                    else
-                        delete p;
-                }
-            }
-        }
-
-        if (!main->getParameter("/Taskinfo/Abtastfrequenz"));
+    std::list<const Channel*> channelList;
+    for (HRTLab::Main::Signals::const_iterator it = mainSignals.begin();
+            it != mainSignals.end(); it++) {
+        root.insert(*it, channelList, traditional);
     }
-    else {
-        size_t idx = 0;
+    channel.resize(channelList.size());
+    std::copy(channelList.begin(), channelList.end(), channel.begin());
 
-        channel.reserve(mainSignals.size());
-        for (HRTLab::Main::Signals::const_iterator it = mainSignals.begin();
-                it != mainSignals.end(); it++) {
-            Channel *c = new Channel(*it, idx, 0);
-            if ( root.insert(*it, "", c, 0)) {
-                channel.push_back(c);
-                idx++;
-            }
-            else
-                delete c;
-        }
+    if (!main->getSignal("/Time"));
 
-
-        idx = 0;
-        parameter.reserve(mainParameters.size());
-        HRTLab::Main::Parameters::const_iterator it;
-        for (it = mainParameters.begin(); it != mainParameters.end(); it++) {
-            Parameter *p = new Parameter(*it, idx, (*it)->nelem);
-            if ( root.insert(*it, "", 0, 0)) {
-                parameter.push_back(p);
-                idx++;
-            }
-            else
-                delete p;
-        }
+    std::list<const Parameter*> parameterList;
+    for (HRTLab::Main::Parameters::const_iterator it = mainParameters.begin();
+            it != mainParameters.end(); it++) {
+        root.insert(*it, parameterList, traditional);
     }
+    parameter.resize(parameterList.size());
+    std::copy(parameterList.begin(), parameterList.end(), parameter.begin());
+
+//            const HRTLab::Parameter *mainParam = *it;
+//            size_t vectorLen = mainParam->getDim()[mainParam->ndims - 1];
+//            Parameter *p = 0;
+//            mainParameterMap[mainParam].reserve(1 + (*it)->nelem / vectorLen);
+//            for (size_t i = 0; i < (*it)->nelem; i += vectorLen) {
+//                p = new Parameter(mainParam, idx, vectorLen, i);
+//                if (root.insert(*it,
+//                            makeExtension(*it, i, vectorLen).c_str(),
+//                            0, p)) {
+//                    parameter.push_back(p);
+//                    mainParameterMap[mainParam].push_back(p);
+//                    idx++;
+//                }
+//                else
+//                    delete p;
+//
+//                for (size_t j = i; j < i + vectorLen; j++) {
+//                    p = new Parameter(mainParam, idx, 1, j);
+//                    if (root.insert(*it, makeExtension(*it, j).c_str(), 0, p)) {
+//                        parameter.push_back(p);
+//                        mainParameterMap[mainParam].push_back(p);
+//                        idx++;
+//                    }
+//                    else
+//                        delete p;
+//                }
+//            }
+//        }
+//
+//        if (!main->getParameter("/Taskinfo/Abtastfrequenz"));
+//    }
+//    else {
+//        size_t idx = 0;
+//
+//        channel.reserve(mainSignals.size());
+//        for (HRTLab::Main::Signals::const_iterator it = mainSignals.begin();
+//                it != mainSignals.end(); it++) {
+//            Channel *c = new Channel(*it, idx, 0);
+//            if ( root.insert(*it, "", c, 0)) {
+//                channel.push_back(c);
+//                idx++;
+//            }
+//            else
+//                delete c;
+//        }
+//
+//
+//        idx = 0;
+//        parameter.reserve(mainParameters.size());
+//        HRTLab::Main::Parameters::const_iterator it;
+//        for (it = mainParameters.begin(); it != mainParameters.end(); it++) {
+//            Parameter *p = new Parameter(*it, idx, (*it)->nelem);
+//            if ( root.insert(*it, "", 0, 0)) {
+//                parameter.push_back(p);
+//                idx++;
+//            }
+//            else
+//                delete p;
+//        }
+//    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -181,9 +139,6 @@ Server::~Server()
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
         delete *it;
-
-    for (size_t i = 0; i < channel.size(); i++)
-        delete channel[i];
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -238,21 +193,21 @@ void Server::parametersChanged(const HRTLab::Parameter * const *p, size_t n)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+const DirectoryNode& Server::getRoot() const
+{
+    return root;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 const Server::Channels& Server::getChannels() const
 {
     return channel;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const Channel* Server::getChannel(const char *path) const
-{
-    return root.findChannel(path);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 const Channel* Server::getChannel(unsigned int idx) const
 {
-    return channel[idx];
+    return idx < channel.size() ? channel[idx] : 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -261,17 +216,11 @@ const Server::Parameters& Server::getParameters() const
     return parameter;
 }
 
-/////////////////////////////////////////////////////////////////////////////
-const Server::Parameters& Server::getParameters(const HRTLab::Parameter *p) const
-{
-    return mainParameterMap.find(p)->second;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Parameter* Server::getParameter(const std::string& path) const
-{
-    return root.findParameter(path.c_str());
-}
+// /////////////////////////////////////////////////////////////////////////////
+// const Server::Parameters& Server::getParameters(const HRTLab::Parameter *p) const
+// {
+// //    return mainParameterMap.find(p)->second;
+// }
 
 /////////////////////////////////////////////////////////////////////////////
 const Parameter* Server::getParameter(unsigned int idx) const

@@ -60,18 +60,17 @@ class Server:public ost::Thread {
 
         void sessionClosed(Session *s);
 
+        const DirectoryNode& getRoot() const;
+
         void getSessionStatistics(
                 std::list<HRTLab::SessionStatistics>& stats) const;
 
         typedef std::vector<const Channel*> Channels;
-        const Channels& getChannels() const;
-        const Channel* getChannel(const char *) const;
-        const Channel* getChannel(unsigned int) const;
-
         typedef std::vector<const Parameter*> Parameters;
+        const Channels& getChannels() const;
+        const Channel* getChannel(unsigned int) const;
         const Parameters& getParameters() const;
         const Parameters& getParameters(const HRTLab::Parameter *p) const;
-        const Parameter* getParameter(const std::string&) const;
         const Parameter* getParameter(unsigned int) const;
 
     private:
@@ -82,8 +81,6 @@ class Server:public ost::Thread {
 
         Channels channel;
         Parameters parameter;
-
-        std::map<const HRTLab::Parameter*, Parameters> mainParameterMap;
 
         mutable ost::Semaphore mutex;
 

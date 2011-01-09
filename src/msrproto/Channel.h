@@ -43,17 +43,19 @@ class DirectoryNode;
 
 class Channel {
     public:
-        Channel( const HRTLab::Signal *s,
+        Channel( const DirectoryNode *directory,
+                const HRTLab::Signal *s,
                 unsigned int channelIndex,
-                unsigned int signalOffset);
+                unsigned int signalOffset,
+                unsigned int nelem);
         ~Channel();
 
         void setXmlAttributes(MsrXml::Element*, bool shortReply,
                     const char *signalBuf) const;
 
-        void setNode(const DirectoryNode *node, const char *);
         std::string path() const;
 
+        const DirectoryNode * const directory;
         const unsigned int index;
         const HRTLab::Signal * const signal;
         const size_t nelem;
@@ -63,8 +65,6 @@ class Channel {
         const PrintFunc printFunc;
 
     private:
-
-        const DirectoryNode *node;
 };
 
 }

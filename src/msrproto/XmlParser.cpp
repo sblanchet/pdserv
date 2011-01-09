@@ -51,14 +51,57 @@ XmlParser::XmlParser(size_t bufMax): bufLenMax(bufMax)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+XmlParser::XmlParser(const std::string &s): bufLenMax(s.size())
+{
+    parseState = FindStart;
+    buf = new char[bufLenMax];
+    bufLen = bufLenMax;
+
+    begin = 0;
+    parsePos = 0;
+    inputEnd = 0;
+
+    std::copy(s.begin(), s.end(), buf);
+    newData(bufLen);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 XmlParser::~XmlParser()
 {
     delete[] buf;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-char *XmlParser::bufptr() const
+void XmlParser::checkFreeSpace()
 {
+    if (inputEnd == bufLen) {
+        bufLen += bufIncrement;
+
+        if (bufLen > bufLenMax) {
+            bufLen = bufIncrement;
+            parseState = FindStart;
+            begin = parsePos = inputEnd = 0;
+        }
+
+        char *data = new char[bufLen];
+        std::copy(buf, buf + inputEnd, data);
+        
+        delete[] buf;
+        buf = data;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+size_t XmlParser::free()
+{
+    checkFreeSpace();
+    return bufLen - inputEnd;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+char *XmlParser::bufptr()
+{
+    checkFreeSpace();
     return buf + inputEnd;
 }
 
@@ -204,11 +247,6 @@ bool XmlParser::getUnsignedList(const char *name,
 
     return true;
 }
-/////////////////////////////////////////////////////////////////////////////
-size_t XmlParser::free() const
-{
-    return bufLen - inputEnd;
-}
 
 /////////////////////////////////////////////////////////////////////////////
 bool XmlParser::next()
@@ -227,22 +265,6 @@ bool XmlParser::next()
 bool XmlParser::newData(size_t n)
 {
     inputEnd += n;
-
-    if (inputEnd == bufLen) {
-        bufLen += bufIncrement;
-
-        if (bufLen > bufLenMax) {
-            bufLen = bufIncrement;
-            parseState = FindStart;
-            begin = parsePos = inputEnd = 0;
-        }
-
-        char *data = new char[bufLen];
-        std::copy(buf, buf + inputEnd, data);
-        
-        delete[] buf;
-        buf = data;
-    }
 
     while (true) {
         switch (parseState) {

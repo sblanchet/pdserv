@@ -38,10 +38,11 @@ class Session;
 class XmlParser {
     public:
         XmlParser(size_t max = bufIncrement * 1000);
+        XmlParser(const std::string &s);
         ~XmlParser();
 
-        char *bufptr() const;
-        size_t free() const;
+        char *bufptr();
+        size_t free();
 
         bool newData(size_t n);
         bool next();
@@ -67,6 +68,7 @@ class XmlParser {
         AttributeMap attribute;
 
         void tokenize();
+        void checkFreeSpace();
 
         static const size_t bufIncrement = 1024;
         size_t bufLen;

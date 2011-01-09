@@ -45,11 +45,12 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Parameter::Parameter( const HRTLab::Parameter *p, unsigned int index,\
+Parameter::Parameter( const DirectoryNode *directory,
+        const HRTLab::Parameter *p, unsigned int index,
         unsigned int nelem, unsigned int parameterElement):
-    index(index), mainParam(p), nelem(nelem), memSize(p->width),
+    index(index), mainParam(p), nelem(nelem), memSize(p->width * nelem),
     bufferOffset(parameterElement * p->width),
-    printFunc(getPrintFunc(p->dtype)),
+    printFunc(getPrintFunc(p->dtype)), node(directory),
     converter(this), persistent(false)
 {
     //cout << __PRETTY_FUNCTION__ << index << endl;
@@ -93,12 +94,6 @@ void Parameter::setXmlAttributes( MsrXml::Element *element,
                 printFunc, mainParam, nelem, data + bufferOffset);
     return;
 
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Parameter::setNode(const DirectoryNode *n, const char *name)
-{
-    node = n;
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -43,10 +43,10 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Channel::Channel(
-        const HRTLab::Signal *s, unsigned int index, unsigned int sigOffset):
-    index(index), signal(s), nelem(1), memSize(s->width),
-    bufferOffset(sigOffset * s->width),
+Channel::Channel( const DirectoryNode *directory, const HRTLab::Signal *s,
+        unsigned int index, unsigned int sigOffset, unsigned int nelem):
+    directory(directory), index(index), signal(s), nelem(nelem),
+    memSize(s->width * nelem), bufferOffset(sigOffset * s->width),
     printFunc(getPrintFunc(s->dtype))
 {
 
@@ -75,7 +75,8 @@ void Channel::setXmlAttributes( MsrXml::Element *element,
     size_t bufsize = 10 * std::max( 1U, (unsigned int)(freq + 0.5));
 
 
-    setVariableAttributes(element, signal, index, node->path(), nelem, shortReply);
+    setVariableAttributes(
+            element, signal, index, directory->path(), nelem, shortReply);
 
     if (shortReply)
         return;
@@ -89,13 +90,7 @@ void Channel::setXmlAttributes( MsrXml::Element *element,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Channel::setNode(const DirectoryNode *n, const char *name)
-{
-    node = n;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 std::string Channel::path() const
 {
-    return node->path();
+    return directory->path();
 }

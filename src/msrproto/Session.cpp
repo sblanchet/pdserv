@@ -112,13 +112,13 @@ void Session::broadcast(Session *s, const MsrXml::Element &element)
 void Session::parametersChanged(const HRTLab::Parameter * const *p, size_t n) 
 {
     while (n--) {
-        const Server::Parameters& parameters = server->getParameters(*p++);
-        for (Server::Parameters::const_iterator it = parameters.begin();
-                it != parameters.end(); it++) {
-            MsrXml::Element pu("pu");
-            pu.setAttribute("index", (*it)->index);
-            outbuf << pu << std::flush;
-        }
+//        const Server::Parameters& parameters = server->getParameters(*p++);
+//        for (Server::Parameters::const_iterator it = parameters.begin();
+//                it != parameters.end(); it++) {
+//            MsrXml::Element pu("pu");
+//            pu.setAttribute("index", (*it)->index);
+//            outbuf << pu << std::flush;
+//        }
     }
 }
 
@@ -378,7 +378,7 @@ void Session::readChannel()
     unsigned int index;
 
     if (inbuf.getString("name", path)) {
-        c = server->getChannel(path.c_str());
+        c = server->getRoot().findChannel(path.c_str());
     }
     else if (inbuf.getUnsigned("index", index)) {
         c = server->getChannel(index);
@@ -386,14 +386,16 @@ void Session::readChannel()
     else {
         size_t buflen = 0;
         const HRTLab::Signal *mainSignal = 0;
-        const Server::Channels& channel = server->getChannels();
         std::map<const HRTLab::Signal*, size_t> bufOffset;
+
+        const Server::Channels& channel = server->getChannels();
 
         typedef std::list<const HRTLab::Signal*> SignalList;
         SignalList orderedSignals[HRTLab::Variable::maxWidth + 1];
 
-        for (size_t i = 0; i < channel.size(); i++) {
-            mainSignal = channel[i]->signal;
+        for (Server::Channels::const_iterator it = channel.begin();
+                it != channel.end(); it++) {
+            mainSignal = (*it)->signal;
             if (bufOffset.find(mainSignal) != bufOffset.end())
                 continue;
 
@@ -421,11 +423,11 @@ void Session::readChannel()
         main->getValues(signalList, bufOffset.size(), buf);
 
         MsrXml::Element channels("channels");
-        for (size_t i = 0; i < channel.size(); i++) {
+        for (Server::Channels::const_iterator it = channel.begin();
+                it != channel.end(); it++) {
             MsrXml::Element *el = channels.createChild("channel");
-            c = channel[i];
-            c->setXmlAttributes(el, shortReply,
-                    buf + bufOffset[c->signal]);
+            (*it)->setXmlAttributes(el, shortReply,
+                    buf + bufOffset[(*it)->signal]);
         }
 
         outbuf << channels << std::flush;
@@ -457,7 +459,7 @@ void Session::readParameter()
         ? MSR_R | MSR_W | MSR_WOP | MSR_MONOTONIC : MSR_R | MSR_MONOTONIC;
 
     if (inbuf.getString("name", name)) {
-        p = server->getParameter(name);
+        p = server->getRoot().findParameter(name.c_str());
     }
     else if (inbuf.getUnsigned("index", index)) {
         p = server->getParameter(index);
@@ -557,48 +559,48 @@ void Session::remoteHost()
 /////////////////////////////////////////////////////////////////////////////
 void Session::writeParameter()
 {
-    if (!writeAccess) {
-        MsrXml::Element warn("warn");
-        warn.setAttribute("text", "No write access");
-        outbuf << warn << std::flush;
-        return;
-    }
-
-    const Parameter *p = 0;
-
-    unsigned int index;
-    std::string name;
-    if (inbuf.getString("name", name)) {
-        p = server->getParameter(name);
-    }
-    else if (inbuf.getUnsigned("index", index)) {
-        p = server->getParameter(index);
-    }
-
-    if (!p)
-        return;
-    
-    unsigned int startindex = 0;
-    if (inbuf.getUnsigned("startindex", startindex)) {
-        if (startindex >= p->nelem)
-            return;
-    }
-
-    int errno;
-    const char *s;
-    if (inbuf.find("hexvalue", s)) {
-        errno = p->setHexValue(s, startindex);
-    }
-    else if (inbuf.find("value", s)) {
-        errno = p->setDoubleValue(s, startindex);
-    }
-    else
-        return;
-
-    if (errno) {
-        // If an error occurred, tell this client to reread the value
-        parametersChanged(&p->mainParam, 1);
-    }
+//    if (!writeAccess) {
+//        MsrXml::Element warn("warn");
+//        warn.setAttribute("text", "No write access");
+//        outbuf << warn << std::flush;
+//        return;
+//    }
+//
+//    const Parameter *p = 0;
+//
+//    unsigned int index;
+//    std::string name;
+//    if (inbuf.getString("name", name)) {
+//        p = server->getParameter(name);
+//    }
+//    else if (inbuf.getUnsigned("index", index)) {
+//        p = server->getParameter(index);
+//    }
+//
+//    if (!p)
+//        return;
+//    
+//    unsigned int startindex = 0;
+//    if (inbuf.getUnsigned("startindex", startindex)) {
+//        if (startindex >= p->nelem)
+//            return;
+//    }
+//
+//    int errno;
+//    const char *s;
+//    if (inbuf.find("hexvalue", s)) {
+//        errno = p->setHexValue(s, startindex);
+//    }
+//    else if (inbuf.find("value", s)) {
+//        errno = p->setDoubleValue(s, startindex);
+//    }
+//    else
+//        return;
+//
+//    if (errno) {
+//        // If an error occurred, tell this client to reread the value
+//        parametersChanged(&p->mainParam, 1);
+//    }
 }
 
 /////////////////////////////////////////////////////////////////////////////

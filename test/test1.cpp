@@ -55,8 +55,14 @@ int main(int argc, const char *argv[])
     assert(pdcomserv_signal(pdcomserv, 0, 1, "/path/to/var2",
             si_uint16_T, var1, 3, var1_dims));
 
+    struct variable *p3 = pdcomserv_parameter(pdcomserv, "/path/to/mdimparam", 0666,
+            si_uint16_T, var1, 3, var1_dims, copy_param, (void*)10);
+    assert(p3);
+
     struct variable *p1 = pdcomserv_parameter(pdcomserv,
             "/Taskinfo/Abtastfrequenz", 0666, si_double_T, &tick, 1, 0, 0, 0);
+    assert(p1);
+
     struct variable *p = pdcomserv_parameter(pdcomserv, "/path/to/param", 0666,
             si_uint32_T, param, 4, 0, copy_param, (void*)10);
     assert(p);

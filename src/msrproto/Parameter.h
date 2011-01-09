@@ -46,11 +46,11 @@ class DirectoryNode;
 
 class Parameter {
     public:
-        Parameter( const HRTLab::Parameter *s, unsigned int index,
+        Parameter( const DirectoryNode *directory,
+                const HRTLab::Parameter *p, unsigned int index,
                 unsigned int nelem, unsigned int parameterElement = 0);
         ~Parameter();
 
-        void setNode(const DirectoryNode *node, const char *);
         std::string path() const;
 
         void setXmlAttributes(MsrXml::Element*, bool shortReply,
@@ -69,7 +69,7 @@ class Parameter {
 
     private:
 
-        const DirectoryNode *node;
+        const DirectoryNode * const node;
 
         class Converter {
             public:

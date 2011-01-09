@@ -27,9 +27,11 @@
 
 #include <string>
 #include <map>
+#include <list>
 
 namespace HRTLab {
-    class Variable;
+    class Signal;
+    class Parameter;
 }
 
 namespace MsrProto {
@@ -41,31 +43,37 @@ class Parameter;
 /////////////////////////////////////////////////////////////////////////////
 class DirectoryNode {
     public:
-        DirectoryNode( const DirectoryNode *parent, const std::string &name,
-                Channel *channel = 0, Parameter *parameter = 0,
-                const char *variableName = 0);
+        DirectoryNode();
+        DirectoryNode( const DirectoryNode *parent, const std::string &name);
         ~DirectoryNode();
 
         std::string path() const;
-
-        bool insert( const HRTLab::Variable *, const char *extendedPath,
-                Channel *c, Parameter *p,
-                const char *path = 0, const char *variableName = 0);
+        bool isHidden() const;
 
         const Channel *findChannel(const char *path) const;
         const Parameter *findParameter(const char *path) const;
 
+        void insert(const HRTLab::Signal *s,
+                std::list<const Channel *>& channelList,
+                bool traditional, const char *path = 0,
+                size_t sigElem = 0, size_t nelem = 0);
+        void insert(const HRTLab::Parameter *p,
+                std::list<const Parameter *>& parameterList,
+                bool traditional, const char *path = 0,
+                size_t paramElem = 0, size_t nelem = 0);
+
     private:
         const DirectoryNode *parent;
         std::string name;
+        bool hide;
 
         static std::string splitPath(const char *&path);
 
         typedef std::map<const std::string, DirectoryNode*> Entry;
         Entry entry;
 
-        const Channel * const channel;
-        const Parameter * const parameter;
+        const Channel *channel;
+        const Parameter *parameter;
 
         const DirectoryNode *findVariable(const char *path) const;
 };
