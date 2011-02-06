@@ -65,7 +65,6 @@ Server::Server(HRTLab::Main *main, bool traditional):
                     c = new Channel( dir, *it, channel.size(), i, 1);
                     dir->insert(c);
                     channel.push_back(c);
-                    cout << "Insert channel " << c->path() << endl;
                 }
             }
         }
@@ -75,7 +74,6 @@ Server::Server(HRTLab::Main *main, bool traditional):
             if (dir) {
                 c = new Channel( dir, *it, channel.size(), 0, nelem);
                 dir->insert(c);
-                channel.push_back(c); cout << "Insert matrix" << c->path() << endl;
             }
         }
     }
@@ -100,7 +98,6 @@ Server::Server(HRTLab::Main *main, bool traditional):
                                 vectorLen, i);
                         dir->insert(p);
                         parameter.push_back(p);
-                        cout << "Insert vector" << p->path() << endl;
                     }
                 }
                 DirectoryNode *dir = root.mkdir(*it, i, 0);
@@ -109,7 +106,6 @@ Server::Server(HRTLab::Main *main, bool traditional):
                             *it, parameter.size(), 1, i);
                     dir->insert(p);
                     parameter.push_back(p);
-                    cout << "Insert element" << p->path() << endl;
                 }
             }
         }
@@ -121,7 +117,6 @@ Server::Server(HRTLab::Main *main, bool traditional):
                         dir, 0, *it, parameter.size(), nelem, 0);
                 dir->insert(p);
                 parameter.push_back(p);
-                cout << "Insert matrix" << p->path() << endl;
             }
         }
     }
