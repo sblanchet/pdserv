@@ -26,6 +26,7 @@
 
 #include "Signal.h"
 #include "Task.h"
+#include "Main.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -68,4 +69,11 @@ void Signal::unsubscribe(HRTLab::Session *session) const
 {
     const HRTLab::Signal *s = this;
     task->unsubscribe(session, &s, 1);
+}
+
+//////////////////////////////////////////////////////////////////////
+void Signal::getValue(char *buf, struct timespec* t) const
+{
+    const HRTLab::Signal * s = this;
+    task->HRTLab::Task::main->getValues(&s, 1, buf, t);
 }

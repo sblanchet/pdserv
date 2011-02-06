@@ -15,13 +15,9 @@ uint16_t var1[2][3][4] = {
     { {1,2,3,4}, {5,6,7}, },
 };
 
-int copy_param(unsigned int tid, char checkOnly,
+int copy_param(unsigned int tid,
         void* dst, const void* src, size_t len, void *priv_data)
 {
-    printf("copy_param checking %i\n", checkOnly);
-    if (checkOnly)
-        return 0;
-
     memcpy(dst, src, len);
     printf("hallo %p\n", priv_data);
     return 0;

@@ -46,10 +46,10 @@ class Parameter: public Variable {
         virtual ~Parameter();
 
         const Main * const main;
-
         const unsigned int mode;
 
-        int setValue(const char *buf) const;
+        virtual int setValue(const char *buf,
+                size_t startIndex, size_t nelem) const = 0;
 
     protected:
 };

@@ -48,6 +48,9 @@ class Main: public HRTLab::Main {
 
         int init();
         void update(int st, const struct timespec *time) const;
+        int setParameter(const Parameter *p, size_t startIndex,
+                size_t nelem, const char *data,
+                struct timespec *) const;
 
 //        void newSignalList(unsigned int listId,
 //                const HRTLab::Signal * const *, size_t n) const;
@@ -67,11 +70,12 @@ class Main: public HRTLab::Main {
             unsigned int replyId;
             enum {PollSignal, WriteParameter} type;
             int errorCode;
+            unsigned int startIndex;
             unsigned int count;
             struct timespec time;
             union {
                 const Signal *signal[];
-                const Parameter *parameter[];
+                const Parameter *parameter;
             };
         } *sdo;
         mutable ost::Semaphore sdoMutex;
@@ -91,10 +95,6 @@ class Main: public HRTLab::Main {
         void rxPdo(HRTLab::Session *);
         void getValues(const HRTLab::Signal * const *s,
                 size_t nelem, char *buf, struct timespec * = 0) const;
-        void getValues(const HRTLab::Parameter * const *p,
-                size_t nelem, char *buf, struct timespec * = 0) const;
-        int setParameters(const HRTLab::Parameter * const *p, size_t nelem,
-                const char *data) const;
         HRTLab::Receiver *newReceiver(unsigned int tid);
         void subscribe(HRTLab::Session *,
                 const HRTLab::Signal * const *, size_t n) const;

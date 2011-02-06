@@ -27,6 +27,7 @@
 #include <cerrno>
 #include <cstring>
 #include <cstdlib>
+#include <ctime>
 #include <sys/mman.h>
 
 #include <sys/types.h>
@@ -105,8 +106,8 @@ int Main::gettime(struct timespec* t) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameters(const HRTLab::Parameter * const *p,
-        size_t count, const char *data) const
+int Main::setParameter(const Parameter *p, size_t startIndex,
+        size_t count, const char *data, struct timespec *mtime) const
 {
     ost::SemaphoreLock lock(sdoMutex);
 
@@ -118,22 +119,9 @@ int Main::setParameters(const HRTLab::Parameter * const *p,
     // Write the parameters into the shared memory sorted from widest
     // to narrowest data type width. This ensures that the data is
     // allways aligned correctly.
-    size_t idx = 0;
-    char *dst = sdoData;
-    for (size_t width = HRTLab::Variable::maxWidth; width; width >>= 1) {
-        const char *src = data;
-        for (const HRTLab::Parameter * const* param = p;
-                param != p + count; param++) {
-            if ((*param)->width == width) {
-                sdo->parameter[idx++] =
-                    dynamic_cast<const Parameter*>((*param));
-                std::copy(src, src + (*param)->memSize, dst);
-                dst += (*param)->memSize;
-            }
-            src += (*param)->memSize;
-        }
-    }
-
+    std::copy(data, data + p->width * count, sdoData);
+    sdo->parameter = p;
+    sdo->startIndex = startIndex;
     sdo->count = count;
     sdo->type = SDOStruct::WriteParameter;
     sdo->reqId++;
@@ -142,15 +130,8 @@ int Main::setParameters(const HRTLab::Parameter * const *p,
         ost::Thread::sleep(delay);
     } while (sdo->reqId != sdo->replyId);
 
-    if (!sdo->errorCode) {
-        const char *src = sdoData;
-        for ( const Parameter **param = sdo->parameter;
-                param != sdo->parameter + count; param++) {
-            (*param)->copyValue(src, sdo->time);
-            src += (*param)->memSize;
-        }
-        parametersChanged(p, count);
-    }
+    if (!sdo->errorCode)
+        *mtime = sdo->time;
     
     return sdo->errorCode;
 }
@@ -190,29 +171,11 @@ bool Main::processSdo(unsigned int tid, const struct timespec *time) const
             break;
 
         case SDOStruct::WriteParameter:
-            gettime(&sdo->time);
-            for (unsigned idx = 0; idx != sdo->count; idx++) {
-                const Parameter *p = sdo->parameter[idx];
-                sdo->errorCode =
-                    (*p->trigger)(tid, 1, 0, data, p->memSize, p->priv_data);
-
-                data += p->memSize;
-
-                if (sdo->errorCode) {
-                    sdo->count = idx;
-                    break;
-                }
-            }
-
-            if (sdo->errorCode)
-                break;
-
-            data = sdoData;
-            for (unsigned idx = 0; idx != sdo->count; idx++) {
-                const Parameter *p = sdo->parameter[idx];
-
-                (*p->trigger)(tid, 0, p->addr, data, p->memSize, p->priv_data);
-                data += p->memSize;
+            {
+                const Parameter *p = sdo->parameter;
+                sdo->errorCode = (*p->trigger)( tid,
+                        p->addr + sdo->startIndex * p->width,
+                        sdoData, sdo->count * p->width, p->priv_data);
             }
             break;
     }
@@ -230,18 +193,6 @@ void Main::update(int st, const struct timespec *time) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::getValues(const HRTLab::Parameter * const *p, size_t nelem,
-                char *buf, struct timespec *time) const
-{
-    ost::SemaphoreLock lock(sdoMutex);
-    while (nelem--) {
-        (*p)->getValue(buf, time ? time++ : 0);
-        buf += (*p)->memSize;
-        p++;
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Main::getValues( const HRTLab::Signal * const *s, size_t nelem,
         char *buf, struct timespec *time) const
 {
@@ -249,10 +200,12 @@ void Main::getValues( const HRTLab::Signal * const *s, size_t nelem,
     size_t delay = 10;
     size_t dataSize = 0;
 
+    const Signal **sdoSignal = sdo->signal;
     for (unsigned i = 0; i < nelem; i++) {
-        sdo->signal[i] = dynamic_cast<const Signal*>(s[i]);
+        sdoSignal[i] = dynamic_cast<const Signal*>(s[i]);
         dataSize += s[i]->memSize;
-        delay = std::max(delay, (size_t)(s[i]->task->sampleTime * 1000 / 2));
+        delay = std::max(delay,
+                (size_t)(sdoSignal[i]->task->sampleTime * 1000 / 2));
     }
     sdo->count = nelem;
     sdo->type = SDOStruct::PollSignal;
@@ -264,20 +217,18 @@ void Main::getValues( const HRTLab::Signal * const *s, size_t nelem,
 
     std::copy(sdoData, sdoData + dataSize, buf);
     while (time and nelem--)
-        *time++ = sdoTaskTime[(*s++)->task->tid];
+        *time++ = sdoTaskTime[(*sdoSignal++)->task->tid];
 }
 
 /////////////////////////////////////////////////////////////////////////////
 int Main::init()
 {
     size_t taskMemSize[nst];
-    struct timespec t = {0,0};
 
     size_t parameterSize = 0;
     for (HRTLab::Main::Parameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {
         const Parameter *p = dynamic_cast<const Parameter*>(*it);
-        p->copyValue(p->addr, t);
         parameterSize += p->memSize;
     }
 

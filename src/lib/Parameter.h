@@ -45,25 +45,27 @@ class Parameter: public HRTLab::Parameter {
         ~Parameter();
 
         char * const addr;      // Pointer to the real address
+        const Main * const main;
 
         paramtrigger_t trigger;
         void *priv_data;
 
-        void copyValue(const char *valbuf, const struct timespec& t) const;
-
     private:
-
         mutable ost::Semaphore mutex;
         mutable struct timespec mtime;
         char *valueBuf;
 
-        // A default function used when paramcheck or paramupdate are not
-        // specified by the user
-        static int copy(unsigned int tid, char checkOnly,
-                void *dst, const void *src, size_t len, void *priv_data);
+        // Reimplemented from HRTLab::Parameter
+        int setValue(const char *buf,
+                size_t startIndex, size_t nelem) const;
 
         // Reimplemented from HRTLab::Variable
         void getValue(char *buf, struct timespec* t = 0) const;
+
+        // A default function used when paramcheck or paramupdate are not
+        // specified by the user
+        static int copy(unsigned int tid,
+                void *dst, const void *src, size_t len, void *priv_data);
 };
 
 #endif //LIB_PARAMETER

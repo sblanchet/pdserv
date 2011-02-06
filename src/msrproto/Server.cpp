@@ -53,84 +53,80 @@ Server::Server(HRTLab::Main *main, bool traditional):
     //FIXME
     traditional = 1;
 
-    std::list<const Channel*> channelList;
     for (HRTLab::Main::Signals::const_iterator it = mainSignals.begin();
             it != mainSignals.end(); it++) {
-        root.insert(*it, channelList, traditional);
+        size_t nelem = (*it)->nelem;
+        Channel *c;
+
+        if (traditional) {
+            for (unsigned i = 0; i < nelem; i++) {
+                DirectoryNode *dir = root.mkdir(*it, i, 0);
+                if (dir) {
+                    c = new Channel( dir, *it, channel.size(), i, 1);
+                    dir->insert(c);
+                    channel.push_back(c);
+                    cout << "Insert channel " << c->path() << endl;
+                }
+            }
+        }
+        else {
+            // New matrix channel
+            DirectoryNode *dir = root.mkdir(*it);
+            if (dir) {
+                c = new Channel( dir, *it, channel.size(), 0, nelem);
+                dir->insert(c);
+                channel.push_back(c); cout << "Insert matrix" << c->path() << endl;
+            }
+        }
     }
-    channel.resize(channelList.size());
-    std::copy(channelList.begin(), channelList.end(), channel.begin());
 
-    if (!main->getSignal("/Time"));
+//    if (!main->getSignal("/Time"));
 
-    std::list<const Parameter*> parameterList;
     for (HRTLab::Main::Parameters::const_iterator it = mainParameters.begin();
             it != mainParameters.end(); it++) {
-        root.insert(*it, parameterList, traditional);
-    }
-    parameter.resize(parameterList.size());
-    std::copy(parameterList.begin(), parameterList.end(), parameter.begin());
+        size_t nelem = (*it)->nelem;
+        const size_t *dim = (*it)->getDim();
+        size_t vectorLen = dim[(*it)->ndims-1];
+        Parameter *p;
 
-//            const HRTLab::Parameter *mainParam = *it;
-//            size_t vectorLen = mainParam->getDim()[mainParam->ndims - 1];
-//            Parameter *p = 0;
-//            mainParameterMap[mainParam].reserve(1 + (*it)->nelem / vectorLen);
-//            for (size_t i = 0; i < (*it)->nelem; i += vectorLen) {
-//                p = new Parameter(mainParam, idx, vectorLen, i);
-//                if (root.insert(*it,
-//                            makeExtension(*it, i, vectorLen).c_str(),
-//                            0, p)) {
-//                    parameter.push_back(p);
-//                    mainParameterMap[mainParam].push_back(p);
-//                    idx++;
-//                }
-//                else
-//                    delete p;
-//
-//                for (size_t j = i; j < i + vectorLen; j++) {
-//                    p = new Parameter(mainParam, idx, 1, j);
-//                    if (root.insert(*it, makeExtension(*it, j).c_str(), 0, p)) {
-//                        parameter.push_back(p);
-//                        mainParameterMap[mainParam].push_back(p);
-//                        idx++;
-//                    }
-//                    else
-//                        delete p;
-//                }
-//            }
-//        }
-//
-//        if (!main->getParameter("/Taskinfo/Abtastfrequenz"));
-//    }
-//    else {
-//        size_t idx = 0;
-//
-//        channel.reserve(mainSignals.size());
-//        for (HRTLab::Main::Signals::const_iterator it = mainSignals.begin();
-//                it != mainSignals.end(); it++) {
-//            Channel *c = new Channel(*it, idx, 0);
-//            if ( root.insert(*it, "", c, 0)) {
-//                channel.push_back(c);
-//                idx++;
-//            }
-//            else
-//                delete c;
-//        }
-//
-//
-//        idx = 0;
-//        parameter.reserve(mainParameters.size());
-//        HRTLab::Main::Parameters::const_iterator it;
-//        for (it = mainParameters.begin(); it != mainParameters.end(); it++) {
-//            Parameter *p = new Parameter(*it, idx, (*it)->nelem);
-//            if ( root.insert(*it, "", 0, 0)) {
-//                parameter.push_back(p);
-//                idx++;
-//            }
-//            else
-//                delete p;
-//        }
-//    }
+        parameterIndexMap[*it] = parameter.size();
+        if (traditional) {
+            for (unsigned i = 0; i < nelem; i++) {
+                if (vectorLen > 1 && !(i % vectorLen)) {
+                    // New row parameter
+                    DirectoryNode *dir = root.mkdir(*it, i, 1);
+                    if (dir) {
+                        p = new Parameter(dir, 0, *it, parameter.size(),
+                                vectorLen, i);
+                        dir->insert(p);
+                        parameter.push_back(p);
+                        cout << "Insert vector" << p->path() << endl;
+                    }
+                }
+                DirectoryNode *dir = root.mkdir(*it, i, 0);
+                if (dir) {
+                    p = new Parameter( dir, vectorLen > 1,
+                            *it, parameter.size(), 1, i);
+                    dir->insert(p);
+                    parameter.push_back(p);
+                    cout << "Insert element" << p->path() << endl;
+                }
+            }
+        }
+        else {
+            // New matrix parameter
+            DirectoryNode *dir = root.mkdir(*it);
+            if (dir) {
+                p = new Parameter(
+                        dir, 0, *it, parameter.size(), nelem, 0);
+                dir->insert(p);
+                parameter.push_back(p);
+                cout << "Insert matrix" << p->path() << endl;
+            }
+        }
+    }
+
+//    if (!main->getParameter("/Taskinfo/Abtastfrequenz"));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -184,12 +180,19 @@ void Server::getSessionStatistics(
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::parametersChanged(const HRTLab::Parameter * const *p, size_t n)
+void Server::parameterChanged(const HRTLab::Parameter *p, 
+        size_t startIndex, size_t nelem)
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
-        (*it)->parametersChanged(p, n);
+        (*it)->parameterChanged(p, startIndex, nelem);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+size_t Server::getParameterIndex(const HRTLab::Parameter *p) const
+{
+    return parameterIndexMap.find(p)->second;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -225,6 +228,6 @@ const Server::Parameters& Server::getParameters() const
 /////////////////////////////////////////////////////////////////////////////
 const Parameter* Server::getParameter(unsigned int idx) const
 {
-    return parameter[idx];
+    return idx < parameter.size() ? parameter[idx] : 0;
 }
 

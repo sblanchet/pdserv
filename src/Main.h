@@ -61,21 +61,16 @@ class Main {
 
         virtual void getValues( const Signal * const *, size_t nelem,
                 char *buf, struct timespec * = 0) const = 0;
-        virtual void getValues( const Parameter * const *, size_t nelem,
-                char *buf, struct timespec * = 0) const = 0;
 
-        typedef std::vector<const Signal*> Signals;
+        typedef std::list<const Signal*> Signals;
         const Signals& getSignals() const;
-        const Signal *getSignal(const std::string&) const;
         int newSignal(Signal *);
 
-        typedef std::vector<const Parameter*> Parameters;
+        typedef std::list<const Parameter*> Parameters;
         const Parameters& getParameters() const;
-        const Parameter *getParameter(const std::string&) const;
         int newParameter(Parameter *);
-
-        virtual int setParameters(const Parameter * const *p,
-                size_t nelem, const char *data) const = 0;
+        void parameterChanged(const Parameter *p, size_t startElement,
+                size_t nelem) const;
 
         virtual void subscribe(Session *,
                 const Signal * const *, size_t n) const = 0;
@@ -93,13 +88,10 @@ class Main {
         Parameters parameters;
         bool traditionalMSR;
 
-        void parametersChanged(const Parameter * const *p,
-                size_t nelem) const;
 
         int startProtocols();
 
     private:
-
         MsrProto::Server *msrproto;
 ////    EtlProto::Server etlproto(this);
 

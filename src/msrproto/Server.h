@@ -56,7 +56,8 @@ class Server:public ost::Thread {
 
         void broadcast(Session *s, const MsrXml::Element&);
 
-        void parametersChanged(const HRTLab::Parameter* const *, size_t n);
+        void parameterChanged(const HRTLab::Parameter*,
+                size_t startIndex, size_t n);
 
         void sessionClosed(Session *s);
 
@@ -70,6 +71,7 @@ class Server:public ost::Thread {
         const Channels& getChannels() const;
         const Channel* getChannel(unsigned int) const;
         const Parameters& getParameters() const;
+        size_t getParameterIndex(const HRTLab::Parameter *) const;
         const Parameters& getParameters(const HRTLab::Parameter *p) const;
         const Parameter* getParameter(unsigned int) const;
 
@@ -81,6 +83,9 @@ class Server:public ost::Thread {
 
         Channels channel;
         Parameters parameter;
+
+        typedef std::map<const HRTLab::Parameter*, size_t> ParameterMap;
+        ParameterMap parameterIndexMap;
 
         mutable ost::Semaphore mutex;
 

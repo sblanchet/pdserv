@@ -49,10 +49,6 @@ class Signal: public Variable {
 
         virtual void subscribe(Session *) const = 0;
         virtual void unsubscribe(Session *) const = 0;
-
-        // Reimplemented from HRTLab::Variable
-        void getValue(char *, struct timespec * = 0) const;
-
     private:
 
 };

@@ -132,24 +132,8 @@ int Main::startProtocols()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::parametersChanged(const Parameter * const *p,
+void Main::parameterChanged(const Parameter *p, size_t startIndex,
                 size_t nelem) const
 {
-    msrproto->parametersChanged(p, nelem);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Signal *Main::getSignal(const std::string& path) const
-{
-    const VariableMap::const_iterator it(variableMap.find(path));
-    return dynamic_cast<const Signal*>(
-            it != variableMap.end() ? it->second : 0);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Parameter *Main::getParameter(const std::string& path) const
-{
-    const VariableMap::const_iterator it(variableMap.find(path));
-    return dynamic_cast<Parameter*>(
-            it != variableMap.end() ? it->second : 0);
+    msrproto->parameterChanged(p, startIndex, nelem);
 }

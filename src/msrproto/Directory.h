@@ -30,8 +30,7 @@
 #include <list>
 
 namespace HRTLab {
-    class Signal;
-    class Parameter;
+    class Variable;
 }
 
 namespace MsrProto {
@@ -44,28 +43,31 @@ class Parameter;
 class DirectoryNode {
     public:
         DirectoryNode();
-        DirectoryNode( const DirectoryNode *parent, const std::string &name);
+        DirectoryNode( const DirectoryNode *parent,
+                const std::string &name, bool hide);
         ~DirectoryNode();
 
         std::string path() const;
-        bool isHidden() const;
+
+        std::string name;
+        const bool hide;
 
         const Channel *findChannel(const char *path) const;
         const Parameter *findParameter(const char *path) const;
 
-        void insert(const HRTLab::Signal *s,
-                std::list<const Channel *>& channelList,
-                bool traditional, const char *path = 0,
-                size_t sigElem = 0, size_t nelem = 0);
-        void insert(const HRTLab::Parameter *p,
-                std::list<const Parameter *>& parameterList,
-                bool traditional, const char *path = 0,
-                size_t paramElem = 0, size_t nelem = 0);
+        DirectoryNode *mkdir(const HRTLab::Variable *v);
+        DirectoryNode *mkdir(const HRTLab::Variable *v,
+                unsigned int idx, bool vector);
+        void insert(const Parameter *p);
+        void insert(const Channel *p);
 
     private:
         const DirectoryNode *parent;
-        std::string name;
-        bool hide;
+
+        bool empty() const;
+        DirectoryNode *mkdir(const char *path);
+        DirectoryNode *mkdir(size_t idx,
+                size_t nelem, const size_t *dim, size_t ndim);
 
         static std::string splitPath(const char *&path);
 

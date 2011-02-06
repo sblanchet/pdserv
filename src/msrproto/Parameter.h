@@ -46,18 +46,21 @@ class DirectoryNode;
 
 class Parameter {
     public:
-        Parameter( const DirectoryNode *directory,
+        Parameter( const DirectoryNode *directory, bool dependent,
                 const HRTLab::Parameter *p, unsigned int index,
                 unsigned int nelem, unsigned int parameterElement = 0);
         ~Parameter();
 
         std::string path() const;
+//        void addChild(const Parameter *child);
 
         void setXmlAttributes(MsrXml::Element*, bool shortReply,
                     bool hex, unsigned int flags) const;
         void getValue(char *) const;
-        int setHexValue(const char *str, size_t startindex) const;
-        int setDoubleValue(const char *, size_t startindex) const;
+        int setHexValue(const char *str, size_t startindex,
+                size_t &count) const;
+        int setDoubleValue(const char *, size_t startindex,
+                size_t &count) const;
 
         const unsigned int index;
         const HRTLab::Parameter * const mainParam;
@@ -68,32 +71,34 @@ class Parameter {
         const PrintFunc printFunc;
 
     private:
-
         const DirectoryNode * const node;
+        const bool dependent;
 
-        class Converter {
-            public:
-                Converter(Parameter *);
+        void (*append)(char *&, double);
 
-                void setbuf(char *b) const;
+        template<class T>
+            static void setTo(char *&dst, double src) {
+                *reinterpret_cast<T*>(dst) = src;
+                dst += sizeof(T);
+            }
 
-                int readDoubleList(const char *val, size_t startindex) const;
-                int readHexValue(const char *val, size_t startindex) const;
-
-            private:
-                const Parameter * const parameter;
-
-                mutable char * dataBuf;
-                void (*append)(char *&, double);
-
-                template<class T>
-                static void setTo(char *&dst, double src) {
-                    *reinterpret_cast<T*>(dst) = src;
-                    dst += sizeof(T);
-                }
-        };
-
-        Converter converter;
+//        class Converter {
+//            public:
+//                Converter(Parameter *);
+//
+//                void setbuf(char *b) const;
+//
+//                int readDoubleList(const char *val) const;
+//                int readHexValue(const char *val) const;
+//
+//            private:
+//                const Parameter * const parameter;
+//
+//                mutable char * dataBuf;
+//
+//        };
+//
+//        Converter converter;
 
         bool persistent;
 };

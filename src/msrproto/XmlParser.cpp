@@ -51,7 +51,8 @@ XmlParser::XmlParser(size_t bufMax): bufLenMax(bufMax)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-XmlParser::XmlParser(const std::string &s): bufLenMax(s.size())
+XmlParser::XmlParser(const std::string &s, size_t offset):
+    bufLenMax(s.size() - offset)
 {
     parseState = FindStart;
     buf = new char[bufLenMax];
@@ -61,7 +62,7 @@ XmlParser::XmlParser(const std::string &s): bufLenMax(s.size())
     parsePos = 0;
     inputEnd = 0;
 
-    std::copy(s.begin(), s.end(), buf);
+    std::copy(s.begin() + offset, s.end(), buf);
     newData(bufLen);
 }
 

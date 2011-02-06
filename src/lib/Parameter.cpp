@@ -25,6 +25,7 @@
 #include "config.h"
 
 #include <algorithm>
+#include <cerrno>
 
 #include "Parameter.h"
 #include "Main.h"
@@ -46,7 +47,7 @@ Parameter::Parameter(
         unsigned int ndims,
         const unsigned int *dim):
     HRTLab::Parameter(main, path, mode, dtype, ndims, dim),
-    addr(reinterpret_cast<char*>(addr)), mutex(1)
+    addr(reinterpret_cast<char*>(addr)), main(main), mutex(1)
 {
     trigger = copy;
 
@@ -54,6 +55,7 @@ Parameter::Parameter(
     mtime.tv_nsec = 0;
 
     valueBuf = new char[memSize];
+    std::copy(this->addr, this->addr + memSize, valueBuf);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -63,12 +65,24 @@ Parameter::~Parameter()
 }
 
 //////////////////////////////////////////////////////////////////////
-void Parameter::copyValue(const char* src, const struct timespec& time) const
+int Parameter::setValue(const char* src,
+                size_t startIndex, size_t nelem) const
 {
+    if (startIndex + nelem > this->nelem)
+        return -EINVAL;
+
     ost::SemaphoreLock lock(mutex);
 
-    std::copy(src, src + memSize, valueBuf);
-    mtime = time;
+    int rv = main->setParameter(this, startIndex, nelem, src, &mtime);
+
+    if (rv)
+        return rv;
+
+    std::copy(src, src + nelem * width, valueBuf + startIndex * width);
+
+    main->parameterChanged(this, startIndex, nelem);
+
+    return 0;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -81,13 +95,10 @@ void Parameter::getValue(char* dst, struct timespec *time) const
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::copy(unsigned int tid, char checkOnly,
+int Parameter::copy(unsigned int tid,
         void *dst, const void *src, size_t len, void *)
 {
 //    cout << __PRETTY_FUNCTION__ << checkOnly << endl;
-    if (checkOnly)
-        return 0;
-
     std::copy( reinterpret_cast<const char*>(src), 
             reinterpret_cast<const char*>(src)+len,
             reinterpret_cast<char*>(dst));

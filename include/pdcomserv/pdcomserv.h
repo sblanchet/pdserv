@@ -82,8 +82,6 @@ struct variable* pdcomserv_signal(
  */
 typedef int (*paramtrigger_t)(
         unsigned int tid,       /**< Task id context of call */
-        char checkOnly,         /**< Only check the data, the copy comes
-                                 * later */
         void *dst,              /**< Destination address @addr */
         const void *src,        /**< Data source */
         size_t len,             /**< Data length in bytes */

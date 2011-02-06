@@ -38,7 +38,7 @@ class Session;
 class XmlParser {
     public:
         XmlParser(size_t max = bufIncrement * 1000);
-        XmlParser(const std::string &s);
+        XmlParser(const std::string &s, size_t offset = 0);
         ~XmlParser();
 
         char *bufptr();

@@ -46,8 +46,7 @@ Parameter::Parameter(
         enum si_datatype_t dtype,
         unsigned int ndims,
         const unsigned int *dim):
-    Variable(path, dtype, ndims, dim),
-    main(main), mode(mode)
+    Variable(path, dtype, ndims, dim), main(main), mode(mode)
 {
     main->newParameter(this);
 }
@@ -56,12 +55,4 @@ Parameter::Parameter(
 Parameter::~Parameter()
 {
 //    main->delParameter(this);
-}
-
-
-//////////////////////////////////////////////////////////////////////
-int Parameter::setValue(const char *valbuf) const
-{
-    const Parameter* p = this;
-    return main->setParameters(&p, 1, valbuf);
 }

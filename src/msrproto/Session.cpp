@@ -109,17 +109,26 @@ void Session::broadcast(Session *s, const MsrXml::Element &element)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::parametersChanged(const HRTLab::Parameter * const *p, size_t n) 
+void Session::parameterChanged(const HRTLab::Parameter *p,
+        size_t startIndex, size_t nelem)
 {
-    while (n--) {
-//        const Server::Parameters& parameters = server->getParameters(*p++);
-//        for (Server::Parameters::const_iterator it = parameters.begin();
-//                it != parameters.end(); it++) {
-//            MsrXml::Element pu("pu");
-//            pu.setAttribute("index", (*it)->index);
-//            outbuf << pu << std::flush;
-//        }
+    MsrXml::Element pu("pu");
+    size_t vectorLen = p->getDim()[p->ndims-1];
+
+    for (size_t vectorIdx = server->getParameterIndex(p)
+            + startIndex / vectorLen * (vectorLen + 1);
+            nelem; vectorIdx += vectorLen + 1) {
+        if (vectorLen > 1) {
+            pu.setAttribute("index", vectorIdx);
+            outbuf << pu;
+        }
+        for (size_t i = startIndex % vectorLen;
+                nelem && i < vectorLen; nelem--, i++, startIndex++) {
+            pu.setAttribute("index", vectorIdx + i + 1);
+            outbuf << pu;
+        }
     }
+    outbuf << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -481,6 +490,7 @@ void Session::readParameter()
         MsrXml::Element parameter("parameter");
         p->setXmlAttributes( &parameter, shortReply, hex, flags);
         outbuf << parameter << std::flush;
+        cout << parameter << std::flush;
     }
 }
 
@@ -559,48 +569,49 @@ void Session::remoteHost()
 /////////////////////////////////////////////////////////////////////////////
 void Session::writeParameter()
 {
-//    if (!writeAccess) {
-//        MsrXml::Element warn("warn");
-//        warn.setAttribute("text", "No write access");
-//        outbuf << warn << std::flush;
-//        return;
-//    }
-//
-//    const Parameter *p = 0;
-//
-//    unsigned int index;
-//    std::string name;
-//    if (inbuf.getString("name", name)) {
-//        p = server->getParameter(name);
-//    }
-//    else if (inbuf.getUnsigned("index", index)) {
-//        p = server->getParameter(index);
-//    }
-//
-//    if (!p)
-//        return;
-//    
-//    unsigned int startindex = 0;
-//    if (inbuf.getUnsigned("startindex", startindex)) {
-//        if (startindex >= p->nelem)
-//            return;
-//    }
-//
-//    int errno;
-//    const char *s;
-//    if (inbuf.find("hexvalue", s)) {
-//        errno = p->setHexValue(s, startindex);
-//    }
-//    else if (inbuf.find("value", s)) {
-//        errno = p->setDoubleValue(s, startindex);
-//    }
-//    else
-//        return;
-//
-//    if (errno) {
-//        // If an error occurred, tell this client to reread the value
-//        parametersChanged(&p->mainParam, 1);
-//    }
+    if (!writeAccess) {
+        MsrXml::Element warn("warn");
+        warn.setAttribute("text", "No write access");
+        outbuf << warn << std::flush;
+        return;
+    }
+
+    const Parameter *p = 0;
+
+    unsigned int index;
+    std::string name;
+    if (inbuf.getString("name", name)) {
+        p = server->getRoot().findParameter(name.c_str());
+    }
+    else if (inbuf.getUnsigned("index", index)) {
+        p = server->getParameter(index);
+    }
+
+    if (!p)
+        return;
+    
+    unsigned int startindex = 0;
+    if (inbuf.getUnsigned("startindex", startindex)) {
+        if (startindex >= p->nelem)
+            return;
+    }
+
+    int errno;
+    const char *s;
+    size_t count;
+    if (inbuf.find("hexvalue", s)) {
+        errno = p->setHexValue(s, startindex, count);
+    }
+    else if (inbuf.find("value", s)) {
+        errno = p->setDoubleValue(s, startindex, count);
+    }
+    else
+        return;
+
+    if (errno) {
+        // If an error occurred, tell this client to reread the value
+        parameterChanged(p->mainParam, startindex, count);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////

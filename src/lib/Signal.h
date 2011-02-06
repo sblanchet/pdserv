@@ -61,6 +61,10 @@ class Signal: public HRTLab::Signal {
         // Reimplemented from HRTLab::Signal
         void subscribe(HRTLab::Session *) const;
         void unsubscribe(HRTLab::Session *) const;
+        double sampleTime() const;
+
+        // Reimplemented from HRTLab::Variable
+        void getValue(char *, struct timespec * = 0) const;
 };
 
 #endif //LIB_SIGNAL

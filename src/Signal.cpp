@@ -55,10 +55,3 @@ Signal::~Signal()
 {
     //task->main->delSignal(this);
 }
-
-//////////////////////////////////////////////////////////////////////
-void Signal::getValue(char *buf, struct timespec* t) const
-{
-    const Signal * s = this;
-    task->main->getValues(&s, 1, buf, t);
-}

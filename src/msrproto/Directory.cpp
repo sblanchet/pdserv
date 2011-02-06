@@ -25,8 +25,7 @@
 #include "config.h"
 
 #include "Directory.h"
-#include "../Signal.h"
-#include "../Parameter.h"
+#include "../Variable.h"
 #include "Channel.h"
 #include "Parameter.h"
 #include "XmlParser.h"
@@ -43,42 +42,17 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-void makeExtension(std::string &path, size_t elementIdx, size_t nelem,
-        const size_t *dim)
-{
-    std::ostringstream os;
-    size_t x;
-
-    while (nelem > 1) {
-        nelem /= *dim++;
-        x = elementIdx / nelem;
-        elementIdx -= x*nelem;
-
-        os << '/' << x;
-    }
-
-    path = os.str();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-DirectoryNode::DirectoryNode(): parent(0), channel(0), parameter(0)
+DirectoryNode::DirectoryNode(): name(std::string()), hide(false),
+    parent(0), channel(0), parameter(0)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-DirectoryNode::DirectoryNode(
-        const DirectoryNode *parent, const std::string& _name):
+DirectoryNode::DirectoryNode( const DirectoryNode *parent,
+        const std::string& _name, bool hide):
+    name(_name), hide(hide),
     parent(parent), channel(0), parameter(0)
 {
-    size_t pos = _name.find('<');
-    if (pos == std::string::npos)
-        pos = _name.size();
-    name.assign(_name, 0, pos);
-
-    XmlParser n(_name);
-
-    hide = (n.isTrue("hide") or parent->isHidden()) and !n.isTrue("unhide");
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -98,101 +72,85 @@ std::string DirectoryNode::path() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool DirectoryNode::isHidden() const
+void DirectoryNode::insert(const Channel *c)
 {
-    return hide;
+    channel = c;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void DirectoryNode::insert( const HRTLab::Signal *s,
-        std::list<const Channel *>& channelList, bool traditional,
-        const char *path, size_t signalElement, size_t nelem)
+void DirectoryNode::insert(const Parameter *p)
 {
-    if (!parent) {
-        path = s->path.c_str();
-        signalElement = 0;
-        nelem = s->nelem;
-    }
-
-    if (path) {
-        std::string name = splitPath(path);
-        if (!entry[name]) {
-            entry[name] = new DirectoryNode(this, name);
-        }
-        return entry[name]->insert(
-                s, channelList, traditional, path, signalElement, nelem);
-    }
-
-    if (hide)
-        return;
-
-    if (traditional and nelem > 1) {
-        std::string extPath;
-        for (size_t i = 0; i < nelem; i++) {
-            makeExtension(extPath, i, nelem, s->getDim());
-            insert(s, channelList, 0, extPath.c_str(), i, 1);
-        }
-        return;
-    }
-
-    if (channel or parameter)
-        return;
-
-    channel = new Channel( this, s, channelList.size(), signalElement, nelem);
-    channelList.push_back(channel);
+    parameter = p;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void DirectoryNode::insert(const HRTLab::Parameter *mainParam,
-        std::list<const Parameter *>& parameterList, bool traditional,
-        const char *path, size_t parameterElement, size_t nelem)
+bool DirectoryNode::empty() const
 {
-    if (!parent) {
-        path = mainParam->path.c_str();
-        parameterElement = 0;
-        nelem = mainParam->nelem;
+    return !channel and !parameter;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+DirectoryNode *DirectoryNode::mkdir(size_t idx,
+        size_t nelem, const size_t *dim, size_t ndim)
+{
+    if (!ndim)
+        return this;
+
+    nelem /= *dim++;
+    size_t x = idx / nelem;
+
+    std::ostringstream os;
+    os << x;
+    std::string name(os.str());
+
+    if (!entry[name])
+        entry[name] = new DirectoryNode(this, name, hide);
+
+    return entry[name]->mkdir(idx - x*nelem, nelem, dim, ndim-1);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+DirectoryNode *DirectoryNode::mkdir(const char *path)
+{
+    if (!path)
+        return this;
+
+    std::string name = splitPath(path);
+
+    bool _hide = this->hide;
+    size_t xmlpos = name.find('<');
+    if (xmlpos != std::string::npos) {
+        XmlParser p(name, xmlpos);
+        _hide = p.isTrue("hide") or (this->hide and !p.isTrue("unhide"));
+
+        name.erase(xmlpos);
     }
 
-    if (path) {
-        std::string name = splitPath(path);
-        if (!entry[name]) {
-            entry[name] = new DirectoryNode(this, name);
-        }
-        return entry[name]->insert( mainParam, parameterList, traditional,
-                path, parameterElement, nelem);
+    if (!entry[name]) {
+        entry[name] = new DirectoryNode(this, name, _hide);
     }
 
-    if (hide)
-        return;
+    return entry[name]->mkdir(path);
+}
 
-    size_t vectorLen = mainParam->getDim()[mainParam->ndims - 1];
-    if (traditional and nelem > vectorLen) {
-        std::string extPath;
-        size_t count = nelem / vectorLen;
-        for (size_t i = 0; i < count; i++) {
-            makeExtension(extPath, i, count, mainParam->getDim());
-            insert(mainParam, parameterList, 0, extPath.c_str(),
-                    i * vectorLen, vectorLen);
-        }
-        return;
-    }
+/////////////////////////////////////////////////////////////////////////////
+DirectoryNode *DirectoryNode::mkdir(const HRTLab::Variable *v,
+        unsigned int idx, bool vector)
+{
+    DirectoryNode *d = mkdir(v->path.c_str());
+    const size_t *dim = v->getDim();
 
-    if (channel or parameter)
-        return;
+    if (v->nelem > 1)
+        d = d->mkdir(idx, v->nelem, dim, v->ndims - (vector ? 1 : 0));
 
-    parameter = new Parameter(
-            this, mainParam, parameterList.size(), nelem, parameterElement);
-    parameterList.push_back(parameter);
+    return d->empty() and !d->hide ? d : 0;
+}
 
-    if (traditional or nelem == 1)
-        return;
-
-    std::string extPath;
-    for (size_t i = 0; i < nelem; i++) {
-        makeExtension(extPath, i, nelem, &nelem);
-        insert(mainParam, parameterList, 0, extPath.c_str(),
-                parameterElement + i, 1);
-    }
+/////////////////////////////////////////////////////////////////////////////
+DirectoryNode *DirectoryNode::mkdir(const HRTLab::Variable *v)
+{
+    DirectoryNode *d = mkdir(v->path.c_str());
+    return d->empty() and !d->hide ? d : 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
