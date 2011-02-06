@@ -490,7 +490,6 @@ void Session::readParameter()
         MsrXml::Element parameter("parameter");
         p->setXmlAttributes( &parameter, shortReply, hex, flags);
         outbuf << parameter << std::flush;
-        cout << parameter << std::flush;
     }
 }
 
