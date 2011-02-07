@@ -73,7 +73,7 @@ Main::Main(int argc, const char *argv[],
     }
 
     ost::CommandOptionParse *args = ost::makeCommandOptionParse(
-            argc, _argv, helpStr);
+            argc, _argv, helpStr, optionList);
 
     for (size_t i = 0; i < nst; i++)
         task[i] =

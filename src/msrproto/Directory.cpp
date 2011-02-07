@@ -126,9 +126,8 @@ DirectoryNode *DirectoryNode::mkdir(const char *path)
         name.erase(xmlpos);
     }
 
-    if (!entry[name]) {
+    if (!entry[name])
         entry[name] = new DirectoryNode(this, name, _hide);
-    }
 
     return entry[name]->mkdir(path);
 }
@@ -162,8 +161,7 @@ const DirectoryNode *DirectoryNode::findVariable(const char *path) const
     if (node == entry.end())
         return 0;
 
-    const DirectoryNode *dir =
-        dynamic_cast<const DirectoryNode*>(node->second);
+    const DirectoryNode *dir = node->second;
 
     return path ? dir->findVariable(path) : dir;
 }

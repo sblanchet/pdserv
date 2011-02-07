@@ -50,9 +50,6 @@ Server::Server(HRTLab::Main *main, bool traditional):
     const HRTLab::Main::Signals& mainSignals = main->getSignals();
     const HRTLab::Main::Parameters& mainParameters = main->getParameters();
 
-    //FIXME
-    traditional = 1;
-
     for (HRTLab::Main::Signals::const_iterator it = mainSignals.begin();
             it != mainSignals.end(); it++) {
         size_t nelem = (*it)->nelem;
