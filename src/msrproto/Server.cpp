@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -44,13 +44,13 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Server::Server(HRTLab::Main *main, bool traditional):
+Server::Server(PdServ::Main *main, bool traditional):
     main(main), mutex(1)
 {
-    const HRTLab::Main::Signals& mainSignals = main->getSignals();
-    const HRTLab::Main::Parameters& mainParameters = main->getParameters();
+    const PdServ::Main::Signals& mainSignals = main->getSignals();
+    const PdServ::Main::Parameters& mainParameters = main->getParameters();
 
-    for (HRTLab::Main::Signals::const_iterator it = mainSignals.begin();
+    for (PdServ::Main::Signals::const_iterator it = mainSignals.begin();
             it != mainSignals.end(); it++) {
         size_t nelem = (*it)->nelem;
         Channel *c;
@@ -77,7 +77,7 @@ Server::Server(HRTLab::Main *main, bool traditional):
 
 //    if (!main->getSignal("/Time"));
 
-    for (HRTLab::Main::Parameters::const_iterator it = mainParameters.begin();
+    for (PdServ::Main::Parameters::const_iterator it = mainParameters.begin();
             it != mainParameters.end(); it++) {
         size_t nelem = (*it)->nelem;
         const size_t *dim = (*it)->getDim();
@@ -163,7 +163,7 @@ void Server::sessionClosed(Session *s)
 
 /////////////////////////////////////////////////////////////////////////////
 void Server::getSessionStatistics(
-        std::list<HRTLab::SessionStatistics>& stats) const
+        std::list<PdServ::SessionStatistics>& stats) const
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
@@ -172,7 +172,7 @@ void Server::getSessionStatistics(
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::parameterChanged(const HRTLab::Parameter *p, 
+void Server::parameterChanged(const PdServ::Parameter *p, 
         size_t startIndex, size_t nelem)
 {
     ost::SemaphoreLock lock(mutex);
@@ -182,7 +182,7 @@ void Server::parameterChanged(const HRTLab::Parameter *p,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-size_t Server::getParameterIndex(const HRTLab::Parameter *p) const
+size_t Server::getParameterIndex(const PdServ::Parameter *p) const
 {
     return parameterIndexMap.find(p)->second;
 }
@@ -212,7 +212,7 @@ const Server::Parameters& Server::getParameters() const
 }
 
 // /////////////////////////////////////////////////////////////////////////////
-// const Server::Parameters& Server::getParameters(const HRTLab::Parameter *p) const
+// const Server::Parameters& Server::getParameters(const PdServ::Parameter *p) const
 // {
 // //    return mainParameterMap.find(p)->second;
 // }

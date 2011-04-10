@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -35,7 +35,7 @@ class Parameter;
 class Signal;
 class Task;
 
-class Main: public HRTLab::Main {
+class Main: public PdServ::Main {
     public:
         Main(int argc, const char *argv[],
                 const char *name, const char *version,
@@ -53,7 +53,7 @@ class Main: public HRTLab::Main {
                 struct timespec *) const;
 
 //        void newSignalList(unsigned int listId,
-//                const HRTLab::Signal * const *, size_t n) const;
+//                const PdServ::Signal * const *, size_t n) const;
 
         static const double bufferTime;
 
@@ -90,16 +90,16 @@ class Main: public HRTLab::Main {
 
         int (* const rttime)(struct timespec*);
 
-        // Reimplemented from HRTLab::Main
+        // Reimplemented from PdServ::Main
         int gettime(struct timespec *) const;
-        void rxPdo(HRTLab::Session *);
-        void getValues(const HRTLab::Signal * const *s,
+        void rxPdo(PdServ::Session *);
+        void getValues(const PdServ::Signal * const *s,
                 size_t nelem, char *buf, struct timespec * = 0) const;
-        HRTLab::Receiver *newReceiver(unsigned int tid);
-        void subscribe(HRTLab::Session *,
-                const HRTLab::Signal * const *, size_t n) const;
-        void unsubscribe(HRTLab::Session *,
-                const HRTLab::Signal * const * = 0, size_t n = 0) const;
+        PdServ::Receiver *newReceiver(unsigned int tid);
+        void subscribe(PdServ::Session *,
+                const PdServ::Signal * const *, size_t n) const;
+        void unsubscribe(PdServ::Session *,
+                const PdServ::Signal * const * = 0, size_t n = 0) const;
 };
 
 #endif // LIB_MAIN_H

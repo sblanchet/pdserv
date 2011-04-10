@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -42,7 +42,7 @@ using std::endl;
 
 /////////////////////////////////////////////////////////////////////////////
 Task::Task(Main *main, unsigned int tid, double sampleTime):
-    HRTLab::Task(main, tid, sampleTime), main(main), mutex(1)
+    PdServ::Task(main, tid, sampleTime), main(main), mutex(1)
 {
     pdoMem = 0;
     seqNo = 0;
@@ -105,7 +105,7 @@ Receiver *Task::newReceiver()
     for (size_t i = 0; i < 4; i++)
         count += subscriptionSet[i].size();
 
-    const HRTLab::Signal *s[count];
+    const PdServ::Signal *s[count];
     count = 0;
     for (size_t i = 0; i < 4; i++) {
         std::copy(subscriptionSet[i].begin(), subscriptionSet[i].end(),
@@ -133,7 +133,7 @@ void Task::newSignalList(ssize_t diff) const
 
     size_t idx = 0;
     CopyList *cl = activeSet->list;
-    const HRTLab::Signal *signals[activeSet->count];
+    const PdServ::Signal *signals[activeSet->count];
 
     for (size_t i = 0; i < 4; i++) {
         for (SignalSet::const_iterator it = subscriptionSet[i].begin();
@@ -163,8 +163,8 @@ void Task::newSignalList(ssize_t diff) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-size_t Task::subscribe(HRTLab::Session *session,
-        const HRTLab::Signal * const *s, size_t n) const
+size_t Task::subscribe(PdServ::Session *session,
+        const PdServ::Signal * const *s, size_t n) const
 {
 //    cout << __PRETTY_FUNCTION__ << s << ' ' << n << endl;
     ost::SemaphoreLock lock(mutex);
@@ -197,14 +197,14 @@ size_t Task::subscribe(HRTLab::Session *session,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-size_t Task::unsubscribe(HRTLab::Session *session,
-        const HRTLab::Signal * const *s, size_t n) const
+size_t Task::unsubscribe(PdServ::Session *session,
+        const PdServ::Signal * const *s, size_t n) const
 {
 //    cout << __PRETTY_FUNCTION__ << s << ' ' << n << endl;
     if (!s) {
         const SignalSet& subscribed = sessionSubscription[session];
         n = subscribed.size();
-        const HRTLab::Signal *s[n];
+        const PdServ::Signal *s[n];
 
         std::copy(subscribed.begin(), subscribed.end(), s);
         sessionSubscription.erase(session);

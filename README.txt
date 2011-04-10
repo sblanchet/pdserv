@@ -3,20 +3,20 @@
 
   Copyright 2010 Richard Hacker (lerichi at gmx dot net)
 
-  This file is part of the pdcomserv package.
+  This file is part of the pdserv package.
 
-  pdcomserv is free software: you can redistribute it and/or modify
+  pdserv is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
-  pdcomserv is distributed in the hope that it will be useful,
+  pdserv is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with pdcomserv. See COPYING. If not, see
+  along with pdserv. See COPYING. If not, see
   <http://www.gnu.org/licenses/>.
 
 =============================================================================
@@ -130,13 +130,13 @@ Using the library:
 Installing the library will present you with a dynamic loadable module and a
 header file to include.
 
-See the documentation in the pdcomserv.h as well as the example for
+See the documentation in the pdserv.h as well as the example for
 information to use the library.
 
 Switches that you need for compiling and linking to the library are available
-using pkg-config command, which reads libpdcomserv.pc.
-# pkg-config --cflags libpdcomserv
-# pkg-config --libs libpdcomserv
+using pkg-config command, which reads libpdserv.pc.
+# pkg-config --cflags libpdserv
+# pkg-config --libs libpdserv
 
 Using the default installation paths (/opt/etherlab), pkg-config will not find
 its specification file using its default values. To help it, call:

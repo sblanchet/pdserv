@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -96,14 +96,14 @@ PrintFunc MsrProto::getPrintFunc(enum si_datatype_t dtype)
 
 /////////////////////////////////////////////////////////////////////////////
 void MsrProto::csvAttribute( MsrXml::Element *element, const char *name,
-        PrintFunc printFunc, const HRTLab::Variable *v,
+        PrintFunc printFunc, const PdServ::Variable *v,
         size_t count, const char* data, size_t precision)
 {
     element->setAttribute(name, toCSV(printFunc, v, count, data, precision));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string MsrProto::toCSV( PrintFunc printfunc, const HRTLab::Variable *v,
+std::string MsrProto::toCSV( PrintFunc printfunc, const PdServ::Variable *v,
         size_t count, const char* data, size_t precision)
 {
     std::ostringstream os;
@@ -119,7 +119,7 @@ std::string MsrProto::toCSV( PrintFunc printfunc, const HRTLab::Variable *v,
 
 /////////////////////////////////////////////////////////////////////////////
 void MsrProto::hexDecAttribute( MsrXml::Element *element, const char *name,
-        const HRTLab::Variable *v, size_t count, const char *data)
+        const PdServ::Variable *v, size_t count, const char *data)
 {
     std::string s;
     const char *hexValue[256] = {
@@ -162,7 +162,7 @@ void MsrProto::hexDecAttribute( MsrXml::Element *element, const char *name,
 
 /////////////////////////////////////////////////////////////////////////////
 void MsrProto::base64Attribute( MsrXml::Element *element, const char *name,
-        const HRTLab::Variable *v, size_t count, const char *data)
+        const PdServ::Variable *v, size_t count, const char *data)
 {
     static const char *base64Chr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -210,7 +210,7 @@ void MsrProto::base64Attribute( MsrXml::Element *element, const char *name,
 /////////////////////////////////////////////////////////////////////////////
 void MsrProto::setVariableAttributes(
         MsrXml::Element *element,
-        const HRTLab::Variable *v,
+        const PdServ::Variable *v,
         unsigned int index,
         const std::string& path,
         size_t nelem,

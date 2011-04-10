@@ -7,7 +7,7 @@
 
 #include <cc++/thread.h>
 
-namespace HRTLab {
+namespace PdServ {
     class Main;
 }
 
@@ -15,12 +15,12 @@ namespace EtlProto {
 
 class Server:public ost::Thread {
     public:
-        Server(HRTLab::Main *main);
+        Server(PdServ::Main *main);
         ~Server();
 
     private:
 
-        HRTLab::Main * const main;
+        PdServ::Main * const main;
 
         void run();
 

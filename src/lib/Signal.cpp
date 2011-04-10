@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -36,7 +36,7 @@ using std::endl;
 #endif
 
 //////////////////////////////////////////////////////////////////////
-const size_t Signal::dataTypeIndex[HRTLab::Variable::maxWidth+1] = {
+const size_t Signal::dataTypeIndex[PdServ::Variable::maxWidth+1] = {
     3 /*0*/, 3 /*1*/, 2 /*2*/, 3 /*3*/,
     1 /*4*/, 3 /*5*/, 3 /*6*/, 3 /*7*/, 0 /*8*/
 };
@@ -49,7 +49,7 @@ Signal::Signal( Task *task,
         const void *addr,
         unsigned int ndims,
         const unsigned int *dim):
-    HRTLab::Signal(task, decimation, path, dtype, ndims, dim),
+    PdServ::Signal(task, decimation, path, dtype, ndims, dim),
     addr(reinterpret_cast<const char *>(addr)),
     task(task), subscriptionIndex(dataTypeIndex[width])
 {
@@ -58,22 +58,22 @@ Signal::Signal( Task *task,
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::subscribe(HRTLab::Session *session) const
+void Signal::subscribe(PdServ::Session *session) const
 {
-    const HRTLab::Signal *s = this;
+    const PdServ::Signal *s = this;
     task->subscribe(session, &s, 1);
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::unsubscribe(HRTLab::Session *session) const
+void Signal::unsubscribe(PdServ::Session *session) const
 {
-    const HRTLab::Signal *s = this;
+    const PdServ::Signal *s = this;
     task->unsubscribe(session, &s, 1);
 }
 
 //////////////////////////////////////////////////////////////////////
 void Signal::getValue(char *buf, struct timespec* t) const
 {
-    const HRTLab::Signal * s = this;
-    task->HRTLab::Task::main->getValues(&s, 1, buf, t);
+    const PdServ::Signal * s = this;
+    task->PdServ::Task::main->getValues(&s, 1, buf, t);
 }

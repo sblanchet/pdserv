@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -65,8 +65,8 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Session::Session( Server *s, ost::SocketService *ss,
-        ost::TCPSocket &socket, HRTLab::Main *main):
-    SocketPort(0, socket), HRTLab::Session(main),
+        ost::TCPSocket &socket, PdServ::Main *main):
+    SocketPort(0, socket), PdServ::Session(main),
     server(s), subscriptionManager(main->nst),
     dataTag("data"), outbuf(this)
 {
@@ -109,7 +109,7 @@ void Session::broadcast(Session *s, const MsrXml::Element &element)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::parameterChanged(const HRTLab::Parameter *p,
+void Session::parameterChanged(const PdServ::Parameter *p,
         size_t startIndex, size_t nelem)
 {
     MsrXml::Element pu("pu");
@@ -138,7 +138,7 @@ void Session::requestOutput()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::requestSignal(const HRTLab::Signal *s, bool state)
+void Session::requestSignal(const PdServ::Signal *s, bool state)
 {
     requestState = 2;
     signalRequest[s] = state;
@@ -149,8 +149,8 @@ void Session::processSignalRequest()
 {
     size_t insIdx = 0;
     size_t delIdx = 0;
-    const HRTLab::Signal *ins[signalRequest.size()];
-    const HRTLab::Signal *del[signalRequest.size()];
+    const PdServ::Signal *ins[signalRequest.size()];
+    const PdServ::Signal *del[signalRequest.size()];
     for (SignalRequest::const_iterator it = signalRequest.begin();
             it != signalRequest.end(); it++) {
         if (it->second) 
@@ -200,7 +200,7 @@ void Session::pending()
         if (n <= 0)
             break;
 
-        inBytes += n;   // HRTLab::Session input byte counter
+        inBytes += n;   // PdServ::Session input byte counter
 
         if (inbuf.newData(n)) {
             do {
@@ -233,7 +233,7 @@ void Session::output()
         return;
     }
 
-    outBytes += n;       // HRTLab::Session output byte counter
+    outBytes += n;       // PdServ::Session output byte counter
 
     if (outbuf.clear(n))
         setDetectOutput(false);
@@ -247,8 +247,8 @@ void Session::disconnect()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalList(const HRTLab::Task *task,
-        const HRTLab::Signal * const *s, size_t n)
+void Session::newSignalList(const PdServ::Task *task,
+        const PdServ::Signal * const *s, size_t n)
 {
     if (!subscriptionManager[task->tid].newSignalList(s, n))
         return;
@@ -258,7 +258,7 @@ void Session::newSignalList(const HRTLab::Task *task,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalData(const HRTLab::Receiver &receiver)
+void Session::newSignalData(const PdServ::Receiver &receiver)
 {
     if (quiet)
         return;
@@ -394,13 +394,13 @@ void Session::readChannel()
     }
     else {
         size_t buflen = 0;
-        const HRTLab::Signal *mainSignal = 0;
-        std::map<const HRTLab::Signal*, size_t> bufOffset;
+        const PdServ::Signal *mainSignal = 0;
+        std::map<const PdServ::Signal*, size_t> bufOffset;
 
         const Server::Channels& channel = server->getChannels();
 
-        typedef std::list<const HRTLab::Signal*> SignalList;
-        SignalList orderedSignals[HRTLab::Variable::maxWidth + 1];
+        typedef std::list<const PdServ::Signal*> SignalList;
+        SignalList orderedSignals[PdServ::Variable::maxWidth + 1];
 
         for (Server::Channels::const_iterator it = channel.begin();
                 it != channel.end(); it++) {
@@ -412,7 +412,7 @@ void Session::readChannel()
             orderedSignals[mainSignal->width].push_back(mainSignal);
         }
 
-        const HRTLab::Signal *signalList[bufOffset.size()];
+        const PdServ::Signal *signalList[bufOffset.size()];
 
         index = 0;
         for (size_t w = 8; w; w /= 2) {
@@ -524,7 +524,7 @@ void Session::readStatistics()
     //           connectedtime="1282151176.659208"/>
     //   <client index="1" .../>
     // </clients>
-    typedef std::list<HRTLab::SessionStatistics> StatList;
+    typedef std::list<PdServ::SessionStatistics> StatList;
     StatList stats;
     main->getSessionStatistics(stats);
 
@@ -545,7 +545,7 @@ void Session::readStatistics()
 /////////////////////////////////////////////////////////////////////////////
 void Session::remoteHost()
 {
-    inbuf.getString("name", HRTLab::Session::remoteHost);
+    inbuf.getString("name", PdServ::Session::remoteHost);
 
     inbuf.getString("applicationname", client);
 
@@ -671,7 +671,7 @@ void Session::xsad()
         if (*it >= channel.size())
             continue;
 
-        const HRTLab::Signal *mainSignal = channel[*it]->signal;
+        const PdServ::Signal *mainSignal = channel[*it]->signal;
 
         if (event) {
             if (!foundReduction)

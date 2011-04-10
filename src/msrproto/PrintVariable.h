@@ -7,20 +7,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -30,9 +30,9 @@
 
 #include <sstream>
 #include <string>
-#include "pdcomserv/etl_data_info.h"
+#include "pdserv/etl_data_info.h"
 
-namespace HRTLab {
+namespace PdServ {
     class Variable;
 }
 
@@ -47,21 +47,21 @@ typedef void (*PrintFunc)(std::ostringstream&,
 PrintFunc getPrintFunc(enum si_datatype_t dtype);
 
 void base64Attribute(MsrXml::Element *element, const char *name,
-        const HRTLab::Variable *v, size_t count, const char *data);
+        const PdServ::Variable *v, size_t count, const char *data);
 void hexDecAttribute(MsrXml::Element *element, const char *name,
-        const HRTLab::Variable *v, size_t count, const char *data);
+        const PdServ::Variable *v, size_t count, const char *data);
 
 void csvAttribute(MsrXml::Element *element, const char *name,
-        PrintFunc printfunc, const HRTLab::Variable *v,
+        PrintFunc printfunc, const PdServ::Variable *v,
         size_t count, const char *data, size_t precision = 16);
 
-std::string toCSV( PrintFunc printfunc, const HRTLab::Variable *v,
+std::string toCSV( PrintFunc printfunc, const PdServ::Variable *v,
         size_t count, const char *data, size_t precision = 16);
 
 /** Special functions to set Parameter and Channel
  * attributes */
 void setVariableAttributes( MsrXml::Element *element,
-        const HRTLab::Variable*, unsigned int index,
+        const PdServ::Variable*, unsigned int index,
         const std::string& path, size_t nelem, bool shortReply);
 
 }

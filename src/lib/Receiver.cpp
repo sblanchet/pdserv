@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -40,7 +40,7 @@ using std::endl;
 
 ////////////////////////////////////////////////////////////////////////////
 Receiver::Receiver(Task *task, /*unsigned int tid,*/ TxFrame *start):
-    HRTLab::Receiver(task), task(task), mutex(1), rxPtr(start)
+    PdServ::Receiver(task), task(task), mutex(1), rxPtr(start)
 {
     currentListId = ~0U;
      while (rxPtr->next)
@@ -59,13 +59,13 @@ Receiver::~Receiver()
 }
 
 ////////////////////////////////////////////////////////////////////////////
-const char *Receiver::getValue(const HRTLab::Signal *s) const
+const char *Receiver::getValue(const PdServ::Signal *s) const
 {
     return rxPtr->data + offset[s];
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void Receiver::process(HRTLab::Session *session)
+void Receiver::process(PdServ::Session *session)
 {
      while (rxPtr->next) {
          //cout << __LINE__ << __PRETTY_FUNCTION__ << rxPtr->seqNo << endl;
@@ -85,7 +85,7 @@ void Receiver::process(HRTLab::Session *session)
 
              size_t count;
              size_t _offset = 0;
-             const HRTLab::Signal *const *s = listIdQ.front().second;
+             const PdServ::Signal *const *s = listIdQ.front().second;
              for (count = 0; s[count]; count++) {
                  offset[s[count]] = _offset;
                  _offset += s[count]->memSize;
@@ -108,11 +108,11 @@ void Receiver::resendSignalList()
 
 ////////////////////////////////////////////////////////////////////////////
 void Receiver::newSignalList(unsigned int listId,
-        const HRTLab::Signal * const *s, size_t n)
+        const PdServ::Signal * const *s, size_t n)
 {
 //    cout << __LINE__ << __func__ << ' ' << listId << ' ' << n << endl;
     ost::SemaphoreLock lock(mutex);
-    const HRTLab::Signal **signals = new const HRTLab::Signal*[n+1];
+    const PdServ::Signal **signals = new const PdServ::Signal*[n+1];
 
     std::copy(s, s+n, signals);
     signals[n] = 0;

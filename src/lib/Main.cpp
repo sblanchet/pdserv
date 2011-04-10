@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -63,7 +63,7 @@ Main::Main(int argc, const char *argv[],
         double baserate,
         unsigned int nst, const unsigned int decimation[],
         int (*gettime)(struct timespec*)):
-    HRTLab::Main(name, version, baserate, nst),
+    PdServ::Main(name, version, baserate, nst),
     task(new Task*[nst]), mutex(1), sdoMutex(1), rttime(gettime)
 {
     char *_argv[argc];
@@ -102,7 +102,7 @@ Main::~Main()
 /////////////////////////////////////////////////////////////////////////////
 int Main::gettime(struct timespec* t) const
 {
-    return rttime ? rttime(t) : HRTLab::Main::gettime(t);
+    return rttime ? rttime(t) : PdServ::Main::gettime(t);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -193,7 +193,7 @@ void Main::update(int st, const struct timespec *time) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::getValues( const HRTLab::Signal * const *s, size_t nelem,
+void Main::getValues( const PdServ::Signal * const *s, size_t nelem,
         char *buf, struct timespec *time) const
 {
     ost::SemaphoreLock lock(sdoMutex);
@@ -226,7 +226,7 @@ int Main::init()
     size_t taskMemSize[nst];
 
     size_t parameterSize = 0;
-    for (HRTLab::Main::Parameters::iterator it = parameters.begin();
+    for (PdServ::Main::Parameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {
         const Parameter *p = dynamic_cast<const Parameter*>(*it);
         parameterSize += p->memSize;
@@ -238,7 +238,7 @@ int Main::init()
     }
 
     size_t signalSize = 0;
-    for (HRTLab::Main::Signals::const_iterator it = signals.begin();
+    for (PdServ::Main::Signals::const_iterator it = signals.begin();
             it != signals.end(); it++) {
         signalSize += (*it)->memSize;
     }
@@ -298,14 +298,14 @@ int Main::init()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-HRTLab::Receiver *Main::newReceiver(unsigned int tid)
+PdServ::Receiver *Main::newReceiver(unsigned int tid)
 {
     return task[tid]->newReceiver();
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::subscribe(HRTLab::Session *session,
-        const HRTLab::Signal * const *s, size_t n) const
+void Main::subscribe(PdServ::Session *session,
+        const PdServ::Signal * const *s, size_t n) const
 {
     size_t count = 0;
     for (Task ** t = task; t != task + nst; t++) {
@@ -316,8 +316,8 @@ void Main::subscribe(HRTLab::Session *session,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::unsubscribe(HRTLab::Session *session,
-        const HRTLab::Signal * const *s, size_t n) const
+void Main::unsubscribe(PdServ::Session *session,
+        const PdServ::Signal * const *s, size_t n) const
 {
     for (Task ** t = task; t != task + nst; t++)
         (*t)->unsubscribe(session, s, n);

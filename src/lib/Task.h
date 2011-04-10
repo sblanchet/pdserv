@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -31,14 +31,14 @@
 #include <cc++/thread.h>
 
 #include "../Task.h"
-#include "pdcomserv/etl_data_info.h"
+#include "pdserv/etl_data_info.h"
 #include "ShmemDataStructures.h"
 
 class Main;
 class Signal;
 class Receiver;
 
-class Task: public HRTLab::Task {
+class Task: public PdServ::Task {
     public:
         Task(Main *main, unsigned int tid, double sampleTime);
         ~Task();
@@ -50,10 +50,10 @@ class Task: public HRTLab::Task {
         void rt_init();
         void nrt_init();
 
-        size_t subscribe(HRTLab::Session*,
-                const HRTLab::Signal* const *, size_t n) const;
-        size_t unsubscribe(HRTLab::Session*,
-                const HRTLab::Signal* const * = 0, size_t n = 0) const;
+        size_t subscribe(PdServ::Session*,
+                const PdServ::Signal* const *, size_t n) const;
+        size_t unsubscribe(PdServ::Session*,
+                const PdServ::Signal* const * = 0, size_t n = 0) const;
 
         void txPdo(const struct timespec *);
 
@@ -75,7 +75,7 @@ class Task: public HRTLab::Task {
         typedef std::set<const Signal*> SignalSet;
         mutable SignalSet subscriptionSet[4];
 
-        typedef std::map<const HRTLab::Session*, SignalSet>
+        typedef std::map<const PdServ::Session*, SignalSet>
             SessionSubscription;
         mutable SessionSubscription sessionSubscription;
 
