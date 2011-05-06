@@ -88,7 +88,8 @@ struct variable *pdcomserv_parameter(
 {
     Parameter *p = new Parameter(reinterpret_cast<Main*>(pdcomserv),
             path, mode, datatype, addr, n, dim);
-    p->trigger = _trigger;
+    if (_trigger)
+        p->trigger = _trigger;
     p->priv_data = _priv_data;
 
     return
