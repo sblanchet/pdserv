@@ -66,7 +66,7 @@ class Parameter {
         const HRTLab::Parameter * const mainParam;
         const size_t nelem;
         const size_t memSize;
-        const size_t bufferOffset;
+        const size_t parameterElement;
 
         const PrintFunc printFunc;
 

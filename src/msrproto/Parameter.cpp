@@ -49,7 +49,7 @@ Parameter::Parameter( const DirectoryNode *directory,
         bool dependent, const HRTLab::Parameter *p, unsigned int index,
         unsigned int nelem, unsigned int parameterElement):
     index(index), mainParam(p), nelem(nelem), memSize(p->width * nelem),
-    bufferOffset(parameterElement * p->width),
+    parameterElement(parameterElement),
     printFunc(getPrintFunc(p->dtype)), node(directory), dependent(dependent),
     persistent(false)
 {
@@ -80,9 +80,10 @@ void Parameter::setXmlAttributes( MsrXml::Element *element,
         bool shortReply, bool hex, unsigned int flags) const
 {
     struct timespec mtime;
-    char data[mainParam->memSize];
+    char valueBuf[mainParam->memSize];
+    char *dataPtr = valueBuf + parameterElement * mainParam->width;
 
-    mainParam->getValue(data, &mtime);
+    mainParam->getValue(valueBuf, &mtime);
 
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>
@@ -101,10 +102,10 @@ void Parameter::setXmlAttributes( MsrXml::Element *element,
 
     if (hex)
         hexDecAttribute(element, "hexvalue",
-                mainParam, nelem, data + bufferOffset);
+                mainParam, nelem, dataPtr);
     else
         csvAttribute(element, "value",
-                printFunc, mainParam, nelem, data + bufferOffset);
+                printFunc, mainParam, nelem, dataPtr);
     return;
 
 }
@@ -118,10 +119,11 @@ std::string Parameter::path() const
 /////////////////////////////////////////////////////////////////////////////
 void Parameter::getValue(char *buf) const
 {
-    char value[mainParam->memSize];
+    char valueBuf[mainParam->memSize];
+    char *dataPtr = valueBuf + parameterElement * mainParam->width;
 
-    mainParam->getValue(value);
-    std::copy(value + bufferOffset, value + bufferOffset + memSize, buf);
+    mainParam->getValue(valueBuf);
+    std::copy(dataPtr, dataPtr + memSize, buf);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -149,7 +151,8 @@ int Parameter::setHexValue(const char *s, size_t startindex,
     // endianness!
 
     count = (c - valueBuf) / mainParam->width;
-    return mainParam->setValue( valueBuf, startindex, count);
+    return mainParam->setValue(
+            valueBuf, parameterElement + startindex, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -178,7 +181,8 @@ int Parameter::setDoubleValue(const char *buf, size_t startindex,
         (*append)(dataBuf, v);
     }
 
-    return mainParam->setValue(value, startindex, count);
+    return mainParam->setValue(
+            value, parameterElement + startindex, count);
 }
 
 // /////////////////////////////////////////////////////////////////////////////
