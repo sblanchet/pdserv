@@ -119,12 +119,12 @@ void Session::parameterChanged(const HRTLab::Parameter *p,
             + startIndex / vectorLen * (vectorLen + 1);
             nelem; vectorIdx += vectorLen + 1) {
         if (vectorLen > 1) {
-            pu.setAttribute("index", vectorIdx);
+            pu.setAttribute("index", vectorIdx++);
             outbuf << pu;
         }
         for (size_t i = startIndex % vectorLen;
                 nelem && i < vectorLen; nelem--, i++, startIndex++) {
-            pu.setAttribute("index", vectorIdx + i + 1);
+            pu.setAttribute("index", vectorIdx + i);
             outbuf << pu;
         }
     }
