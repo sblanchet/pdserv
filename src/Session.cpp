@@ -39,24 +39,24 @@ using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
 Session::Session(Main *m):
-    main(m), receiver(new Receiver*[main->nst])
+    main(m), receiver(0) //new Receiver*[main->getTasks().size()])
 {
     main->gettime(&connectedTime);
 
     inBytes = 0;
     outBytes = 0;
 
-    for (unsigned int i = 0; i < main->nst; i++)
-        receiver[i] = main->newReceiver(i);
+//    for (unsigned int i = 0; i < main->nst(); i++)
+//        receiver[i] = main->newReceiver(i);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
-    main->unsubscribe(this);
+//    main->unsubscribe(this);
 
-    for (unsigned int i = 0; i < main->nst; i++)
-        delete receiver[i];
+//    for (unsigned int i = 0; i < main->getTasks().size(); i++)
+//        delete receiver[i];
 
     delete[] receiver;
 }
@@ -78,15 +78,15 @@ SessionStatistics Session::getStatistics() const
 /////////////////////////////////////////////////////////////////////////////
 void Session::resendSignalList(const Task *task) const
 {
-    for (unsigned int i = 0; i < main->nst; i++)
-        if (receiver[i]->task == task)
-            receiver[i]->resendSignalList();
+//    for (unsigned int i = 0; i < main->getTasks().size(); i++)
+//        if (receiver[i]->task == task)
+//            receiver[i]->resendSignalList();
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::rxPdo()
 {
-    for (unsigned int i = 0; i < main->nst; i++)
-        receiver[i]->process(this);
+//    for (unsigned int i = 0; i < main->getTasks().size(); i++)
+//        receiver[i]->process(this);
 }
 

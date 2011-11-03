@@ -23,19 +23,26 @@
  *****************************************************************************/
 
 #include "Main.h"
+#include "Task.h"
 #include "Signal.h"
 #include "Parameter.h"
 #include "pdserv/pdserv.h"
 
 /////////////////////////////////////////////////////////////////////////////
 struct pdserv* pdserv_create(int argc, const char *argv[], 
-        const char *name, const char *version, double baserate,
-        unsigned int nst, const unsigned int decimation[],
+        const char *name, const char *version,
         int (*gettime)(struct timespec*))
 {
     return reinterpret_cast<struct pdserv*>(
-            new Main(argc, argv, name, version, baserate, nst,
-                decimation, gettime));
+            new Main(argc, argv, name, version, gettime));
+}
+
+/////////////////////////////////////////////////////////////////////////////
+struct pdtask* pdserv_create_task(struct pdserv* pdserv, double tsample,
+        const char *name)
+{
+    return reinterpret_cast<struct pdtask*>(
+            new Task(reinterpret_cast<Main*>(pdserv), tsample, name));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -45,15 +52,14 @@ void pdserv_exit(struct pdserv* pdserv)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdserv_update(struct pdserv* pdserv, int st, const struct timespec *t)
+void pdserv_update(struct pdtask* task, const struct timespec *t)
 {
-    reinterpret_cast<Main*>(pdserv)->update(st, t);
+    reinterpret_cast<Task*>(task)->update(t);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 struct variable *pdserv_signal(
-        struct pdserv* pdserv,
-        unsigned int tid,
+        struct pdtask* pdtask,
         unsigned int decimation,
         const char *path,
         enum si_datatype_t datatype,
@@ -62,12 +68,9 @@ struct variable *pdserv_signal(
         const unsigned int dim[]
         )
 {
-    Main *main = reinterpret_cast<Main*>(pdserv);
+    Task *task = reinterpret_cast<Task*>(pdtask);
 
-    if (tid >= main->nst)
-        return 0;
-
-    PdServ::Variable *v = new Signal(main->task[tid],
+    PdServ::Variable *v = new Signal(task,
             decimation, path, datatype, addr, n, dim);
 
     return reinterpret_cast<struct variable *>(v);
@@ -82,39 +85,39 @@ struct variable *pdserv_parameter(
         void *addr,
         size_t n,
         const unsigned int dim[],
-        paramtrigger_t _trigger = 0,
-        void *_priv_data = 0
+        paramtrigger_t trigger = 0,
+        void *priv_data = 0
         )
 {
     Parameter *p = new Parameter(reinterpret_cast<Main*>(pdserv),
             path, mode, datatype, addr, n, dim);
-    p->trigger = _trigger;
-    p->priv_data = _priv_data;
+    p->trigger = trigger;
+    p->priv_data = priv_data;
 
     return
         reinterpret_cast<struct variable *>(static_cast<PdServ::Variable*>(p));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdserv_set_alias( struct variable *var, const char *_alias)
+void pdserv_set_alias( struct variable *var, const char *alias)
 {
-    reinterpret_cast<PdServ::Variable*>(var)->alias = _alias;
+    reinterpret_cast<PdServ::Variable*>(var)->alias = alias;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdserv_set_unit( struct variable *var, const char *_unit)
+void pdserv_set_unit( struct variable *var, const char *unit)
 {
-    reinterpret_cast<PdServ::Variable*>(var)->unit = _unit;
+    reinterpret_cast<PdServ::Variable*>(var)->unit = unit;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdserv_set_comment( struct variable *var, const char *_comment)
+void pdserv_set_comment( struct variable *var, const char *comment)
 {
-    reinterpret_cast<PdServ::Variable*>(var)->comment = _comment;
+    reinterpret_cast<PdServ::Variable*>(var)->comment = comment;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int pdserv_init(struct pdserv* pdserv)
+int pdserv_prepare(struct pdserv* pdserv)
 {
     return reinterpret_cast<Main*>(pdserv)->init();
 }

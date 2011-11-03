@@ -52,16 +52,23 @@ class Signal: public PdServ::Signal {
 
         const size_t subscriptionIndex;
 
+        mutable size_t copyListPosition;
+        mutable char *pollDest;
+
+    private:
+        mutable ost::Semaphore mutex;
+
+        static const size_t dataTypeIndex[PdServ::Variable::maxWidth+1];
+
         typedef std::set<const PdServ::Session*> SessionSet;
         mutable SessionSet sessions;
 
-    private:
-        static const size_t dataTypeIndex[PdServ::Variable::maxWidth+1];
 
         // Reimplemented from PdServ::Signal
         void subscribe(PdServ::Session *) const;
         void unsubscribe(PdServ::Session *) const;
         double sampleTime() const;
+        void poll(const PdServ::Session *s, char *buf) const;
 
         // Reimplemented from PdServ::Variable
         void getValue(char *, struct timespec * = 0) const;

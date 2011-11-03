@@ -25,7 +25,6 @@
 #include "config.h"
 
 #include "../Main.h"
-#include "../Task.h"
 #include "../Parameter.h"
 #include "../Signal.h"
 #include "../Receiver.h"
@@ -67,7 +66,7 @@ using namespace MsrProto;
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, PdServ::Main *main):
     SocketPort(0, socket), PdServ::Session(main),
-    server(s), subscriptionManager(main->nst),
+    server(s), subscriptionManager(0), //main->getTasks().size()),
     dataTag("data"), outbuf(this)
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
@@ -161,8 +160,8 @@ void Session::processSignalRequest()
 
     signalRequest.clear();
 
-    main->unsubscribe(this, del, delIdx);
-    main->subscribe(this, ins, insIdx);
+//    main->unsubscribe(this, del, delIdx);
+//    main->subscribe(this, ins, insIdx);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -250,11 +249,11 @@ void Session::disconnect()
 void Session::newSignalList(const PdServ::Task *task,
         const PdServ::Signal * const *s, size_t n)
 {
-    if (!subscriptionManager[task->tid].newSignalList(s, n))
-        return;
+//    if (!subscriptionManager[task->tid].newSignalList(s, n))
+//        return;
 
-    for (size_t i = 0; i < main->nst; i++)
-        subscriptionManager[i].sync();
+//    for (size_t i = 0; i < main->nst; i++)
+//        subscriptionManager[i].sync();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -263,10 +262,10 @@ void Session::newSignalData(const PdServ::Receiver &receiver)
     if (quiet)
         return;
 
-    dataTag.setAttribute("level", receiver.task->tid);
+//    dataTag.setAttribute("level", receiver.task->tid);
     dataTag.setAttribute("time", *receiver.time);
 
-    subscriptionManager[receiver.task->tid].newSignalData(&dataTag, receiver);
+//    subscriptionManager[receiver.task->tid].newSignalData(&dataTag, receiver);
 
     if (dataTag.hasChildren())
         outbuf << dataTag << std::flush;
@@ -429,7 +428,7 @@ void Session::readChannel()
         }
 
         char buf[buflen];
-        main->getValues(signalList, bufOffset.size(), buf);
+        main->poll(this, signalList, bufOffset.size(), buf);
 
         MsrXml::Element channels("channels");
         for (Server::Channels::const_iterator it = channel.begin();
@@ -629,9 +628,9 @@ void Session::xsad()
     quiet = !sync and inbuf.isTrue("quiet");
 
     if (!inbuf.getUnsignedList("channels", indexList)) {
-        if (sync)
-            for (size_t i = 0; i < main->nst; i++)
-                subscriptionManager[i].sync();
+//        if (sync)
+//            for (size_t i = 0; i < main->nst; i++)
+//                subscriptionManager[i].sync();
         return;
     }
 
@@ -677,19 +676,16 @@ void Session::xsad()
             if (!foundReduction)
                 // If user did not supply a reduction, limit to a 
                 // max of 10Hz automatically
-                reduction = 0.1 / mainSignal->task->sampleTime
-                    / mainSignal->decimation + 0.5;
+                reduction = 0.1 / mainSignal->sampleTime + 0.5;
         }
         else if (!foundReduction and !foundBlocksize) {
             // Quite possibly user input; choose reduction for 1Hz
-            reduction = 1.0 / mainSignal->task->sampleTime
-                / mainSignal->decimation + 0.5;
+            reduction = 1.0 / mainSignal->sampleTime + 0.5;
             blocksize = 1;
         }
         else if (foundReduction and !foundBlocksize) {
             // Choose blocksize so that a datum is sent at 10Hz
-            blocksize = 0.1 / mainSignal->task->sampleTime
-                    / mainSignal->decimation + 0.5;
+            blocksize = 0.1 / mainSignal->sampleTime + 0.5;
         }
         else if (!foundReduction and foundBlocksize) {
             reduction = 1;
@@ -698,7 +694,7 @@ void Session::xsad()
         if (!reduction) reduction = 1;
         if (!blocksize) blocksize = 1;
 
-        size_t tid = mainSignal->task->tid;
+        size_t tid = 0; //mainSignal->task->tid;
         if (subscriptionManager[tid].subscribe( channel[*it], event,
                     sync, reduction, blocksize, base64, precision)) {
             signalRequest[mainSignal] = true;
@@ -719,7 +715,7 @@ void Session::xsod()
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
             if (*it < channel.size()) {
-                size_t tid = channel[*it]->signal->task->tid;
+                size_t tid = 0; //channel[*it]->signal->task->tid;
                 if (subscriptionManager[tid].unsubscribe(channel[*it])) {
                     signalRequest[channel[*it]->signal] = false; 
                     requestState = 2;
@@ -728,9 +724,9 @@ void Session::xsod()
         }
     }
     else {
-        for (size_t i = 0; i < main->nst; i++)
-            subscriptionManager[i].unsubscribe();
+//        for (size_t i = 0; i < main->nst; i++)
+//            subscriptionManager[i].unsubscribe();
         signalRequest.clear();
-        main->unsubscribe(this);
+//        main->unsubscribe(this);
     }
 }

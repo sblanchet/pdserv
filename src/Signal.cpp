@@ -26,7 +26,6 @@
 
 #include "Signal.h"
 #include "Main.h"
-#include "Task.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -38,20 +37,19 @@ using std::endl;
 using namespace PdServ;
 
 //////////////////////////////////////////////////////////////////////
-Signal::Signal( Task *task,
-        unsigned int decimation,
+Signal::Signal( Main *main,
         const char *path,
+        double ts,
         enum si_datatype_t dtype,
         unsigned int ndims,
         const unsigned int *dim):
     Variable(path, dtype, ndims, dim),
-    decimation(decimation), task(task) //,  main(main)
+    sampleTime(ts)
 {
-    task->main->newSignal(this);
+    main->newSignal(this);
 }
 
 //////////////////////////////////////////////////////////////////////
 Signal::~Signal()
 {
-    //task->main->delSignal(this);
 }

@@ -25,6 +25,8 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#include <cc++/thread.h>
+
 #include <vector>
 #include <list>
 #include <map>
@@ -44,23 +46,17 @@ class Parameter;
 class Session;
 class Variable;
 class Task;
-class Receiver;
 
 class Main {
     public:
-        Main( const char *name, const char *version,
-                double baserate, unsigned int nst);
+        Main(int argc, const char **argv,
+                const char *name, const char *version);
         virtual ~Main();
 
         const std::string name;
         const std::string version;
-        const double baserate;
-        const unsigned int nst;
 
-        virtual int gettime(struct timespec *) const;
-
-        virtual void getValues( const Signal * const *, size_t nelem,
-                char *buf, struct timespec * = 0) const = 0;
+        virtual int gettime(struct timespec *) const = 0;
 
         typedef std::list<const Signal*> Signals;
         const Signals& getSignals() const;
@@ -72,28 +68,29 @@ class Main {
         void parameterChanged(const Parameter *p, size_t startElement,
                 size_t nelem) const;
 
-        virtual void subscribe(Session *,
-                const Signal * const *, size_t n) const = 0;
-        virtual void unsubscribe(Session *,
-                const Signal * const * = 0, size_t n = 0) const = 0;
-
-        // Methods used by the clients to post instructions to the real-time
-        // process
-        virtual Receiver* newReceiver(unsigned int tid) = 0;
-
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 
+        void poll( Session *session, const Signal * const *s, size_t nelem,
+                char *buf) const;
+
     protected:
+        int argc;
+        const char **argv;
+
         Signals signals;
         Parameters parameters;
-        bool traditionalMSR;
-
 
         int startProtocols();
 
+        static int localtime(struct timespec *);
+
+        virtual void processPoll() const = 0;
+
     private:
+        mutable ost::Semaphore mutex;
+
         MsrProto::Server *msrproto;
-////    EtlProto::Server etlproto(this);
+//        EtlProto::Server etlproto(this);
 
         typedef std::map<const std::string, Variable*> VariableMap;
         VariableMap variableMap;

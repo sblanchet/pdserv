@@ -10,6 +10,7 @@ extern "C" {
 
 /** Structure declaration */
 struct pdserv;
+struct pdtask;
 struct variable;
 
 /** Initialise pdserv library
@@ -25,10 +26,6 @@ struct pdserv* pdserv_create(
         const char *argv[],     /**< Arguments */
         const char *name,       /**< Name of the process */
         const char *version,    /**< Version string */
-        double baserate,        /**< Sample time of tid0 */
-        unsigned int nst,       /**< Number of sample times */
-        const unsigned int decimation[],   /**< Array of the decimations
-                                            * for tid1..tid<nst> */
         int (*gettime)(struct timespec*)   /**< Function used by the library
                                             * when the system time is required.
                                             * Essentially, this function
@@ -37,11 +34,26 @@ struct pdserv* pdserv_create(
                                             * used */
         );
 
+/** Create a cyclic task
+ *
+ * An application consists of one or more tasks that are called cyclically by
+ * caller.
+ *
+ * returns:
+ *      NULL on error
+ *      pointer to struct pdserv on success
+ */
+struct pdtask* pdserv_create_task(
+        struct pdserv* pdserv,  /**< Pointer to pdserv struct */
+        double tsample,         /**< Base sample time of task */
+        const char *name        /**< Optional name string */
+        );
+
 /** Register a signal
  *
  * This call registers a signal, i.e. Variables that are calculated
  *
- * Parameters @n and @dim are used to specify the shape:
+ * Arguments @n and @dim are used to specify the shape:
  * For scalars:
  *    @n = 1
  *    @dim = NULL
@@ -58,8 +70,7 @@ struct pdserv* pdserv_create(
  *   
  */
 struct variable* pdserv_signal(
-        struct pdserv* pdserv,    /**< Pointer to pdserv structure */
-        unsigned int tid,         /**< Task Id of the signal */
+        struct pdtask* pdtask,    /**< Pointer to pdtask structure */
         unsigned int decimation,  /**< Decimation with which the signal is
                                    * calculated */
         const char *path,         /**< Signal path */
@@ -81,11 +92,12 @@ struct variable* pdserv_signal(
  * \returns 0 on success
  */
 typedef int (*paramtrigger_t)(
-        unsigned int tid,       /**< Task id context of call */
+        struct pdtask *pdtask,    /**< Pointer to pdtask structure */
+        const struct variable *param,   /**< Pointer to parameter */
         void *dst,              /**< Destination address @addr */
         const void *src,        /**< Data source */
         size_t len,             /**< Data length in bytes */
-        void *priv_data         /**< Optional user varialbe */
+        void *priv_data         /**< Optional user variable */
         );
 
 /** Register a parameter
@@ -165,11 +177,11 @@ void pdserv_set_comment(
  * that communicates with the rest of the world.
  *
  * Since the new process lives in a separate memory space, all parameters must
- * have been initialised beforehand. After calling @pdserv_init, parameters
+ * have been initialised beforehand. After calling @pdserv_prepare, parameters
  * should not be changed any more. They can only be updated though a call by
  * the library.
  */
-int pdserv_init(
+int pdserv_prepare(
         struct pdserv* pdserv     /**< Pointer to pdserv structure */
         );
 
@@ -179,8 +191,7 @@ int pdserv_init(
  * variables
  */
 void pdserv_update(
-        struct pdserv* pdserv,  /**< Pointer to pdserv structure */
-        int st,                 /**< Sample task id to update */
+        struct pdtask* pdtask,  /**< Pointer to pdtask structure */
         const struct timespec *t /**< Current model time.
                                   * If NULL, zero is assumed */
         );

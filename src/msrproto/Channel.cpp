@@ -27,7 +27,6 @@
 #include "Channel.h"
 #include "XmlDoc.h"
 #include "PrintVariable.h"
-#include "../Task.h"
 #include "../Signal.h"
 #include "Directory.h"
 
@@ -66,7 +65,7 @@ void Channel::setXmlAttributes( MsrXml::Element *element,
 {
     // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
     //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
-    double freq = 1.0 / signal->task->sampleTime / signal->decimation;
+    double freq = 1.0 / signal->sampleTime;
 
     // The MSR protocoll wants a bufsize, the maximum number of
     // values that can be retraced. This artificial limitation does

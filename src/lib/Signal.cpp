@@ -27,6 +27,7 @@
 #include "Signal.h"
 #include "Task.h"
 #include "Main.h"
+#include "../Main.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -49,31 +50,47 @@ Signal::Signal( Task *task,
         const void *addr,
         unsigned int ndims,
         const unsigned int *dim):
-    PdServ::Signal(task, decimation, path, dtype, ndims, dim),
+    PdServ::Signal( task->main, path,
+            task->sampleTime * decimation, dtype, ndims, dim),
     addr(reinterpret_cast<const char *>(addr)),
-    task(task), subscriptionIndex(dataTypeIndex[width])
+    task(task), subscriptionIndex(dataTypeIndex[width]),
+    mutex(1)
 {
     task->newSignal(this);
-    //cout << __func__ << " addr = " << addr << endl;
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::subscribe(PdServ::Session *session) const
+void Signal::subscribe(PdServ::Session *s) const
+{
+    ost::SemaphoreLock lock(mutex);
+
+    if (sessions.empty())
+        task->subscribe(this, true);
+
+    sessions.insert(s);
+}
+
+//////////////////////////////////////////////////////////////////////
+void Signal::unsubscribe(PdServ::Session *s) const
+{
+    ost::SemaphoreLock lock(mutex);
+
+    sessions.erase(s);
+
+    if (sessions.empty())
+        task->subscribe(this, false);
+}
+
+//////////////////////////////////////////////////////////////////////
+void Signal::poll(const PdServ::Session *, char *buf) const
+{
+    pollDest = buf;
+    task->pollPrepare(this);
+}
+
+//////////////////////////////////////////////////////////////////////
+void Signal::getValue(char *buf, struct timespec *) const
 {
     const PdServ::Signal *s = this;
-    task->subscribe(session, &s, 1);
-}
-
-//////////////////////////////////////////////////////////////////////
-void Signal::unsubscribe(PdServ::Session *session) const
-{
-    const PdServ::Signal *s = this;
-    task->unsubscribe(session, &s, 1);
-}
-
-//////////////////////////////////////////////////////////////////////
-void Signal::getValue(char *buf, struct timespec* t) const
-{
-    const PdServ::Signal * s = this;
-    task->PdServ::Task::main->getValues(&s, 1, buf, t);
+    task->main->poll(0, &s, 1, buf);
 }

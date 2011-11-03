@@ -42,9 +42,8 @@ using std::endl;
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
-Main::Main( const char *name, const char *version,
-        double baserate, unsigned int nst):
-    name(name), version(version), baserate(baserate), nst(nst)
+Main::Main(int argc, const char *argv[], const char *name, const char *version):
+    name(name), version(version), argc(argc), argv(argv), mutex(1)
 {
     msrproto = 0;
 }
@@ -60,7 +59,7 @@ Main::~Main()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::gettime(struct timespec* t) const
+int Main::localtime(struct timespec* t)
 {
     struct timeval tv;
 
@@ -118,7 +117,7 @@ int Main::newParameter(Parameter *p)
 /////////////////////////////////////////////////////////////////////////////
 int Main::startProtocols()
 {
-    msrproto = new MsrProto::Server(this, traditionalMSR);
+    msrproto = new MsrProto::Server(this, argc, argv);
 
 //    EtlProto::Server etlproto(this);
 
@@ -128,6 +127,7 @@ int Main::startProtocols()
 //    etlproto.join();
     msrproto->join();
 
+    cout << "XXXXXXXXXXXXXXXXXXXXXX" << endl;
     return 0;
 }
 
@@ -137,3 +137,18 @@ void Main::parameterChanged(const Parameter *p, size_t startIndex,
 {
     msrproto->parameterChanged(p, startIndex, nelem);
 }
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::poll( Session *session,
+        const Signal * const *s, size_t nelem, char *buf) const
+{
+    ost::SemaphoreLock lock(mutex);
+
+    for (size_t i = 0; i < nelem; ++i) {
+        s[i]->poll(session, buf);
+        buf += s[i]->memSize;
+    }
+
+    processPoll();
+}
+

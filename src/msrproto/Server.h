@@ -49,9 +49,9 @@ class Session;
 class Channel;
 class Parameter;
 
-class Server:public ost::Thread {
+class Server: public ost::Thread {
     public:
-        Server(PdServ::Main *main, bool traditional);
+        Server(PdServ::Main *main, int argc, const char **argv);
         ~Server();
 
         void broadcast(Session *s, const MsrXml::Element&);

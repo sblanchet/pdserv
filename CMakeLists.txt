@@ -150,6 +150,7 @@ INSTALL (DIRECTORY include
     PATTERN "*~" EXCLUDE
     PATTERN "*.orig" EXCLUDE)
 
+OPTION ( DEBUG "Debugging output" OFF )
 CONFIGURE_FILE (
     "${PROJECT_SOURCE_DIR}/config.h.in"
     "${PROJECT_BINARY_DIR}/config.h"

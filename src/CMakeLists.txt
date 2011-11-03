@@ -28,9 +28,7 @@ INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR})      # for config.h
 
 ADD_LIBRARY( ${PROJECT_NAME} SHARED
     SessionStatistics.h
-    Task.cpp Task.h
     Session.cpp Session.h
-    Receiver.cpp Receiver.h
     Main.cpp Main.h
     Variable.cpp Variable.h
     Signal.cpp Signal.h
@@ -38,7 +36,6 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
 
     lib/interface.cpp
     lib/ShmemDataStructures.h
-    lib/Receiver.cpp lib/Receiver.h
     lib/Task.cpp lib/Task.h
     lib/Main.cpp lib/Main.h
     lib/Signal.cpp lib/Signal.h
@@ -47,18 +44,18 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     #etlproto/Server.cpp etlproto/Server.h
     #etlproto/Session.cpp etlproto/Session.h
 
-    msrproto/Directory.cpp msrproto/Directory.h
-    msrproto/PrintVariable.cpp msrproto/PrintVariable.h
-    msrproto/Channel.cpp msrproto/Channel.h
-    msrproto/Parameter.cpp msrproto/Parameter.h
     msrproto/Subscription.cpp msrproto/Subscription.h
-    msrproto/Session.cpp msrproto/Session.h
     msrproto/SubscriptionManager.cpp msrproto/SubscriptionManager.h
     msrproto/Outbuf.cpp msrproto/Outbuf.h
+    msrproto/Session.cpp msrproto/Session.h
+    msrproto/PrintVariable.cpp msrproto/PrintVariable.h
     msrproto/XmlParser.cpp msrproto/XmlParser.h
     msrproto/Attribute.cpp msrproto/Attribute.h
-    msrproto/Server.cpp msrproto/Server.h
     msrproto/XmlDoc.cpp msrproto/XmlDoc.h
+    msrproto/Channel.cpp msrproto/Channel.h
+    msrproto/Parameter.cpp msrproto/Parameter.h
+    msrproto/Directory.cpp msrproto/Directory.h
+    msrproto/Server.cpp msrproto/Server.h
     )
 
 SET_TARGET_PROPERTIES ( ${PROJECT_NAME} PROPERTIES

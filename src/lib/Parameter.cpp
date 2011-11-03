@@ -56,6 +56,8 @@ Parameter::Parameter(
 
     valueBuf = new char[memSize];
     std::copy(this->addr, this->addr + memSize, valueBuf);
+
+    main->addParameter(this);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -73,14 +75,14 @@ int Parameter::setValue(const char* src,
 
     ost::SemaphoreLock lock(mutex);
 
-    int rv = main->setParameter(this, startIndex, nelem, src, &mtime);
-
-    if (rv)
-        return rv;
-
-    std::copy(src, src + nelem * width, valueBuf + startIndex * width);
-
-    main->parameterChanged(this, startIndex, nelem);
+//     int rv = main->setParameter(this, startIndex, nelem, src, &mtime);
+// 
+//     if (rv)
+//         return rv;
+// 
+//     std::copy(src, src + nelem * width, valueBuf + startIndex * width);
+// 
+//     main->parameterChanged(this, startIndex, nelem);
 
     return 0;
 }
@@ -95,7 +97,7 @@ void Parameter::getValue(char* dst, struct timespec *time) const
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::copy(unsigned int tid,
+int Parameter::copy(struct pdtask *, const struct variable *,
         void *dst, const void *src, size_t len, void *)
 {
 //    cout << __PRETTY_FUNCTION__ << checkOnly << endl;

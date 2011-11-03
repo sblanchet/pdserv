@@ -28,7 +28,6 @@
 #include "XmlDoc.h"
 #include "PrintVariable.h"
 #include "Directory.h"
-#include "../Task.h"
 #include "../Parameter.h"
 
 #include <sstream>
