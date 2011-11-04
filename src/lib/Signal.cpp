@@ -27,7 +27,6 @@
 #include "Signal.h"
 #include "Task.h"
 #include "Main.h"
-#include "../Main.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -50,13 +49,11 @@ Signal::Signal( Task *task,
         const void *addr,
         unsigned int ndims,
         const unsigned int *dim):
-    PdServ::Signal( task->main, path,
-            task->sampleTime * decimation, dtype, ndims, dim),
+    PdServ::Signal(path, task->sampleTime * decimation, dtype, ndims, dim),
     addr(reinterpret_cast<const char *>(addr)),
     task(task), subscriptionIndex(dataTypeIndex[width]),
     mutex(1)
 {
-    task->newSignal(this);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -82,15 +79,17 @@ void Signal::unsubscribe(PdServ::Session *s) const
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::poll(const PdServ::Session *, char *buf) const
+double Signal::poll(const PdServ::Session *, char *buf) const
 {
     pollDest = buf;
     task->pollPrepare(this);
+
+    return task->sampleTime / 2;
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::getValue(char *buf, struct timespec *) const
+void Signal::getValue(PdServ::Session *, char *buf, struct timespec *t) const
 {
     const PdServ::Signal *s = this;
-    task->main->poll(0, &s, 1, buf);
+    task->main->poll(0, &s, 1, buf, t);
 }

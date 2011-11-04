@@ -28,6 +28,7 @@
 #include "XmlDoc.h"
 #include "PrintVariable.h"
 #include "Directory.h"
+#include "Session.h"
 #include "../Parameter.h"
 
 #include <sstream>
@@ -75,14 +76,14 @@ Parameter::~Parameter()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Parameter::setXmlAttributes( MsrXml::Element *element,
+void Parameter::setXmlAttributes( Session *s, MsrXml::Element *element,
         bool shortReply, bool hex, unsigned int flags) const
 {
     struct timespec mtime;
     char valueBuf[mainParam->memSize];
     char *dataPtr = valueBuf + parameterElement * mainParam->width;
 
-    mainParam->getValue(valueBuf, &mtime);
+    mainParam->getValue(s, valueBuf, &mtime);
 
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>
@@ -116,12 +117,12 @@ std::string Parameter::path() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Parameter::getValue(char *buf) const
+void Parameter::getValue(Session *session, char *buf) const
 {
     char valueBuf[mainParam->memSize];
     char *dataPtr = valueBuf + parameterElement * mainParam->width;
 
-    mainParam->getValue(valueBuf);
+    mainParam->getValue(session, valueBuf);
     std::copy(dataPtr, dataPtr + memSize, buf);
 }
 

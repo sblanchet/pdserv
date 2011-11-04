@@ -27,7 +27,6 @@
 
 #include <cc++/thread.h>
 
-#include <vector>
 #include <list>
 #include <map>
 #include <string>
@@ -58,42 +57,46 @@ class Main {
 
         virtual int gettime(struct timespec *) const = 0;
 
+        size_t numTasks() const;
+        const Task *getTask(size_t n) const;
+
         typedef std::list<const Signal*> Signals;
         const Signals& getSignals() const;
-        int newSignal(Signal *);
 
         typedef std::list<const Parameter*> Parameters;
         const Parameters& getParameters() const;
-        int newParameter(Parameter *);
-        void parameterChanged(const Parameter *p, size_t startElement,
-                size_t nelem) const;
 
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 
-        void poll( Session *session, const Signal * const *s, size_t nelem,
-                char *buf) const;
+        void poll( Session *session, const Signal * const *s,
+                size_t nelem, char *buf, struct timespec *t) const;
 
     protected:
         int argc;
         const char **argv;
 
-        Signals signals;
+        typedef std::list<Task*> TaskList;
+        TaskList taskList;
         Parameters parameters;
+        Signals signals;
 
-        int startProtocols();
+        int run();
 
         static int localtime(struct timespec *);
 
-        virtual void processPoll() const = 0;
+        virtual void processPoll(size_t delay_ms) const = 0;
 
+        typedef std::map<const std::string, const Variable*> VariableMap;
+        VariableMap variableMap;
+
+        void parameterChanged(const Parameter *p, size_t startElement,
+                size_t nelem) const;
     private:
         mutable ost::Semaphore mutex;
 
         MsrProto::Server *msrproto;
 //        EtlProto::Server etlproto(this);
 
-        typedef std::map<const std::string, Variable*> VariableMap;
-        VariableMap variableMap;
 };
 
 }

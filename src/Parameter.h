@@ -32,12 +32,9 @@ struct timespec;
 
 namespace PdServ {
 
-class Main;
-
 class Parameter: public Variable {
     public:
-        Parameter ( Main *main,
-                const char *path,
+        Parameter ( const char *path,
                 unsigned int mode,
                 enum si_datatype_t dtype,
                 unsigned int ndims = 1,
@@ -45,7 +42,6 @@ class Parameter: public Variable {
 
         virtual ~Parameter();
 
-        const Main * const main;
         const unsigned int mode;
 
         virtual int setValue(const char *buf,

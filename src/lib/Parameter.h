@@ -60,7 +60,8 @@ class Parameter: public PdServ::Parameter {
                 size_t startIndex, size_t nelem) const;
 
         // Reimplemented from PdServ::Variable
-        void getValue(char *buf, struct timespec* t = 0) const;
+        void getValue(PdServ::Session *,
+                char *buf, struct timespec* t = 0) const;
 
         // A default function used when paramcheck or paramupdate are not
         // specified by the user

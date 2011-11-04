@@ -428,7 +428,7 @@ void Session::readChannel()
         }
 
         char buf[buflen];
-        main->poll(this, signalList, bufOffset.size(), buf);
+        main->poll(this, signalList, bufOffset.size(), buf, 0);
 
         MsrXml::Element channels("channels");
         for (Server::Channels::const_iterator it = channel.begin();
@@ -446,7 +446,7 @@ void Session::readChannel()
     if (c) {
         char buf[c->signal->memSize];
 
-        c->signal->getValue(buf);
+        c->signal->getValue(this, buf);
 
         MsrXml::Element channel("channel");
         c->setXmlAttributes(&channel, shortReply, buf);
@@ -478,7 +478,7 @@ void Session::readParameter()
 
         for (Server::Parameters::const_iterator it = parameter.begin();
                 it != parameter.end(); it++)
-            (*it)->setXmlAttributes( parameters.createChild("parameter"),
+            (*it)->setXmlAttributes(this, parameters.createChild("parameter"),
                     shortReply, hex, flags);
 
         outbuf << parameters << std::flush;
@@ -487,7 +487,7 @@ void Session::readParameter()
     
     if (p) {
         MsrXml::Element parameter("parameter");
-        p->setXmlAttributes( &parameter, shortReply, hex, flags);
+        p->setXmlAttributes(this, &parameter, shortReply, hex, flags);
         outbuf << parameter << std::flush;
     }
 }
@@ -504,7 +504,7 @@ void Session::readParamValues()
         if (it != parameter.begin()) v.append(1,'|');
 
         char buf[(*it)->memSize];
-        (*it)->getValue(buf);
+        (*it)->getValue(this, buf);
         v.append(toCSV((*it)->printFunc, (*it)->mainParam, (*it)->nelem, buf));
     }
 

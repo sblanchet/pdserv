@@ -54,9 +54,9 @@ class Parameter {
         std::string path() const;
 //        void addChild(const Parameter *child);
 
-        void setXmlAttributes(MsrXml::Element*, bool shortReply,
+        void setXmlAttributes(Session *, MsrXml::Element*, bool shortReply,
                     bool hex, unsigned int flags) const;
-        void getValue(char *) const;
+        void getValue(Session *, char *) const;
         int setHexValue(const char *str, size_t startindex,
                 size_t &count) const;
         int setDoubleValue(const char *, size_t startindex,

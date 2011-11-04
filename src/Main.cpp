@@ -79,15 +79,19 @@ void Main::getSessionStatistics(std::list<SessionStatistics>& stats) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::newSignal(Signal *s)
+size_t Main::numTasks() const
 {
-    if (variableMap.find(s->path) != variableMap.end())
-        return -EEXIST;
+    return taskList.size();
+}
 
-    signals.push_back(s);
-    variableMap[s->path] = s;
+/////////////////////////////////////////////////////////////////////////////
+const Task* Main::getTask(size_t n) const
+{
+    TaskList::const_iterator it = taskList.begin();
+    while (n--)
+        ++it;
 
-    return 0;
+    return *it;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -103,19 +107,7 @@ const Main::Parameters& Main::getParameters() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::newParameter(Parameter *p)
-{
-    if (variableMap.find(p->path) != variableMap.end())
-        return -EEXIST;
-
-    parameters.push_back(p);
-    variableMap[p->path] = p;
-
-    return 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int Main::startProtocols()
+int Main::run()
 {
     msrproto = new MsrProto::Server(this, argc, argv);
 
@@ -139,16 +131,17 @@ void Main::parameterChanged(const Parameter *p, size_t startIndex,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::poll( Session *session,
-        const Signal * const *s, size_t nelem, char *buf) const
+void Main::poll( Session *session, const Signal * const *s,
+        size_t nelem, char *buf, struct timespec *t) const
 {
     ost::SemaphoreLock lock(mutex);
+    double delay = 0.01;
 
     for (size_t i = 0; i < nelem; ++i) {
-        s[i]->poll(session, buf);
+        delay = std::max(delay, std::min(0.1, s[i]->poll(session, buf)));
         buf += s[i]->memSize;
     }
 
-    processPoll();
+    processPoll(delay * 1000 + 0.5);
 }
 

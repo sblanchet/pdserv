@@ -46,7 +46,7 @@ Parameter::Parameter(
         void *addr,
         unsigned int ndims,
         const unsigned int *dim):
-    PdServ::Parameter(main, path, mode, dtype, ndims, dim),
+    PdServ::Parameter(path, mode, dtype, ndims, dim),
     addr(reinterpret_cast<char*>(addr)), main(main), mutex(1)
 {
     trigger = copy;
@@ -56,8 +56,6 @@ Parameter::Parameter(
 
     valueBuf = new char[memSize];
     std::copy(this->addr, this->addr + memSize, valueBuf);
-
-    main->addParameter(this);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -88,7 +86,8 @@ int Parameter::setValue(const char* src,
 }
 
 //////////////////////////////////////////////////////////////////////
-void Parameter::getValue(char* dst, struct timespec *time) const
+void Parameter::getValue(PdServ::Session *,
+        char* dst, struct timespec *time) const
 {
     ost::SemaphoreLock lock(mutex);
     std::copy(valueBuf, valueBuf + memSize, dst);

@@ -35,7 +35,6 @@ namespace PdServ {
 }
 
 class Task;
-class Main;
 
 class Signal: public PdServ::Signal {
     public:
@@ -68,10 +67,10 @@ class Signal: public PdServ::Signal {
         void subscribe(PdServ::Session *) const;
         void unsubscribe(PdServ::Session *) const;
         double sampleTime() const;
-        void poll(const PdServ::Session *s, char *buf) const;
+        double poll(const PdServ::Session *s, char *buf) const;
 
         // Reimplemented from PdServ::Variable
-        void getValue(char *, struct timespec * = 0) const;
+        void getValue(PdServ::Session*, char *, struct timespec * = 0) const;
 };
 
 #endif //LIB_SIGNAL

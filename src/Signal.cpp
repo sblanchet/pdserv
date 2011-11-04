@@ -25,7 +25,6 @@
 #include "config.h"
 
 #include "Signal.h"
-#include "Main.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -37,7 +36,7 @@ using std::endl;
 using namespace PdServ;
 
 //////////////////////////////////////////////////////////////////////
-Signal::Signal( Main *main,
+Signal::Signal(
         const char *path,
         double ts,
         enum si_datatype_t dtype,
@@ -46,7 +45,6 @@ Signal::Signal( Main *main,
     Variable(path, dtype, ndims, dim),
     sampleTime(ts)
 {
-    main->newSignal(this);
 }
 
 //////////////////////////////////////////////////////////////////////

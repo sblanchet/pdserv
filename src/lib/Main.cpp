@@ -73,7 +73,6 @@ Main::Main(int argc, const char **argv,
 {
     shmem_len = 0;
     shmem = 0;
-    pollDelay = 10;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -83,20 +82,49 @@ Main::~Main()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::addParameter(const Parameter *p)
+Task* Main::addTask(double sampleTime, const char *name)
 {
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::addTask(Task *t)
-{
-    task.push_back(t);
+    Task *t = new Task(this, sampleTime, name);
+    taskList.push_back(t);
+    return t;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 int Main::gettime(struct timespec* t) const
 {
     return rttime(t);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Parameter* Main::addParameter( const char *path,
+        unsigned int mode, enum si_datatype_t datatype,
+        void *addr, size_t n, const unsigned int *dim)
+{
+    if (variableMap.find(path) != variableMap.end())
+        return 0;
+
+    Parameter *p = new Parameter(this, path, mode, datatype, addr, n, dim);
+
+    variableMap[path] = p;
+    parameters.push_back(p);
+
+    return p;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Signal* Main::addSignal( Task *task, unsigned int decimation,
+        const char *path, enum si_datatype_t datatype,
+        const void *addr, size_t n, const unsigned int *dim)
+{
+    if (variableMap.find(path) != variableMap.end())
+        return 0;
+
+    Signal *s = task->addSignal(decimation, path, datatype, addr, n, dim);
+
+    variableMap[path] = s;
+    signals.push_back(s);
+
+    return s;
 }
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -128,35 +156,30 @@ int Main::gettime(struct timespec* t) const
 // }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::setPollDelay(unsigned int ms) const
+void Main::processPoll(size_t delay_ms) const
 {
-    pollDelay = std::max(pollDelay, std::min(100U, ms));
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::processPoll() const
-{
-    bool fin[task.size()];
+    bool fin[taskList.size()];
     bool finished;
     std::fill_n(fin, 4, false);
     do {
         finished = true;
         int i = 0;
-        for (TaskList::const_iterator it = task.begin();
-                it != task.end(); ++it, ++i) {
+//        cout << "wait ";
+        for (TaskList::const_iterator it = taskList.begin();
+                it != taskList.end(); ++it, ++i) {
             fin[i] = fin[i] or (*it)->pollFinished();
             finished = finished and fin[i];
+//            cout << fin[i] << ' ';
         }
-        ost::Thread::sleep(pollDelay);
+//        cout << "sleep" << endl;
+        ost::Thread::sleep(delay_ms);
     } while (!finished);
-
-    pollDelay = 10;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::init()
+int Main::run()
 {
-    size_t numTasks = task.size();
+    size_t numTasks = taskList.size();
     size_t taskMemSize[numTasks];
     size_t i;
 
@@ -168,8 +191,10 @@ int Main::init()
     }
 
     i = 0;
-    for (TaskList::const_iterator it = task.begin(); it != task.end(); ++it) {
-        taskMemSize[i] = ptr_align((*it)->getShmemSpace(bufferTime));
+    for (TaskList::const_iterator it = taskList.begin();
+            it != taskList.end(); ++it) {
+        taskMemSize[i] = ptr_align(
+                static_cast<const Task*>(*it)->getShmemSpace(bufferTime));
         shmem_len += taskMemSize[i++];
     }
 
@@ -200,8 +225,9 @@ int Main::init()
 
     char* buf = ptr_align<char>(sdoData + parameterSize);
     i = 0;
-    for (TaskList::iterator it = task.begin(); it != task.end(); ++it) {
-        (*it)->prepare(buf, buf + taskMemSize[i]);
+    for (TaskList::iterator it = taskList.begin();
+            it != taskList.end(); ++it) {
+        static_cast<Task*>(*it)->prepare(buf, buf + taskMemSize[i]);
         buf += taskMemSize[i];
     }
 
@@ -213,15 +239,16 @@ int Main::init()
     }
     else if (pid) {
         // Parent here; go back to the caller
-        for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
-            (*it)->rt_init();
+        for (TaskList::iterator it = taskList.begin();
+                it != taskList.end(); ++it)
+            static_cast<Task*>(*it)->rt_init();
         return 0;
     }
 
-    for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
-        (*it)->nrt_init();
+    for (TaskList::iterator it = taskList.begin(); it != taskList.end(); ++it)
+        static_cast<Task*>(*it)->nrt_init();
 
     pid = getpid();
 
-    return startProtocols();
+    return PdServ::Main::run();
 }

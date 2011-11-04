@@ -26,30 +26,25 @@
 #define LIB_TASK_H
 
 #include <cstddef>
-#include <set>
-#include <map>
 #include <cc++/thread.h>
 
 #include "pdserv/etl_data_info.h"
 #include "ShmemDataStructures.h"
+#include "../Task.h"
 
 class Main;
 class Signal;
 
-namespace PdServ {
-    class Session;
-    class Signal;
-}
-
-class Task {
+class Task: public PdServ::Task {
     public:
         Task(Main *main, double sampleTime, const char *name);
         ~Task();
 
-        const double sampleTime;
         Main * const main;
 
-        void newSignal(const Signal*);
+        Signal* addSignal( unsigned int decimation,
+                const char *path, enum si_datatype_t datatype,
+                const void *addr, size_t n, const unsigned int *dim);
 
         size_t getShmemSpace(double t) const;
 
@@ -61,7 +56,6 @@ class Task {
         void subscribe(const Signal* s, bool insert) const;
 
         void pollPrepare( const Signal *) const;
-        bool pollFinished() const;
 
     private:
         mutable ost::Semaphore mutex;
@@ -85,6 +79,9 @@ class Task {
 
         struct PollData *poll;
         char *pollData;
+
+        // Reimplemented from PdServ::Task
+        bool pollFinished() const;
 };
 
 #endif // LIB_TASK_H

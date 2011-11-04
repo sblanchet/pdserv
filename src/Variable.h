@@ -34,6 +34,8 @@ struct timespec;
 
 namespace PdServ {
 
+class Session;
+
 class Variable {
     public:
         Variable( const char *path,
@@ -59,7 +61,8 @@ class Variable {
         static const size_t maxWidth = 8; /**< Maximum supported data type
                                             width */
 
-        virtual void getValue(char *, struct timespec * = 0) const = 0;
+        virtual void getValue(Session*,
+                char *, struct timespec * = 0) const = 0;
 
     private:
         size_t * const dim;

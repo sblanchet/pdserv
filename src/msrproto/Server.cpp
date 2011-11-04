@@ -47,10 +47,9 @@ using namespace MsrProto;
 Server::Server(PdServ::Main *main, int argc, const char **argv):
     main(main), mutex(1)
 {
-    bool traditional = 1;
-    const PdServ::Main::Signals& mainSignals = main->getSignals();
-//    const PdServ::Main::Parameters& mainParameters = main->getParameters();
+    bool traditional = 0;
 
+    const PdServ::Main::Signals& mainSignals = main->getSignals();
     for (PdServ::Main::Signals::const_iterator it = mainSignals.begin();
             it != mainSignals.end(); it++) {
         size_t nelem = (*it)->nelem;
@@ -78,46 +77,47 @@ Server::Server(PdServ::Main *main, int argc, const char **argv):
 
 //    if (!main->getSignal("/Time"));
 
-//    for (PdServ::Main::Parameters::const_iterator it = mainParameters.begin();
-//            it != mainParameters.end(); it++) {
-//        size_t nelem = (*it)->nelem;
-//        const size_t *dim = (*it)->getDim();
-//        size_t vectorLen = dim[(*it)->ndims-1];
-//        Parameter *p;
-//
-//        parameterIndexMap[*it] = parameter.size();
-//        if (traditional) {
-//            for (unsigned i = 0; i < nelem; i++) {
-//                if (vectorLen > 1 && !(i % vectorLen)) {
-//                    // New row parameter
-//                    DirectoryNode *dir = root.mkdir(*it, i, 1);
-//                    if (dir) {
-//                        p = new Parameter(dir, 0, *it, parameter.size(),
-//                                vectorLen, i);
-//                        dir->insert(p);
-//                        parameter.push_back(p);
-//                    }
-//                }
-//                DirectoryNode *dir = root.mkdir(*it, i, 0);
-//                if (dir) {
-//                    p = new Parameter( dir, vectorLen > 1,
-//                            *it, parameter.size(), 1, i);
-//                    dir->insert(p);
-//                    parameter.push_back(p);
-//                }
-//            }
-//        }
-//        else {
-//            // New matrix parameter
-//            DirectoryNode *dir = root.mkdir(*it);
-//            if (dir) {
-//                p = new Parameter(
-//                        dir, 0, *it, parameter.size(), nelem, 0);
-//                dir->insert(p);
-//                parameter.push_back(p);
-//            }
-//        }
-//    }
+    const PdServ::Main::Parameters& mainParameters = main->getParameters();
+    for (PdServ::Main::Parameters::const_iterator it = mainParameters.begin();
+            it != mainParameters.end(); it++) {
+        size_t nelem = (*it)->nelem;
+        const size_t *dim = (*it)->getDim();
+        size_t vectorLen = dim[(*it)->ndims-1];
+        Parameter *p;
+
+        parameterIndexMap[*it] = parameter.size();
+        if (traditional) {
+            for (unsigned i = 0; i < nelem; i++) {
+                if (vectorLen > 1 && !(i % vectorLen)) {
+                    // New row parameter
+                    DirectoryNode *dir = root.mkdir(*it, i, 1);
+                    if (dir) {
+                        p = new Parameter(dir, 0, *it, parameter.size(),
+                                vectorLen, i);
+                        dir->insert(p);
+                        parameter.push_back(p);
+                    }
+                }
+                DirectoryNode *dir = root.mkdir(*it, i, 0);
+                if (dir) {
+                    p = new Parameter( dir, vectorLen > 1,
+                            *it, parameter.size(), 1, i);
+                    dir->insert(p);
+                    parameter.push_back(p);
+                }
+            }
+        }
+        else {
+            // New matrix parameter
+            DirectoryNode *dir = root.mkdir(*it);
+            if (dir) {
+                p = new Parameter(
+                        dir, 0, *it, parameter.size(), nelem, 0);
+                dir->insert(p);
+                parameter.push_back(p);
+            }
+        }
+    }
 
 //    if (!main->getParameter("/Taskinfo/Abtastfrequenz"));
 }

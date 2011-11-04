@@ -29,13 +29,11 @@
 
 namespace PdServ {
 
-class Main;
 class Session;
 
 class Signal: public Variable {
     public:
-        Signal( Main *main,
-                const char *path,
+        Signal( const char *path,
                 double sampleTime,
                 enum si_datatype_t dtype,
                 unsigned int ndims = 1,
@@ -48,7 +46,7 @@ class Signal: public Variable {
         virtual void subscribe(Session *) const = 0;
         virtual void unsubscribe(Session *) const = 0;
 
-        virtual void poll(const Session *s, char *buf) const = 0;
+        virtual double poll(const Session *s, char *buf) const = 0;
     private:
 
 };

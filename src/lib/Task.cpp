@@ -38,7 +38,6 @@ using std::endl;
 #include "Main.h"
 #include "Signal.h"
 #include "Pointer.h"
-#include "../Session.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // Data structures used in Task
@@ -71,7 +70,7 @@ struct PollData {
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 Task::Task(Main *main, double ts, const char *name):
-    sampleTime(ts), main(main), mutex(1)
+    PdServ::Task(ts), main(main), mutex(1)
 {
     pollId = 0;
     pollCount = 0;
@@ -79,8 +78,6 @@ Task::Task(Main *main, double ts, const char *name):
     seqNo = 0;
     std::fill_n(signalCount, 4, 0);
     signalMemSize = 0;
-
-    main->addTask(this);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -141,10 +138,17 @@ void Task::nrt_init()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::newSignal(const Signal* s)
+Signal* Task::addSignal( unsigned int decimation,
+        const char *path, enum si_datatype_t datatype,
+        const void *addr, size_t n, const unsigned int *dim)
 {
+    Signal *s = new Signal(this, decimation, path, datatype, addr, n, dim);
+
+    signals.insert(s);
     signalCount[s->subscriptionIndex]++;
     signalMemSize += s->memSize;
+
+    return s;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -169,7 +173,6 @@ void Task::subscribe(const Signal* s, bool insert) const
 void Task::pollPrepare( const Signal *signal) const
 {
     poll->signal[pollCount++] = signal;
-    main->setPollDelay(sampleTime / 1000 + 0.5);
 }
 
 /////////////////////////////////////////////////////////////////////////////

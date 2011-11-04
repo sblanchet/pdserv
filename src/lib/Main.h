@@ -26,10 +26,9 @@
 #define LIB_MAIN_H
 
 #include "../Main.h"
+#include "pdserv/etl_data_info.h"
 
 #include <cc++/thread.h>
-#include <set>
-#include <list>
 
 class Parameter;
 class Signal;
@@ -42,18 +41,23 @@ class Main: public PdServ::Main {
                 int (*gettime)(struct timespec*));
         ~Main();
 
-        int init();
-        void addTask(Task *);
+        int run();
 
-        void addParameter(const Parameter *p);
+        Task* addTask(double sampleTime, const char *name);
+
+        Parameter* addParameter( const char *path,
+                unsigned int mode, enum si_datatype_t datatype,
+                void *addr, size_t n, const unsigned int *dim);
+
+        Signal* addSignal( Task *task, unsigned int decimation,
+                const char *path, enum si_datatype_t datatype,
+                const void *addr, size_t n, const unsigned int *dim);
 //        int setParameter(const Parameter *p, size_t startIndex,
 //                size_t nelem, const char *data,
 //                struct timespec *) const;
 
 //        void newSignalList(unsigned int listId,
 //                const PdServ::Signal * const *, size_t n) const;
-
-        void setPollDelay(unsigned int ms) const;
 
         static const double bufferTime;
 
@@ -62,7 +66,7 @@ class Main: public PdServ::Main {
 
         int pid;
 
-        mutable unsigned int pollDelay;
+//        mutable unsigned int pollDelay;
 
         size_t shmem_len;
         void *shmem;
@@ -72,9 +76,6 @@ class Main: public PdServ::Main {
         struct timespec *sdoTaskTime;
         char *sdoData;
 
-        typedef std::list<Task*> TaskList;
-        TaskList task;
-// 
 //         // Methods used by the real-time process to interpret inbox
 //         // instructions from the clients
 //         bool processSdo(Task *task, const struct timespec *time) const;
@@ -84,7 +85,7 @@ class Main: public PdServ::Main {
         int (* const rttime)(struct timespec*);
 // 
         // Reimplemented from PdServ::Main
-        void processPoll() const;
+        void processPoll(size_t delay_ms) const;
         int gettime(struct timespec *) const;
 };
 

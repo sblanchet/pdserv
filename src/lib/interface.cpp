@@ -42,7 +42,7 @@ struct pdtask* pdserv_create_task(struct pdserv* pdserv, double tsample,
         const char *name)
 {
     return reinterpret_cast<struct pdtask*>(
-            new Task(reinterpret_cast<Main*>(pdserv), tsample, name));
+            reinterpret_cast<Main*>(pdserv)->addTask(tsample, name));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -70,8 +70,8 @@ struct variable *pdserv_signal(
 {
     Task *task = reinterpret_cast<Task*>(pdtask);
 
-    PdServ::Variable *v = new Signal(task,
-            decimation, path, datatype, addr, n, dim);
+    PdServ::Variable *v =
+        task->main->addSignal(task, decimation, path, datatype, addr, n, dim);
 
     return reinterpret_cast<struct variable *>(v);
 }
@@ -89,8 +89,8 @@ struct variable *pdserv_parameter(
         void *priv_data = 0
         )
 {
-    Parameter *p = new Parameter(reinterpret_cast<Main*>(pdserv),
-            path, mode, datatype, addr, n, dim);
+    Main *main = reinterpret_cast<Main*>(pdserv);
+    Parameter *p = main->addParameter( path, mode, datatype, addr, n, dim);
     if (trigger)
         p->trigger = trigger;
     p->priv_data = priv_data;
@@ -120,5 +120,5 @@ void pdserv_set_comment( struct variable *var, const char *comment)
 /////////////////////////////////////////////////////////////////////////////
 int pdserv_prepare(struct pdserv* pdserv)
 {
-    return reinterpret_cast<Main*>(pdserv)->init();
+    return reinterpret_cast<Main*>(pdserv)->run();
 }

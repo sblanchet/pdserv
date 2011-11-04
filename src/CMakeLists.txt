@@ -29,6 +29,7 @@ INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR})      # for config.h
 ADD_LIBRARY( ${PROJECT_NAME} SHARED
     SessionStatistics.h
     Session.cpp Session.h
+    Task.cpp Task.h
     Main.cpp Main.h
     Variable.cpp Variable.h
     Signal.cpp Signal.h

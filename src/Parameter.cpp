@@ -27,7 +27,6 @@
 #include <ctime>
 
 #include "Parameter.h"
-#include "Main.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -40,19 +39,16 @@ using namespace PdServ;
 
 //////////////////////////////////////////////////////////////////////
 Parameter::Parameter(
-        Main *main,
         const char *path,
         unsigned int mode,
         enum si_datatype_t dtype,
         unsigned int ndims,
         const unsigned int *dim):
-    Variable(path, dtype, ndims, dim), main(main), mode(mode)
+    Variable(path, dtype, ndims, dim), mode(mode)
 {
-    main->newParameter(this);
 }
 
 //////////////////////////////////////////////////////////////////////
 Parameter::~Parameter()
 {
-//    main->delParameter(this);
 }
