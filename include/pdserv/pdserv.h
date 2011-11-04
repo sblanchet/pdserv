@@ -1,5 +1,5 @@
-#ifndef PDCOMSERV_H
-#define PDCOMSERV_H
+#ifndef PDSERV_H
+#define PDSERV_H
 
 #include "etl_data_info.h"
 #include <stddef.h>
@@ -9,26 +9,23 @@ extern "C" {
 #endif
 
 /** Structure declaration */
-struct pdcomserv;
+struct pdserv;
+struct pdtask;
 struct variable;
 
-/** Initialise pdcomserv library
+/** Initialise pdserv library
  *
  * This is the first call that initialises the library. It should be called
  * before any other library calls
  * returns:
  *      NULL on error
- *      pointer to struct pdcomserv on success
+ *      pointer to struct pdserv on success
  */
-struct pdcomserv* pdcomserv_create(
+struct pdserv* pdserv_create(
         int argc,               /**< Argument count */
         const char *argv[],     /**< Arguments */
         const char *name,       /**< Name of the process */
         const char *version,    /**< Version string */
-        double baserate,        /**< Sample time of tid0 */
-        unsigned int nst,       /**< Number of sample times */
-        const unsigned int decimation[],   /**< Array of the decimations
-                                            * for tid1..tid<nst> */
         int (*gettime)(struct timespec*)   /**< Function used by the library
                                             * when the system time is required.
                                             * Essentially, this function
@@ -37,11 +34,26 @@ struct pdcomserv* pdcomserv_create(
                                             * used */
         );
 
+/** Create a cyclic task
+ *
+ * An application consists of one or more tasks that are called cyclically by
+ * caller.
+ *
+ * returns:
+ *      NULL on error
+ *      pointer to struct pdserv on success
+ */
+struct pdtask* pdserv_create_task(
+        struct pdserv* pdserv,  /**< Pointer to pdserv struct */
+        double tsample,         /**< Base sample time of task */
+        const char *name        /**< Optional name string */
+        );
+
 /** Register a signal
  *
  * This call registers a signal, i.e. Variables that are calculated
  *
- * Parameters @n and @dim are used to specify the shape:
+ * Arguments @n and @dim are used to specify the shape:
  * For scalars:
  *    @n = 1
  *    @dim = NULL
@@ -57,9 +69,8 @@ struct pdcomserv* pdcomserv_create(
  *   @dim = {2,3,4}
  *   
  */
-struct variable* pdcomserv_signal(
-        struct pdcomserv* pdcomserv,    /**< Pointer to pdcomserv structure */
-        unsigned int tid,         /**< Task Id of the signal */
+struct variable* pdserv_signal(
+        struct pdtask* pdtask,    /**< Pointer to pdtask structure */
         unsigned int decimation,  /**< Decimation with which the signal is
                                    * calculated */
         const char *path,         /**< Signal path */
@@ -74,23 +85,24 @@ struct variable* pdcomserv_signal(
 
 /** Callback on a parameter update event
  *
- * See \pdcomserv_set_parameter_trigger
+ * See \pdserv_set_parameter_trigger
  *
  * This function is responsible for copying the data from @src to @dst
  *
  * \returns 0 on success
  */
 typedef int (*paramtrigger_t)(
-        unsigned int tid,       /**< Task id context of call */
+        struct pdtask *pdtask,    /**< Pointer to pdtask structure */
+        const struct variable *param,   /**< Pointer to parameter */
         void *dst,              /**< Destination address @addr */
         const void *src,        /**< Data source */
         size_t len,             /**< Data length in bytes */
-        void *priv_data         /**< Optional user varialbe */
+        void *priv_data         /**< Optional user variable */
         );
 
 /** Register a parameter
  *
- * This call registers a parameter. See @pdcomserv_signal for the description of
+ * This call registers a parameter. See @pdserv_signal for the description of
  * similar function arguments.
  *
  * During the registration of a parameter, the caller has the chance to
@@ -113,8 +125,8 @@ typedef int (*paramtrigger_t)(
  * events at the same time for example. Incidentally @dst is the address
  * specified by @addr during registration. The return value is ignored.
  */
-struct variable *pdcomserv_parameter(
-        struct pdcomserv* pdcomserv,    /**< Pointer to pdcomserv structure */
+struct variable *pdserv_parameter(
+        struct pdserv* pdserv,    /**< Pointer to pdserv structure */
         const char *path,         /**< Parameter path */
         unsigned int mode,        /**< Access mode, same as unix file mode */
         enum si_datatype_t datatype, /**< Parameter data type */
@@ -132,28 +144,28 @@ struct variable *pdcomserv_parameter(
 /** Set an optional alias for a variable
  *
  * Sometimes it it easier to find a variable by its alias. Use this
- * function after calling either @pdcomserv_signal or @pdcomserv_parameter
+ * function after calling either @pdserv_signal or @pdserv_parameter
  * to set the alias name for a variable.
  */
-void pdcomserv_set_alias(
+void pdserv_set_alias(
         struct variable *variable, /**< Parameter or Signal address */
         const char *alias       /**< Variable's alias */
         );
 
 /** Set the optional unit of a variable */
-void pdcomserv_set_unit(
+void pdserv_set_unit(
         struct variable *variable, /**< Parameter or Signal address */
         const char *unit        /**< Variable's unit */
         );
 
 /** Set the optional comment of a variable */
-void pdcomserv_set_comment(
+void pdserv_set_comment(
         struct variable *variable, /**< Parameter or Signal address */
         const char *comment     /**< Variable's comment */
         );
 
 ///** Make the parameter or signal persistent */
-//void pdcomserv_set_persistent(
+//void pdserv_set_persistent(
 //        struct variable *variable, /**< Parameter or Signal address */
 //        unsigned int value
 //        );
@@ -165,12 +177,12 @@ void pdcomserv_set_comment(
  * that communicates with the rest of the world.
  *
  * Since the new process lives in a separate memory space, all parameters must
- * have been initialised beforehand. After calling @pdcomserv_init, parameters
+ * have been initialised beforehand. After calling @pdserv_prepare, parameters
  * should not be changed any more. They can only be updated though a call by
  * the library.
  */
-int pdcomserv_init(
-        struct pdcomserv* pdcomserv     /**< Pointer to pdcomserv structure */
+int pdserv_prepare(
+        struct pdserv* pdserv     /**< Pointer to pdserv structure */
         );
 
 /** Update variables
@@ -178,20 +190,19 @@ int pdcomserv_init(
  * Call this function at the end of the calculation cycle to update
  * variables
  */
-void pdcomserv_update(
-        struct pdcomserv* pdcomserv,  /**< Pointer to pdcomserv structure */
-        int st,                 /**< Sample task id to update */
+void pdserv_update(
+        struct pdtask* pdtask,  /**< Pointer to pdtask structure */
         const struct timespec *t /**< Current model time.
                                   * If NULL, zero is assumed */
         );
 
-/** Cleanup pdcomserv */
-void pdcomserv_exit(
-        struct pdcomserv*           /**< Pointer to pdcomserv structure */
+/** Cleanup pdserv */
+void pdserv_exit(
+        struct pdserv*           /**< Pointer to pdserv structure */
         );
 
 #ifdef __cplusplus
 }
 #endif // __cplusplus
 
-#endif // PDCOMSERV_H
+#endif // PDSERV_H

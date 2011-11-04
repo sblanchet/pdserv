@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -89,7 +89,7 @@ bool SubscriptionManager::unsubscribe(const Channel *c)
 
 /////////////////////////////////////////////////////////////////////////////
 bool SubscriptionManager::newSignalList(
-        const HRTLab::Signal * const *s, size_t n)
+        const PdServ::Signal * const *s, size_t n)
 {
 //    cout << __func__ << n << endl;
 
@@ -115,7 +115,7 @@ bool SubscriptionManager::newSignalList(
 
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::newSignalData(MsrXml::Element *parent,
-        const HRTLab::Receiver& receiver)
+        const PdServ::Receiver& receiver)
 {
 //    cout << __func__ << receiver.seqNo << endl;
     for (ActiveSignalSet::const_iterator sit = activeSignalSet.begin();

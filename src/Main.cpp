@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -39,12 +39,11 @@ using std::cerr;
 using std::endl;
 #endif
 
-using namespace HRTLab;
+using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
-Main::Main( const char *name, const char *version,
-        double baserate, unsigned int nst):
-    name(name), version(version), baserate(baserate), nst(nst)
+Main::Main(int argc, const char *argv[], const char *name, const char *version):
+    name(name), version(version), argc(argc), argv(argv), mutex(1)
 {
     msrproto = 0;
 }
@@ -60,7 +59,7 @@ Main::~Main()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::gettime(struct timespec* t) const
+int Main::localtime(struct timespec* t)
 {
     struct timeval tv;
 
@@ -118,7 +117,7 @@ int Main::newParameter(Parameter *p)
 /////////////////////////////////////////////////////////////////////////////
 int Main::startProtocols()
 {
-    msrproto = new MsrProto::Server(this, traditionalMSR);
+    msrproto = new MsrProto::Server(this, argc, argv);
 
 //    EtlProto::Server etlproto(this);
 
@@ -128,6 +127,7 @@ int Main::startProtocols()
 //    etlproto.join();
     msrproto->join();
 
+    cout << "XXXXXXXXXXXXXXXXXXXXXX" << endl;
     return 0;
 }
 
@@ -137,3 +137,18 @@ void Main::parameterChanged(const Parameter *p, size_t startIndex,
 {
     msrproto->parameterChanged(p, startIndex, nelem);
 }
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::poll( Session *session,
+        const Signal * const *s, size_t nelem, char *buf) const
+{
+    ost::SemaphoreLock lock(mutex);
+
+    for (size_t i = 0; i < nelem; ++i) {
+        s[i]->poll(session, buf);
+        buf += s[i]->memSize;
+    }
+
+    processPoll();
+}
+

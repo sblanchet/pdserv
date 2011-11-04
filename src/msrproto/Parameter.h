@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include "PrintVariable.h"
 
-namespace HRTLab {
+namespace PdServ {
     class Parameter;
     class Receiver;
 }
@@ -47,7 +47,7 @@ class DirectoryNode;
 class Parameter {
     public:
         Parameter( const DirectoryNode *directory, bool dependent,
-                const HRTLab::Parameter *p, unsigned int index,
+                const PdServ::Parameter *p, unsigned int index,
                 unsigned int nelem, unsigned int parameterElement = 0);
         ~Parameter();
 
@@ -63,7 +63,7 @@ class Parameter {
                 size_t &count) const;
 
         const unsigned int index;
-        const HRTLab::Parameter * const mainParam;
+        const PdServ::Parameter * const mainParam;
         const size_t nelem;
         const size_t memSize;
         const size_t parameterElement;

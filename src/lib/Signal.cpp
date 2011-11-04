@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -27,6 +27,7 @@
 #include "Signal.h"
 #include "Task.h"
 #include "Main.h"
+#include "../Main.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -36,7 +37,7 @@ using std::endl;
 #endif
 
 //////////////////////////////////////////////////////////////////////
-const size_t Signal::dataTypeIndex[HRTLab::Variable::maxWidth+1] = {
+const size_t Signal::dataTypeIndex[PdServ::Variable::maxWidth+1] = {
     3 /*0*/, 3 /*1*/, 2 /*2*/, 3 /*3*/,
     1 /*4*/, 3 /*5*/, 3 /*6*/, 3 /*7*/, 0 /*8*/
 };
@@ -49,31 +50,47 @@ Signal::Signal( Task *task,
         const void *addr,
         unsigned int ndims,
         const unsigned int *dim):
-    HRTLab::Signal(task, decimation, path, dtype, ndims, dim),
+    PdServ::Signal( task->main, path,
+            task->sampleTime * decimation, dtype, ndims, dim),
     addr(reinterpret_cast<const char *>(addr)),
-    task(task), subscriptionIndex(dataTypeIndex[width])
+    task(task), subscriptionIndex(dataTypeIndex[width]),
+    mutex(1)
 {
     task->newSignal(this);
-    //cout << __func__ << " addr = " << addr << endl;
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::subscribe(HRTLab::Session *session) const
+void Signal::subscribe(PdServ::Session *s) const
 {
-    const HRTLab::Signal *s = this;
-    task->subscribe(session, &s, 1);
+    ost::SemaphoreLock lock(mutex);
+
+    if (sessions.empty())
+        task->subscribe(this, true);
+
+    sessions.insert(s);
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::unsubscribe(HRTLab::Session *session) const
+void Signal::unsubscribe(PdServ::Session *s) const
 {
-    const HRTLab::Signal *s = this;
-    task->unsubscribe(session, &s, 1);
+    ost::SemaphoreLock lock(mutex);
+
+    sessions.erase(s);
+
+    if (sessions.empty())
+        task->subscribe(this, false);
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::getValue(char *buf, struct timespec* t) const
+void Signal::poll(const PdServ::Session *, char *buf) const
 {
-    const HRTLab::Signal * s = this;
-    task->HRTLab::Task::main->getValues(&s, 1, buf, t);
+    pollDest = buf;
+    task->pollPrepare(this);
+}
+
+//////////////////////////////////////////////////////////////////////
+void Signal::getValue(char *buf, struct timespec *) const
+{
+    const PdServ::Signal *s = this;
+    task->main->poll(0, &s, 1, buf);
 }

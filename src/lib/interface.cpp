@@ -4,56 +4,62 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
 
 #include "Main.h"
+#include "Task.h"
 #include "Signal.h"
 #include "Parameter.h"
-#include "pdcomserv/pdcomserv.h"
+#include "pdserv/pdserv.h"
 
 /////////////////////////////////////////////////////////////////////////////
-struct pdcomserv* pdcomserv_create(int argc, const char *argv[], 
-        const char *name, const char *version, double baserate,
-        unsigned int nst, const unsigned int decimation[],
+struct pdserv* pdserv_create(int argc, const char *argv[], 
+        const char *name, const char *version,
         int (*gettime)(struct timespec*))
 {
-    return reinterpret_cast<struct pdcomserv*>(
-            new Main(argc, argv, name, version, baserate, nst,
-                decimation, gettime));
+    return reinterpret_cast<struct pdserv*>(
+            new Main(argc, argv, name, version, gettime));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdcomserv_exit(struct pdcomserv* pdcomserv)
+struct pdtask* pdserv_create_task(struct pdserv* pdserv, double tsample,
+        const char *name)
 {
-    delete reinterpret_cast<Main*>(pdcomserv);
+    return reinterpret_cast<struct pdtask*>(
+            new Task(reinterpret_cast<Main*>(pdserv), tsample, name));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdcomserv_update(struct pdcomserv* pdcomserv, int st, const struct timespec *t)
+void pdserv_exit(struct pdserv* pdserv)
 {
-    reinterpret_cast<Main*>(pdcomserv)->update(st, t);
+    delete reinterpret_cast<Main*>(pdserv);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-struct variable *pdcomserv_signal(
-        struct pdcomserv* pdcomserv,
-        unsigned int tid,
+void pdserv_update(struct pdtask* task, const struct timespec *t)
+{
+    reinterpret_cast<Task*>(task)->update(t);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+struct variable *pdserv_signal(
+        struct pdtask* pdtask,
         unsigned int decimation,
         const char *path,
         enum si_datatype_t datatype,
@@ -62,60 +68,57 @@ struct variable *pdcomserv_signal(
         const unsigned int dim[]
         )
 {
-    Main *main = reinterpret_cast<Main*>(pdcomserv);
+    Task *task = reinterpret_cast<Task*>(pdtask);
 
-    if (tid >= main->nst)
-        return 0;
-
-    HRTLab::Variable *v = new Signal(main->task[tid],
+    PdServ::Variable *v = new Signal(task,
             decimation, path, datatype, addr, n, dim);
 
     return reinterpret_cast<struct variable *>(v);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-struct variable *pdcomserv_parameter(
-        struct pdcomserv* pdcomserv,
+struct variable *pdserv_parameter(
+        struct pdserv* pdserv,
         const char *path,
         unsigned int mode,
         enum si_datatype_t datatype,
         void *addr,
         size_t n,
         const unsigned int dim[],
-        paramtrigger_t _trigger = 0,
-        void *_priv_data = 0
+        paramtrigger_t trigger = 0,
+        void *priv_data = 0
         )
 {
-    Parameter *p = new Parameter(reinterpret_cast<Main*>(pdcomserv),
+    Parameter *p = new Parameter(reinterpret_cast<Main*>(pdserv),
             path, mode, datatype, addr, n, dim);
-    if (_trigger)
-        p->trigger = _trigger;
-    p->priv_data = _priv_data;
+    if (trigger)
+        p->trigger = trigger;
+    p->priv_data = priv_data;
 
     return
-        reinterpret_cast<struct variable *>(static_cast<HRTLab::Variable*>(p));
+        reinterpret_cast<struct variable *>(static_cast<PdServ::Variable*>(p));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdcomserv_set_alias( struct variable *var, const char *_alias)
+void pdserv_set_alias( struct variable *var, const char *alias)
 {
-    reinterpret_cast<HRTLab::Variable*>(var)->alias = _alias;
+    reinterpret_cast<PdServ::Variable*>(var)->alias = alias;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdcomserv_set_unit( struct variable *var, const char *_unit)
+void pdserv_set_unit( struct variable *var, const char *unit)
 {
-    reinterpret_cast<HRTLab::Variable*>(var)->unit = _unit;
+    reinterpret_cast<PdServ::Variable*>(var)->unit = unit;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdcomserv_set_comment( struct variable *var, const char *_comment)
+void pdserv_set_comment( struct variable *var, const char *comment)
 {
-    reinterpret_cast<HRTLab::Variable*>(var)->comment = _comment;
+    reinterpret_cast<PdServ::Variable*>(var)->comment = comment;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int pdcomserv_init(struct pdcomserv* pdcomserv)
+int pdserv_prepare(struct pdserv* pdserv)
 {
-    return reinterpret_cast<Main*>(pdcomserv)->init();
+    return reinterpret_cast<Main*>(pdserv)->init();
 }

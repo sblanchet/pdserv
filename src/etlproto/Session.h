@@ -16,7 +16,7 @@
 
 #include "rtlab/etl_data_info.h"
 
-namespace HRTLab {
+namespace PdServ {
     class Main;
     class Signal;
     class Variable;
@@ -29,22 +29,22 @@ class Session: public ost::SocketPort, private std::streambuf {
         Session(
                 ost::SocketService *ss,
                 ost::TCPSocket &socket,
-                HRTLab::Main *main);
+                PdServ::Main *main);
 
     private:
 
-        HRTLab::Main * const main;
-        const std::vector<HRTLab::Signal*>& signals;
+        PdServ::Main * const main;
+        const std::vector<PdServ::Signal*>& signals;
 
         std::string buf;
         std::string inbuf;
         const std::string crlf;
 
         // Map a signal to a set of subscription decimations
-        std::vector<std::map<size_t, std::set<HRTLab::Signal*> > > subscribed;
+        std::vector<std::map<size_t, std::set<PdServ::Signal*> > > subscribed;
         std::vector<std::map<size_t, bool> > dirty;
-        std::map<HRTLab::Signal*, std::set<size_t> > signalDecimation;
-        std::map<HRTLab::Variable*, bool> sent;
+        std::map<PdServ::Signal*, std::set<size_t> > signalDecimation;
+        std::map<PdServ::Variable*, bool> sent;
         std::vector<size_t> dataOffset;
         typedef std::map<unsigned int, unsigned int,
             std::greater<unsigned int> > DecimationMap;
@@ -54,7 +54,7 @@ class Session: public ost::SocketPort, private std::streambuf {
 
         static const char *getDTypeName(const enum si_datatype_t&);
 
-        void printVariable(std::streambuf *, HRTLab::Variable*, const char*);
+        void printVariable(std::streambuf *, PdServ::Variable*, const char*);
         enum ParseState_t {
             Idle,
         } state;

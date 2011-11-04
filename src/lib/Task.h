@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -30,76 +30,61 @@
 #include <map>
 #include <cc++/thread.h>
 
-#include "../Task.h"
-#include "pdcomserv/etl_data_info.h"
+#include "pdserv/etl_data_info.h"
 #include "ShmemDataStructures.h"
 
 class Main;
 class Signal;
-class Receiver;
 
-class Task: public HRTLab::Task {
+namespace PdServ {
+    class Session;
+    class Signal;
+}
+
+class Task {
     public:
-        Task(Main *main, unsigned int tid, double sampleTime);
+        Task(Main *main, double sampleTime, const char *name);
         ~Task();
+
+        const double sampleTime;
+        Main * const main;
 
         void newSignal(const Signal*);
 
         size_t getShmemSpace(double t) const;
+
         void prepare(void *start, void *end);
         void rt_init();
         void nrt_init();
+        void update(const struct timespec *);
 
-        size_t subscribe(HRTLab::Session*,
-                const HRTLab::Signal* const *, size_t n) const;
-        size_t unsubscribe(HRTLab::Session*,
-                const HRTLab::Signal* const * = 0, size_t n = 0) const;
+        void subscribe(const Signal* s, bool insert) const;
 
-        void txPdo(const struct timespec *);
-
-        Receiver *newReceiver();
-        void receiverDeleted(Receiver *);
+        void pollPrepare( const Signal *) const;
+        bool pollFinished() const;
 
     private:
-        Main * const main;
-
-        typedef std::set<Receiver*> ReceiverSet;
-        ReceiverSet receiverSet;
-
         mutable ost::Semaphore mutex;
 
-        size_t signalCount;
+        size_t signalCount[4];
         size_t signalMemSize;
         size_t pdoMem;
 
-        typedef std::set<const Signal*> SignalSet;
-        mutable SignalSet subscriptionSet[4];
-
-        typedef std::map<const HRTLab::Session*, SignalSet>
-            SessionSubscription;
-        mutable SessionSubscription sessionSubscription;
-
         unsigned int seqNo;
 
-        unsigned int copyListId;
-        struct CopyList {
-            const char *src;
-            size_t len;
-        } *copyList;
+        struct CopyList *copyList[4];
+        struct SignalList *signalList, *signalListEnd,
+                          **signalListRp, **signalListWp;
 
-        struct SignalList {
-            unsigned int requestId;
-            unsigned int reply;
-            size_t pdoMemSize;
-            unsigned int count;
-            struct CopyList list[];
-        };
-        SignalList *activeSet;
-
-        TxFrame *txMemBegin, *txFrame, **nextTxFrame;
+        struct TxPdo *txMemBegin, *txPdo, **nextTxPdo;
         const void *txMemEnd;
 
-        void newSignalList(ssize_t n) const;
+        mutable unsigned int pollId;
+        mutable unsigned int pollCount;
+        mutable char *pollPtr;
+
+        struct PollData *poll;
+        char *pollData;
 };
 
 #endif // LIB_TASK_H

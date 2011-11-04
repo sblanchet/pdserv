@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -62,9 +62,9 @@
 #include <set>
 #include <vector>
 
-#include "pdcomserv/etl_data_info.h"
+#include "pdserv/etl_data_info.h"
 
-namespace HRTLab {
+namespace PdServ {
     class Variable;
     class Parameter;
     class Variable;
@@ -76,23 +76,23 @@ namespace MsrXml {
 
 namespace MsrProto {
 
-class Session: public ost::SocketPort, public HRTLab::Session {
+class Session: public ost::SocketPort, public PdServ::Session {
     public:
         Session(
                 Server *s,
                 ost::SocketService *ss,
                 ost::TCPSocket &socket,
-                HRTLab::Main *main);
+                PdServ::Main *main);
         ~Session();
 
         void broadcast(Session *s, const MsrXml::Element &element);
-        void parameterChanged(const HRTLab::Parameter*,
+        void parameterChanged(const PdServ::Parameter*,
                 size_t startIndex, size_t nelem);
         void requestOutput();
 
         void processCommand();
 
-        void requestSignal(const HRTLab::Signal *s, bool state);
+        void requestSignal(const PdServ::Signal *s, bool state);
 
     private:
         Server * const server;
@@ -100,7 +100,7 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         std::vector<SubscriptionManager> subscriptionManager;
 
         unsigned int requestState;
-        typedef std::map<const HRTLab::Signal*, bool> SignalRequest;
+        typedef std::map<const PdServ::Signal*, bool> SignalRequest;
         SignalRequest signalRequest;
         void processSignalRequest();
 
@@ -110,10 +110,10 @@ class Session: public ost::SocketPort, public HRTLab::Session {
         void output();
         void disconnect();
 
-        // Reimplemented from HRTLab::Session
-        void newSignalList(const HRTLab::Task *task,
-                const HRTLab::Signal * const *, size_t n);
-        void newSignalData(const HRTLab::Receiver&);
+        // Reimplemented from PdServ::Session
+        void newSignalList(const PdServ::Task *task,
+                const PdServ::Signal * const *, size_t n);
+        void newSignalData(const PdServ::Receiver&);
 
         // Management variables
         bool writeAccess;

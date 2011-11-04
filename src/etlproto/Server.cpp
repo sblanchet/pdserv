@@ -11,7 +11,7 @@ using std::endl;
 using namespace EtlProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Server::Server(HRTLab::Main *main): main(main)
+Server::Server(PdServ::Main *main): main(main)
 {
 }
 

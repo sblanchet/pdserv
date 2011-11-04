@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -27,7 +27,6 @@
 #include "Channel.h"
 #include "XmlDoc.h"
 #include "PrintVariable.h"
-#include "../Task.h"
 #include "../Signal.h"
 #include "Directory.h"
 
@@ -43,7 +42,7 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Channel::Channel( const DirectoryNode *directory, const HRTLab::Signal *s,
+Channel::Channel( const DirectoryNode *directory, const PdServ::Signal *s,
         unsigned int index, unsigned int sigOffset, unsigned int nelem):
     directory(directory), index(index), signal(s), nelem(nelem),
     memSize(s->width * nelem), bufferOffset(sigOffset * s->width),
@@ -66,7 +65,7 @@ void Channel::setXmlAttributes( MsrXml::Element *element,
 {
     // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
     //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
-    double freq = 1.0 / signal->task->sampleTime / signal->decimation;
+    double freq = 1.0 / signal->sampleTime;
 
     // The MSR protocoll wants a bufsize, the maximum number of
     // values that can be retraced. This artificial limitation does

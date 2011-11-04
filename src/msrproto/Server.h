@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -34,7 +34,7 @@
 #include "../SessionStatistics.h"
 #include "Directory.h"
 
-namespace HRTLab {
+namespace PdServ {
     class Main;
     class Parameter;
 }
@@ -49,14 +49,14 @@ class Session;
 class Channel;
 class Parameter;
 
-class Server:public ost::Thread {
+class Server: public ost::Thread {
     public:
-        Server(HRTLab::Main *main, bool traditional);
+        Server(PdServ::Main *main, int argc, const char **argv);
         ~Server();
 
         void broadcast(Session *s, const MsrXml::Element&);
 
-        void parameterChanged(const HRTLab::Parameter*,
+        void parameterChanged(const PdServ::Parameter*,
                 size_t startIndex, size_t n);
 
         void sessionClosed(Session *s);
@@ -64,19 +64,19 @@ class Server:public ost::Thread {
         const DirectoryNode& getRoot() const;
 
         void getSessionStatistics(
-                std::list<HRTLab::SessionStatistics>& stats) const;
+                std::list<PdServ::SessionStatistics>& stats) const;
 
         typedef std::vector<const Channel*> Channels;
         typedef std::vector<const Parameter*> Parameters;
         const Channels& getChannels() const;
         const Channel* getChannel(unsigned int) const;
         const Parameters& getParameters() const;
-        size_t getParameterIndex(const HRTLab::Parameter *) const;
-        const Parameters& getParameters(const HRTLab::Parameter *p) const;
+        size_t getParameterIndex(const PdServ::Parameter *) const;
+        const Parameters& getParameters(const PdServ::Parameter *p) const;
         const Parameter* getParameter(unsigned int) const;
 
     private:
-        HRTLab::Main * const main;
+        PdServ::Main * const main;
         std::set<Session*> sessions;
 
         DirectoryNode root;
@@ -84,7 +84,7 @@ class Server:public ost::Thread {
         Channels channel;
         Parameters parameter;
 
-        typedef std::map<const HRTLab::Parameter*, size_t> ParameterMap;
+        typedef std::map<const PdServ::Parameter*, size_t> ParameterMap;
         ParameterMap parameterIndexMap;
 
         mutable ost::Semaphore mutex;

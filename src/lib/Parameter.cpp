@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -46,7 +46,7 @@ Parameter::Parameter(
         void *addr,
         unsigned int ndims,
         const unsigned int *dim):
-    HRTLab::Parameter(main, path, mode, dtype, ndims, dim),
+    PdServ::Parameter(main, path, mode, dtype, ndims, dim),
     addr(reinterpret_cast<char*>(addr)), main(main), mutex(1)
 {
     trigger = copy;
@@ -56,6 +56,8 @@ Parameter::Parameter(
 
     valueBuf = new char[memSize];
     std::copy(this->addr, this->addr + memSize, valueBuf);
+
+    main->addParameter(this);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -73,14 +75,14 @@ int Parameter::setValue(const char* src,
 
     ost::SemaphoreLock lock(mutex);
 
-    int rv = main->setParameter(this, startIndex, nelem, src, &mtime);
-
-    if (rv)
-        return rv;
-
-    std::copy(src, src + nelem * width, valueBuf + startIndex * width);
-
-    main->parameterChanged(this, startIndex, nelem);
+//     int rv = main->setParameter(this, startIndex, nelem, src, &mtime);
+// 
+//     if (rv)
+//         return rv;
+// 
+//     std::copy(src, src + nelem * width, valueBuf + startIndex * width);
+// 
+//     main->parameterChanged(this, startIndex, nelem);
 
     return 0;
 }
@@ -95,7 +97,7 @@ void Parameter::getValue(char* dst, struct timespec *time) const
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::copy(unsigned int tid,
+int Parameter::copy(struct pdtask *, const struct variable *,
         void *dst, const void *src, size_t len, void *)
 {
 //    cout << __PRETTY_FUNCTION__ << checkOnly << endl;

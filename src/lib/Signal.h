@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -30,14 +30,14 @@
 
 #include "../Signal.h"
 
-namespace HRTLab {
+namespace PdServ {
     class Session;
 }
 
 class Task;
 class Main;
 
-class Signal: public HRTLab::Signal {
+class Signal: public PdServ::Signal {
     public:
         Signal( Task *task,
                 unsigned int decimation,
@@ -52,18 +52,25 @@ class Signal: public HRTLab::Signal {
 
         const size_t subscriptionIndex;
 
-        typedef std::set<const HRTLab::Session*> SessionSet;
-        mutable SessionSet sessions;
+        mutable size_t copyListPosition;
+        mutable char *pollDest;
 
     private:
-        static const size_t dataTypeIndex[HRTLab::Variable::maxWidth+1];
+        mutable ost::Semaphore mutex;
 
-        // Reimplemented from HRTLab::Signal
-        void subscribe(HRTLab::Session *) const;
-        void unsubscribe(HRTLab::Session *) const;
+        static const size_t dataTypeIndex[PdServ::Variable::maxWidth+1];
+
+        typedef std::set<const PdServ::Session*> SessionSet;
+        mutable SessionSet sessions;
+
+
+        // Reimplemented from PdServ::Signal
+        void subscribe(PdServ::Session *) const;
+        void unsubscribe(PdServ::Session *) const;
         double sampleTime() const;
+        void poll(const PdServ::Session *s, char *buf) const;
 
-        // Reimplemented from HRTLab::Variable
+        // Reimplemented from PdServ::Variable
         void getValue(char *, struct timespec * = 0) const;
 };
 

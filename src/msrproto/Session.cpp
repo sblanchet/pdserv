@@ -4,20 +4,20 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdcomserv package.
+ *  This file is part of the pdserv package.
  *
- *  pdcomserv is free software: you can redistribute it and/or modify
+ *  pdserv is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  pdcomserv is distributed in the hope that it will be useful,
+ *  pdserv is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with pdcomserv. See COPYING. If not, see
+ *  along with pdserv. See COPYING. If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
@@ -25,7 +25,6 @@
 #include "config.h"
 
 #include "../Main.h"
-#include "../Task.h"
 #include "../Parameter.h"
 #include "../Signal.h"
 #include "../Receiver.h"
@@ -65,9 +64,9 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Session::Session( Server *s, ost::SocketService *ss,
-        ost::TCPSocket &socket, HRTLab::Main *main):
-    SocketPort(0, socket), HRTLab::Session(main),
-    server(s), subscriptionManager(main->nst),
+        ost::TCPSocket &socket, PdServ::Main *main):
+    SocketPort(0, socket), PdServ::Session(main),
+    server(s), subscriptionManager(0), //main->getTasks().size()),
     dataTag("data"), outbuf(this)
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
@@ -109,7 +108,7 @@ void Session::broadcast(Session *s, const MsrXml::Element &element)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::parameterChanged(const HRTLab::Parameter *p,
+void Session::parameterChanged(const PdServ::Parameter *p,
         size_t startIndex, size_t nelem)
 {
     MsrXml::Element pu("pu");
@@ -138,7 +137,7 @@ void Session::requestOutput()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::requestSignal(const HRTLab::Signal *s, bool state)
+void Session::requestSignal(const PdServ::Signal *s, bool state)
 {
     requestState = 2;
     signalRequest[s] = state;
@@ -149,8 +148,8 @@ void Session::processSignalRequest()
 {
     size_t insIdx = 0;
     size_t delIdx = 0;
-    const HRTLab::Signal *ins[signalRequest.size()];
-    const HRTLab::Signal *del[signalRequest.size()];
+    const PdServ::Signal *ins[signalRequest.size()];
+    const PdServ::Signal *del[signalRequest.size()];
     for (SignalRequest::const_iterator it = signalRequest.begin();
             it != signalRequest.end(); it++) {
         if (it->second) 
@@ -161,8 +160,8 @@ void Session::processSignalRequest()
 
     signalRequest.clear();
 
-    main->unsubscribe(this, del, delIdx);
-    main->subscribe(this, ins, insIdx);
+//    main->unsubscribe(this, del, delIdx);
+//    main->subscribe(this, ins, insIdx);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -200,7 +199,7 @@ void Session::pending()
         if (n <= 0)
             break;
 
-        inBytes += n;   // HRTLab::Session input byte counter
+        inBytes += n;   // PdServ::Session input byte counter
 
         if (inbuf.newData(n)) {
             do {
@@ -233,7 +232,7 @@ void Session::output()
         return;
     }
 
-    outBytes += n;       // HRTLab::Session output byte counter
+    outBytes += n;       // PdServ::Session output byte counter
 
     if (outbuf.clear(n))
         setDetectOutput(false);
@@ -247,26 +246,26 @@ void Session::disconnect()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalList(const HRTLab::Task *task,
-        const HRTLab::Signal * const *s, size_t n)
+void Session::newSignalList(const PdServ::Task *task,
+        const PdServ::Signal * const *s, size_t n)
 {
-    if (!subscriptionManager[task->tid].newSignalList(s, n))
-        return;
+//    if (!subscriptionManager[task->tid].newSignalList(s, n))
+//        return;
 
-    for (size_t i = 0; i < main->nst; i++)
-        subscriptionManager[i].sync();
+//    for (size_t i = 0; i < main->nst; i++)
+//        subscriptionManager[i].sync();
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalData(const HRTLab::Receiver &receiver)
+void Session::newSignalData(const PdServ::Receiver &receiver)
 {
     if (quiet)
         return;
 
-    dataTag.setAttribute("level", receiver.task->tid);
+//    dataTag.setAttribute("level", receiver.task->tid);
     dataTag.setAttribute("time", *receiver.time);
 
-    subscriptionManager[receiver.task->tid].newSignalData(&dataTag, receiver);
+//    subscriptionManager[receiver.task->tid].newSignalData(&dataTag, receiver);
 
     if (dataTag.hasChildren())
         outbuf << dataTag << std::flush;
@@ -394,13 +393,13 @@ void Session::readChannel()
     }
     else {
         size_t buflen = 0;
-        const HRTLab::Signal *mainSignal = 0;
-        std::map<const HRTLab::Signal*, size_t> bufOffset;
+        const PdServ::Signal *mainSignal = 0;
+        std::map<const PdServ::Signal*, size_t> bufOffset;
 
         const Server::Channels& channel = server->getChannels();
 
-        typedef std::list<const HRTLab::Signal*> SignalList;
-        SignalList orderedSignals[HRTLab::Variable::maxWidth + 1];
+        typedef std::list<const PdServ::Signal*> SignalList;
+        SignalList orderedSignals[PdServ::Variable::maxWidth + 1];
 
         for (Server::Channels::const_iterator it = channel.begin();
                 it != channel.end(); it++) {
@@ -412,7 +411,7 @@ void Session::readChannel()
             orderedSignals[mainSignal->width].push_back(mainSignal);
         }
 
-        const HRTLab::Signal *signalList[bufOffset.size()];
+        const PdServ::Signal *signalList[bufOffset.size()];
 
         index = 0;
         for (size_t w = 8; w; w /= 2) {
@@ -429,7 +428,7 @@ void Session::readChannel()
         }
 
         char buf[buflen];
-        main->getValues(signalList, bufOffset.size(), buf);
+        main->poll(this, signalList, bufOffset.size(), buf);
 
         MsrXml::Element channels("channels");
         for (Server::Channels::const_iterator it = channel.begin();
@@ -524,7 +523,7 @@ void Session::readStatistics()
     //           connectedtime="1282151176.659208"/>
     //   <client index="1" .../>
     // </clients>
-    typedef std::list<HRTLab::SessionStatistics> StatList;
+    typedef std::list<PdServ::SessionStatistics> StatList;
     StatList stats;
     main->getSessionStatistics(stats);
 
@@ -545,7 +544,7 @@ void Session::readStatistics()
 /////////////////////////////////////////////////////////////////////////////
 void Session::remoteHost()
 {
-    inbuf.getString("name", HRTLab::Session::remoteHost);
+    inbuf.getString("name", PdServ::Session::remoteHost);
 
     inbuf.getString("applicationname", client);
 
@@ -629,9 +628,9 @@ void Session::xsad()
     quiet = !sync and inbuf.isTrue("quiet");
 
     if (!inbuf.getUnsignedList("channels", indexList)) {
-        if (sync)
-            for (size_t i = 0; i < main->nst; i++)
-                subscriptionManager[i].sync();
+//        if (sync)
+//            for (size_t i = 0; i < main->nst; i++)
+//                subscriptionManager[i].sync();
         return;
     }
 
@@ -671,25 +670,22 @@ void Session::xsad()
         if (*it >= channel.size())
             continue;
 
-        const HRTLab::Signal *mainSignal = channel[*it]->signal;
+        const PdServ::Signal *mainSignal = channel[*it]->signal;
 
         if (event) {
             if (!foundReduction)
                 // If user did not supply a reduction, limit to a 
                 // max of 10Hz automatically
-                reduction = 0.1 / mainSignal->task->sampleTime
-                    / mainSignal->decimation + 0.5;
+                reduction = 0.1 / mainSignal->sampleTime + 0.5;
         }
         else if (!foundReduction and !foundBlocksize) {
             // Quite possibly user input; choose reduction for 1Hz
-            reduction = 1.0 / mainSignal->task->sampleTime
-                / mainSignal->decimation + 0.5;
+            reduction = 1.0 / mainSignal->sampleTime + 0.5;
             blocksize = 1;
         }
         else if (foundReduction and !foundBlocksize) {
             // Choose blocksize so that a datum is sent at 10Hz
-            blocksize = 0.1 / mainSignal->task->sampleTime
-                    / mainSignal->decimation + 0.5;
+            blocksize = 0.1 / mainSignal->sampleTime + 0.5;
         }
         else if (!foundReduction and foundBlocksize) {
             reduction = 1;
@@ -698,7 +694,7 @@ void Session::xsad()
         if (!reduction) reduction = 1;
         if (!blocksize) blocksize = 1;
 
-        size_t tid = mainSignal->task->tid;
+        size_t tid = 0; //mainSignal->task->tid;
         if (subscriptionManager[tid].subscribe( channel[*it], event,
                     sync, reduction, blocksize, base64, precision)) {
             signalRequest[mainSignal] = true;
@@ -719,7 +715,7 @@ void Session::xsod()
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
             if (*it < channel.size()) {
-                size_t tid = channel[*it]->signal->task->tid;
+                size_t tid = 0; //channel[*it]->signal->task->tid;
                 if (subscriptionManager[tid].unsubscribe(channel[*it])) {
                     signalRequest[channel[*it]->signal] = false; 
                     requestState = 2;
@@ -728,9 +724,9 @@ void Session::xsod()
         }
     }
     else {
-        for (size_t i = 0; i < main->nst; i++)
-            subscriptionManager[i].unsubscribe();
+//        for (size_t i = 0; i < main->nst; i++)
+//            subscriptionManager[i].unsubscribe();
         signalRequest.clear();
-        main->unsubscribe(this);
+//        main->unsubscribe(this);
     }
 }

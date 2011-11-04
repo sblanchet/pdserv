@@ -19,7 +19,7 @@ using namespace EtlProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Session::Session( ost::SocketService *ss,
-        ost::TCPSocket &socket, HRTLab::Main *main):
+        ost::TCPSocket &socket, PdServ::Main *main):
     SocketPort(0, socket), main(main),
     signals(main->getSignals()), crlf("\r\n"),
     signal_ptr_start(0) // FIXME main->getSignalPtrStart())
@@ -82,7 +82,7 @@ void Session::expired()
 
     while (*signal_ptr) {
         cout << __func__ << ' ' << *signal_ptr << endl;
-        if (*signal_ptr == HRTLab::Main::Restart) {
+        if (*signal_ptr == PdServ::Main::Restart) {
             signal_ptr = signal_ptr_start;
             continue;
         }
@@ -90,7 +90,7 @@ void Session::expired()
         const size_t blockLen = signal_ptr[1];
 
         switch (*signal_ptr) {
-            case HRTLab::Main::SubscriptionList:
+            case PdServ::Main::SubscriptionList:
                 {
                     size_t headerLen = 4;
                     size_t n = blockLen - headerLen;
@@ -102,7 +102,7 @@ void Session::expired()
 
                     for (unsigned int i = 0; i < n; i++) {
                         size_t sigIdx = signal_ptr[i + headerLen];
-                        HRTLab::Signal *s = signals[sigIdx];
+                        PdServ::Signal *s = signals[sigIdx];
 
                         dataOffset[sigIdx] = offset;
                         offset += s->memSize;
@@ -116,7 +116,7 @@ void Session::expired()
                 }
                 break;
 
-            case HRTLab::Main::SubscriptionData:
+            case PdServ::Main::SubscriptionData:
                 {
                     unsigned int tid = signal_ptr[2];
                     //unsigned int iterationNo = signal_ptr[3];
@@ -143,11 +143,11 @@ void Session::expired()
                                 << ' ' << it->first
                                 << ' ' << subscribed[tid][it->first].size()
                                 << crlf;
-                            for (std::set<HRTLab::Signal*>::iterator it2 =
+                            for (std::set<PdServ::Signal*>::iterator it2 =
                                     subscribed[tid][it->first].begin();
                                     it2 != subscribed[tid][it->first].end();
                                     it2++) {
-                                HRTLab::Variable *v = *it2;
+                                PdServ::Variable *v = *it2;
 
                                 s << v->index;
                                 if (sent[v]) {
@@ -178,7 +178,7 @@ void Session::expired()
                             << ' ' << time.tv_nsec
                             << crlf << std::flush;
 
-                        for (std::set<HRTLab::Signal*>::iterator it2 =
+                        for (std::set<PdServ::Signal*>::iterator it2 =
                                 subscribed[tid][it->first].begin();
                                 it2 != subscribed[tid][it->first].end();
                                 it2++) {
@@ -263,7 +263,7 @@ Session::ParseState_t Session::ParseInstruction(const std::string& s)
         if (!is.fail()) {
 //            size_t sigIdx = main->subscribe(path);
 //            if (sigIdx != ~0U) {
-//                HRTLab::Signal *signal = (main->getSignals())[sigIdx];
+//                PdServ::Signal *signal = (main->getSignals())[sigIdx];
 //                unsigned int tid = signal[sigIdx].tid;
 //                signalDecimation[signal].insert(n);
 //
@@ -313,16 +313,16 @@ void Session::list()
     xmlDocPtr xmldoc;
     xmlNodePtr root, node;
 
-    const HRTLab::Main::VariableMap& variables = main->getVariableMap();
+    const PdServ::Main::VariableMap& variables = main->getVariableMap();
 
     TESTOUT(xmldoc = xmlNewDoc(BAD_CAST "1.0"));
 
     TESTOUT(root = xmlNewNode(NULL,(xmlChar*)"signals"));
     xmlDocSetRootElement(xmldoc,root);
 
-    for (std::map<std::string,HRTLab::Variable*>::const_iterator it = variables.begin();
+    for (std::map<std::string,PdServ::Variable*>::const_iterator it = variables.begin();
             it != variables.end(); it++) {
-        HRTLab::Variable *v = it->second;
+        PdServ::Variable *v = it->second;
 
         TESTOUT(node = xmlNewNode(NULL,(xmlChar*)"signal"));
         xmlAddChild(root, node);
@@ -383,7 +383,7 @@ void Session::output()
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::printVariable(std::streambuf *sb,
-        HRTLab::Variable *v, const char *dataPtr)
+        PdServ::Variable *v, const char *dataPtr)
 {
     std::ostream s(sb);
     const char punct = ';';
