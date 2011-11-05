@@ -396,13 +396,13 @@ void Session::readChannel()
         const PdServ::Signal *mainSignal = 0;
         std::map<const PdServ::Signal*, size_t> bufOffset;
 
-        const Server::Channels& channel = server->getChannels();
+        const Server::Channels& chanList = server->getChannels();
 
         typedef std::list<const PdServ::Signal*> SignalList;
         SignalList orderedSignals[PdServ::Variable::maxWidth + 1];
 
-        for (Server::Channels::const_iterator it = channel.begin();
-                it != channel.end(); it++) {
+        for (Server::Channels::const_iterator it = chanList.begin();
+                it != chanList.end(); it++) {
             mainSignal = (*it)->signal;
             if (bufOffset.find(mainSignal) != bufOffset.end())
                 continue;
@@ -431,8 +431,8 @@ void Session::readChannel()
         main->poll(this, signalList, bufOffset.size(), buf, 0);
 
         MsrXml::Element channels("channels");
-        for (Server::Channels::const_iterator it = channel.begin();
-                it != channel.end(); it++) {
+        for (Server::Channels::const_iterator it = chanList.begin();
+                it != chanList.end(); it++) {
             MsrXml::Element *el = channels.createChild("channel");
             (*it)->setXmlAttributes(el, shortReply,
                     buf + bufOffset[(*it)->signal]);

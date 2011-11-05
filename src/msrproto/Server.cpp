@@ -71,6 +71,7 @@ Server::Server(PdServ::Main *main, int argc, const char **argv):
             if (dir) {
                 c = new Channel( dir, *it, channel.size(), 0, nelem);
                 dir->insert(c);
+                channel.push_back(c);
             }
         }
     }
@@ -211,12 +212,6 @@ const Server::Parameters& Server::getParameters() const
 {
     return parameter;
 }
-
-// /////////////////////////////////////////////////////////////////////////////
-// const Server::Parameters& Server::getParameters(const PdServ::Parameter *p) const
-// {
-// //    return mainParameterMap.find(p)->second;
-// }
 
 /////////////////////////////////////////////////////////////////////////////
 const Parameter* Server::getParameter(unsigned int idx) const

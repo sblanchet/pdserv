@@ -179,7 +179,7 @@ void Task::pollPrepare( const Signal *signal) const
 bool Task::pollFinished() const
 {
     if (!pollCount)
-        return false;
+        return true;
 
     if (pollId == poll->request) {
         poll->signal[pollCount] = 0;
