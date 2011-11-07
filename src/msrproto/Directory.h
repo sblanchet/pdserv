@@ -105,7 +105,7 @@ class VariableDirectory: public DirectoryNode {
         Parameters parameters;
 
         typedef std::vector<size_t> ParameterIndex;
-        typedef std::map<size_t, ParameterIndex> ParameterStartIndex;
+        typedef std::vector<ParameterIndex> ParameterStartIndex;
         typedef std::map<const PdServ::Parameter*, ParameterStartIndex>
             ParameterExtentMap;
         ParameterExtentMap extents;

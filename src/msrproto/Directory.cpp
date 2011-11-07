@@ -64,14 +64,18 @@ bool VariableDirectory::insert(const PdServ::Parameter *p, size_t index,
         new Parameter(dir, dependent, p, n, elementCount, index);
     dir->insert(parameter);
 
+    ParameterStartIndex& pi = extents[p];
     if (!index) {
         size_t n = p->nelem / elementCount;
         parameters.reserve(parameters.size() + n);
-        extents[p][elementCount].resize(n);
+
+        pi.resize(pi.size() + 1);
+        pi[pi.size() - 1].reserve(p->nelem / elementCount);
     }
 
     parameters.push_back(parameter);
-    extents[p][elementCount][index/elementCount] = n;
+
+    pi[elementCount == 1 and pi.size() == 2].push_back(n);
 
     return false;
 }
@@ -107,12 +111,20 @@ std::set<size_t> VariableDirectory::getParameterIndex(
 {
     std::set<size_t> indices;
     const ParameterStartIndex& pi = extents.find(p)->second;
-    for (ParameterStartIndex::const_iterator it = pi.begin();
-            it != pi.end(); it++) {
-        for (size_t i = start / it->first;
-                i < (start + nelem) / it->first; ++i)
-            indices.insert(it->second[i]);
+
+    if (pi.size() == 2) {
+        size_t vectorLen = p->getDim()[p->ndims - 1];
+
+        for (size_t i = start / vectorLen;
+                i < (start + nelem) / vectorLen; ++i)
+            indices.insert(pi[0][i]);
+
+        for (size_t i = start; i < start + nelem; ++i)
+            indices.insert(pi[1][i]);
     }
+    else
+        indices.insert(pi[0][0]);
+
     return indices;
 }
 
