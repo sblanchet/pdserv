@@ -65,6 +65,8 @@ class Main {
 
         typedef std::list<const Parameter*> Parameters;
         const Parameters& getParameters() const;
+        void parameterChanged(const Parameter *p, size_t startElement,
+                size_t nelem) const;
 
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 
@@ -91,8 +93,6 @@ class Main {
         typedef std::map<const std::string, const Variable*> VariableMap;
         VariableMap variableMap;
 
-        void parameterChanged(const Parameter *p, size_t startElement,
-                size_t nelem) const;
     private:
         mutable ost::Semaphore mutex;
 

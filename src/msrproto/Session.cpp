@@ -278,7 +278,7 @@ void Session::processCommand()
         {11, "remote_host",             &Session::remoteHost            },
         {12, "read_kanaele",            &Session::readChannel           },
         {12, "read_statics",            &Session::readStatistics        },
-        {14, "read_parameter",          &Session::readParameter },
+        {14, "read_parameter",          &Session::readParameter         },
         {15, "read_statistics",         &Session::readStatistics        },
         {15, "write_parameter",         &Session::writeParameter        },
         {17, "read_param_values",       &Session::readParamValues       },

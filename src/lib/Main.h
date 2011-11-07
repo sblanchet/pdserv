@@ -42,6 +42,7 @@ class Main: public PdServ::Main {
         ~Main();
 
         int run();
+        void getParameters(struct pdtask *, const struct timespec *) const;
 
         Task* addTask(double sampleTime, const char *name);
 
@@ -52,9 +53,9 @@ class Main: public PdServ::Main {
         Signal* addSignal( Task *task, unsigned int decimation,
                 const char *path, enum si_datatype_t datatype,
                 const void *addr, size_t n, const unsigned int *dim);
-//        int setParameter(const Parameter *p, size_t startIndex,
-//                size_t nelem, const char *data,
-//                struct timespec *) const;
+        int setParameter(const Parameter *p, size_t startIndex,
+                size_t nelem, const char *data,
+                struct timespec *) const;
 
 //        void newSignalList(unsigned int listId,
 //                const PdServ::Signal * const *, size_t n) const;
@@ -73,7 +74,7 @@ class Main: public PdServ::Main {
 
         struct SDOStruct *sdo;
         mutable ost::Semaphore sdoMutex;
-        struct timespec *sdoTaskTime;
+//        struct timespec *sdoTaskTime;
         char *sdoData;
 
 //         // Methods used by the real-time process to interpret inbox

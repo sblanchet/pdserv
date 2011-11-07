@@ -53,15 +53,11 @@ Parameter::Parameter(
 
     mtime.tv_sec = 0;
     mtime.tv_nsec = 0;
-
-    valueBuf = new char[memSize];
-    std::copy(this->addr, this->addr + memSize, valueBuf);
 }
 
 //////////////////////////////////////////////////////////////////////
 Parameter::~Parameter()
 {
-    delete[] valueBuf;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -73,16 +69,12 @@ int Parameter::setValue(const char* src,
 
     ost::SemaphoreLock lock(mutex);
 
-//     int rv = main->setParameter(this, startIndex, nelem, src, &mtime);
-// 
-//     if (rv)
-//         return rv;
-// 
-//     std::copy(src, src + nelem * width, valueBuf + startIndex * width);
-// 
-//     main->parameterChanged(this, startIndex, nelem);
+    int rv = main->setParameter(this, startIndex, nelem, src, &mtime);
 
-    return 0;
+    if (!rv)
+        main->parameterChanged(this, startIndex, nelem);
+
+    return rv;
 }
 
 //////////////////////////////////////////////////////////////////////

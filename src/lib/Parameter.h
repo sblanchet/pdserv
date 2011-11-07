@@ -50,10 +50,11 @@ class Parameter: public PdServ::Parameter {
         paramtrigger_t trigger;
         void *priv_data;
 
+        mutable char *valueBuf;
+
     private:
         mutable ost::Semaphore mutex;
         mutable struct timespec mtime;
-        char *valueBuf;
 
         // Reimplemented from PdServ::Parameter
         int setValue(const char *buf,

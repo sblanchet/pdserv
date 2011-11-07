@@ -185,6 +185,16 @@ int pdserv_prepare(
         struct pdserv* pdserv     /**< Pointer to pdserv structure */
         );
 
+/** Update parameters
+ *
+ * Call this function to get parameters
+ */
+void pdserv_get_parameters(
+        struct pdserv* pdserv,
+        struct pdtask* pdtask,  /**< Pointer to pdtask structure */
+        const struct timespec *t
+        );
+
 /** Update variables
  *
  * Call this function at the end of the calculation cycle to update

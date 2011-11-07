@@ -75,11 +75,13 @@ int main(int argc, const char *argv[])
     while (1) {
         //sleep(1);
         usleep(100000);
+        clock_gettime(CLOCK_REALTIME, &time);
+
+        pdserv_get_parameters(pdserv, task[0], &time);
         var1[1][0][0] = i++;
         dbl[0] += param[0];
         dbl[2] += param[2];
         var1[5][0][0] += param[1];
-        clock_gettime(CLOCK_REALTIME, &time);
         dbltime = time.tv_sec + time.tv_nsec * 1.0e-9;
         pdserv_update(task[0], &time);
     }

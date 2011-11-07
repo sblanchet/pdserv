@@ -57,8 +57,10 @@ using std::endl;
 
 struct SDOStruct {
     const Parameter *parameter;
-    unsigned int startIndex;
+    unsigned int offset;
     unsigned int count;
+    int rv;
+    struct timespec time;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -68,7 +70,7 @@ const double Main::bufferTime = 2.0;
 Main::Main(int argc, const char **argv,
         const char *name, const char *version,
         int (*gettime)(struct timespec*)):
-    PdServ::Main(argc, argv, name, version), mutex(1), // sdoMutex(1),
+    PdServ::Main(argc, argv, name, version), mutex(1), sdoMutex(1),
     rttime(gettime ? gettime : &PdServ::Main::localtime)
 {
     shmem_len = 0;
@@ -127,33 +129,34 @@ Signal* Main::addSignal( Task *task, unsigned int decimation,
     return s;
 }
 
-// /////////////////////////////////////////////////////////////////////////////
-// int Main::setParameter(const Parameter *p, size_t startIndex,
-//         size_t count, const char *data, struct timespec *mtime) const
-// {
-//     ost::SemaphoreLock lock(sdoMutex);
-// 
-//     size_t delay = 100; // ms FIXME
-// 
-//     // Write the parameters into the shared memory sorted from widest
-//     // to narrowest data type width. This ensures that the data is
-//     // allways aligned correctly.
-//     std::copy(data, data + p->width * count, sdoData);
-//     sdo->parameter = p;
-//     sdo->startIndex = startIndex;
-//     sdo->count = count;
-//     sdo->type = SDOStruct::WriteParameter;
-//     sdo->reqId++;
-// 
-//     do {
-//         ost::Thread::sleep(delay);
-//     } while (sdo->reqId != sdo->replyId);
-// 
-//     if (!sdo->errorCode)
-//         *mtime = sdo->time;
-//     
-//     return sdo->errorCode;
-// }
+/////////////////////////////////////////////////////////////////////////////
+int Main::setParameter(const Parameter *p, size_t startIndex,
+        size_t count, const char *data, struct timespec *mtime) const
+{
+    ost::SemaphoreLock lock(sdoMutex);
+
+    size_t delay = 100; // ms FIXME
+
+    // Write the parameters into the shared memory sorted from widest
+    // to narrowest data type width. This ensures that the data is
+    // allways aligned correctly.
+    sdo->parameter = p;
+    sdo->offset = p->width * startIndex;
+    size_t n = p->width * count;
+    std::copy(data, data + n, p->valueBuf + sdo->offset);
+
+    // Now write the length to trigger the action
+    sdo->count = n;
+
+    do {
+        ost::Thread::sleep(delay);
+    } while (sdo->count);
+
+    if (!sdo->rv)
+        *mtime = sdo->time;
+    
+    return sdo->rv;
+}
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::processPoll(size_t delay_ms) const
@@ -164,14 +167,11 @@ void Main::processPoll(size_t delay_ms) const
     do {
         finished = true;
         int i = 0;
-//        cout << "wait ";
         for (TaskList::const_iterator it = taskList.begin();
                 it != taskList.end(); ++it, ++i) {
             fin[i] = fin[i] or (*it)->pollFinished();
             finished = finished and fin[i];
-//            cout << fin[i] << ' ';
         }
-//        cout << "sleep" << endl;
         ost::Thread::sleep(delay_ms);
     } while (!finished);
 }
@@ -182,11 +182,19 @@ int Main::run()
     size_t numTasks = taskList.size();
     size_t taskMemSize[numTasks];
     size_t i;
+    const size_t dataTypeIndex[PdServ::Variable::maxWidth+1] = {
+        3 /*0*/, 3 /*1*/, 2 /*2*/, 3 /*3*/,
+        1 /*4*/, 3 /*5*/, 3 /*6*/, 3 /*7*/, 0 /*8*/
+    };
+
+    size_t parameterOffset[5];
+    std::fill_n(parameterOffset, 5, 0);
 
     size_t parameterSize = 0;
     for (PdServ::Main::Parameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {
         const Parameter *p = dynamic_cast<const Parameter*>(*it);
+        parameterOffset[dataTypeIndex[p->width] + 1] += p->memSize;
         parameterSize += p->memSize;
     }
 
@@ -198,8 +206,8 @@ int Main::run()
         shmem_len += taskMemSize[i++];
     }
 
-    shmem_len += sizeof(*sdo) * parameters.size()
-        + sizeof(*sdoTaskTime) * numTasks
+    shmem_len += sizeof(*sdo) * (parameters.size() + 1)
+//        + sizeof(*sdoTaskTime) * numTasks
         + parameterSize;
 
     shmem = ::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
@@ -212,16 +220,24 @@ int Main::run()
     }
     ::memset(shmem, 0, shmem_len);
 
-//    sdo           = ptr_align<SDOStruct>(shmem);
-//    sdoTaskTime   = ptr_align<struct timespec>(sdo->signal + sdoCount);
-    sdoData       = ptr_align<char>(shmem); //sdoTaskTime + numTasks);
+    sdo     = ptr_align<struct SDOStruct>(shmem);
+    sdoData = ptr_align<char>(ptr_align<double>(sdo + parameters.size() + 1));
 
-   cout << "shmemlen=" << shmem_len
-       << " shmem=" << shmem
-       << " sdo=" << sdo
-       << " sdoTaskTime=" << sdoTaskTime
-       << " sdoData=" << (void*)sdoData
-       << endl;
+    cout << "shmemlen=" << shmem_len
+        << " shmem=" << shmem
+        << " sdo=" << sdo
+//        << " sdoTaskTime=" << sdoTaskTime
+        << " sdoData=" << (void*)sdoData
+        << endl;
+
+    for (PdServ::Main::Parameters::iterator it = parameters.begin();
+            it != parameters.end(); it++) {
+        const Parameter *p = dynamic_cast<const Parameter*>(*it);
+        p->valueBuf = sdoData + parameterOffset[dataTypeIndex[p->width]];
+        parameterOffset[dataTypeIndex[p->width]] += p->memSize;
+
+        std::copy(p->addr, p->addr + p->memSize, p->valueBuf);
+    }
 
     char* buf = ptr_align<char>(sdoData + parameterSize);
     i = 0;
@@ -251,4 +267,20 @@ int Main::run()
     pid = getpid();
 
     return PdServ::Main::run();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::getParameters(struct pdtask *task, const struct timespec *t) const
+{
+    for (struct SDOStruct *s = sdo; s->count; s++) {
+        const Parameter *p = s->parameter;
+        const PdServ::Variable *v = p;
+        s->time = *t;
+        s->rv = p->trigger(task, reinterpret_cast<const struct variable*>(v),
+                p->addr + s->offset,
+                p->valueBuf + s->offset, s->count, p->priv_data);
+        cout << "updated " << p->path << '[' << s->offset/p->nelem << ".."
+            << s->count/p->nelem << endl;
+        s->count = 0;
+    }
 }
