@@ -32,7 +32,6 @@
 #include <cc++/thread.h>
 
 #include "../SessionStatistics.h"
-#include "Directory.h"
 
 namespace PdServ {
     class Main;
@@ -47,7 +46,9 @@ namespace MsrProto {
 
 class Session;
 class Channel;
+class TimeChannel;
 class Parameter;
+class VariableDirectory;
 
 class Server: public ost::Thread {
     public:
@@ -61,28 +62,18 @@ class Server: public ost::Thread {
 
         void sessionClosed(Session *s);
 
-        const DirectoryNode& getRoot() const;
+        const VariableDirectory& getRoot() const;
 
         void getSessionStatistics(
                 std::list<PdServ::SessionStatistics>& stats) const;
-
-        typedef std::vector<const Channel*> Channels;
-        typedef std::vector<const Parameter*> Parameters;
-        const Channels& getChannels() const;
-        const Channel* getChannel(unsigned int) const;
-        const Parameters& getParameters() const;
-        size_t getParameterIndex(const PdServ::Parameter *) const;
-        const Parameters& getParameters(const PdServ::Parameter *p) const;
-        const Parameter* getParameter(unsigned int) const;
 
     private:
         PdServ::Main * const main;
         std::set<Session*> sessions;
 
-        DirectoryNode root;
+        VariableDirectory *root;
 
-        Channels channel;
-        Parameters parameter;
+        TimeChannel *time;
 
         typedef std::map<const PdServ::Parameter*, size_t> ParameterMap;
         ParameterMap parameterIndexMap;

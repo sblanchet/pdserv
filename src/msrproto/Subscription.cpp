@@ -107,11 +107,11 @@ void Subscription::newValue(MsrXml::Element *parent, const char *dataBuf)
 
         if (data_pptr == data_eptr) {
             if (base64)
-                base64Attribute(&element, "d", channel->signal,
+                base64Attribute(&element, "d", channel->variable,
                         channel->nelem * blocksize, data_bptr);
             else
                 csvAttribute(&element, "d",
-                        channel->printFunc, channel->signal,
+                        channel->printFunc, channel->variable,
                         channel->nelem * blocksize, data_bptr);
 
             parent->appendChild(&element);
@@ -125,10 +125,10 @@ void Subscription::newValue(MsrXml::Element *parent, const char *dataBuf)
         std::copy(dataBuf, dataBuf + channel->memSize, data_bptr);
         if (base64)
             base64Attribute(&element, "d",
-                    channel->signal, channel->nelem, data_bptr);
+                    channel->variable, channel->nelem, data_bptr);
         else
             csvAttribute(&element, "d", channel->printFunc,
-                    channel->signal, channel->nelem, data_bptr);
+                    channel->variable, channel->nelem, data_bptr);
         parent->appendChild(&element);
     }
 }

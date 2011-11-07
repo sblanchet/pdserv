@@ -25,10 +25,9 @@
 #include "config.h"
 
 #include "Channel.h"
-#include "XmlDoc.h"
-#include "PrintVariable.h"
-#include "../Signal.h"
 #include "Directory.h"
+#include "XmlDoc.h"
+#include "../Signal.h"
 
 #include <sstream>
 
@@ -43,10 +42,9 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Channel::Channel( const DirectoryNode *directory, const PdServ::Signal *s,
-        unsigned int index, unsigned int sigOffset, unsigned int nelem):
-    directory(directory), index(index), signal(s), nelem(nelem),
-    memSize(s->width * nelem), bufferOffset(sigOffset * s->width),
-    printFunc(getPrintFunc(s->dtype))
+        unsigned int channelIndex, unsigned int index, unsigned int nelem):
+    Variable(directory, s, channelIndex, index, nelem),
+    signal(s)
 {
 
     //cout << __PRETTY_FUNCTION__ << index << endl;
@@ -86,10 +84,4 @@ void Channel::setXmlAttributes( MsrXml::Element *element,
 
     csvAttribute(element, "value",
             printFunc, signal, nelem, data + bufferOffset);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-std::string Channel::path() const
-{
-    return directory->path();
 }

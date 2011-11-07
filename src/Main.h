@@ -71,6 +71,8 @@ class Main {
         void poll( Session *session, const Signal * const *s,
                 size_t nelem, char *buf, struct timespec *t) const;
 
+        const Variable *findVariable(const std::string& path) const;
+
     protected:
         int argc;
         const char **argv;

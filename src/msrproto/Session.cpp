@@ -34,6 +34,7 @@
 #include "Server.h"
 #include "Channel.h"
 #include "Parameter.h"
+#include "Directory.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -112,21 +113,15 @@ void Session::parameterChanged(const PdServ::Parameter *p,
         size_t startIndex, size_t nelem)
 {
     MsrXml::Element pu("pu");
-    size_t vectorLen = p->getDim()[p->ndims-1];
+    std::set<size_t> indices =
+        server->getRoot().getParameterIndex(p, startIndex, nelem);
 
-    for (size_t vectorIdx = server->getParameterIndex(p)
-            + startIndex / vectorLen * (vectorLen + 1);
-            nelem; vectorIdx += vectorLen + 1) {
-        if (vectorLen > 1) {
-            pu.setAttribute("index", vectorIdx++);
-            outbuf << pu;
-        }
-        for (size_t i = startIndex % vectorLen;
-                nelem && i < vectorLen; nelem--, i++, startIndex++) {
-            pu.setAttribute("index", vectorIdx + i);
-            outbuf << pu;
-        }
+    for (std::set<size_t>::iterator it = indices.begin();
+            it != indices.end(); ++it) {
+        pu.setAttribute("index", *it);
+        outbuf << pu;
     }
+
     outbuf << std::flush;
 }
 
@@ -389,19 +384,20 @@ void Session::readChannel()
         c = server->getRoot().findChannel(path.c_str());
     }
     else if (inbuf.getUnsigned("index", index)) {
-        c = server->getChannel(index);
+        c = server->getRoot().getChannel(index);
     }
     else {
         size_t buflen = 0;
         const PdServ::Signal *mainSignal = 0;
         std::map<const PdServ::Signal*, size_t> bufOffset;
 
-        const Server::Channels& chanList = server->getChannels();
+        const VariableDirectory::Channels& chanList =
+            server->getRoot().getChannels();
 
         typedef std::list<const PdServ::Signal*> SignalList;
         SignalList orderedSignals[PdServ::Variable::maxWidth + 1];
 
-        for (Server::Channels::const_iterator it = chanList.begin();
+        for (VariableDirectory::Channels::const_iterator it = chanList.begin();
                 it != chanList.end(); it++) {
             mainSignal = (*it)->signal;
             if (bufOffset.find(mainSignal) != bufOffset.end())
@@ -431,7 +427,7 @@ void Session::readChannel()
         main->poll(this, signalList, bufOffset.size(), buf, 0);
 
         MsrXml::Element channels("channels");
-        for (Server::Channels::const_iterator it = chanList.begin();
+        for (VariableDirectory::Channels::const_iterator it = chanList.begin();
                 it != chanList.end(); it++) {
             MsrXml::Element *el = channels.createChild("channel");
             (*it)->setXmlAttributes(el, shortReply,
@@ -470,14 +466,15 @@ void Session::readParameter()
         p = server->getRoot().findParameter(name.c_str());
     }
     else if (inbuf.getUnsigned("index", index)) {
-        p = server->getParameter(index);
+        p = server->getRoot().getParameter(index);
     }
     else {
-        const Server::Parameters& parameter = server->getParameters();
+        const VariableDirectory::Parameters& parameter =
+            server->getRoot().getParameters();
         MsrXml::Element parameters("parameters");
 
-        for (Server::Parameters::const_iterator it = parameter.begin();
-                it != parameter.end(); it++)
+        for (VariableDirectory::Parameters::const_iterator it =
+                parameter.begin(); it != parameter.end(); it++)
             (*it)->setXmlAttributes(this, parameters.createChild("parameter"),
                     shortReply, hex, flags);
 
@@ -496,10 +493,11 @@ void Session::readParameter()
 void Session::readParamValues()
 {
     MsrXml::Element param_values("param_values");
-    const Server::Parameters& parameter = server->getParameters();
+    const VariableDirectory::Parameters& parameter =
+        server->getRoot().getParameters();
     std::string v;
 
-    for (Server::Parameters::const_iterator it = parameter.begin();
+    for (VariableDirectory::Parameters::const_iterator it = parameter.begin();
             it != parameter.end(); it++) {
         if (it != parameter.begin()) v.append(1,'|');
 
@@ -531,8 +529,10 @@ void Session::readStatistics()
     for (StatList::const_iterator it = stats.begin();
             it != stats.end(); it++) {
         MsrXml::Element *e = clients.createChild("client");
-        e->setAttributeCheck("name", (*it).remote);
-        e->setAttributeCheck("apname", (*it).client);
+        e->setAttributeCheck("name",
+                (*it).remote.size() ? (*it).remote : "unknown");
+        e->setAttributeCheck("apname",
+                (*it).client.size() ? (*it).client : "unknown");
         e->setAttribute("countin", (*it).countIn);
         e->setAttribute("countout", (*it).countOut);
         e->setAttribute("connectedtime", (*it).connectedTime);
@@ -582,7 +582,7 @@ void Session::writeParameter()
         p = server->getRoot().findParameter(name.c_str());
     }
     else if (inbuf.getUnsigned("index", index)) {
-        p = server->getParameter(index);
+        p = server->getRoot().getParameter(index);
     }
 
     if (!p)
@@ -621,7 +621,8 @@ void Session::xsad()
     bool sync = inbuf.isTrue("sync");
     bool foundReduction = false, foundBlocksize = false;
     std::list<unsigned int> indexList;
-    const Server::Channels& channel = server->getChannels();
+    const VariableDirectory::Channels& channel =
+        server->getRoot().getChannels();
 
     // Quiet will stop all transmission of <data> tags until
     // sync is called
@@ -711,7 +712,8 @@ void Session::xsod()
     //cout << __LINE__ << "xsod: " << endl;
 
     if (inbuf.getUnsignedList("channels", intList)) {
-        const Server::Channels& channel = server->getChannels();
+        const VariableDirectory::Channels& channel =
+            server->getRoot().getChannels();
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
             if (*it < channel.size()) {

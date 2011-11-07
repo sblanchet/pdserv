@@ -26,13 +26,10 @@
 #define MSRPARAMETER_H
 
 #include <string>
-#include <list>
-#include <stdint.h>
-#include "PrintVariable.h"
+#include "Variable.h"
 
 namespace PdServ {
     class Parameter;
-    class Receiver;
 }
 
 namespace MsrXml {
@@ -44,15 +41,12 @@ namespace MsrProto {
 class Session;
 class DirectoryNode;
 
-class Parameter {
+class Parameter: public Variable {
     public:
         Parameter( const DirectoryNode *directory, bool dependent,
                 const PdServ::Parameter *p, unsigned int index,
                 unsigned int nelem, unsigned int parameterElement = 0);
         ~Parameter();
-
-        std::string path() const;
-//        void addChild(const Parameter *child);
 
         void setXmlAttributes(Session *, MsrXml::Element*, bool shortReply,
                     bool hex, unsigned int flags) const;
@@ -62,17 +56,11 @@ class Parameter {
         int setDoubleValue(const char *, size_t startindex,
                 size_t &count) const;
 
-        const unsigned int index;
         const PdServ::Parameter * const mainParam;
-        const size_t nelem;
-        const size_t memSize;
-        const size_t parameterElement;
-
-        const PrintFunc printFunc;
 
     private:
-        const DirectoryNode * const node;
         const bool dependent;
+        const bool persistent;
 
         void (*append)(char *&, double);
 
@@ -81,26 +69,6 @@ class Parameter {
                 *reinterpret_cast<T*>(dst) = src;
                 dst += sizeof(T);
             }
-
-//        class Converter {
-//            public:
-//                Converter(Parameter *);
-//
-//                void setbuf(char *b) const;
-//
-//                int readDoubleList(const char *val) const;
-//                int readHexValue(const char *val) const;
-//
-//            private:
-//                const Parameter * const parameter;
-//
-//                mutable char * dataBuf;
-//
-//        };
-//
-//        Converter converter;
-
-        bool persistent;
 };
 
 }

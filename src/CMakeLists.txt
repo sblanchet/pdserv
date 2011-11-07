@@ -53,6 +53,7 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     msrproto/XmlParser.cpp msrproto/XmlParser.h
     msrproto/Attribute.cpp msrproto/Attribute.h
     msrproto/XmlDoc.cpp msrproto/XmlDoc.h
+    msrproto/Variable.cpp msrproto/Variable.h
     msrproto/Channel.cpp msrproto/Channel.h
     msrproto/Parameter.cpp msrproto/Parameter.h
     msrproto/Directory.cpp msrproto/Directory.h

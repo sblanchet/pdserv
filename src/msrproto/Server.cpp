@@ -26,7 +26,9 @@
 
 #include "Server.h"
 #include "Channel.h"
+#include "TimeChannel.h"
 #include "Parameter.h"
+#include "Directory.h"
 #include "../Main.h"
 #include "../Signal.h"
 #include "../Parameter.h"
@@ -47,36 +49,30 @@ using namespace MsrProto;
 Server::Server(PdServ::Main *main, int argc, const char **argv):
     main(main), mutex(1)
 {
-    bool traditional = 0;
+    bool traditional = 1;
+
+    root = new VariableDirectory;
 
     const PdServ::Main::Signals& mainSignals = main->getSignals();
     for (PdServ::Main::Signals::const_iterator it = mainSignals.begin();
             it != mainSignals.end(); it++) {
-        size_t nelem = (*it)->nelem;
-        Channel *c;
 
         if (traditional) {
-            for (unsigned i = 0; i < nelem; i++) {
-                DirectoryNode *dir = root.mkdir(*it, i, 0);
-                if (dir) {
-                    c = new Channel( dir, *it, channel.size(), i, 1);
-                    dir->insert(c);
-                    channel.push_back(c);
-                }
-            }
+            for (unsigned i = 0; i < (*it)->nelem; i++)
+                root->insert(*it, i, 1);
         }
         else {
             // New matrix channel
-            DirectoryNode *dir = root.mkdir(*it);
-            if (dir) {
-                c = new Channel( dir, *it, channel.size(), 0, nelem);
-                dir->insert(c);
-                channel.push_back(c);
-            }
+            root->insert(*it);
         }
     }
 
-//    if (!main->getSignal("/Time"));
+    if (!main->findVariable("/Time")) {
+//        time = new TimeChannel(this);
+//        root->insert(time);
+    }
+    else
+        time = 0;
 
     const PdServ::Main::Parameters& mainParameters = main->getParameters();
     for (PdServ::Main::Parameters::const_iterator it = mainParameters.begin();
@@ -84,43 +80,26 @@ Server::Server(PdServ::Main *main, int argc, const char **argv):
         size_t nelem = (*it)->nelem;
         const size_t *dim = (*it)->getDim();
         size_t vectorLen = dim[(*it)->ndims-1];
-        Parameter *p;
 
-        parameterIndexMap[*it] = parameter.size();
+        parameterIndexMap[*it] = getRoot().getParameters().size();
         if (traditional) {
+            bool dep = vectorLen > 1;
             for (unsigned i = 0; i < nelem; i++) {
                 if (vectorLen > 1 && !(i % vectorLen)) {
                     // New row parameter
-                    DirectoryNode *dir = root.mkdir(*it, i, 1);
-                    if (dir) {
-                        p = new Parameter(dir, 0, *it, parameter.size(),
-                                vectorLen, i);
-                        dir->insert(p);
-                        parameter.push_back(p);
-                    }
+                    root->insert(*it, i, vectorLen);
                 }
-                DirectoryNode *dir = root.mkdir(*it, i, 0);
-                if (dir) {
-                    p = new Parameter( dir, vectorLen > 1,
-                            *it, parameter.size(), 1, i);
-                    dir->insert(p);
-                    parameter.push_back(p);
-                }
+                root->insert(*it, i, 1, dep);
             }
         }
         else {
             // New matrix parameter
-            DirectoryNode *dir = root.mkdir(*it);
-            if (dir) {
-                p = new Parameter(
-                        dir, 0, *it, parameter.size(), nelem, 0);
-                dir->insert(p);
-                parameter.push_back(p);
-            }
+            root->insert(*it);
         }
     }
 
-//    if (!main->getParameter("/Taskinfo/Abtastfrequenz"));
+    if (!main->findVariable("/Taskinfo/Abtastfrequenz")) {
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -129,6 +108,8 @@ Server::~Server()
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
         delete *it;
+
+    delete time;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -184,38 +165,8 @@ void Server::parameterChanged(const PdServ::Parameter *p,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-size_t Server::getParameterIndex(const PdServ::Parameter *p) const
+const VariableDirectory& Server::getRoot() const
 {
-    return parameterIndexMap.find(p)->second;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const DirectoryNode& Server::getRoot() const
-{
-    return root;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Server::Channels& Server::getChannels() const
-{
-    return channel;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Channel* Server::getChannel(unsigned int idx) const
-{
-    return idx < channel.size() ? channel[idx] : 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Server::Parameters& Server::getParameters() const
-{
-    return parameter;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Parameter* Server::getParameter(unsigned int idx) const
-{
-    return idx < parameter.size() ? parameter[idx] : 0;
+    return *root;
 }
 

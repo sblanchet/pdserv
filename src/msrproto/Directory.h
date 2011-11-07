@@ -27,57 +27,88 @@
 
 #include <string>
 #include <map>
-#include <list>
+#include <vector>
+#include <set>
 
 namespace PdServ {
     class Variable;
+    class Signal;
+    class Parameter;
 }
 
 namespace MsrProto {
 
-class Session;
+class Variable;
 class Channel;
 class Parameter;
 
 /////////////////////////////////////////////////////////////////////////////
 class DirectoryNode {
     public:
-        DirectoryNode();
-        DirectoryNode( const DirectoryNode *parent,
-                const std::string &name, bool hide);
-        ~DirectoryNode();
+        DirectoryNode(DirectoryNode *parent,
+                const std::string& name, bool hide);
+//        ~DirectoryNode();
 
         std::string path() const;
 
-        std::string name;
-        const bool hide;
+        const DirectoryNode *parent;
+        const std::string name;
+        const bool hidden;
 
-        const Channel *findChannel(const char *path) const;
-        const Parameter *findParameter(const char *path) const;
+        const Channel *findChannel(const std::string &path) const;
+        const Parameter *findParameter(const std::string &path) const;
+        const Variable *findVariable(const std::string &path,
+                size_t pathOffset) const;
 
-        DirectoryNode *mkdir(const PdServ::Variable *v);
-        DirectoryNode *mkdir(const PdServ::Variable *v,
-                unsigned int idx, bool vector);
-        void insert(const Parameter *p);
-        void insert(const Channel *p);
+        DirectoryNode *mkdir(const PdServ::Variable *v, size_t index,
+                size_t elementCount, unsigned int pathOffset = 0);
+        DirectoryNode *mkdir(size_t index,
+                size_t nelem, size_t ndims, const size_t *dim);
+
+        void insert(const Variable *v);
+
+    protected:
+        DirectoryNode();
+
+        const Variable *variable;
 
     private:
-        const DirectoryNode *parent;
-
-        bool empty() const;
-        DirectoryNode *mkdir(const char *path);
-        DirectoryNode *mkdir(size_t idx,
-                size_t nelem, const size_t *dim, size_t ndim);
-
-        static std::string splitPath(const char *&path);
-
         typedef std::map<const std::string, DirectoryNode*> Entry;
         Entry entry;
+};
 
-        const Channel *channel;
-        const Parameter *parameter;
+/////////////////////////////////////////////////////////////////////////////
+class VariableDirectory: public DirectoryNode {
+    public:
+        VariableDirectory();
+        ~VariableDirectory();
 
-        const DirectoryNode *findVariable(const char *path) const;
+        bool insert(const PdServ::Signal *s, size_t index = 0,
+                size_t elementCount = 0);
+        bool insert(const PdServ::Parameter *p, size_t index = 0,
+                size_t elementCount = 0, bool dependent = false);
+
+       typedef std::vector<const Channel*> Channels;
+       typedef std::vector<const Parameter*> Parameters;
+       const Channels& getChannels() const;
+       const Channel* getChannel(unsigned int) const;
+       const Parameters& getParameters() const;
+       std::set<size_t> getParameterIndex(
+               const PdServ::Parameter *p, size_t start, size_t nelem) const;
+       const Parameters& getParameters(const PdServ::Parameter *p) const;
+       const Parameter* getParameter(unsigned int) const;
+
+
+    private:
+
+        Channels channels;
+        Parameters parameters;
+
+        typedef std::vector<size_t> ParameterIndex;
+        typedef std::map<size_t, ParameterIndex> ParameterStartIndex;
+        typedef std::map<const PdServ::Parameter*, ParameterStartIndex>
+            ParameterExtentMap;
+        ParameterExtentMap extents;
 };
 
 }

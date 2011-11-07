@@ -59,6 +59,14 @@ Main::~Main()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+const Variable *Main::findVariable(const std::string& path) const
+{
+    VariableMap::const_iterator it = variableMap.find(path);
+
+    return it == variableMap.end() ? 0 : it->second;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 int Main::localtime(struct timespec* t)
 {
     struct timeval tv;

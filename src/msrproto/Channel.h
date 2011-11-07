@@ -26,44 +26,29 @@
 #define MSRCHANNEL_H
 
 #include <string>
-#include "PrintVariable.h"
+#include "Variable.h"
 
 namespace PdServ {
     class Signal;
-    class Receiver;
-}
-
-namespace MsrXml {
-    class Element;
 }
 
 namespace MsrProto {
 
 class DirectoryNode;
 
-class Channel {
+class Channel: public Variable {
     public:
         Channel( const DirectoryNode *directory,
                 const PdServ::Signal *s,
                 unsigned int channelIndex,
-                unsigned int signalOffset,
+                unsigned int index,
                 unsigned int nelem);
         ~Channel();
 
         void setXmlAttributes(MsrXml::Element*, bool shortReply,
                     const char *signalBuf) const;
 
-        std::string path() const;
-
-        const DirectoryNode * const directory;
-        const unsigned int index;
-        const PdServ::Signal * const signal;
-        const size_t nelem;
-        const size_t memSize;
-        const size_t bufferOffset;
-
-        const PrintFunc printFunc;
-
+        const PdServ::Signal *signal;
     private:
 };
 

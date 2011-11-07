@@ -48,9 +48,9 @@ using namespace MsrProto;
 Parameter::Parameter( const DirectoryNode *directory,
         bool dependent, const PdServ::Parameter *p, unsigned int index,
         unsigned int nelem, unsigned int parameterElement):
-    index(index), mainParam(p), nelem(nelem), memSize(p->width * nelem),
-    parameterElement(parameterElement),
-    printFunc(getPrintFunc(p->dtype)), node(directory), dependent(dependent),
+    Variable(directory, p, index, parameterElement, nelem),
+    mainParam(p),
+    dependent(dependent),
     persistent(false)
 {
     //cout << __PRETTY_FUNCTION__ << index << endl;
@@ -81,7 +81,7 @@ void Parameter::setXmlAttributes( Session *s, MsrXml::Element *element,
 {
     struct timespec mtime;
     char valueBuf[mainParam->memSize];
-    char *dataPtr = valueBuf + parameterElement * mainParam->width;
+    char *dataPtr = valueBuf + bufferOffset;
 
     mainParam->getValue(s, valueBuf, &mtime);
 
@@ -94,7 +94,8 @@ void Parameter::setXmlAttributes( Session *s, MsrXml::Element *element,
         element->setAttribute("flags", flags + (dependent ? 0x100 : 0));
 
         // persistent=
-        element->setAttribute("persistent", persistent);
+        if (persistent)
+            element->setAttribute("persistent", persistent);
     }
 
     // mtime=
@@ -111,16 +112,10 @@ void Parameter::setXmlAttributes( Session *s, MsrXml::Element *element,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string Parameter::path() const
-{
-    return node->path();
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Parameter::getValue(Session *session, char *buf) const
 {
     char valueBuf[mainParam->memSize];
-    char *dataPtr = valueBuf + parameterElement * mainParam->width;
+    char *dataPtr = valueBuf + bufferOffset;
 
     mainParam->getValue(session, valueBuf);
     std::copy(dataPtr, dataPtr + memSize, buf);
@@ -152,7 +147,7 @@ int Parameter::setHexValue(const char *s, size_t startindex,
 
     count = (c - valueBuf) / mainParam->width;
     return mainParam->setValue(
-            valueBuf, parameterElement + startindex, count);
+            valueBuf, index + startindex, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -182,7 +177,7 @@ int Parameter::setDoubleValue(const char *buf, size_t startindex,
     }
 
     return mainParam->setValue(
-            value, parameterElement + startindex, count);
+            value, index + startindex, count);
 }
 
 // /////////////////////////////////////////////////////////////////////////////
