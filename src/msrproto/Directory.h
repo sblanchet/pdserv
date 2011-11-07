@@ -61,7 +61,7 @@ class DirectoryNode {
                 size_t pathOffset) const;
 
         DirectoryNode *mkdir(const PdServ::Variable *v, size_t index,
-                size_t elementCount, unsigned int pathOffset = 0);
+                size_t elementCount, size_t pathOffset = 0);
         DirectoryNode *mkdir(size_t index,
                 size_t nelem, size_t ndims, const size_t *dim);
 
