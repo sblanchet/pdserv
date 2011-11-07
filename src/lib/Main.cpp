@@ -271,17 +271,16 @@ int Main::run()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::getParameters(struct pdtask *task, const struct timespec *t) const
+void Main::getParameters(Task *task, const struct timespec *t) const
 {
     for (struct SDOStruct *s = sdo; s->count; s++) {
         const Parameter *p = s->parameter;
         const PdServ::Variable *v = p;
         s->time = *t;
-        s->rv = p->trigger(task, reinterpret_cast<const struct variable*>(v),
+        s->rv = p->trigger(reinterpret_cast<struct pdtask*>(task),
+                reinterpret_cast<const struct variable*>(v),
                 p->addr + s->offset,
                 p->valueBuf + s->offset, s->count, p->priv_data);
-        cout << "updated " << p->path << '[' << s->offset/p->nelem << ".."
-            << s->count/p->nelem << endl;
         s->count = 0;
     }
 }

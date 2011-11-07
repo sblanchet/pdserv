@@ -42,7 +42,7 @@ class Main: public PdServ::Main {
         ~Main();
 
         int run();
-        void getParameters(struct pdtask *, const struct timespec *) const;
+        void getParameters(Task *, const struct timespec *) const;
 
         Task* addTask(double sampleTime, const char *name);
 

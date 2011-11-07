@@ -55,7 +55,8 @@ void pdserv_exit(struct pdserv* pdserv)
 void pdserv_get_parameters(struct pdserv* pdserv, struct pdtask *task,
         const struct timespec *t)
 {
-    reinterpret_cast<Main*>(pdserv)->getParameters(task, t);
+    reinterpret_cast<Main*>(pdserv)->getParameters(
+            reinterpret_cast<Task*>(task), t);
 }
 
 /////////////////////////////////////////////////////////////////////////////
