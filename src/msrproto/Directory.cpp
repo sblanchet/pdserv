@@ -232,7 +232,8 @@ std::string DirectoryNode::path() const
 const Variable *DirectoryNode::findVariable(
         const std::string &path, size_t pathOffset) const
 {
-    if (path.at(pathOffset++) != '/')
+    if (pathOffset >= path.size()
+            or (!pathOffset and path[pathOffset++] != '/'))
         return 0;
 
     size_t pos = path.find('/', pathOffset);
@@ -247,7 +248,8 @@ const Variable *DirectoryNode::findVariable(
 
     const DirectoryNode *dir = node->second;
 
-    return path.size() == pos ? dir->variable : dir->findVariable(path, pos);
+    return path.size() == pos
+        ? dir->variable : dir->findVariable(path, pos + 1);
 }
 
 

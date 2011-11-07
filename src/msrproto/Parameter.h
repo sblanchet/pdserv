@@ -49,7 +49,7 @@ class Parameter: public Variable {
         ~Parameter();
 
         void setXmlAttributes(Session *, MsrXml::Element*, bool shortReply,
-                    bool hex, unsigned int flags) const;
+                    bool hex, bool writeAccess) const;
         void getValue(Session *, char *) const;
         int setHexValue(const char *str, size_t startindex,
                 size_t &count) const;
