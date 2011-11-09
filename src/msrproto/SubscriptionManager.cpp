@@ -26,7 +26,7 @@
 
 #include "../Main.h"
 #include "../Signal.h"
-#include "../Receiver.h"
+#include "../SessionTaskData.h"
 #include "SubscriptionManager.h"
 #include "Channel.h"
 #include "Session.h"
@@ -44,47 +44,53 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-SubscriptionManager::~SubscriptionManager()
+SubscriptionManager::SubscriptionManager(Session *s):
+    session(s)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool SubscriptionManager::subscribe(const Channel *c,
+SubscriptionManager::~SubscriptionManager()
+{
+    clear();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void SubscriptionManager::subscribe(const Channel *c,
         bool event, bool sync, unsigned int decimation,
         size_t blocksize, bool base64, size_t precision)
 {
-    bool empty = signalSubscriptionMap[c->signal].empty();
-    //cout << __LINE__ << __PRETTY_FUNCTION__ << empty << endl;
-
     Subscription *subscription = signalSubscriptionMap[c->signal][c];
     if (!subscription) {
         subscription = new Subscription(c);
         signalSubscriptionMap[c->signal][c] = subscription;
+        c->signal->subscribe(session);
     }
     subscription->set(event, sync, decimation, blocksize, base64, precision);
-
-    return empty;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool SubscriptionManager::unsubscribe(const Channel *c)
+void SubscriptionManager::clear()
 {
-    if (!c) {
-        // The deleting is done in the destruction of SignalSubscriptionMap
-        signalSubscriptionMap.clear();
-        return true;
-    }
 
-    Subscription *subscription = signalSubscriptionMap[c->signal][c];
+    SignalSubscriptionMap::const_iterator it = signalSubscriptionMap.begin();
+    while (it != signalSubscriptionMap.end())
+        (it++)->first->unsubscribe(session);
+
+    signalSubscriptionMap.clear();
+    activeSignalSet.clear();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void SubscriptionManager::unsubscribe(const Channel *c)
+{
     delete signalSubscriptionMap[c->signal][c];
 
     signalSubscriptionMap[c->signal].erase(c);
     if (signalSubscriptionMap[c->signal].empty()) {
         signalSubscriptionMap.erase(c->signal);
         activeSignalSet.erase(c->signal);
-        return subscription;
     }
-    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -115,13 +121,13 @@ bool SubscriptionManager::newSignalList(
 
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::newSignalData(MsrXml::Element *parent,
-        const PdServ::Receiver& receiver)
+        const PdServ::SessionTaskData *std)
 {
 //    cout << __func__ << receiver.seqNo << endl;
     for (ActiveSignalSet::const_iterator sit = activeSignalSet.begin();
             sit != activeSignalSet.end(); sit++) {
         signalSubscriptionMap[*sit].newSignalData(
-                parent, receiver.getValue(*sit));
+                parent, (*sit)->getValue(std));
     }
 }
 

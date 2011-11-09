@@ -53,21 +53,13 @@
 #include "XmlParser.h"
 #include "Outbuf.h"
 #include "XmlDoc.h"
-#include "Server.h"
-#include "SubscriptionManager.h"
 
 #include <cc++/socketport.h> 
-#include <string>
 #include <map>
-#include <set>
-#include <vector>
-
-#include "pdserv/etl_data_info.h"
 
 namespace PdServ {
-    class Variable;
     class Parameter;
-    class Variable;
+    class SessionTaskData;
 }
 
 namespace MsrXml {
@@ -75,6 +67,9 @@ namespace MsrXml {
 }
 
 namespace MsrProto {
+
+class SubscriptionManager;
+class Server;
 
 class Session: public ost::SocketPort, public PdServ::Session {
     public:
@@ -97,12 +92,8 @@ class Session: public ost::SocketPort, public PdServ::Session {
     private:
         Server * const server;
 
-        std::vector<SubscriptionManager> subscriptionManager;
-
-        unsigned int requestState;
-        typedef std::map<const PdServ::Signal*, bool> SignalRequest;
-        SignalRequest signalRequest;
-        void processSignalRequest();
+        typedef std::map<double, SubscriptionManager*> SubscriptionManagerMap;
+        SubscriptionManagerMap subscriptionManager;
 
         // Reimplemented from SocketPort
         void expired();
@@ -113,7 +104,7 @@ class Session: public ost::SocketPort, public PdServ::Session {
         // Reimplemented from PdServ::Session
         void newSignalList(const PdServ::Task *task,
                 const PdServ::Signal * const *, size_t n);
-        void newSignalData(const PdServ::Receiver&);
+        void newSignalData(const PdServ::SessionTaskData*);
 
         // Management variables
         bool writeAccess;

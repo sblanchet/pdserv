@@ -31,6 +31,7 @@
 namespace PdServ {
     class Channel;
     class Main;
+    class SessionTaskData;
 }
 
 namespace MsrXml {
@@ -45,18 +46,23 @@ class Session;
 
 class SubscriptionManager {
     public:
+        SubscriptionManager(Session *session);
         ~SubscriptionManager();
 
-        bool unsubscribe(const Channel *s = 0);
-        bool subscribe(const Channel *s,
+        void clear();
+        void unsubscribe(const Channel *s = 0);
+        void subscribe(const Channel *s,
                 bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
         bool newSignalList( const PdServ::Signal * const *, size_t n);
-        void newSignalData(MsrXml::Element *parent, const PdServ::Receiver&);
+        void newSignalData(MsrXml::Element *parent,
+                const PdServ::SessionTaskData *);
 
         void sync();
 
     private:
+        Session * const session;
+
         struct SignalSubscription:
             public std::map<const Channel*, Subscription*> {
                 ~SignalSubscription();

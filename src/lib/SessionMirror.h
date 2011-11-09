@@ -22,43 +22,39 @@
  *
  *****************************************************************************/
 
-#ifndef SIGNAL_H
-#define SIGNAL_H
+#ifndef LIBSESSIONMIRROR_H
+#define LIBSESSIONMIRROR_H
 
-#include "Variable.h"
+#include "../SessionMirror.h"
+// #include "ShmemDataStructures.h"
+// 
+// #include <cc++/thread.h>
+#include <set>
+// #include <queue>
+// #include <utility>      // std::pair
 
 namespace PdServ {
-
-class Session;
-class SessionTaskData;
-
-class Signal: public Variable {
-    public:
-        Signal( const char *path,
-                double sampleTime,
-                enum si_datatype_t dtype,
-                unsigned int ndims = 1,
-                const unsigned int *dim = 0);
-
-        virtual ~Signal();
-
-        const double sampleTime;
-
-        virtual void subscribe(Session *) const = 0;
-        virtual void unsubscribe(Session *) const = 0;
-
-        virtual double poll(const Session *s,
-                char *buf, struct timespec *t) const = 0;
-
-        virtual const char *getValue(const SessionTaskData*) const = 0;
-
-        // Reimplemented from PdServ::Variable
-        virtual void getValue(Session*,
-                char *, struct timespec * = 0) const = 0;
-    private:
-
-};
-
+    class Session;
 }
 
-#endif //SIGNAL_H
+class Main;
+class SessionTaskData;
+
+class SessionMirror: public PdServ::SessionMirror {
+    public:
+        SessionMirror(const Main *main, PdServ::Session *session);
+
+        ~SessionMirror();
+
+    private:
+        const Main * const main;
+        PdServ::Session * const session;
+
+        typedef std::set<SessionTaskData*> TaskSet;
+        TaskSet taskSet;
+
+        // Reimplemented from PdServ::SessionMirror
+        void rxPdo();
+};
+
+#endif //LIBSESSIONMIRROR_H

@@ -89,17 +89,13 @@ void Main::getSessionStatistics(std::list<SessionStatistics>& stats) const
 /////////////////////////////////////////////////////////////////////////////
 size_t Main::numTasks() const
 {
-    return taskList.size();
+    return task.size();
 }
 
 /////////////////////////////////////////////////////////////////////////////
 const Task* Main::getTask(size_t n) const
 {
-    TaskList::const_iterator it = taskList.begin();
-    while (n--)
-        ++it;
-
-    return *it;
+    return task[n];
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -144,12 +140,15 @@ void Main::poll( Session *session, const Signal * const *s,
 {
     ost::SemaphoreLock lock(mutex);
     double delay = 0.01;
+    char *pollDest[nelem];
 
     for (size_t i = 0; i < nelem; ++i) {
-        delay = std::max(delay, std::min(0.1, s[i]->poll(session, buf)));
+        delay = std::max(delay,
+                std::min(0.1, s[i]->poll(session, buf, t)));
+        pollDest[i] = buf;
         buf += s[i]->memSize;
     }
 
-    processPoll(delay * 1000 + 0.5);
+    processPoll(delay * 1000 + 0.5, s, nelem, pollDest, t);
 }
 

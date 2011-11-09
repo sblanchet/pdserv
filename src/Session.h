@@ -35,7 +35,8 @@ namespace PdServ {
 class Task;
 class Signal;
 class Main;
-class Receiver;
+class SessionTaskData;
+class SessionMirror;
 
 class Session {
     public:
@@ -47,9 +48,8 @@ class Session {
         // These methods are called from within the context of rxPdo
         virtual void newSignalList(const Task *,
                 const Signal * const *, size_t n) = 0;
-        virtual void newSignalData(const Receiver&) = 0;
+        virtual void newSignalData(const SessionTaskData*) = 0;
 
-        void rxPdo();
         void resendSignalList(const Task *) const;
 
     protected:
@@ -60,10 +60,11 @@ class Session {
         std::string remoteHost;
         std::string client;
 
-    private:
-        Receiver ** const receiver;
+        void rxPdo();
 
+    private:
         struct timespec connectedTime;
+        SessionMirror * const shadow;
 };
 
 }

@@ -41,6 +41,7 @@
 #include "Signal.h"
 #include "Parameter.h"
 #include "Pointer.h"
+#include "SessionMirror.h"
 #include "pdserv/pdserv.h"
 
 #ifdef DEBUG
@@ -88,8 +89,14 @@ Main::~Main()
 Task* Main::addTask(double sampleTime, const char *name)
 {
     Task *t = new Task(this, sampleTime, name);
-    taskList.push_back(t);
+    task.push_back(t);
     return t;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Task *Main::getTask(size_t index) const
+{
+    return static_cast<Task*>(task[index]);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -160,17 +167,20 @@ int Main::setParameter(const Parameter *p, size_t startIndex,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::processPoll(size_t delay_ms) const
+void Main::processPoll(size_t delay_ms,
+        const PdServ::Signal * const *s, size_t nelem,
+        char * const *pollDest, struct timespec *t) const
 {
-    bool fin[taskList.size()];
+    bool fin[task.size()];
     bool finished;
     std::fill_n(fin, 4, false);
     do {
         finished = true;
         int i = 0;
-        for (TaskList::const_iterator it = taskList.begin();
-                it != taskList.end(); ++it, ++i) {
-            fin[i] = fin[i] or (*it)->pollFinished();
+        for (TaskList::const_iterator it = task.begin();
+                it != task.end(); ++it, ++i) {
+            const Task *task = static_cast<const Task*>(*it);
+            fin[i] = fin[i] or task->pollFinished( s, nelem, pollDest, t);
             finished = finished and fin[i];
         }
         ost::Thread::sleep(delay_ms);
@@ -180,7 +190,7 @@ void Main::processPoll(size_t delay_ms) const
 /////////////////////////////////////////////////////////////////////////////
 int Main::run()
 {
-    size_t numTasks = taskList.size();
+    size_t numTasks = task.size();
     size_t taskMemSize[numTasks];
     size_t i;
     const size_t dataTypeIndex[PdServ::Variable::maxWidth+1] = {
@@ -200,8 +210,8 @@ int Main::run()
     }
 
     i = 0;
-    for (TaskList::const_iterator it = taskList.begin();
-            it != taskList.end(); ++it) {
+    for (TaskList::const_iterator it = task.begin();
+            it != task.end(); ++it) {
         taskMemSize[i] = ptr_align(
                 static_cast<const Task*>(*it)->getShmemSpace(bufferTime));
         shmem_len += taskMemSize[i++];
@@ -242,8 +252,8 @@ int Main::run()
 
     char* buf = ptr_align<char>(sdoData + parameterSize);
     i = 0;
-    for (TaskList::iterator it = taskList.begin();
-            it != taskList.end(); ++it) {
+    for (TaskList::iterator it = task.begin();
+            it != task.end(); ++it) {
         static_cast<Task*>(*it)->prepare(buf, buf + taskMemSize[i]);
         buf += taskMemSize[i];
     }
@@ -256,13 +266,13 @@ int Main::run()
     }
     else if (pid) {
         // Parent here; go back to the caller
-        for (TaskList::iterator it = taskList.begin();
-                it != taskList.end(); ++it)
+        for (TaskList::iterator it = task.begin();
+                it != task.end(); ++it)
             static_cast<Task*>(*it)->rt_init();
         return 0;
     }
 
-    for (TaskList::iterator it = taskList.begin(); it != taskList.end(); ++it)
+    for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
         static_cast<Task*>(*it)->nrt_init();
 
     pid = getpid();
@@ -283,4 +293,23 @@ void Main::getParameters(Task *task, const struct timespec *t) const
                 p->valueBuf + s->offset, s->count, p->priv_data);
         s->count = 0;
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+PdServ::SessionMirror *Main::newSession(PdServ::Session *session)
+{
+    ost::SemaphoreLock lock(mutex);
+    SessionMirror *sm = new SessionMirror(this, session);
+    sessionMap[session] = sm;
+
+    return sm;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::endSession(PdServ::Session *session)
+{
+    ost::SemaphoreLock lock(mutex);
+
+    delete sessionMap[session];
+    sessionMap.erase(session);
 }

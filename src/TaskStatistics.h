@@ -22,43 +22,20 @@
  *
  *****************************************************************************/
 
-#ifndef SIGNAL_H
-#define SIGNAL_H
+#ifndef TASKSTATISTICS_H
+#define TASKSTATISTICS_H
 
-#include "Variable.h"
+#include <ctime>
 
 namespace PdServ {
 
-class Session;
-class SessionTaskData;
-
-class Signal: public Variable {
-    public:
-        Signal( const char *path,
-                double sampleTime,
-                enum si_datatype_t dtype,
-                unsigned int ndims = 1,
-                const unsigned int *dim = 0);
-
-        virtual ~Signal();
-
-        const double sampleTime;
-
-        virtual void subscribe(Session *) const = 0;
-        virtual void unsubscribe(Session *) const = 0;
-
-        virtual double poll(const Session *s,
-                char *buf, struct timespec *t) const = 0;
-
-        virtual const char *getValue(const SessionTaskData*) const = 0;
-
-        // Reimplemented from PdServ::Variable
-        virtual void getValue(Session*,
-                char *, struct timespec * = 0) const = 0;
-    private:
-
+struct TaskStatistics {
+    unsigned int seqNo;
+    struct timespec time;
+    double exec_time;
+    double cycle_time;
 };
 
 }
 
-#endif //SIGNAL_H
+#endif // TASKSTATISTICS_H

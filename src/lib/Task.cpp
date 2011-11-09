@@ -34,10 +34,12 @@ using std::cerr;
 using std::endl;
 #endif
 
+#include "SessionTaskData.h"
 #include "Task.h"
 #include "Main.h"
 #include "Signal.h"
 #include "Pointer.h"
+#include "../TaskStatistics.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // Data structures used in Task
@@ -49,22 +51,28 @@ struct CopyList {
 };
 
 struct SignalList {
-    enum {InsertSignal = 1, RemoveSignal} action;
+    enum {Insert = 1, Remove} action;
+    unsigned int signalListId;
     const Signal* signal;
 };
 
-struct TxPdo {
-    enum {SignalList = 1, PdoData} type;
-    unsigned int seqNo;
-    struct timespec time;
-    struct TxPdo *next;
+struct Pdo {
+    enum {Empty = 0, SignalList, Data} type;
+    unsigned int signalListId;
+    struct PdServ::TaskStatistics taskStatistics;
+    struct Pdo *next;
     char data[];
 };
 
 struct PollData {
     unsigned int request, reply;
+    bool active;
     struct timespec time;
-    const Signal *signal[];
+    unsigned int count;
+    struct Data {
+        char *dest;
+        const Signal *signal;
+    } data[];
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -72,10 +80,9 @@ struct PollData {
 Task::Task(Main *main, double ts, const char *name):
     PdServ::Task(ts), main(main), mutex(1)
 {
-    pollId = 0;
-    pollCount = 0;
     pdoMem = 0;
     seqNo = 0;
+    signalListId = 0;
     std::fill_n(signalCount, 4, 0);
     signalMemSize = 0;
 }
@@ -91,7 +98,7 @@ size_t Task::getShmemSpace(double T) const
 {
     size_t n = std::accumulate(signalCount, signalCount + 4, 0);
     return sizeof(*signalListRp) + sizeof(*signalListWp)
-        + sizeof(*poll) + (n+1)*sizeof(*poll->signal)
+        + sizeof(*poll) + n*sizeof(*poll->data)
         + signalMemSize
         + 2 * n * sizeof(*signalList)
         + (sizeof(*txPdo) + signalMemSize) * (size_t)(T / sampleTime + 0.5);
@@ -101,7 +108,7 @@ size_t Task::getShmemSpace(double T) const
 /////////////////////////////////////////////////////////////////////////////
 void Task::prepare(void *shmem, void *shmem_end)
 {
-    size_t n = std::accumulate(signalCount, signalCount + 4, 0);
+    const size_t n = std::accumulate(signalCount, signalCount + 4, 0);
 
     signalListRp = ptr_align<struct SignalList*>(shmem);
     signalListWp = signalListRp + 1;
@@ -111,14 +118,15 @@ void Task::prepare(void *shmem, void *shmem_end)
     *signalListWp = signalList;
 
     poll = ptr_align<struct PollData>(signalListEnd);
-    pollData = ptr_align<char>(poll->signal + n + 2);
-    pollPtr = pollData;
+    pollData = ptr_align<char>(poll->data + n);
 
-    txMemBegin = ptr_align<struct TxPdo>(pollData + signalMemSize);
+    txMemBegin = ptr_align<struct Pdo>(pollData + signalMemSize);
     txMemEnd = shmem_end;
 
     txPdo = txMemBegin;
-    nextTxPdo = ptr_align<struct TxPdo*>(shmem_end) - 2;
+    nextTxPdo = ptr_align<struct Pdo*>(shmem_end) - 2;
+
+    signalPosition.resize(n);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -135,6 +143,8 @@ void Task::rt_init()
 /////////////////////////////////////////////////////////////////////////////
 void Task::nrt_init()
 {
+    for (int i = 0; i < 4; i++)
+        signalCount[i] = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -142,13 +152,50 @@ Signal* Task::addSignal( unsigned int decimation,
         const char *path, enum si_datatype_t datatype,
         const void *addr, size_t n, const unsigned int *dim)
 {
-    Signal *s = new Signal(this, decimation, path, datatype, addr, n, dim);
+    Signal *s = new Signal(this, signals.size(),
+            decimation, path, datatype, addr, n, dim);
 
     signals.insert(s);
-    signalCount[s->subscriptionIndex]++;
+    signalCount[s->dataTypeIndex[s->width]]++;
     signalMemSize += s->memSize;
 
     return s;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+SessionTaskData *Task::newSession(PdServ::Session *s)
+{
+    ost::SemaphoreLock lock(mutex);
+
+    struct Pdo *pdo = txMemBegin;
+    while (pdo->next)
+        pdo = pdo->next;
+
+    const Signal *signalList[signals.size()];
+    size_t i = 0;
+    for (Signals::const_iterator it = signals.begin();
+            it != signals.end(); ++it) {
+        const Signal *s = dynamic_cast<const Signal*>(*it);
+        size_t pos = signalPosition[s->index];
+
+        if (pos != ~0U)
+            signalList[i++] = s;
+    }
+    SessionTaskData *std = new SessionTaskData(
+            this, s, pdo, signals.size(), signalListId, signalList, i);
+    
+    sessionMap[s] = std;
+
+    return std;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::endSession(PdServ::Session *s)
+{
+    ost::SemaphoreLock lock(mutex);
+
+    delete sessionMap[s];
+    sessionMap.erase(s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -156,6 +203,7 @@ void Task::subscribe(const Signal* s, bool insert) const
 {
     ost::SemaphoreLock lock(mutex);
     struct SignalList *wp = *signalListWp;
+    unsigned int signalListId = wp->signalListId + 1;
 
     if (++wp == signalListEnd)
         wp = signalList;
@@ -163,54 +211,62 @@ void Task::subscribe(const Signal* s, bool insert) const
     while (wp == *signalListRp)
         ost::Thread::sleep(sampleTime * 1000 / 2 + 1);
 
-    wp->action = insert ? SignalList::InsertSignal : SignalList::RemoveSignal;
+    wp->action = insert ? SignalList::Insert : SignalList::Remove;
     wp->signal = s;
+    wp->signalListId = signalListId;
 
     *signalListWp = wp;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::pollPrepare( const Signal *signal) const
+void Task::pollPrepare( const Signal *signal, char *dest) const
 {
-    poll->signal[pollCount++] = signal;
+    poll->data[poll->count].dest = dest;
+    poll->data[poll->count].signal = signal;
+    poll->count++;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Task::pollFinished() const
+bool Task::pollFinished( const PdServ::Signal * const *s, size_t nelem,
+        char * const *pollDest, struct timespec *t) const
 {
-    if (!pollCount)
+    if (!poll->count)
         return true;
 
-    if (pollId == poll->request) {
-        poll->signal[pollCount] = 0;
-        poll->request = pollId + 1;
+    if (!poll->active) {
+        poll->active = true;
+        poll->request++;
         return false;
     }
 
-    if (pollId == poll->reply)
+    if (poll->request != poll->reply)
         return false;
-
-    pollId = poll->reply;
-    pollCount = 0;
-    pollPtr = pollData;
 
     const char *buf = pollData;
-    for (const Signal **s = poll->signal; *s; ++s) {
-        std::copy(buf, buf + (*s)->memSize, (*s)->pollDest);
-        buf += (*s)->memSize;
+    for (size_t i = 0; i < poll->count; ++i) {
+        const Signal *s = poll->data[i].signal;
+        std::copy(buf, buf + s->memSize, poll->data[i].dest);
+        buf += s->memSize;
     }
+
+    poll->active = false;
+    poll->count = 0;
+    if (t)
+        *t = poll->time;
 
     return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::update(const struct timespec *t)
+void Task::update(const struct timespec *t,
+        double exec_time, double cycle_time)
 {
     if (poll->request != poll->reply) {
         char *dst = pollData;
-        for (const Signal **p = poll->signal; *p; ++p) {
-            std::copy((*p)->addr, (*p)->addr + (*p)->memSize, dst);
-            dst += (*p)->memSize;
+        for (size_t i = 0; i < poll->count; ++i) {
+            const Signal *s = poll->data[i].signal;
+            std::copy(s->addr, s->addr + s->memSize, dst);
+            dst += s->memSize;
         }
         poll->time = *t;
         poll->reply = poll->request;
@@ -219,25 +275,30 @@ void Task::update(const struct timespec *t)
     struct SignalList *sp = 0;
 
     while (*signalListRp != *signalListWp) {
-        sp = *signalListRp;
+        sp = *signalListRp + 1;
+        if (sp == signalListEnd)
+            sp = signalList;
+
+        signalListId = sp->signalListId;
         const Signal *signal = sp->signal;
-        size_t type = signal->subscriptionIndex;
+        size_t type = signal->dataTypeIndex[signal->width];
         struct CopyList *cl;
 
         switch (sp->action) {
-            case SignalList::InsertSignal:
+            case SignalList::Insert:
                 cl = &copyList[type][signalCount[type]];
                 cl->src = signal->addr;
                 cl->len = signal->memSize;
+                cl->signal = signal;
                 cl[1].src = 0;
 
                 pdoMem += signal->memSize;
 
-                signal->copyListPosition = signalCount[type]++;
+                signalPosition[signal->index] = signalCount[type]++;
                 break;
 
-            case SignalList::RemoveSignal:
-                cl = &copyList[type][signal->copyListPosition];
+            case SignalList::Remove:
+                cl = &copyList[type][signalPosition[signal->index]];
                 std::copy(cl+1, copyList[type] + signalCount[type]-- + 1, cl);
 
                 pdoMem -= signal->memSize;
@@ -245,10 +306,7 @@ void Task::update(const struct timespec *t)
                 break;
         }
 
-        if (++sp != signalListEnd)
-            *signalListRp = sp;
-        else
-            *signalListRp = signalList;
+        *signalListRp = sp;
     }
 
     if (sp) {
@@ -258,8 +316,9 @@ void Task::update(const struct timespec *t)
             txPdo = txMemBegin;
 
         txPdo->next = 0;
-        txPdo->seqNo = n;
-        txPdo->time = *t;
+        txPdo->signalListId = signalListId;
+        txPdo->taskStatistics.seqNo = n;
+        txPdo->type = Pdo::SignalList;
         const Signal **sp = ptr_align<const Signal*>(txPdo->data);
         for (int i = 0; i < 4; i++) {
             for (CopyList *cl = copyList[i]; cl->src; ++cl)
@@ -267,18 +326,20 @@ void Task::update(const struct timespec *t)
         }
 
         *nextTxPdo = txPdo;
-        txPdo->type = TxPdo::SignalList;
 
         nextTxPdo = &txPdo->next;
-        txPdo = ptr_align<TxPdo>(sp);
+        txPdo = ptr_align<Pdo>(sp);
     }
 
     if ( txPdo->data + pdoMem >= txMemEnd)
         txPdo = txMemBegin;
 
     txPdo->next = 0;
-    txPdo->seqNo = seqNo++;
-    txPdo->time = *t;
+    txPdo->type = Pdo::Data;
+    txPdo->taskStatistics.seqNo = seqNo++;
+    txPdo->taskStatistics.time = *t;
+    txPdo->taskStatistics.exec_time = exec_time;
+    txPdo->taskStatistics.cycle_time = cycle_time;
 
     char *p = txPdo->data;
     for (int i = 0; i < 4; ++i) {
@@ -289,8 +350,55 @@ void Task::update(const struct timespec *t)
     }
 
     *nextTxPdo = txPdo;
-    txPdo->type = TxPdo::PdoData;
 
     nextTxPdo = &txPdo->next;
-    txPdo = ptr_align<TxPdo>(p);
+    txPdo = ptr_align<Pdo>(p);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::rxPdo(struct Pdo **pdoPtr, SessionTaskData *std)
+{
+    cout << __func__ << endl;
+    struct Pdo *pdo = *pdoPtr;
+
+    while (pdo->next) {
+        switch (pdo->type) {
+            case Pdo::SignalList:
+                {
+                    cout << "Pdo::SignalList" << pdo << endl;
+                    const Signal * const *sp =
+                        ptr_align<const Signal*>(pdo->data);
+                    std->newSignalList(
+                            pdo->signalListId, sp, pdo->taskStatistics.seqNo);
+                    if (pdo->signalListId > signalListId) {
+                        ost::SemaphoreLock lock(mutex);
+
+                        std::fill(signalPosition.begin(),
+                                signalPosition.end(), ~0U);
+                        for (size_t i = 0; i < pdo->taskStatistics.seqNo; ++i)
+                            signalPosition[sp[i]->index] = i;
+                        signalListId = pdo->signalListId;
+                    }
+                }
+                break;
+
+            case Pdo::Data:
+                {
+                    cout << "Pdo::Data " << pdo << endl;
+                    std->newSignalData(pdo->signalListId,
+                            &pdo->taskStatistics, pdo->data);
+                }
+                break;
+
+            default:
+                break;
+        }
+
+        pdo = pdo->next;
+
+        if (pdo < txMemBegin or (void*)pdo >= txMemEnd)
+            pdo = txMemBegin;
+    }
+
+    *pdoPtr = pdo;
 }

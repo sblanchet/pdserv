@@ -25,6 +25,8 @@
 #ifndef LIB_TASK_H
 #define LIB_TASK_H
 
+#include <vector>
+#include <map>
 #include <cstddef>
 #include <cc++/thread.h>
 
@@ -34,6 +36,7 @@
 
 class Main;
 class Signal;
+class SessionTaskData;
 
 class Task: public PdServ::Task {
     public:
@@ -51,11 +54,17 @@ class Task: public PdServ::Task {
         void prepare(void *start, void *end);
         void rt_init();
         void nrt_init();
-        void update(const struct timespec *);
+        void update(const struct timespec *,
+                double exec_time, double cycle_time);
+        void rxPdo(struct Pdo **, SessionTaskData *);
 
         void subscribe(const Signal* s, bool insert) const;
+        SessionTaskData *newSession(PdServ::Session *s);
+        void endSession(PdServ::Session *s);
 
-        void pollPrepare( const Signal *) const;
+        void pollPrepare( const Signal *, char *buf) const;
+        bool pollFinished( const PdServ::Signal * const *s, size_t nelem,
+                char * const *pollDest, struct timespec *t) const;
 
     private:
         mutable ost::Semaphore mutex;
@@ -64,24 +73,21 @@ class Task: public PdServ::Task {
         size_t signalMemSize;
         size_t pdoMem;
 
+        std::map<const PdServ::Session*, SessionTaskData*> sessionMap;
+        std::vector<size_t> signalPosition;
+
         unsigned int seqNo;
+        unsigned int signalListId;
 
         struct CopyList *copyList[4];
         struct SignalList *signalList, *signalListEnd,
                           **signalListRp, **signalListWp;
 
-        struct TxPdo *txMemBegin, *txPdo, **nextTxPdo;
+        struct Pdo *txMemBegin, *txPdo, **nextTxPdo;
         const void *txMemEnd;
-
-        mutable unsigned int pollId;
-        mutable unsigned int pollCount;
-        mutable char *pollPtr;
 
         struct PollData *poll;
         char *pollData;
-
-        // Reimplemented from PdServ::Task
-        bool pollFinished() const;
 };
 
 #endif // LIB_TASK_H

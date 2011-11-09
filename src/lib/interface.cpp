@@ -60,9 +60,10 @@ void pdserv_get_parameters(struct pdserv* pdserv, struct pdtask *task,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdserv_update(struct pdtask* task, const struct timespec *t)
+void pdserv_update(struct pdtask* task, const struct timespec *t,
+        double exec_time, double cycle_time)
 {
-    reinterpret_cast<Task*>(task)->update(t);
+    reinterpret_cast<Task*>(task)->update(t, exec_time, cycle_time);
 }
 
 /////////////////////////////////////////////////////////////////////////////

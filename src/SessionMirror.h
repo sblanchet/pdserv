@@ -22,43 +22,29 @@
  *
  *****************************************************************************/
 
-#ifndef SIGNAL_H
-#define SIGNAL_H
+#ifndef SESSIONMIRROR_H
+#define SESSIONMIRROR_H
 
-#include "Variable.h"
+#include <set>
+#include "TaskStatistics.h"
 
 namespace PdServ {
 
 class Session;
-class SessionTaskData;
 
-class Signal: public Variable {
+class SessionMirror {
     public:
-        Signal( const char *path,
-                double sampleTime,
-                enum si_datatype_t dtype,
-                unsigned int ndims = 1,
-                const unsigned int *dim = 0);
 
-        virtual ~Signal();
+        virtual void rxPdo() = 0;
+        const TaskStatistics& getStatistics() const {
+            return statistics;
+        }
 
-        const double sampleTime;
+    protected:
+        TaskStatistics statistics;
 
-        virtual void subscribe(Session *) const = 0;
-        virtual void unsubscribe(Session *) const = 0;
-
-        virtual double poll(const Session *s,
-                char *buf, struct timespec *t) const = 0;
-
-        virtual const char *getValue(const SessionTaskData*) const = 0;
-
-        // Reimplemented from PdServ::Variable
-        virtual void getValue(Session*,
-                char *, struct timespec * = 0) const = 0;
     private:
-
 };
 
 }
-
-#endif //SIGNAL_H
+#endif //SESSIONMIRROR_H

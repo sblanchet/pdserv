@@ -28,6 +28,7 @@
 #include <cc++/thread.h>
 
 #include <list>
+#include <vector>
 #include <map>
 #include <string>
 #include "SessionStatistics.h"
@@ -43,6 +44,7 @@ namespace PdServ {
 class Signal;
 class Parameter;
 class Session;
+class SessionMirror;
 class Variable;
 class Task;
 
@@ -75,12 +77,15 @@ class Main {
 
         const Variable *findVariable(const std::string& path) const;
 
+        virtual SessionMirror *newSession(Session *) = 0;
+        virtual void endSession(Session *) = 0;
+
     protected:
         int argc;
         const char **argv;
 
-        typedef std::list<Task*> TaskList;
-        TaskList taskList;
+        typedef std::vector<Task*> TaskList;
+        TaskList task;
         Parameters parameters;
         Signals signals;
 
@@ -88,7 +93,9 @@ class Main {
 
         static int localtime(struct timespec *);
 
-        virtual void processPoll(size_t delay_ms) const = 0;
+        virtual void processPoll(size_t delay_ms,
+                const Signal * const *s, size_t nelem, char * const *pollDest,
+                struct timespec *t) const = 0;
 
         typedef std::map<const std::string, const Variable*> VariableMap;
         VariableMap variableMap;

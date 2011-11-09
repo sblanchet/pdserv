@@ -41,8 +41,6 @@ class Task {
         typedef std::set<Signal*> Signals;
         const Signals& getSignals() const;
 
-        virtual bool pollFinished() const = 0;
-
     protected:
         Signals signals;
 

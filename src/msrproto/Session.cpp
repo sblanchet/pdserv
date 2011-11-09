@@ -25,9 +25,11 @@
 #include "config.h"
 
 #include "../Main.h"
-#include "../Parameter.h"
+#include "../Task.h"
 #include "../Signal.h"
-#include "../Receiver.h"
+#include "../Parameter.h"
+#include "../SessionTaskData.h"
+#include "../TaskStatistics.h"
 
 #include "Session.h"
 #include "PrintVariable.h"
@@ -35,6 +37,7 @@
 #include "Channel.h"
 #include "Parameter.h"
 #include "Directory.h"
+#include "SubscriptionManager.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -49,16 +52,18 @@ using namespace MsrProto;
 Session::Session( Server *s, ost::SocketService *ss,
         ost::TCPSocket &socket, PdServ::Main *main):
     SocketPort(0, socket), PdServ::Session(main),
-    server(s), subscriptionManager(0), //main->getTasks().size()),
-    dataTag("data"), outbuf(this)
+    server(s), dataTag("data"), outbuf(this)
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
+
+    for (size_t i = 0; i < main->numTasks(); ++i)
+        subscriptionManager[main->getTask(i)->sampleTime] =
+            new SubscriptionManager(this);
 
     // Setup some internal variables
     writeAccess = false;
     echoOn = false;
     quiet = false;
-    requestState = 0;
 
     // Non-blocking read() and write()
     setCompletion(false);
@@ -81,6 +86,10 @@ Session::Session( Server *s, ost::SocketService *ss,
 Session::~Session()
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
+    for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
+            it != subscriptionManager.end(); ++it)
+        delete it->second;
+
     server->sessionClosed(this);
 }
 
@@ -114,42 +123,11 @@ void Session::requestOutput()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::requestSignal(const PdServ::Signal *s, bool state)
-{
-    requestState = 2;
-    signalRequest[s] = state;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::processSignalRequest()
-{
-    size_t insIdx = 0;
-    size_t delIdx = 0;
-    const PdServ::Signal *ins[signalRequest.size()];
-    const PdServ::Signal *del[signalRequest.size()];
-    for (SignalRequest::const_iterator it = signalRequest.begin();
-            it != signalRequest.end(); it++) {
-        if (it->second) 
-            ins[insIdx++] = it->first;
-        else
-            del[delIdx++] = it->first;
-    }
-
-    signalRequest.clear();
-
-//    main->unsubscribe(this, del, delIdx);
-//    main->subscribe(this, ins, insIdx);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
     if (getDetectPending()) {
         // Read and process the incoming data
         rxPdo();
-
-        if (!--requestState)
-            processSignalRequest();
     }
     else /*if (!getDetectPending())*/ {
         delete this;
@@ -226,23 +204,24 @@ void Session::disconnect()
 void Session::newSignalList(const PdServ::Task *task,
         const PdServ::Signal * const *s, size_t n)
 {
-//    if (!subscriptionManager[task->tid].newSignalList(s, n))
-//        return;
+    if (!subscriptionManager[task->sampleTime]->newSignalList(s, n))
+        return;
 
-//    for (size_t i = 0; i < main->nst; i++)
-//        subscriptionManager[i].sync();
+    for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
+            it != subscriptionManager.end(); ++it)
+        it->second->sync();
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalData(const PdServ::Receiver &receiver)
+void Session::newSignalData(const PdServ::SessionTaskData *std)
 {
     if (quiet)
         return;
 
-//    dataTag.setAttribute("level", receiver.task->tid);
-    dataTag.setAttribute("time", *receiver.time);
+    dataTag.setAttribute("level", std->task->sampleTime);
+    dataTag.setAttribute("time", std->taskStatistics->time);
 
-//    subscriptionManager[receiver.task->tid].newSignalData(&dataTag, receiver);
+    subscriptionManager[std->task->sampleTime]->newSignalData(&dataTag, std);
 
     if (dataTag.hasChildren())
         outbuf << dataTag << std::flush;
@@ -609,9 +588,11 @@ void Session::xsad()
     quiet = !sync and inbuf.isTrue("quiet");
 
     if (!inbuf.getUnsignedList("channels", indexList)) {
-//        if (sync)
-//            for (size_t i = 0; i < main->nst; i++)
-//                subscriptionManager[i].sync();
+        if (sync)
+            for (SubscriptionManagerMap::iterator it =
+                    subscriptionManager.begin();
+                    it != subscriptionManager.end(); ++it)
+                it->second->sync();
         return;
     }
 
@@ -675,12 +656,9 @@ void Session::xsad()
         if (!reduction) reduction = 1;
         if (!blocksize) blocksize = 1;
 
-        size_t tid = 0; //mainSignal->task->tid;
-        if (subscriptionManager[tid].subscribe( channel[*it], event,
-                    sync, reduction, blocksize, base64, precision)) {
-            signalRequest[mainSignal] = true;
-            requestState = 2;
-        }
+        double ts = mainSignal->sampleTime;
+        subscriptionManager[ts]->subscribe( channel[*it], event,
+                    sync, reduction, blocksize, base64, precision);
     }
 }
 
@@ -697,18 +675,13 @@ void Session::xsod()
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
             if (*it < channel.size()) {
-                size_t tid = 0; //channel[*it]->signal->task->tid;
-                if (subscriptionManager[tid].unsubscribe(channel[*it])) {
-                    signalRequest[channel[*it]->signal] = false; 
-                    requestState = 2;
-                }
+                double ts = channel[*it]->signal->sampleTime;
+                subscriptionManager[ts]->unsubscribe(channel[*it]);
             }
         }
     }
-    else {
-//        for (size_t i = 0; i < main->nst; i++)
-//            subscriptionManager[i].unsubscribe();
-        signalRequest.clear();
-//        main->unsubscribe(this);
-    }
+    else
+        for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
+                it != subscriptionManager.end(); ++it)
+            it->second->clear();
 }

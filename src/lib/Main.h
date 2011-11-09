@@ -25,14 +25,23 @@
 #ifndef LIB_MAIN_H
 #define LIB_MAIN_H
 
+#include <map>
+
 #include "../Main.h"
 #include "pdserv/etl_data_info.h"
 
 #include <cc++/thread.h>
 
+namespace PdServ {
+    class Session;
+    class Signal;
+    class SessionMirror;
+}
+
 class Parameter;
 class Signal;
 class Task;
+class SessionMirror;
 
 class Main: public PdServ::Main {
     public:
@@ -45,6 +54,7 @@ class Main: public PdServ::Main {
         void getParameters(Task *, const struct timespec *) const;
 
         Task* addTask(double sampleTime, const char *name);
+        Task* getTask(size_t index) const;
 
         Parameter* addParameter( const char *path,
                 unsigned int mode, enum si_datatype_t datatype,
@@ -67,27 +77,25 @@ class Main: public PdServ::Main {
 
         int pid;
 
-//        mutable unsigned int pollDelay;
+        typedef std::map<const PdServ::Session*, SessionMirror*> SessionMap;
+        SessionMap sessionMap;
 
         size_t shmem_len;
         void *shmem;
 
         struct SDOStruct *sdo;
         mutable ost::Semaphore sdoMutex;
-//        struct timespec *sdoTaskTime;
         char *sdoData;
 
-//         // Methods used by the real-time process to interpret inbox
-//         // instructions from the clients
-//         bool processSdo(Task *task, const struct timespec *time) const;
-// //
-// //        static int localtime(struct timespec *);
-// 
         int (* const rttime)(struct timespec*);
-// 
+
         // Reimplemented from PdServ::Main
-        void processPoll(size_t delay_ms) const;
+        void processPoll(size_t delay_ms,
+                const PdServ::Signal * const *s, size_t nelem,
+                char * const *pollDest, struct timespec *t) const;
         int gettime(struct timespec *) const;
+        PdServ::SessionMirror *newSession(PdServ::Session *);
+        void endSession(PdServ::Session *);
 };
 
 #endif // LIB_MAIN_H

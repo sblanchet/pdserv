@@ -22,43 +22,20 @@
  *
  *****************************************************************************/
 
-#ifndef SIGNAL_H
-#define SIGNAL_H
+#include "config.h"
 
-#include "Variable.h"
+#include "SessionTaskData.h"
 
-namespace PdServ {
+#ifdef DEBUG
+#include <iostream>
+using std::cout;
+using std::cerr;
+using std::endl;
+#endif
 
-class Session;
-class SessionTaskData;
+using namespace PdServ;
 
-class Signal: public Variable {
-    public:
-        Signal( const char *path,
-                double sampleTime,
-                enum si_datatype_t dtype,
-                unsigned int ndims = 1,
-                const unsigned int *dim = 0);
-
-        virtual ~Signal();
-
-        const double sampleTime;
-
-        virtual void subscribe(Session *) const = 0;
-        virtual void unsubscribe(Session *) const = 0;
-
-        virtual double poll(const Session *s,
-                char *buf, struct timespec *t) const = 0;
-
-        virtual const char *getValue(const SessionTaskData*) const = 0;
-
-        // Reimplemented from PdServ::Variable
-        virtual void getValue(Session*,
-                char *, struct timespec * = 0) const = 0;
-    private:
-
-};
-
+/////////////////////////////////////////////////////////////////////////////
+SessionTaskData::SessionTaskData(const Task *t): task(t)
+{
 }
-
-#endif //SIGNAL_H

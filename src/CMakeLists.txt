@@ -34,6 +34,8 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     Variable.cpp Variable.h
     Signal.cpp Signal.h
     Parameter.cpp Parameter.h
+    SessionMirror.h
+    SessionTaskData.cpp SessionTaskData.h
 
     lib/interface.cpp
     lib/ShmemDataStructures.h
@@ -41,6 +43,8 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     lib/Main.cpp lib/Main.h
     lib/Signal.cpp lib/Signal.h
     lib/Parameter.cpp lib/Parameter.h
+    lib/SessionMirror.cpp lib/SessionMirror.h
+    lib/SessionTaskData.cpp lib/SessionTaskData.h
 
     #etlproto/Server.cpp etlproto/Server.h
     #etlproto/Session.cpp etlproto/Session.h

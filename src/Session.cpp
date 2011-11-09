@@ -25,8 +25,8 @@
 #include "config.h"
 
 #include "Session.h"
+#include "SessionMirror.h"
 #include "Main.h"
-#include "Receiver.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -38,27 +38,18 @@ using std::endl;
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Session(Main *m):
-    main(m), receiver(0) //new Receiver*[main->getTasks().size()])
+Session::Session(Main *m): main(m), shadow(main->newSession(this))
 {
     main->gettime(&connectedTime);
 
     inBytes = 0;
     outBytes = 0;
-
-//    for (unsigned int i = 0; i < main->nst(); i++)
-//        receiver[i] = main->newReceiver(i);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
-//    main->unsubscribe(this);
-
-//    for (unsigned int i = 0; i < main->getTasks().size(); i++)
-//        delete receiver[i];
-
-    delete[] receiver;
+    main->endSession(this);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -76,17 +67,15 @@ SessionStatistics Session::getStatistics() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::rxPdo()
+{
+    shadow->rxPdo();
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::resendSignalList(const Task *task) const
 {
 //    for (unsigned int i = 0; i < main->getTasks().size(); i++)
 //        if (receiver[i]->task == task)
 //            receiver[i]->resendSignalList();
 }
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::rxPdo()
-{
-//    for (unsigned int i = 0; i < main->getTasks().size(); i++)
-//        receiver[i]->process(this);
-}
-

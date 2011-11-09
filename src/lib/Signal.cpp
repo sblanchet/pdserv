@@ -27,6 +27,7 @@
 #include "Signal.h"
 #include "Task.h"
 #include "Main.h"
+#include "SessionTaskData.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -43,6 +44,7 @@ const size_t Signal::dataTypeIndex[PdServ::Variable::maxWidth+1] = {
 
 //////////////////////////////////////////////////////////////////////
 Signal::Signal( Task *task,
+        size_t index,
         unsigned int decimation,
         const char *path,
         enum si_datatype_t dtype,
@@ -51,7 +53,7 @@ Signal::Signal( Task *task,
         const unsigned int *dim):
     PdServ::Signal(path, task->sampleTime * decimation, dtype, ndims, dim),
     addr(reinterpret_cast<const char *>(addr)),
-    task(task), subscriptionIndex(dataTypeIndex[width]),
+    task(task), index(index),
     mutex(1)
 {
 }
@@ -79,10 +81,10 @@ void Signal::unsubscribe(PdServ::Session *s) const
 }
 
 //////////////////////////////////////////////////////////////////////
-double Signal::poll(const PdServ::Session *, char *buf) const
+double Signal::poll(const PdServ::Session *,
+        char *dest, struct timespec *) const
 {
-    pollDest = buf;
-    task->pollPrepare(this);
+    task->pollPrepare(this, dest);
 
     return task->sampleTime / 2;
 }
@@ -92,4 +94,10 @@ void Signal::getValue(PdServ::Session *, char *buf, struct timespec *t) const
 {
     const PdServ::Signal *s = this;
     task->main->poll(0, &s, 1, buf, t);
+}
+
+//////////////////////////////////////////////////////////////////////
+const char *Signal::getValue(const PdServ::SessionTaskData *std) const
+{
+    return static_cast<const SessionTaskData*>(std)->getValue(this);
 }

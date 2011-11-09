@@ -32,6 +32,7 @@
 
 namespace PdServ {
     class Session;
+    class SessionTaskData;
 }
 
 class Task;
@@ -39,6 +40,7 @@ class Task;
 class Signal: public PdServ::Signal {
     public:
         Signal( Task *task,
+                size_t index,
                 unsigned int decimation,
                 const char *path,
                 enum si_datatype_t dtype,
@@ -49,15 +51,11 @@ class Signal: public PdServ::Signal {
         const char * const addr;
         const Task * const task;
 
-        const size_t subscriptionIndex;
-
-        mutable size_t copyListPosition;
-        mutable char *pollDest;
+        static const size_t dataTypeIndex[PdServ::Variable::maxWidth+1];
+        const size_t index;
 
     private:
         mutable ost::Semaphore mutex;
-
-        static const size_t dataTypeIndex[PdServ::Variable::maxWidth+1];
 
         typedef std::set<const PdServ::Session*> SessionSet;
         mutable SessionSet sessions;
@@ -67,7 +65,9 @@ class Signal: public PdServ::Signal {
         void subscribe(PdServ::Session *) const;
         void unsubscribe(PdServ::Session *) const;
         double sampleTime() const;
-        double poll(const PdServ::Session *s, char *buf) const;
+        double poll(const PdServ::Session *s,
+                char *buf, struct timespec *t) const;
+        const char *getValue(const PdServ::SessionTaskData*) const;
 
         // Reimplemented from PdServ::Variable
         void getValue(PdServ::Session*, char *, struct timespec * = 0) const;

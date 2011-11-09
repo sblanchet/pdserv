@@ -202,8 +202,10 @@ void pdserv_get_parameters(
  */
 void pdserv_update(
         struct pdtask* pdtask,  /**< Pointer to pdtask structure */
-        const struct timespec *t /**< Current model time.
+        const struct timespec *t, /**< Current model time.
                                   * If NULL, zero is assumed */
+        double exec_time,       /**< Execution time in [s] */
+        double cycle_time       /**< Time since last call */
         );
 
 /** Cleanup pdserv */
