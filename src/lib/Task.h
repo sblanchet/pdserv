@@ -59,16 +59,20 @@ class Task: public PdServ::Task {
         bool rxPdo(struct Pdo **, SessionTaskData *);
 
         void subscribe(const Signal* s, bool insert) const;
-        SessionTaskData *newSession(PdServ::Session *s);
 
         void pollPrepare( const Signal *, void *buf) const;
         bool pollFinished( const PdServ::Signal * const *s, size_t nelem,
                 void * const *pollDest, struct timespec *t) const;
 
+        size_t signalCount() const;
+        void getSignalList(const Signal **s, size_t *n,
+                unsigned int *signalListId) const;
+        struct Pdo *forwardPdo(unsigned int signalListId) const;
+
     private:
         mutable ost::Semaphore mutex;
 
-        size_t signalCount[4];
+        size_t signalTypeCount[4];
         size_t signalMemSize;
         size_t pdoMem;
 

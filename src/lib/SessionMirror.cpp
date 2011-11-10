@@ -41,15 +41,15 @@ SessionMirror::SessionMirror(const Main *main, PdServ::Session* session):
 {
     cout << __func__ << endl;
     for (size_t i = 0; i < main->numTasks(); ++i)
-        taskSet.insert( main->getTask(i)->newSession(session));
+        taskSet.insert(new SessionTaskData( session, main->getTask(i)));
 }
 
 ////////////////////////////////////////////////////////////////////////////
 SessionMirror::~SessionMirror()
 {
     cout << __func__ << endl;
-//    for (TaskSet::iterator it = taskSet.begin(); it != taskSet.end(); ++it)
-//        delete *it;
+    for (TaskSet::iterator it = taskSet.begin(); it != taskSet.end(); ++it)
+        delete *it;
 }
 
 ////////////////////////////////////////////////////////////////////////////

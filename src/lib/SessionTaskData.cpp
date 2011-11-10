@@ -36,16 +36,20 @@ using std::endl;
 #include "Signal.h"
 
 ////////////////////////////////////////////////////////////////////////////
-SessionTaskData::SessionTaskData(Task* t, PdServ::Session* s,
-        struct Pdo *pdo, size_t signalCount,
-        unsigned int signalListId, const Signal * const *sp, size_t nelem):
-    PdServ::SessionTaskData(s, t), task(t), session(s), 
-    signalPosition(signalCount), pdo(pdo)
+SessionTaskData::SessionTaskData( PdServ::Session* s, Task* t):
+    PdServ::SessionTaskData(s, t), task(t), session(s)
 {
-    this->signalListId = signalListId;
-    loadSignalList(sp, nelem);
     pdoError = false;
     pdoSize = 0;
+
+    signalPosition.resize(task->signalCount());
+    const Signal *signals[signalPosition.size()];
+    size_t nelem;
+
+    task->getSignalList(signals, &nelem, &signalListId);
+    loadSignalList(signals, nelem);
+
+    pdo = task->forwardPdo(signalListId);
 }
 
 ////////////////////////////////////////////////////////////////////////////

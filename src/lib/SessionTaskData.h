@@ -41,10 +41,7 @@ struct Pdo;
 
 class SessionTaskData: public PdServ::SessionTaskData {
     public:
-        SessionTaskData(Task* t, PdServ::Session* session,
-                struct Pdo *pdo, size_t signalCount,
-                unsigned int signalListId, const Signal * const *signalList,
-                size_t nelem);
+        SessionTaskData(PdServ::Session* session, Task* t);
 
         bool rxPdo();
         void newSignalList( unsigned int signalListId,
