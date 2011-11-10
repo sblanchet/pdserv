@@ -89,19 +89,20 @@ void Subscription::set( bool _event, bool sync, unsigned int _decimation,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Subscription::newValue(MsrXml::Element *parent, const char *dataBuf)
+void Subscription::newValue(MsrXml::Element *parent, const void *dataBuf)
 {
+    const char *buf = reinterpret_cast<const char *>(dataBuf);
 //    cout << __func__ << channel->path() << ' ' << trigger << endl;
     if (trigger and trigger--)
         return;
 
-    dataBuf += channel->bufferOffset;
+    buf += channel->bufferOffset;
 //    cout << __func__ << channel->path() << offset << ' ' << *(double*)dataBuf << endl;
 
     if (!event) {
         trigger = decimation;
 
-        std::copy(dataBuf, dataBuf + channel->memSize, data_pptr);
+        std::copy(buf, buf + channel->memSize, data_pptr);
         data_pptr += channel->memSize;
 //        cout << ' ' << (data_eptr - data_pptr) / channel->memSize << endl;
 
@@ -119,10 +120,10 @@ void Subscription::newValue(MsrXml::Element *parent, const char *dataBuf)
 //            cout << "sent " << channel->path() << endl;
         }
     }
-    else if (!std::equal(data_bptr, data_eptr, dataBuf)) {
+    else if (!std::equal(data_bptr, data_eptr, buf)) {
         trigger = decimation;
 
-        std::copy(dataBuf, dataBuf + channel->memSize, data_bptr);
+        std::copy(buf, buf + channel->memSize, data_bptr);
         if (base64)
             base64Attribute(&element, "d",
                     channel->variable, channel->nelem, data_bptr);

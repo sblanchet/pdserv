@@ -74,7 +74,7 @@ struct PollData {
     struct timespec time;
     unsigned int count;
     struct Data {
-        char *dest;
+        void *dest;
         const Signal *signal;
     } data[];
 };
@@ -192,19 +192,8 @@ SessionTaskData *Task::newSession(PdServ::Session *s)
     }
     SessionTaskData *std = new SessionTaskData(
             this, s, pdo, signals.size(), signalListId, signalList, i);
-    
-    sessionMap[s] = std;
 
     return std;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Task::endSession(PdServ::Session *s)
-{
-    ost::SemaphoreLock lock(mutex);
-
-    delete sessionMap[s];
-    sessionMap.erase(s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -229,7 +218,7 @@ void Task::subscribe(const Signal* s, bool insert) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::pollPrepare( const Signal *signal, char *dest) const
+void Task::pollPrepare( const Signal *signal, void *dest) const
 {
     poll->data[poll->count].dest = dest;
     poll->data[poll->count].signal = signal;
@@ -238,7 +227,7 @@ void Task::pollPrepare( const Signal *signal, char *dest) const
 
 /////////////////////////////////////////////////////////////////////////////
 bool Task::pollFinished( const PdServ::Signal * const *s, size_t nelem,
-        char * const *pollDest, struct timespec *t) const
+        void * const *, struct timespec *t) const
 {
     if (!poll->count)
         return true;
@@ -255,7 +244,8 @@ bool Task::pollFinished( const PdServ::Signal * const *s, size_t nelem,
     const char *buf = pollData;
     for (size_t i = 0; i < poll->count; ++i) {
         const Signal *s = poll->data[i].signal;
-        std::copy(buf, buf + s->memSize, poll->data[i].dest);
+        std::copy(buf, buf + s->memSize,
+                reinterpret_cast<char*>(poll->data[i].dest));
         buf += s->memSize;
     }
 

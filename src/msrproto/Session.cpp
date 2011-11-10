@@ -50,15 +50,19 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Session::Session( Server *s, ost::SocketService *ss,
-        ost::TCPSocket &socket, PdServ::Main *main):
+        ost::TCPSocket &socket, const PdServ::Main *main):
     SocketPort(0, socket), PdServ::Session(main),
     server(s), dataTag("data"), outbuf(this)
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
 
-    for (size_t i = 0; i < main->numTasks(); ++i)
-        subscriptionManager[main->getTask(i)->sampleTime] =
-            new SubscriptionManager(this);
+    for (size_t i = 0; i < main->numTasks(); ++i) {
+        double ts = main->getTask(i)->sampleTime;
+
+        subscriptionManager[ts] = new SubscriptionManager(this);
+        if (!i or ts < primaryTaskSampleTime)
+            primaryTaskSampleTime = ts;
+    }
 
     // Setup some internal variables
     writeAccess = false;
@@ -225,10 +229,18 @@ void Session::newSignalData(const PdServ::SessionTaskData *std)
     if (quiet)
         return;
 
-    dataTag.setAttribute("level", std->task->sampleTime);
-    dataTag.setAttribute("time", std->taskStatistics->time);
+    const struct timespec& t = std->taskStatistics->time;
 
-    subscriptionManager[std->task->sampleTime]->newSignalData(&dataTag, std);
+    dataTag.setAttribute("level", std->task->sampleTime);
+    dataTag.setAttribute("time", t);
+
+    double ts = std->task->sampleTime;
+    if (primaryTaskSampleTime == ts) {
+        primaryTaskTime = 1.0e-9 * t.tv_nsec + t.tv_sec;
+        cout << "time =" << primaryTaskTime << endl;
+    }
+
+    subscriptionManager[ts]->newSignalData(&dataTag, std);
 
     if (dataTag.hasChildren())
         outbuf << dataTag << std::flush;
@@ -691,4 +703,10 @@ void Session::xsod()
         for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
                 it != subscriptionManager.end(); ++it)
             it->second->clear();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const double *Session::getDblTimePtr() const
+{
+    return &primaryTaskTime;
 }

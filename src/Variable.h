@@ -62,7 +62,7 @@ class Variable {
                                             width */
 
         virtual void getValue(Session*,
-                char *, struct timespec * = 0) const = 0;
+                void *, struct timespec * = 0) const = 0;
 
     private:
         size_t * const dim;

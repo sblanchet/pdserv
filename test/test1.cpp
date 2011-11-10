@@ -48,7 +48,7 @@ int main(int argc, const char *argv[])
     assert(pdserv_signal(task[0], 1, "/path/to/double",
             si_double_T, dbl, 3, NULL));
 
-    assert(pdserv_signal(task[0], 1, "/Time",
+    assert(pdserv_signal(task[0], 1, "/Tme",
             si_double_T, &dbltime, 1, NULL));
 
     assert(pdserv_signal(task[0], 1, "/path/to/var2",

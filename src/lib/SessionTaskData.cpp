@@ -39,7 +39,7 @@ using std::endl;
 SessionTaskData::SessionTaskData(Task* t, PdServ::Session* s,
         struct Pdo *pdo, size_t signalCount,
         unsigned int signalListId, const Signal * const *sp, size_t nelem):
-    PdServ::SessionTaskData(t), task(t), session(s), 
+    PdServ::SessionTaskData(s, t), task(t), session(s), 
     signalPosition(signalCount), pdo(pdo)
 {
     this->signalListId = signalListId;

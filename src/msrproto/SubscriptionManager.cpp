@@ -155,7 +155,7 @@ SubscriptionManager::SignalSubscription::~SignalSubscription()
 
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::SignalSubscription::newSignalData(
-        MsrXml::Element *parent, const char *data)
+        MsrXml::Element *parent, const void *data)
 {
     for (const_iterator it = begin(); data and it != end(); it++) {
         it->second->newValue(parent, data);

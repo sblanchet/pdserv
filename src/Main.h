@@ -73,12 +73,11 @@ class Main {
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 
         void poll( Session *session, const Signal * const *s,
-                size_t nelem, char *buf, struct timespec *t) const;
+                size_t nelem, void *buf, struct timespec *t) const;
 
         const Variable *findVariable(const std::string& path) const;
 
-        virtual SessionMirror *newSession(Session *) = 0;
-        virtual void endSession(Session *) = 0;
+        virtual SessionMirror *newSession(Session *) const = 0;
 
     protected:
         int argc;
@@ -94,7 +93,7 @@ class Main {
         static int localtime(struct timespec *);
 
         virtual void processPoll(size_t delay_ms,
-                const Signal * const *s, size_t nelem, char * const *pollDest,
+                const Signal * const *s, size_t nelem, void * const *pollDest,
                 struct timespec *t) const = 0;
 
         typedef std::map<const std::string, const Variable*> VariableMap;

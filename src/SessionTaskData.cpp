@@ -36,6 +36,7 @@ using std::endl;
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
-SessionTaskData::SessionTaskData(const Task *t): task(t)
+SessionTaskData::SessionTaskData(const Session *s, const Task *t):
+    session(s), task(t)
 {
 }

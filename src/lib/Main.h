@@ -67,18 +67,12 @@ class Main: public PdServ::Main {
                 size_t nelem, const char *data,
                 struct timespec *) const;
 
-//        void newSignalList(unsigned int listId,
-//                const PdServ::Signal * const *, size_t n) const;
-
         static const double bufferTime;
 
     private:
         mutable ost::Semaphore mutex;
 
         int pid;
-
-        typedef std::map<const PdServ::Session*, SessionMirror*> SessionMap;
-        SessionMap sessionMap;
 
         size_t shmem_len;
         void *shmem;
@@ -92,10 +86,9 @@ class Main: public PdServ::Main {
         // Reimplemented from PdServ::Main
         void processPoll(size_t delay_ms,
                 const PdServ::Signal * const *s, size_t nelem,
-                char * const *pollDest, struct timespec *t) const;
+                void * const *pollDest, struct timespec *t) const;
         int gettime(struct timespec *) const;
-        PdServ::SessionMirror *newSession(PdServ::Session *);
-        void endSession(PdServ::Session *);
+        PdServ::SessionMirror *newSession(PdServ::Session *) const;
 };
 
 #endif // LIB_MAIN_H

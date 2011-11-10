@@ -26,7 +26,7 @@
 
 #include "Server.h"
 #include "Channel.h"
-#include "TimeChannel.h"
+#include "TimeSignal.h"
 #include "Parameter.h"
 #include "Directory.h"
 #include "../Main.h"
@@ -46,7 +46,7 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Server::Server(PdServ::Main *main, int argc, const char **argv):
+Server::Server(const PdServ::Main *main, int argc, const char **argv):
     main(main), mutex(1)
 {
     bool traditional = 1;
@@ -68,7 +68,7 @@ Server::Server(PdServ::Main *main, int argc, const char **argv):
     }
 
     if (!main->findVariable("/Time")) {
-//        time = new TimeChannel(this);
+//        time = new TimeSignal(this, 0.1);
 //        root->insert(time);
     }
     else
@@ -109,7 +109,7 @@ Server::~Server()
             it != sessions.end(); it++)
         delete *it;
 
-    delete time;
+//    delete time;
 }
 
 /////////////////////////////////////////////////////////////////////////////

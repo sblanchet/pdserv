@@ -136,17 +136,18 @@ void Main::parameterChanged(const Parameter *p, size_t startIndex,
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::poll( Session *session, const Signal * const *s,
-        size_t nelem, char *buf, struct timespec *t) const
+        size_t nelem, void *buf, struct timespec *t) const
 {
     ost::SemaphoreLock lock(mutex);
+    char *dest = reinterpret_cast<char*>(buf);
     double delay = 0.01;
-    char *pollDest[nelem];
+    void *pollDest[nelem];
 
     for (size_t i = 0; i < nelem; ++i) {
         delay = std::max(delay,
-                std::min(0.1, s[i]->poll(session, buf, t)));
-        pollDest[i] = buf;
-        buf += s[i]->memSize;
+                std::min(0.1, s[i]->poll(session, dest, t)));
+        pollDest[i] = dest;
+        dest += s[i]->memSize;
     }
 
     processPoll(delay * 1000 + 0.5, s, nelem, pollDest, t);

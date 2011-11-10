@@ -48,13 +48,13 @@ class Signal: public Variable {
         virtual void unsubscribe(Session *) const = 0;
 
         virtual double poll(const Session *s,
-                char *buf, struct timespec *t) const = 0;
+                void *buf, struct timespec *t) const = 0;
 
-        virtual const char *getValue(const SessionTaskData*) const = 0;
+        virtual const void *getValue(const SessionTaskData*) const = 0;
 
         // Reimplemented from PdServ::Variable
         virtual void getValue(Session*,
-                char *, struct timespec * = 0) const = 0;
+                void *, struct timespec * = 0) const = 0;
     private:
 
 };

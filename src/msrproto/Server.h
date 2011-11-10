@@ -46,13 +46,13 @@ namespace MsrProto {
 
 class Session;
 class Channel;
-class TimeChannel;
+class TimeSignal;
 class Parameter;
 class VariableDirectory;
 
 class Server: public ost::Thread {
     public:
-        Server(PdServ::Main *main, int argc, const char **argv);
+        Server(const PdServ::Main *main, int argc, const char **argv);
         ~Server();
 
         void broadcast(Session *s, const MsrXml::Element&);
@@ -67,13 +67,14 @@ class Server: public ost::Thread {
         void getSessionStatistics(
                 std::list<PdServ::SessionStatistics>& stats) const;
 
+        const PdServ::Main * const main;
+
     private:
-        PdServ::Main * const main;
         std::set<Session*> sessions;
 
         VariableDirectory *root;
 
-        TimeChannel *time;
+        TimeSignal *time;
 
         typedef std::map<const PdServ::Parameter*, size_t> ParameterMap;
         ParameterMap parameterIndexMap;

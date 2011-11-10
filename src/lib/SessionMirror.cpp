@@ -39,6 +39,7 @@ using std::endl;
 SessionMirror::SessionMirror(const Main *main, PdServ::Session* session):
     main(main), session(session)
 {
+    cout << __func__ << endl;
     for (size_t i = 0; i < main->numTasks(); ++i)
         taskSet.insert( main->getTask(i)->newSession(session));
 }
@@ -46,9 +47,7 @@ SessionMirror::SessionMirror(const Main *main, PdServ::Session* session):
 ////////////////////////////////////////////////////////////////////////////
 SessionMirror::~SessionMirror()
 {
-    for (size_t i = 0; i < main->numTasks(); ++i)
-        main->getTask(i)->endSession(session);
-
+    cout << __func__ << endl;
 //    for (TaskSet::iterator it = taskSet.begin(); it != taskSet.end(); ++it)
 //        delete *it;
 }

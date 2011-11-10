@@ -73,11 +73,10 @@ class Server;
 
 class Session: public ost::SocketPort, public PdServ::Session {
     public:
-        Session(
-                Server *s,
+        Session( Server *s,
                 ost::SocketService *ss,
                 ost::TCPSocket &socket,
-                PdServ::Main *main);
+                const PdServ::Main *main);
         ~Session();
 
         void broadcast(Session *s, const MsrXml::Element &element);
@@ -88,6 +87,8 @@ class Session: public ost::SocketPort, public PdServ::Session {
         void processCommand();
 
         void requestSignal(const PdServ::Signal *s, bool state);
+
+        const double *getDblTimePtr() const;
 
     private:
         Server * const server;
@@ -110,6 +111,8 @@ class Session: public ost::SocketPort, public PdServ::Session {
         bool writeAccess;
         bool quiet;
         bool echoOn;
+        double primaryTaskTime;
+        double primaryTaskSampleTime;
 
         // <data> tag for the output stream
         MsrXml::Element dataTag;

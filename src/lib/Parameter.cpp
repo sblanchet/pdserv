@@ -79,22 +79,22 @@ int Parameter::setValue(const char* src,
 
 //////////////////////////////////////////////////////////////////////
 void Parameter::getValue(PdServ::Session *,
-        char* dst, struct timespec *time) const
+        void* buf, struct timespec *time) const
 {
     ost::SemaphoreLock lock(mutex);
-    std::copy(valueBuf, valueBuf + memSize, dst);
+    std::copy(valueBuf, valueBuf + memSize, reinterpret_cast<char*>(buf));
     if (time)
         *time = mtime;
 }
 
 //////////////////////////////////////////////////////////////////////
 int Parameter::copy(struct pdtask *, const struct variable *,
-        void *dst, const void *src, size_t len, void *)
+        void *buf, const void *src, size_t len, void *)
 {
 //    cout << __PRETTY_FUNCTION__ << checkOnly << endl;
     std::copy( reinterpret_cast<const char*>(src), 
             reinterpret_cast<const char*>(src)+len,
-            reinterpret_cast<char*>(dst));
+            reinterpret_cast<char*>(buf));
 
     return 0;
 }

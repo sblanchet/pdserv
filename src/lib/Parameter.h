@@ -62,7 +62,7 @@ class Parameter: public PdServ::Parameter {
 
         // Reimplemented from PdServ::Variable
         void getValue(PdServ::Session *,
-                char *buf, struct timespec* t = 0) const;
+                void *buf, struct timespec* t = 0) const;
 
         // A default function used when paramcheck or paramupdate are not
         // specified by the user

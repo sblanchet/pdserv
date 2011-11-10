@@ -66,11 +66,11 @@ class Signal: public PdServ::Signal {
         void unsubscribe(PdServ::Session *) const;
         double sampleTime() const;
         double poll(const PdServ::Session *s,
-                char *buf, struct timespec *t) const;
-        const char *getValue(const PdServ::SessionTaskData*) const;
+                void *buf, struct timespec *t) const;
+        const void *getValue(const PdServ::SessionTaskData*) const;
 
         // Reimplemented from PdServ::Variable
-        void getValue(PdServ::Session*, char *, struct timespec * = 0) const;
+        void getValue(PdServ::Session*, void *, struct timespec * = 0) const;
 };
 
 #endif //LIB_SIGNAL

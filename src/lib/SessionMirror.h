@@ -26,12 +26,8 @@
 #define LIBSESSIONMIRROR_H
 
 #include "../SessionMirror.h"
-// #include "ShmemDataStructures.h"
-// 
-// #include <cc++/thread.h>
+
 #include <set>
-// #include <queue>
-// #include <utility>      // std::pair
 
 namespace PdServ {
     class Session;

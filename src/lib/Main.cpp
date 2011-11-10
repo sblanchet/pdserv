@@ -169,7 +169,7 @@ int Main::setParameter(const Parameter *p, size_t startIndex,
 /////////////////////////////////////////////////////////////////////////////
 void Main::processPoll(size_t delay_ms,
         const PdServ::Signal * const *s, size_t nelem,
-        char * const *pollDest, struct timespec *t) const
+        void * const *pollDest, struct timespec *t) const
 {
     bool fin[task.size()];
     bool finished;
@@ -296,20 +296,7 @@ void Main::getParameters(Task *task, const struct timespec *t) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-PdServ::SessionMirror *Main::newSession(PdServ::Session *session)
+PdServ::SessionMirror *Main::newSession(PdServ::Session *session) const
 {
-    ost::SemaphoreLock lock(mutex);
-    SessionMirror *sm = new SessionMirror(this, session);
-    sessionMap[session] = sm;
-
-    return sm;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::endSession(PdServ::Session *session)
-{
-    ost::SemaphoreLock lock(mutex);
-
-    delete sessionMap[session];
-    sessionMap.erase(session);
+    return new SessionMirror(this, session);
 }

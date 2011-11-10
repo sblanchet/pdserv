@@ -60,11 +60,10 @@ class Task: public PdServ::Task {
 
         void subscribe(const Signal* s, bool insert) const;
         SessionTaskData *newSession(PdServ::Session *s);
-        void endSession(PdServ::Session *s);
 
-        void pollPrepare( const Signal *, char *buf) const;
+        void pollPrepare( const Signal *, void *buf) const;
         bool pollFinished( const PdServ::Signal * const *s, size_t nelem,
-                char * const *pollDest, struct timespec *t) const;
+                void * const *pollDest, struct timespec *t) const;
 
     private:
         mutable ost::Semaphore mutex;
@@ -73,7 +72,6 @@ class Task: public PdServ::Task {
         size_t signalMemSize;
         size_t pdoMem;
 
-        std::map<const PdServ::Session*, SessionTaskData*> sessionMap;
         std::vector<size_t> signalPosition;
 
         unsigned int seqNo;

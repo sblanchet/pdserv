@@ -39,7 +39,7 @@ class Subscription {
 
         bool sync();
 
-        void newValue(MsrXml::Element *, const char *buf);
+        void newValue(MsrXml::Element *, const void *buf);
 
         void set(bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);

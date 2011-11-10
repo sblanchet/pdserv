@@ -40,8 +40,8 @@ class SessionMirror;
 
 class Session {
     public:
-        Session(Main *main);
-        ~Session();
+        Session(const Main *main);
+        virtual ~Session();
 
         SessionStatistics getStatistics() const;
 
@@ -52,8 +52,9 @@ class Session {
 
         void resendSignalList(const Task *) const;
 
+        const Main * const main;
+
     protected:
-        Main * const main;
 
         size_t inBytes;
         size_t outBytes;

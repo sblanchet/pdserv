@@ -67,7 +67,7 @@ class SubscriptionManager {
             public std::map<const Channel*, Subscription*> {
                 ~SignalSubscription();
 
-                void newSignalData(MsrXml::Element *parent, const char *);
+                void newSignalData(MsrXml::Element *parent, const void *);
                 void clear();
                 bool sync();
             };

@@ -38,7 +38,7 @@ using std::endl;
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Session(Main *m): main(m), shadow(main->newSession(this))
+Session::Session(const Main *m): main(m), shadow(main->newSession(this))
 {
     main->gettime(&connectedTime);
 
@@ -49,7 +49,8 @@ Session::Session(Main *m): main(m), shadow(main->newSession(this))
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
-    main->endSession(this);
+    delete shadow;
+//    main->endSession(this);
 }
 
 /////////////////////////////////////////////////////////////////////////////
