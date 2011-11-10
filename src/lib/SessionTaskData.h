@@ -46,11 +46,12 @@ class SessionTaskData: public PdServ::SessionTaskData {
                 unsigned int signalListId, const Signal * const *signalList,
                 size_t nelem);
 
-        void rxPdo();
+        bool rxPdo();
         void newSignalList( unsigned int signalListId,
                 const Signal * const *sp, size_t n);
         void newSignalData( unsigned int signalListId, 
-                const PdServ::TaskStatistics *stats, const char *buf);
+                const PdServ::TaskStatistics *stats,
+                const char *buf, unsigned int buflen);
         const char *getValue(const PdServ::Signal *) const;
 
     private:
@@ -59,7 +60,9 @@ class SessionTaskData: public PdServ::SessionTaskData {
 
         std::vector<size_t> signalPosition;
 
+        bool pdoError;
         unsigned int signalListId;
+        unsigned int pdoSize;
         const char *signalBuffer;
 
         struct Pdo *pdo;

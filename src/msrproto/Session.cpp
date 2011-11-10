@@ -127,14 +127,20 @@ void Session::expired()
 {
     if (getDetectPending()) {
         // Read and process the incoming data
-        rxPdo();
+        if (rxPdo()) {
+            // Unknown command warning
+            MsrXml::Element error("error");
+            error.setAttribute("text", "process synchronization lost");
+
+            outbuf << error << std::flush;
+        }
+        else
+            setTimer(100);      // Wakeup in 100ms again
     }
     else /*if (!getDetectPending())*/ {
         delete this;
         return;
     }
-
-    setTimer(100);      // Wakeup in 100ms again
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -186,6 +192,7 @@ void Session::output()
         setDetectOutput(false);
         return;
     }
+//    cout << std::string(outbuf.bufptr(), n);
 
     outBytes += n;       // PdServ::Session output byte counter
 
@@ -235,7 +242,7 @@ void Session::processCommand()
     const char *command = inbuf.getCommand();
     size_t commandLen = strlen(command);
 
-    static struct {
+    static const struct {
         size_t len;
         const char *name;
         void (Session::*func)();

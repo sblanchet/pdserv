@@ -59,9 +59,13 @@ struct SignalList {
 struct Pdo {
     enum {Empty = 0, SignalList, Data} type;
     unsigned int signalListId;
+    unsigned int count;
     struct PdServ::TaskStatistics taskStatistics;
     struct Pdo *next;
-    char data[];
+    union {
+        char data[];
+        const Signal *signal[];
+    };
 };
 
 struct PollData {
@@ -167,9 +171,14 @@ SessionTaskData *Task::newSession(PdServ::Session *s)
 {
     ost::SemaphoreLock lock(mutex);
 
-    struct Pdo *pdo = txMemBegin;
-    while (pdo->next)
-        pdo = pdo->next;
+    struct Pdo *pdo, *nextPdo = 0;
+    do {
+        pdo = nextPdo;
+        if (nextPdo >= txMemBegin and &nextPdo->data < txMemEnd)
+            nextPdo = nextPdo->next;
+        else
+            nextPdo = txMemBegin;
+    } while (nextPdo);
 
     const Signal *signalList[signals.size()];
     size_t i = 0;
@@ -201,6 +210,7 @@ void Task::endSession(PdServ::Session *s)
 /////////////////////////////////////////////////////////////////////////////
 void Task::subscribe(const Signal* s, bool insert) const
 {
+//    cout << __func__ << s->index << ' ' << insert << endl;
     ost::SemaphoreLock lock(mutex);
     struct SignalList *wp = *signalListWp;
     unsigned int signalListId = wp->signalListId + 1;
@@ -283,6 +293,7 @@ void Task::update(const struct timespec *t,
         const Signal *signal = sp->signal;
         size_t type = signal->dataTypeIndex[signal->width];
         struct CopyList *cl;
+//        cout << "Signal " << signal->index;
 
         switch (sp->action) {
             case SignalList::Insert:
@@ -295,6 +306,7 @@ void Task::update(const struct timespec *t,
                 pdoMem += signal->memSize;
 
                 signalPosition[signal->index] = signalCount[type]++;
+//                cout << " added" << endl;
                 break;
 
             case SignalList::Remove:
@@ -303,6 +315,7 @@ void Task::update(const struct timespec *t,
 
                 pdoMem -= signal->memSize;
 
+//                cout << " removed" << endl;
                 break;
         }
 
@@ -311,19 +324,23 @@ void Task::update(const struct timespec *t,
 
     if (sp) {
         size_t n = std::accumulate(signalCount, signalCount + 4, 0);
+//        cout << "New signals ";
 
-        if (txPdo->data + n*sizeof(Signal*) >= txMemEnd)
+        if ((txPdo->signal + n) > txMemEnd)
             txPdo = txMemBegin;
 
         txPdo->next = 0;
         txPdo->signalListId = signalListId;
-        txPdo->taskStatistics.seqNo = n;
+        txPdo->count = n;
         txPdo->type = Pdo::SignalList;
-        const Signal **sp = ptr_align<const Signal*>(txPdo->data);
+        const Signal **sp = txPdo->signal;
         for (int i = 0; i < 4; i++) {
-            for (CopyList *cl = copyList[i]; cl->src; ++cl)
+            for (CopyList *cl = copyList[i]; cl->src; ++cl) {
                 *sp++ = cl->signal;
+//                cout << ' ' << cl->signal->index;
+            }
         }
+//        cout << endl;
 
         *nextTxPdo = txPdo;
 
@@ -336,6 +353,7 @@ void Task::update(const struct timespec *t,
 
     txPdo->next = 0;
     txPdo->type = Pdo::Data;
+    txPdo->signalListId = signalListId;
     txPdo->taskStatistics.seqNo = seqNo++;
     txPdo->taskStatistics.time = *t;
     txPdo->taskStatistics.exec_time = exec_time;
@@ -349,6 +367,7 @@ void Task::update(const struct timespec *t,
         }
     }
 
+    txPdo->count = p - txPdo->data;
     *nextTxPdo = txPdo;
 
     nextTxPdo = &txPdo->next;
@@ -356,49 +375,65 @@ void Task::update(const struct timespec *t,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::rxPdo(struct Pdo **pdoPtr, SessionTaskData *std)
+bool Task::rxPdo(struct Pdo **pdoPtr, SessionTaskData *std)
 {
-    cout << __func__ << endl;
+//    cout << __func__ << endl;
     struct Pdo *pdo = *pdoPtr;
 
-    while (pdo->next) {
+    while (pdo and pdo->next) {
         switch (pdo->type) {
             case Pdo::SignalList:
                 {
-                    cout << "Pdo::SignalList" << pdo << endl;
-                    const Signal * const *sp =
-                        ptr_align<const Signal*>(pdo->data);
-                    std->newSignalList(
-                            pdo->signalListId, sp, pdo->taskStatistics.seqNo);
+//                    cout << "Pdo::SignalList " << pdo;
+                    const Signal * const *sp = pdo->signal;
+
+                    if (sp + pdo->count > txMemEnd)
+                        goto out;
+
+                    std->newSignalList( pdo->signalListId, sp, pdo->count);
+
                     if (pdo->signalListId > signalListId) {
                         ost::SemaphoreLock lock(mutex);
 
                         std::fill(signalPosition.begin(),
                                 signalPosition.end(), ~0U);
-                        for (size_t i = 0; i < pdo->taskStatistics.seqNo; ++i)
+                        for (size_t i = 0; i < pdo->count; ++i) {
                             signalPosition[sp[i]->index] = i;
+//                            cout << ' ' << sp[i]->index;
+                        }
                         signalListId = pdo->signalListId;
+//                        cout << endl;
                     }
                 }
                 break;
 
             case Pdo::Data:
                 {
-                    cout << "Pdo::Data " << pdo << endl;
+//                    cout << "Pdo::Data " << pdo << endl;
+                    if (pdo->data + pdo->count > txMemEnd)
+                        goto out;
+
                     std->newSignalData(pdo->signalListId,
-                            &pdo->taskStatistics, pdo->data);
+                            &pdo->taskStatistics, pdo->data, pdo->count);
                 }
                 break;
 
             default:
-                break;
+                goto out;
         }
 
         pdo = pdo->next;
 
-        if (pdo < txMemBegin or (void*)pdo >= txMemEnd)
-            pdo = txMemBegin;
+        if (pdo < txMemBegin or &pdo->data > txMemEnd)
+            goto out;
     }
 
     *pdoPtr = pdo;
+
+    return false;
+
+out:
+    cout << "failed" << endl;
+    *pdoPtr = 0;
+    return true;
 }

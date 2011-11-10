@@ -56,7 +56,7 @@ class Task: public PdServ::Task {
         void nrt_init();
         void update(const struct timespec *,
                 double exec_time, double cycle_time);
-        void rxPdo(struct Pdo **, SessionTaskData *);
+        bool rxPdo(struct Pdo **, SessionTaskData *);
 
         void subscribe(const Signal* s, bool insert) const;
         SessionTaskData *newSession(PdServ::Session *s);

@@ -60,7 +60,7 @@ class Session {
         std::string remoteHost;
         std::string client;
 
-        void rxPdo();
+        bool rxPdo();
 
     private:
         struct timespec connectedTime;

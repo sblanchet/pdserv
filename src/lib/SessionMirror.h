@@ -54,7 +54,7 @@ class SessionMirror: public PdServ::SessionMirror {
         TaskSet taskSet;
 
         // Reimplemented from PdServ::SessionMirror
-        void rxPdo();
+        bool rxPdo();
 };
 
 #endif //LIBSESSIONMIRROR_H

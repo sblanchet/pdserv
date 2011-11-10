@@ -35,7 +35,7 @@ class Session;
 class SessionMirror {
     public:
 
-        virtual void rxPdo() = 0;
+        virtual bool rxPdo() = 0;
         const TaskStatistics& getStatistics() const {
             return statistics;
         }

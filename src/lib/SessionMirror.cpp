@@ -54,8 +54,11 @@ SessionMirror::~SessionMirror()
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void SessionMirror::rxPdo()
+bool SessionMirror::rxPdo()
 {
+    bool error = false;
     for (TaskSet::iterator it = taskSet.begin(); it != taskSet.end(); ++it)
-        (*it)->rxPdo();
+        error |= (*it)->rxPdo();
+
+    return error;
 }

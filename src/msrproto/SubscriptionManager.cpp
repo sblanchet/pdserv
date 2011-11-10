@@ -60,6 +60,7 @@ void SubscriptionManager::subscribe(const Channel *c,
         bool event, bool sync, unsigned int decimation,
         size_t blocksize, bool base64, size_t precision)
 {
+//    cout << __func__ << c->path() << endl;
     Subscription *subscription = signalSubscriptionMap[c->signal][c];
     if (!subscription) {
         subscription = new Subscription(c);
@@ -84,12 +85,14 @@ void SubscriptionManager::clear()
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::unsubscribe(const Channel *c)
 {
+//    cout << __func__ << c->path() << endl;
     delete signalSubscriptionMap[c->signal][c];
 
     signalSubscriptionMap[c->signal].erase(c);
     if (signalSubscriptionMap[c->signal].empty()) {
         signalSubscriptionMap.erase(c->signal);
         activeSignalSet.erase(c->signal);
+        c->signal->unsubscribe(session);
     }
 }
 
@@ -154,7 +157,7 @@ SubscriptionManager::SignalSubscription::~SignalSubscription()
 void SubscriptionManager::SignalSubscription::newSignalData(
         MsrXml::Element *parent, const char *data)
 {
-    for (const_iterator it = begin(); it != end(); it++) {
+    for (const_iterator it = begin(); data and it != end(); it++) {
         it->second->newValue(parent, data);
     }
 }

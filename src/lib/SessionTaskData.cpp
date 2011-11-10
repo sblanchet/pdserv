@@ -44,20 +44,25 @@ SessionTaskData::SessionTaskData(Task* t, PdServ::Session* s,
 {
     this->signalListId = signalListId;
     loadSignalList(sp, nelem);
+    pdoError = false;
+    pdoSize = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void SessionTaskData::rxPdo()
+bool SessionTaskData::rxPdo()
 {
-    task->rxPdo(&pdo, this);
+    return task->rxPdo(&pdo, this) or pdoError;
 }
 
 ////////////////////////////////////////////////////////////////////////////
 void SessionTaskData::loadSignalList(const Signal * const *sp, size_t n)
 {
     std::fill(signalPosition.begin(),  signalPosition.end(), ~0U);
-    for (size_t i = 0; i < n; ++i)
-        signalPosition[sp[i]->index] = i;
+    size_t pos = 0;
+    for (size_t i = 0; i < n; ++i) {
+        signalPosition[sp[i]->index] = pos;
+        pos += sp[i]->memSize;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -67,19 +72,31 @@ void SessionTaskData::newSignalList(
     loadSignalList(sp, n);
     const PdServ::Signal *signals[n];
 
+    this->signalListId = signalListId;
     std::copy(sp, sp+n, signals);
+
+    pdoSize = 0;
+    for (size_t i = 0; i < n; i++)
+        pdoSize += sp[i]->memSize;
+
     session->newSignalList(task, signals, n);
 }
 
 ////////////////////////////////////////////////////////////////////////////
 void SessionTaskData::newSignalData( unsigned int id, 
-        const PdServ::TaskStatistics *stats, const char *buf)
+        const PdServ::TaskStatistics *stats,
+        const char *buf, unsigned int buflen)
 {
+//    cout << __func__ << signalListId << "==" << id << ' '
+//        << pdoSize << "==" << buflen;
+    pdoError |= !(signalListId == id and pdoSize == buflen);
+//    cout << ' ' << pdoError << endl;
+
     signalBuffer = buf;
-    signalListId = id;
     taskStatistics = stats;
 
-    session->newSignalData(this);
+    if (!pdoError)
+        session->newSignalData(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -89,5 +106,8 @@ const char *SessionTaskData::getValue(const PdServ::Signal *s) const
 
     size_t n = signalPosition[signal->index];
 
-    return n != ~0U ? signalBuffer + n : 0;
+//    cout << pdoError << ' ' << pdoSize << ' ' << n + signal->memSize << endl;
+//    return 0;
+    return (pdoError or n + signal->memSize > pdoSize)
+        ? 0 : signalBuffer + n;
 }
