@@ -72,7 +72,7 @@ Server::Server(const PdServ::Main *main, int argc, const char **argv):
 
     if (!main->findVariable("/Time")) {
         double t = main->getTask(0U)->sampleTime;
-        for (size_t i = 1; i < main->numTasks(); ++i)
+        for (unsigned int i = 1; i < main->numTasks(); ++i)
             t = std::min(t, main->getTask(i)->sampleTime);
 
         time = new TimeSignal(this, t);

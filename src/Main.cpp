@@ -94,7 +94,7 @@ size_t Main::numTasks() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const Task* Main::getTask(size_t n) const
+const Task* Main::getTask(unsigned int n) const
 {
     return task[n];
 }

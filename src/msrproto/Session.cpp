@@ -57,7 +57,7 @@ Session::Session( Server *s, ost::SocketService *ss,
 {
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
 
-    for (size_t i = 0; i < main->numTasks(); ++i) {
+    for (unsigned int i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
         double ts = task->sampleTime;
 

@@ -60,7 +60,7 @@ class Main {
         virtual int gettime(struct timespec *) const = 0;
 
         size_t numTasks() const;
-        const Task *getTask(size_t n) const;
+        const Task *getTask(unsigned int n) const;
         const Task *getTask(double sampleTime) const;
 
         typedef std::list<const Signal*> Signals;
