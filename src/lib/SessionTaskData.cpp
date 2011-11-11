@@ -49,7 +49,7 @@ SessionTaskData::SessionTaskData( PdServ::Session* s, Task* t):
     task->getSignalList(signals, &nelem, &signalListId);
     loadSignalList(signals, nelem);
 
-    pdo = task->forwardPdo(signalListId);
+    task->initSession(signalListId, &pdo, &taskStatistics);
 }
 
 ////////////////////////////////////////////////////////////////////////////

@@ -61,6 +61,7 @@ class Main {
 
         size_t numTasks() const;
         const Task *getTask(size_t n) const;
+        const Task *getTask(double sampleTime) const;
 
         typedef std::list<const Signal*> Signals;
         const Signals& getSignals() const;

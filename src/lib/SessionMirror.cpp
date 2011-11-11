@@ -40,24 +40,33 @@ SessionMirror::SessionMirror(const Main *main, PdServ::Session* session):
     main(main), session(session)
 {
     cout << __func__ << endl;
-    for (size_t i = 0; i < main->numTasks(); ++i)
-        taskSet.insert(new SessionTaskData( session, main->getTask(i)));
+    for (size_t i = 0; i < main->numTasks(); ++i) {
+        Task *task = main->getTask(i);
+        taskMap[task] = new SessionTaskData( session, task);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////
 SessionMirror::~SessionMirror()
 {
     cout << __func__ << endl;
-    for (TaskSet::iterator it = taskSet.begin(); it != taskSet.end(); ++it)
-        delete *it;
+    for (TaskMap::iterator it = taskMap.begin(); it != taskMap.end(); ++it)
+        delete it->second;
 }
 
 ////////////////////////////////////////////////////////////////////////////
 bool SessionMirror::rxPdo()
 {
     bool error = false;
-    for (TaskSet::iterator it = taskSet.begin(); it != taskSet.end(); ++it)
-        error |= (*it)->rxPdo();
+    for (TaskMap::iterator it = taskMap.begin(); it != taskMap.end(); ++it)
+        error |= it->second->rxPdo();
 
     return error;
+}
+
+////////////////////////////////////////////////////////////////////////////
+const PdServ::TaskStatistics& SessionMirror::getStatistics(
+        const PdServ::Task *task) const
+{
+    return *taskMap.find(task)->second->taskStatistics;
 }

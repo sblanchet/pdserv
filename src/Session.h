@@ -55,6 +55,7 @@ class Session {
         const Main * const main;
 
     protected:
+        SessionMirror * const shadow;
 
         size_t inBytes;
         size_t outBytes;
@@ -65,7 +66,6 @@ class Session {
 
     private:
         struct timespec connectedTime;
-        SessionMirror * const shadow;
 };
 
 }

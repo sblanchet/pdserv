@@ -24,9 +24,11 @@
 
 #include "config.h"
 
+#include "TimeSignal.h"
 #include "Session.h"
-#include "SessionMirror.h"
-#include "Main.h"
+#include "Server.h"
+#include "../SessionTaskData.h"
+#include "../Main.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -35,47 +37,50 @@ using std::cerr;
 using std::endl;
 #endif
 
-using namespace PdServ;
+using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Session(const Main *m): main(m), shadow(main->newSession(this))
+TimeSignal::TimeSignal(Server *s, double sampleTime):
+    PdServ::Signal("/Time", sampleTime, si_double_T, 1, 0),
+    server(s)
 {
-    main->gettime(&connectedTime);
-
-    inBytes = 0;
-    outBytes = 0;
+    t = 88;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Session::~Session()
+void TimeSignal::subscribe(PdServ::Session *session) const
 {
-    delete shadow;
+    const PdServ::Signal *signal = this;
+    session->newSignalList(server->main->getTask(sampleTime), &signal, 1);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-SessionStatistics Session::getStatistics() const
+void TimeSignal::unsubscribe(PdServ::Session *) const
 {
-    SessionStatistics s;
-
-    s.remote = remoteHost;
-    s.client = client;
-    s.countIn = inBytes;
-    s.countOut = outBytes;
-    s.connectedTime = connectedTime;
-
-    return s;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Session::rxPdo()
+double TimeSignal::poll(const PdServ::Session *s,
+        void *buf, struct timespec *t) const
 {
-    return shadow->rxPdo();
+//    cout << __PRETTY_FUNCTION__ << endl;
+    const Session *session = static_cast<const Session *>(s);
+    *reinterpret_cast<double*>(buf) = *session->getDblTimePtr();
+
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::resendSignalList(const Task *task) const
+const void *TimeSignal::getValue(const PdServ::SessionTaskData* std) const
 {
-//    for (unsigned int i = 0; i < main->getTasks().size(); i++)
-//        if (receiver[i]->task == task)
-//            receiver[i]->resendSignalList();
+//    cout << __PRETTY_FUNCTION__ << endl;
+    return static_cast<const Session*>(std->session)->getDblTimePtr();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void TimeSignal::getValue(PdServ::Session *s,
+        void *buf, struct timespec* t) const
+{
+//    cout << __PRETTY_FUNCTION__ << endl;
+    poll(s, buf, t);
 }

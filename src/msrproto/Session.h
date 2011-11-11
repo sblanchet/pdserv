@@ -111,8 +111,9 @@ class Session: public ost::SocketPort, public PdServ::Session {
         bool writeAccess;
         bool quiet;
         bool echoOn;
+
+        const PdServ::Task *primaryTask;
         double primaryTaskTime;
-        double primaryTaskSampleTime;
 
         // <data> tag for the output stream
         MsrXml::Element dataTag;

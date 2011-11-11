@@ -28,6 +28,7 @@
 #include "../Task.h"
 #include "../Signal.h"
 #include "../Parameter.h"
+#include "../SessionMirror.h"
 #include "../SessionTaskData.h"
 #include "../TaskStatistics.h"
 
@@ -57,12 +58,18 @@ Session::Session( Server *s, ost::SocketService *ss,
 //    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
 
     for (size_t i = 0; i < main->numTasks(); ++i) {
-        double ts = main->getTask(i)->sampleTime;
+        const PdServ::Task *task = main->getTask(i);
+        double ts = task->sampleTime;
 
         subscriptionManager[ts] = new SubscriptionManager(this);
-        if (!i or ts < primaryTaskSampleTime)
-            primaryTaskSampleTime = ts;
+        if (!i or ts < primaryTask->sampleTime)
+            primaryTask = task;
     }
+
+    const PdServ::TaskStatistics& stat = shadow->getStatistics(primaryTask);
+    primaryTaskTime = 1.0e-9 * stat.time.tv_nsec + stat.time.tv_sec;
+//    double ts = std->task->sampleTime;
+//    if (primaryTaskSampleTime == ts)
 
     // Setup some internal variables
     writeAccess = false;
@@ -235,10 +242,8 @@ void Session::newSignalData(const PdServ::SessionTaskData *std)
     dataTag.setAttribute("time", t);
 
     double ts = std->task->sampleTime;
-    if (primaryTaskSampleTime == ts) {
+    if (std->task == primaryTask)
         primaryTaskTime = 1.0e-9 * t.tv_nsec + t.tv_sec;
-        cout << "time =" << primaryTaskTime << endl;
-    }
 
     subscriptionManager[ts]->newSignalData(&dataTag, std);
 

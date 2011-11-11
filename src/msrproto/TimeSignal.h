@@ -22,39 +22,38 @@
  *
  *****************************************************************************/
 
-#ifndef LIBSESSIONMIRROR_H
-#define LIBSESSIONMIRROR_H
+#ifndef MSRTIMESIGNAL_H
+#define MSRTIMESIGNAL_H
 
-#include "../SessionMirror.h"
-
-#include <map>
+#include "../Signal.h"
 
 namespace PdServ {
-    class Task;
     class Session;
-    class SessionStatistics;
+    class SessionTaskData;
 }
 
-class Main;
-class SessionTaskData;
+namespace MsrProto {
 
-class SessionMirror: public PdServ::SessionMirror {
+class Server;
+
+class TimeSignal: public PdServ::Signal {
     public:
-        SessionMirror(const Main *main, PdServ::Session *session);
+        TimeSignal( Server *s, double sampleTime);
 
-        ~SessionMirror();
+        const Server * const server;
 
     private:
-        const Main * const main;
-        PdServ::Session * const session;
+        double t;
 
-        typedef std::map<const PdServ::Task*, SessionTaskData*> TaskMap;
-        TaskMap taskMap;
-
-        // Reimplemented from PdServ::SessionMirror
-        bool rxPdo();
-        const PdServ::TaskStatistics& getStatistics(
-                const PdServ::Task *) const;
+        // Reimplemented from PdServ::Signal
+        void subscribe(PdServ::Session *) const;
+        void unsubscribe(PdServ::Session *) const;
+        double poll(const PdServ::Session *s,
+                void *buf, struct timespec *t) const;
+        const void *getValue(const PdServ::SessionTaskData*) const;
+        void getValue(PdServ::Session*, void*, timespec*) const;
 };
 
-#endif //LIBSESSIONMIRROR_H
+}
+
+#endif //MSRTIMESIGNAL_H

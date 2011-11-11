@@ -30,9 +30,12 @@
 #include "Parameter.h"
 #include "Directory.h"
 #include "../Main.h"
+#include "../Task.h"
 #include "../Signal.h"
 #include "../Parameter.h"
 #include <cc++/socketport.h>
+
+#include <algorithm>
 
 #include "Session.h"
 
@@ -68,8 +71,12 @@ Server::Server(const PdServ::Main *main, int argc, const char **argv):
     }
 
     if (!main->findVariable("/Time")) {
-//        time = new TimeSignal(this, 0.1);
-//        root->insert(time);
+        double t = main->getTask(0U)->sampleTime;
+        for (size_t i = 1; i < main->numTasks(); ++i)
+            t = std::min(t, main->getTask(i)->sampleTime);
+
+        time = new TimeSignal(this, t);
+        root->insert(time);
     }
     else
         time = 0;

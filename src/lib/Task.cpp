@@ -195,19 +195,21 @@ void Task::getSignalList(const Signal **signalList, size_t *nelem,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-struct Pdo *Task::forwardPdo(unsigned int signalListId) const
+void Task::initSession(unsigned int signalListId,
+        struct Pdo **pdo, const PdServ::TaskStatistics **taskStatistics) const
 {
-    struct Pdo *pdo, *nextPdo = txMemBegin;
+    struct Pdo *nextPdo = txMemBegin;
     do {
-        pdo = nextPdo;
+        *pdo = nextPdo;
+        *taskStatistics = &(*pdo)->taskStatistics;
 
         // Wait for a data packet
-        while (!pdo->next and pdo->type == Pdo::SignalList)
+        while (!(*pdo)->next and (*pdo)->type == Pdo::SignalList)
             ost::Thread::sleep(10);
 
-        nextPdo = pdo->next;
+        nextPdo = nextPdo->next;
         if (!nextPdo)
-            return pdo;
+            return;
 
         if (nextPdo < txMemBegin or &nextPdo->data >= txMemEnd
                 or (nextPdo->type != Pdo::Data
@@ -218,8 +220,6 @@ struct Pdo *Task::forwardPdo(unsigned int signalListId) const
                 and nextPdo->type == Pdo::Data)
             or (nextPdo->signalListId <= signalListId
                 and nextPdo->type == Pdo::SignalList));
-
-    return pdo;
 }
 
 /////////////////////////////////////////////////////////////////////////////

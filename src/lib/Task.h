@@ -34,6 +34,10 @@
 #include "ShmemDataStructures.h"
 #include "../Task.h"
 
+namespace PdServ {
+    struct TaskStatistics;
+}
+
 class Main;
 class Signal;
 class SessionTaskData;
@@ -67,7 +71,8 @@ class Task: public PdServ::Task {
         size_t signalCount() const;
         void getSignalList(const Signal **s, size_t *n,
                 unsigned int *signalListId) const;
-        struct Pdo *forwardPdo(unsigned int signalListId) const;
+        void initSession(unsigned int signalListId, struct Pdo **,
+                const PdServ::TaskStatistics **taskStatistics) const;
 
     private:
         mutable ost::Semaphore mutex;

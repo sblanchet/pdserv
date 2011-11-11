@@ -26,23 +26,24 @@
 #define SESSIONMIRROR_H
 
 #include <set>
-#include "TaskStatistics.h"
 
 namespace PdServ {
 
 class Session;
+class Task;
+class TaskStatistics;
 
 class SessionMirror {
     public:
         virtual ~SessionMirror() {}
 
         virtual bool rxPdo() = 0;
-        const TaskStatistics& getStatistics() const {
-            return statistics;
-        }
+        virtual const TaskStatistics& getStatistics(const Task *) const = 0;
+//            return statistics;
+//        }
 
     protected:
-        TaskStatistics statistics;
+//        TaskStatistics statistics;
 
     private:
 };

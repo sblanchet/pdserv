@@ -27,6 +27,7 @@
 #include <cerrno>
 
 #include "Main.h"
+#include "Task.h"
 #include "Signal.h"
 #include "Parameter.h"
 //#include "etlproto/Server.h"
@@ -96,6 +97,17 @@ size_t Main::numTasks() const
 const Task* Main::getTask(size_t n) const
 {
     return task[n];
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Task* Main::getTask(double sampleTime) const
+{
+    for (TaskList::const_iterator it = task.begin();
+            it != task.end(); ++it)
+        if ((*it)->sampleTime == sampleTime)
+            return *it;
+
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
