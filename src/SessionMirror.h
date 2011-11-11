@@ -38,12 +38,9 @@ class SessionMirror {
         virtual ~SessionMirror() {}
 
         virtual bool rxPdo() = 0;
-        virtual const TaskStatistics& getStatistics(const Task *) const = 0;
-//            return statistics;
-//        }
+        virtual const TaskStatistics *getTaskStatistics(const Task *) const = 0;
 
     protected:
-//        TaskStatistics statistics;
 
     private:
 };

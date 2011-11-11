@@ -24,6 +24,10 @@
 
 #include "config.h"
 
+#include <cerrno>       // ENAMETOOLONG
+#include <climits>      // HOST_NAME_MAX
+#include <unistd.h>     // gethostname
+
 #include "../Main.h"
 #include "../Task.h"
 #include "../Signal.h"
@@ -39,6 +43,7 @@
 #include "Parameter.h"
 #include "Directory.h"
 #include "SubscriptionManager.h"
+#include "TaskStatistics.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -55,21 +60,12 @@ Session::Session( Server *s, ost::SocketService *ss,
     SocketPort(0, socket), PdServ::Session(main),
     server(s), dataTag("data"), outbuf(this)
 {
-//    cout << __LINE__ << __PRETTY_FUNCTION__ << this << endl;
-
     for (unsigned int i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
-        double ts = task->sampleTime;
 
-        subscriptionManager[ts] = new SubscriptionManager(this);
-        if (!i or ts < primaryTask->sampleTime)
-            primaryTask = task;
+        subscriptionManager[task] = new SubscriptionManager(this);
+        updateStatistics(task, shadow->getTaskStatistics(task));
     }
-
-    const PdServ::TaskStatistics& stat = shadow->getStatistics(primaryTask);
-    primaryTaskTime = 1.0e-9 * stat.time.tv_nsec + stat.time.tv_sec;
-//    double ts = std->task->sampleTime;
-//    if (primaryTaskSampleTime == ts)
 
     // Setup some internal variables
     writeAccess = false;
@@ -81,10 +77,25 @@ Session::Session( Server *s, ost::SocketService *ss,
 
     attach(ss);
 
+    // Get the hostname
+    char hostname[HOST_NAME_MAX+1];
+    switch (gethostname(hostname, HOST_NAME_MAX)) {
+        case ENAMETOOLONG:
+            hostname[HOST_NAME_MAX] = '\0';
+            // no break
+        case 0:
+            break;
+
+        default:
+            strcpy(hostname,"unknown");
+            break;
+    }
+
     // Greet the new client
     MsrXml::Element greeting("connected");
-    greeting.setAttribute("name", "MSR");
-    greeting.setAttribute("host", "localhost"); // FIXME
+    greeting.setAttribute("name", main->name);
+    greeting.setAttribute("version", main->version);
+    greeting.setAttribute("host", hostname);
     greeting.setAttribute("version", MSR_VERSION);
     greeting.setAttribute("features", MSR_FEATURES);
     greeting.setAttribute("recievebufsize", 100000000);
@@ -222,7 +233,7 @@ void Session::disconnect()
 void Session::newSignalList(const PdServ::Task *task,
         const PdServ::Signal * const *s, size_t n)
 {
-    if (!subscriptionManager[task->sampleTime]->newSignalList(s, n))
+    if (!subscriptionManager[task]->newSignalList(s, n))
         return;
 
     for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
@@ -231,26 +242,40 @@ void Session::newSignalList(const PdServ::Task *task,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::updateStatistics(
+        const PdServ::Task *task, const PdServ::TaskStatistics *stat)
+{
+    TaskStatistics& taskStats = taskStatistics[task];
+    taskStats.doubleTime = 1.0e-9 * stat->time.tv_nsec + stat->time.tv_sec;
+    taskStats.taskStatistics = stat;
+    taskStats.execTime = taskStats.taskStatistics->exec_time * 1e6;
+    taskStats.cycleTime = taskStats.taskStatistics->cycle_time * 1e6;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::newSignalData(const PdServ::SessionTaskData *std)
 {
+    updateStatistics(std->task, std->taskStatistics);
+
     if (quiet)
         return;
 
-    const struct timespec& t = std->taskStatistics->time;
-
     dataTag.setAttribute("level", std->task->sampleTime);
-    dataTag.setAttribute("time", t);
+    dataTag.setAttribute("time", std->taskStatistics->time);
 
-    double ts = std->task->sampleTime;
-    if (std->task == primaryTask)
-        primaryTaskTime = 1.0e-9 * t.tv_nsec + t.tv_sec;
-
-    subscriptionManager[ts]->newSignalData(&dataTag, std);
+    subscriptionManager[std->task]->newSignalData(&dataTag, std);
 
     if (dataTag.hasChildren())
         outbuf << dataTag << std::flush;
 
     dataTag.releaseChildren();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const TaskStatistics& Session::getTaskStatistics(
+        const PdServ::Task* task) const
+{
+    return taskStatistics.find(task)->second;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -681,7 +706,7 @@ void Session::xsad()
         if (!blocksize) blocksize = 1;
 
         double ts = mainSignal->sampleTime;
-        subscriptionManager[ts]->subscribe( channel[*it], event,
+        subscriptionManager[main->getTask(ts)]->subscribe( channel[*it], event,
                     sync, reduction, blocksize, base64, precision);
     }
 }
@@ -700,7 +725,8 @@ void Session::xsod()
                 it != intList.end(); it++) {
             if (*it < channel.size()) {
                 double ts = channel[*it]->signal->sampleTime;
-                subscriptionManager[ts]->unsubscribe(channel[*it]);
+                subscriptionManager[main->getTask(ts)]->unsubscribe(
+                        channel[*it]);
             }
         }
     }
@@ -708,10 +734,4 @@ void Session::xsod()
         for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
                 it != subscriptionManager.end(); ++it)
             it->second->clear();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const double *Session::getDblTimePtr() const
-{
-    return &primaryTaskTime;
 }

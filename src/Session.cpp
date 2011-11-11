@@ -26,6 +26,7 @@
 
 #include "Session.h"
 #include "SessionMirror.h"
+#include "SessionStatistics.h"
 #include "Main.h"
 
 #ifdef DEBUG
@@ -53,7 +54,7 @@ Session::~Session()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-SessionStatistics Session::getStatistics() const
+void Session::getSessionStatistics(std::list<SessionStatistics> &stats) const
 {
     SessionStatistics s;
 
@@ -63,7 +64,7 @@ SessionStatistics Session::getStatistics() const
     s.countOut = outBytes;
     s.connectedTime = connectedTime;
 
-    return s;
+    stats.push_back(s);
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -26,9 +26,11 @@
 
 #include "TimeSignal.h"
 #include "Session.h"
-#include "Server.h"
+#include "TaskStatistics.h"
 #include "../SessionTaskData.h"
+#include "../TaskStatistics.h"
 #include "../Main.h"
+#include "../Task.h"
 
 #ifdef DEBUG
 #include <iostream>
@@ -40,18 +42,17 @@ using std::endl;
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-TimeSignal::TimeSignal(Server *s, double sampleTime):
-    PdServ::Signal("/Time", sampleTime, si_double_T, 1, 0),
-    server(s)
+TimeSignal::TimeSignal(const PdServ::Task *t):
+    PdServ::Signal("", t->sampleTime, si_double_T, 1, 0),
+    task(t)
 {
-    t = 88;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void TimeSignal::subscribe(PdServ::Session *session) const
 {
     const PdServ::Signal *signal = this;
-    session->newSignalList(server->main->getTask(sampleTime), &signal, 1);
+    session->newSignalList(task, &signal, 1);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -60,12 +61,14 @@ void TimeSignal::unsubscribe(PdServ::Session *) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-double TimeSignal::poll(const PdServ::Session *s,
+double TimeSignal::poll(const PdServ::Session *session,
         void *buf, struct timespec *t) const
 {
-//    cout << __PRETTY_FUNCTION__ << endl;
-    const Session *session = static_cast<const Session *>(s);
-    *reinterpret_cast<double*>(buf) = *session->getDblTimePtr();
+    const TaskStatistics& stats =
+        static_cast<const Session*>(session)->getTaskStatistics(task);
+    *reinterpret_cast<double*>(buf) = stats.doubleTime;
+    if (t)
+        *t = stats.taskStatistics->time;
 
     return 0;
 }
@@ -74,13 +77,15 @@ double TimeSignal::poll(const PdServ::Session *s,
 const void *TimeSignal::getValue(const PdServ::SessionTaskData* std) const
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
-    return static_cast<const Session*>(std->session)->getDblTimePtr();
+    const TaskStatistics& stats =
+        static_cast<const Session*>(std->session)->getTaskStatistics(task);
+    return &stats.doubleTime;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TimeSignal::getValue(PdServ::Session *s,
-        void *buf, struct timespec* t) const
+void TimeSignal::getValue(
+        PdServ::Session *session, void *buf, struct timespec* t) const
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
-    poll(s, buf, t);
+    poll(session, buf, t);
 }

@@ -65,8 +65,8 @@ bool SessionMirror::rxPdo()
 }
 
 ////////////////////////////////////////////////////////////////////////////
-const PdServ::TaskStatistics& SessionMirror::getStatistics(
+const PdServ::TaskStatistics *SessionMirror::getTaskStatistics(
         const PdServ::Task *task) const
 {
-    return *taskMap.find(task)->second->taskStatistics;
+    return taskMap.find(task)->second->taskStatistics;
 }

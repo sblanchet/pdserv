@@ -26,9 +26,8 @@
 #define SESSION_H
 
 #include <string>
+#include <list>
 #include <ctime>
-
-#include "SessionStatistics.h"
 
 namespace PdServ {
 
@@ -37,13 +36,14 @@ class Signal;
 class Main;
 class SessionTaskData;
 class SessionMirror;
+class SessionStatistics;
 
 class Session {
     public:
         Session(const Main *main);
         virtual ~Session();
 
-        SessionStatistics getStatistics() const;
+        void getSessionStatistics(std::list<SessionStatistics>& ) const;
 
         // These methods are called from within the context of rxPdo
         virtual void newSignalList(const Task *,

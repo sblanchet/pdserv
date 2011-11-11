@@ -31,7 +31,6 @@
 #include <vector>
 #include <map>
 #include <string>
-#include "SessionStatistics.h"
 
 struct timespec;
 
@@ -43,10 +42,11 @@ namespace PdServ {
 
 class Signal;
 class Parameter;
-class Session;
-class SessionMirror;
 class Variable;
 class Task;
+class Session;
+class SessionMirror;
+class SessionStatistics;
 
 class Main {
     public:

@@ -53,7 +53,7 @@ class SessionMirror: public PdServ::SessionMirror {
 
         // Reimplemented from PdServ::SessionMirror
         bool rxPdo();
-        const PdServ::TaskStatistics& getStatistics(
+        const PdServ::TaskStatistics *getTaskStatistics(
                 const PdServ::Task *) const;
 };
 

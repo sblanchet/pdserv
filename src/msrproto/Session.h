@@ -60,6 +60,8 @@
 namespace PdServ {
     class Parameter;
     class SessionTaskData;
+    class Task;
+    class TaskStatistics;
 }
 
 namespace MsrXml {
@@ -69,6 +71,8 @@ namespace MsrXml {
 namespace MsrProto {
 
 class SubscriptionManager;
+class TaskStatistics;
+class SessionStatistics;
 class Server;
 
 class Session: public ost::SocketPort, public PdServ::Session {
@@ -88,13 +92,21 @@ class Session: public ost::SocketPort, public PdServ::Session {
 
         void requestSignal(const PdServ::Signal *s, bool state);
 
-        const double *getDblTimePtr() const;
+        const TaskStatistics& getTaskStatistics(const PdServ::Task*) const;
 
     private:
         Server * const server;
 
-        typedef std::map<double, SubscriptionManager*> SubscriptionManagerMap;
+        typedef std::map<const PdServ::Task*, SubscriptionManager*>
+            SubscriptionManagerMap;
         SubscriptionManagerMap subscriptionManager;
+
+        typedef std::map<const PdServ::Task*, TaskStatistics>
+            TaskStatisticsMap;
+        TaskStatisticsMap taskStatistics;
+
+        void updateStatistics(
+                const PdServ::Task *task, const PdServ::TaskStatistics *stat);
 
         // Reimplemented from SocketPort
         void expired();
@@ -111,9 +123,6 @@ class Session: public ost::SocketPort, public PdServ::Session {
         bool writeAccess;
         bool quiet;
         bool echoOn;
-
-        const PdServ::Task *primaryTask;
-        double primaryTaskTime;
 
         // <data> tag for the output stream
         MsrXml::Element dataTag;

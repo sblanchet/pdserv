@@ -34,6 +34,7 @@ struct TaskStatistics {
     struct timespec time;
     double exec_time;
     double cycle_time;
+    unsigned int overrun;
 };
 
 }

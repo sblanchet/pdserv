@@ -83,7 +83,7 @@ int main(int argc, const char *argv[])
         dbl[2] += param[2];
         var1[5][0][0] += param[1];
         dbltime = time.tv_sec + time.tv_nsec * 1.0e-9;
-        pdserv_update(task[0], &time, 0, 0);
+        pdserv_update(task[0], &time, 10, 20);
     }
 
     pdserv_exit(pdserv);

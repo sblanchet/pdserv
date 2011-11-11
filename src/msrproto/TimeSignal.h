@@ -29,6 +29,7 @@
 
 namespace PdServ {
     class Session;
+    class Task;
     class SessionTaskData;
 }
 
@@ -38,13 +39,11 @@ class Server;
 
 class TimeSignal: public PdServ::Signal {
     public:
-        TimeSignal( Server *s, double sampleTime);
+        TimeSignal(const PdServ::Task *task);
 
-        const Server * const server;
+        const PdServ::Task * const task;
 
     private:
-        double t;
-
         // Reimplemented from PdServ::Signal
         void subscribe(PdServ::Session *) const;
         void unsubscribe(PdServ::Session *) const;

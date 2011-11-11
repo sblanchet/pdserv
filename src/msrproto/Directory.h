@@ -60,7 +60,8 @@ class DirectoryNode {
         const Variable *findVariable(const std::string &path,
                 size_t pathOffset) const;
 
-        DirectoryNode *mkdir(const PdServ::Variable *v, size_t index,
+        DirectoryNode *mkdir(const PdServ::Variable *v,
+                const std::string& path, size_t index,
                 size_t elementCount, size_t pathOffset = 0);
         DirectoryNode *mkdir(size_t index,
                 size_t nelem, size_t ndims, const size_t *dim);
@@ -83,10 +84,11 @@ class VariableDirectory: public DirectoryNode {
         VariableDirectory();
         ~VariableDirectory();
 
-        bool insert(const PdServ::Signal *s, size_t index = 0,
-                size_t elementCount = 0);
-        bool insert(const PdServ::Parameter *p, size_t index = 0,
-                size_t elementCount = 0, bool dependent = false);
+        bool insert(const PdServ::Signal *s, const std::string& path,
+                size_t index = 0, size_t elementCount = 0);
+        bool insert(const PdServ::Parameter *p, const std::string& path,
+                size_t index = 0, size_t elementCount = 0,
+                bool dependent = false);
 
        typedef std::vector<const Channel*> Channels;
        typedef std::vector<const Parameter*> Parameters;

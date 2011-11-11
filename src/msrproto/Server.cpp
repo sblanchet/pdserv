@@ -27,6 +27,7 @@
 #include "Server.h"
 #include "Channel.h"
 #include "TimeSignal.h"
+#include "StatSignal.h"
 #include "Parameter.h"
 #include "Directory.h"
 #include "../Main.h"
@@ -62,24 +63,50 @@ Server::Server(const PdServ::Main *main, int argc, const char **argv):
 
         if (traditional) {
             for (unsigned i = 0; i < (*it)->nelem; i++)
-                root->insert(*it, i, 1);
+                root->insert(*it, (*it)->path, i, 1);
         }
         else {
             // New matrix channel
-            root->insert(*it);
+            root->insert(*it, (*it)->path);
         }
     }
 
-    if (!main->findVariable("/Time")) {
-        double t = main->getTask(0U)->sampleTime;
-        for (unsigned int i = 1; i < main->numTasks(); ++i)
-            t = std::min(t, main->getTask(i)->sampleTime);
+    const PdServ::Task *primaryTask;
+    TimeSignal *primaryTaskTimeSignal = 0;
+    for (unsigned int i = 0; i < main->numTasks(); ++i) {
+        const PdServ::Task *task = main->getTask(i);
 
-        time = new TimeSignal(this, t);
-        root->insert(time);
+        std::ostringstream prefix;
+        prefix << "/Taskinfo/" << i << '/';
+        std::string path;
+
+        if (!i or primaryTask->sampleTime > task->sampleTime)
+            primaryTask = task;
+
+        path = prefix.str() + "TaskTime";
+        if (!root->findChannel(path)) {
+            TimeSignal *t = new TimeSignal(task);
+            root->insert(t, path);
+            if (task == primaryTask)
+                primaryTaskTimeSignal = t;
+        }
+
+        path = prefix.str() + "ExecTime";
+        if (!root->findChannel(path))
+            root->insert(new StatSignal(task, StatSignal::ExecTime), path);
+
+        path = prefix.str() + "Period";
+        if (!root->findChannel(path))
+            root->insert(new StatSignal(task, StatSignal::Period), path);
+
+        path = prefix.str() + "Overrun";
+        if (!root->findChannel(path))
+            root->insert(new StatSignal(task, StatSignal::Overrun), path);
+
     }
-    else
-        time = 0;
+
+    if (!main->findVariable("/Time"))
+        root->insert(new TimeSignal(primaryTask), "/Time");
 
     const PdServ::Main::Parameters& mainParameters = main->getParameters();
     for (PdServ::Main::Parameters::const_iterator it = mainParameters.begin();
@@ -94,14 +121,14 @@ Server::Server(const PdServ::Main *main, int argc, const char **argv):
             for (unsigned i = 0; i < nelem; i++) {
                 if (vectorLen > 1 && !(i % vectorLen)) {
                     // New row parameter
-                    root->insert(*it, i, vectorLen);
+                    root->insert(*it, (*it)->path, i, vectorLen);
                 }
-                root->insert(*it, i, 1, dep);
+                root->insert(*it, (*it)->path, i, 1, dep);
             }
         }
         else {
             // New matrix parameter
-            root->insert(*it);
+            root->insert(*it, (*it)->path);
         }
     }
 
@@ -158,7 +185,7 @@ void Server::getSessionStatistics(
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
-        stats.push_back((*it)->getStatistics());
+        (*it)->getSessionStatistics(stats);
 }
 
 /////////////////////////////////////////////////////////////////////////////

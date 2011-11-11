@@ -49,10 +49,11 @@ VariableDirectory::VariableDirectory()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool VariableDirectory::insert(const PdServ::Parameter *p, size_t index,
-        size_t elementCount, bool dependent)
+bool VariableDirectory::insert(
+        const PdServ::Parameter *p, const std::string &path,
+        size_t index, size_t elementCount, bool dependent)
 {
-    DirectoryNode *dir = mkdir(p, index, elementCount);
+    DirectoryNode *dir = mkdir(p, path, index, elementCount);
     if (!dir)
         return true;
 
@@ -81,13 +82,13 @@ bool VariableDirectory::insert(const PdServ::Parameter *p, size_t index,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool VariableDirectory::insert(const PdServ::Signal *s, size_t index,
-        size_t elementCount)
+bool VariableDirectory::insert(const PdServ::Signal *s,
+        const std::string &path, size_t index, size_t elementCount)
 {
     if (!elementCount)
         elementCount = s->nelem;
 
-    DirectoryNode *dir = mkdir(s, index, elementCount);
+    DirectoryNode *dir = mkdir(s, path, index, elementCount);
     if (!dir)
         return true;
 
@@ -197,23 +198,24 @@ DirectoryNode* DirectoryNode::mkdir(size_t index,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-DirectoryNode* DirectoryNode::mkdir(const PdServ::Variable *v,
+DirectoryNode* DirectoryNode::mkdir(
+        const PdServ::Variable *v, const std::string &path,
         size_t index, size_t elementCount, size_t pathNameOffset)
 {
-    if (v->path.size() == pathNameOffset)
+    if (path.size() == pathNameOffset)
         return mkdir(index / elementCount, v->nelem / elementCount,
                 v->ndims, v->getDim());
 
-    if (v->path[pathNameOffset++] != '/')
+    if (path[pathNameOffset++] != '/')
         return 0;
     
     size_t nameStart = pathNameOffset;
 
-    pathNameOffset = v->path.find('/', pathNameOffset);
+    pathNameOffset = path.find('/', pathNameOffset);
     if (pathNameOffset == std::string::npos)
-        pathNameOffset = v->path.size();
+        pathNameOffset = path.size();
 
-    std::string name(v->path.substr(nameStart, pathNameOffset - nameStart));
+    std::string name(path.substr(nameStart, pathNameOffset - nameStart));
 
     bool hide = hidden;
 
@@ -231,7 +233,7 @@ DirectoryNode* DirectoryNode::mkdir(const PdServ::Variable *v,
         entry[name] = dir;
     }
 
-    return dir->mkdir(v, index, elementCount, pathNameOffset);
+    return dir->mkdir(v, path, index, elementCount, pathNameOffset);
 }
 
 /////////////////////////////////////////////////////////////////////////////
