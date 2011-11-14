@@ -57,7 +57,7 @@ struct SignalList {
 };
 
 struct Pdo {
-    enum {Empty = 0, SignalList, Data} type;
+    enum {Empty = 0, SignalList, Data, End} type;
     unsigned int signalListId;
     unsigned int count;
     struct PdServ::TaskStatistics taskStatistics;
@@ -73,6 +73,8 @@ struct PollData {
     bool active;
     struct timespec time;
     unsigned int count;
+    unsigned int length;
+    const char *addr;
     struct Data {
         void *dest;
         const Signal *signal;
@@ -103,7 +105,6 @@ size_t Task::getShmemSpace(double T) const
     size_t n = std::accumulate(signalTypeCount, signalTypeCount + 4, 0);
     return sizeof(*signalListRp) + sizeof(*signalListWp)
         + sizeof(*poll) + n*sizeof(*poll->data)
-        + signalMemSize
         + 2 * n * sizeof(*signalList)
         + (sizeof(*txPdo) + signalMemSize) * (size_t)(T / sampleTime + 0.5);
 
@@ -122,9 +123,8 @@ void Task::prepare(void *shmem, void *shmem_end)
     *signalListWp = signalList;
 
     poll = ptr_align<struct PollData>(signalListEnd);
-    pollData = ptr_align<char>(poll->data + n);
 
-    txMemBegin = ptr_align<struct Pdo>(pollData + signalMemSize);
+    txMemBegin = ptr_align<struct Pdo>(poll->data + n);
     txMemEnd = shmem_end;
 
     txPdo = txMemBegin;
@@ -204,7 +204,9 @@ void Task::initSession(unsigned int signalListId,
         *taskStatistics = &(*pdo)->taskStatistics;
 
         // Wait for a data packet
-        while (!(*pdo)->next and (*pdo)->type == Pdo::SignalList)
+//        while (!(*pdo)->next and (*pdo)->type == Pdo::SignalList)
+//        while (!(*pdo)->next and (*pdo)->type != Pdo::Data)
+        while (!((*pdo)->next or (*pdo)->type == Pdo::Data))
             ost::Thread::sleep(10);
 
         nextPdo = nextPdo->next;
@@ -212,8 +214,7 @@ void Task::initSession(unsigned int signalListId,
             return;
 
         if (nextPdo < txMemBegin or &nextPdo->data >= txMemEnd
-                or (nextPdo->type != Pdo::Data
-                    and nextPdo->type != Pdo::SignalList))
+                or nextPdo->type < 1 or nextPdo->type >= Pdo::End)
             nextPdo = txMemBegin;
 
     } while ((nextPdo->signalListId == signalListId
@@ -248,6 +249,7 @@ void Task::pollPrepare( const Signal *signal, void *dest) const
 {
     poll->data[poll->count].dest = dest;
     poll->data[poll->count].signal = signal;
+    poll->length += signal->memSize;
     poll->count++;
 }
 
@@ -267,7 +269,7 @@ bool Task::pollFinished( const PdServ::Signal * const *s, size_t nelem,
     if (poll->request != poll->reply)
         return false;
 
-    const char *buf = pollData;
+    const char *buf = poll->addr;
     for (size_t i = 0; i < poll->count; ++i) {
         const Signal *s = poll->data[i].signal;
         std::copy(buf, buf + s->memSize,
@@ -277,6 +279,7 @@ bool Task::pollFinished( const PdServ::Signal * const *s, size_t nelem,
 
     poll->active = false;
     poll->count = 0;
+    poll->length = 0;
     if (t)
         *t = poll->time;
 
@@ -288,13 +291,20 @@ void Task::update(const struct timespec *t,
         double exec_time, double cycle_time)
 {
     if (poll->request != poll->reply) {
-        char *dst = pollData;
+        char *dst = (txPdo->data + poll->length <= txMemEnd)
+            ? txPdo->data :  txMemBegin->data;
+
+        poll->time = *t;
+        poll->addr = dst;
+
         for (size_t i = 0; i < poll->count; ++i) {
             const Signal *s = poll->data[i].signal;
             std::copy(s->addr, s->addr + s->memSize, dst);
             dst += s->memSize;
         }
-        poll->time = *t;
+
+        txPdo = ptr_align<Pdo>(dst);
+
         poll->reply = poll->request;
     }
 

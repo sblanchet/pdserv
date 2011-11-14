@@ -94,7 +94,6 @@ class Task: public PdServ::Task {
         const void *txMemEnd;
 
         struct PollData *poll;
-        char *pollData;
 };
 
 #endif // LIB_TASK_H
