@@ -147,22 +147,16 @@ void Session::requestOutput()
 /////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
-    if (getDetectPending()) {
-        // Read and process the incoming data
-        if (rxPdo()) {
-            // Unknown command warning
-            MsrXml::Element error("error");
-            error.setAttribute("text", "process synchronization lost");
+    // Read and process the incoming data
+    if (rxPdo()) {
+        // Unknown command warning
+        MsrXml::Element error("error");
+        error.setAttribute("text", "process synchronization lost");
 
-            outbuf << error << std::flush;
-        }
-        else
-            setTimer(100);      // Wakeup in 100ms again
+        outbuf << error << std::flush;
     }
-    else /*if (!getDetectPending())*/ {
-        delete this;
-        return;
-    }
+    else
+        setTimer(100);      // Wakeup in 100ms again
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -195,7 +189,10 @@ void Session::pending()
     if (_inBytes == inBytes) {
         // End of stream
         setDetectPending(false);
-        return;
+        endTimer();
+
+        if (!getDetectOutput())
+            delete this;
     }
 
     //cout << __LINE__ << " Data left in buffer: "
@@ -218,8 +215,12 @@ void Session::output()
 
     outBytes += n;       // PdServ::Session output byte counter
 
-    if (outbuf.clear(n))
+    if (outbuf.clear(n)) {
         setDetectOutput(false);
+
+        if (!getDetectPending())
+            delete this;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
