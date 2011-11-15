@@ -62,7 +62,7 @@ class Task: public PdServ::Task {
                 double exec_time, double cycle_time);
         bool rxPdo(struct Pdo **, SessionTaskData *);
 
-        void subscribe(const Signal* s, bool insert) const;
+        void subscribe(const Signal* s, bool insert);
 
         void pollPrepare( const Signal *, void *buf) const;
         bool pollFinished( const PdServ::Signal * const *s, size_t nelem,
@@ -79,20 +79,35 @@ class Task: public PdServ::Task {
 
         size_t signalTypeCount[4];
         size_t signalMemSize;
-        size_t pdoMem;
 
-        std::vector<size_t> signalPosition;
+        // Cache of the currently transferred signals
+        const Signal **signalCopyList[4];
+
+        // Position of a signal inside the copy list. Use the signal's index
+        // to enter this array
+        // Only allocated for non-realtime task
+        unsigned int *signalPosition;
 
         unsigned int seqNo;
         unsigned int signalListId;
 
-        struct CopyList *copyList[4];
+        // Pointer into shared memory used to communicate changes to the signal
+        // copy list
+        // The non-realtime thread writes using signalListWp whereas the
+        // realtime task reads using signalListRp
+        // This list is null terminated
         struct SignalList *signalList, *signalListEnd,
                           **signalListRp, **signalListWp;
 
+        // Structure managed by the realtime thread containing a list of
+        // signals which it has to copy into every PDO
+        struct CopyList *copyList[4];
+
+        // Process data communication. Points to shared memory
         struct Pdo *txMemBegin, *txPdo, **nextTxPdo;
         const void *txMemEnd;
 
+        // Poll data communication. Points to shared memory.
         struct PollData *poll;
 };
 

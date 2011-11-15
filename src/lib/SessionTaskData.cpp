@@ -40,48 +40,49 @@ SessionTaskData::SessionTaskData( PdServ::Session* s, Task* t):
     PdServ::SessionTaskData(s, t), task(t), session(s)
 {
     pdoError = false;
-    pdoSize = 0;
 
     signalPosition.resize(task->signalCount());
     const Signal *signals[signalPosition.size()];
     size_t nelem;
 
     task->getSignalList(signals, &nelem, &signalListId);
-    loadSignalList(signals, nelem);
+    loadSignalList(signals, nelem, signalListId);
 
+    cout << "signallistid = " << signalListId << endl;
     task->initSession(signalListId, &pdo, &taskStatistics);
 }
 
 ////////////////////////////////////////////////////////////////////////////
 bool SessionTaskData::rxPdo()
 {
-    return task->rxPdo(&pdo, this) or pdoError;
+    return pdoError or task->rxPdo(&pdo, this);
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void SessionTaskData::loadSignalList(const Signal * const *sp, size_t n)
+void SessionTaskData::loadSignalList(const Signal * const *sp, size_t n,
+        unsigned int id)
 {
+//    cout << __func__ << " n=" << n << " id=" << id;
     std::fill(signalPosition.begin(),  signalPosition.end(), ~0U);
-    size_t pos = 0;
+    signalListId = id;
+    pdoSize = 0;
     for (size_t i = 0; i < n; ++i) {
-        signalPosition[sp[i]->index] = pos;
-        pos += sp[i]->memSize;
+        signalPosition[sp[i]->index] = pdoSize;
+        pdoSize += sp[i]->memSize;
+//        cout << ' ' << sp[i]->index << '(' << pdoSize << ')';
     }
+//    cout << endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////
 void SessionTaskData::newSignalList(
         unsigned int signalListId, const Signal * const *sp, size_t n)
 {
-    loadSignalList(sp, n);
+    loadSignalList(sp, n, signalListId);
+
     const PdServ::Signal *signals[n];
-
-    this->signalListId = signalListId;
     std::copy(sp, sp+n, signals);
-
-    pdoSize = 0;
-    for (size_t i = 0; i < n; i++)
-        pdoSize += sp[i]->memSize;
+//    cout << __func__ << " signallistid = " << signalListId << endl;
 
     session->newSignalList(task, signals, n);
 }

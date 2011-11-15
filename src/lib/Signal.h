@@ -49,12 +49,13 @@ class Signal: public PdServ::Signal {
                 const unsigned int *dim = 0);
 
         const char * const addr;
-        const Task * const task;
 
         static const size_t dataTypeIndex[PdServ::Variable::maxWidth+1];
         const size_t index;
 
     private:
+        Task * const task;
+
         mutable ost::Semaphore mutex;
 
         typedef std::set<const PdServ::Session*> SessionSet;

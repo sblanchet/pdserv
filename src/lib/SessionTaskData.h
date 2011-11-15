@@ -64,7 +64,8 @@ class SessionTaskData: public PdServ::SessionTaskData {
 
         struct Pdo *pdo;
 
-        void loadSignalList(const Signal * const *sp, size_t n);
+        void loadSignalList(const Signal * const *sp, size_t n,
+                unsigned int signalListId);
 };
 
 #endif //LIBSESSIONTASKDATA_H

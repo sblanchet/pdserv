@@ -53,7 +53,7 @@ Signal::Signal( Task *task,
         const unsigned int *dim):
     PdServ::Signal(path, task->sampleTime * decimation, dtype, ndims, dim),
     addr(reinterpret_cast<const char *>(addr)),
-    task(task), index(index),
+    index(index), task(task),
     mutex(1)
 {
 }
