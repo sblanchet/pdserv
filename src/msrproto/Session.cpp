@@ -147,16 +147,30 @@ void Session::requestOutput()
 /////////////////////////////////////////////////////////////////////////////
 void Session::expired()
 {
-    // Read and process the incoming data
-    if (rxPdo()) {
+//    if (!--timeout) {
+//        setDetectPending(false);
+//        MsrXml::Element error("error");
+//        error.setAttribute("text", "session timeout");
+//        outbuf << error << std::flush;
+//    }
+
+    if (!getDetectPending()) {
+        if (!getDetectOutput()) {
+            delete this;
+            return;
+        }
+    }
+    else if (rxPdo()) {
         // Unknown command warning
         MsrXml::Element error("error");
         error.setAttribute("text", "process synchronization lost");
 
         outbuf << error << std::flush;
+
+        setDetectPending(false);
     }
-    else
-        setTimer(100);      // Wakeup in 100ms again
+
+    setTimer(100);      // Wakeup in 100ms again
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -189,10 +203,6 @@ void Session::pending()
     if (_inBytes == inBytes) {
         // End of stream
         setDetectPending(false);
-        endTimer();
-
-        if (!getDetectOutput())
-            delete this;
     }
 
     //cout << __LINE__ << " Data left in buffer: "
@@ -209,6 +219,7 @@ void Session::output()
     // In case of error, exit
     if (n <= 0) {
         setDetectOutput(false);
+        setDetectPending(false);
         return;
     }
 //    cout << std::string(outbuf.bufptr(), n);
@@ -217,9 +228,6 @@ void Session::output()
 
     if (outbuf.clear(n)) {
         setDetectOutput(false);
-
-        if (!getDetectPending())
-            delete this;
     }
 }
 
