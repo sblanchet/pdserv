@@ -22,8 +22,6 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "Directory.h"
 #include "Channel.h"
 #include "Parameter.h"
@@ -33,13 +31,6 @@
 #include <cstring>
 #include <cerrno>
 #include <locale>
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace MsrProto;
 

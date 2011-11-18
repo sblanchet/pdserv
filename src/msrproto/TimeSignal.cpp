@@ -22,8 +22,6 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "TimeSignal.h"
 #include "Session.h"
 #include "TaskStatistics.h"
@@ -31,13 +29,6 @@
 #include "../TaskStatistics.h"
 #include "../Main.h"
 #include "../Task.h"
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace MsrProto;
 

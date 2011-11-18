@@ -22,26 +22,15 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "../Signal.h"
 #include "../Receiver.h"
-//
 #include "XmlDoc.h"
 #include "PrintVariable.h"
-//#include "Task.h"
 #include "Channel.h"
 #include "SubscriptionManager.h"
 #include "Subscription.h"
 
 #include <cstdio> // snprintf
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace MsrProto;
 

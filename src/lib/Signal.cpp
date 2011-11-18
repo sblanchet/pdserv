@@ -22,19 +22,10 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "Signal.h"
 #include "Task.h"
 #include "Main.h"
 #include "SessionTaskData.h"
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 //////////////////////////////////////////////////////////////////////
 const size_t Signal::dataTypeIndex[PdServ::Variable::maxWidth+1] = {

@@ -22,20 +22,11 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include <algorithm>
 #include <cerrno>
 
 #include "Parameter.h"
 #include "Main.h"
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 //////////////////////////////////////////////////////////////////////
 Parameter::Parameter(

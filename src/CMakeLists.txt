@@ -35,6 +35,7 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     Signal.cpp Signal.h
     Parameter.cpp Parameter.h
     SessionShadow.h
+    Debug.h
     SessionTaskData.cpp SessionTaskData.h
 
     lib/interface.cpp

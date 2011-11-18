@@ -41,6 +41,7 @@
 
 #define STR(x) #x
 
+#cmakedefine SRC_PATH_LENGTH @SRC_PATH_LENGTH@
 #cmakedefine DEBUG
 
 #endif //CONFIG_H

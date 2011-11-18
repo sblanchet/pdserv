@@ -22,30 +22,20 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "Server.h"
 #include "Channel.h"
 #include "TimeSignal.h"
 #include "StatSignal.h"
 #include "Parameter.h"
 #include "Directory.h"
+#include "Session.h"
 #include "../Main.h"
 #include "../Task.h"
 #include "../Signal.h"
 #include "../Parameter.h"
+
 #include <cc++/socketport.h>
-
 #include <algorithm>
-
-#include "Session.h"
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace MsrProto;
 

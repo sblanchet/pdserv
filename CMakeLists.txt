@@ -151,6 +151,11 @@ INSTALL (DIRECTORY include
     PATTERN "*.orig" EXCLUDE)
 
 OPTION ( DEBUG "Debugging output" OFF )
+
+if (DEBUG)
+    string(LENGTH "${PROJECT_SOURCE_DIR}/src/" SRC_PATH_LENGTH)
+endif (DEBUG)
+
 CONFIGURE_FILE (
     "${PROJECT_SOURCE_DIR}/config.h.in"
     "${PROJECT_BINARY_DIR}/config.h"

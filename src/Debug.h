@@ -22,12 +22,51 @@
  *
  *****************************************************************************/
 
-#include "SessionTaskData.h"
+#ifndef DEBUG_H
+#define DEBUG_H
 
-using namespace PdServ;
+#include "config.h"
 
-/////////////////////////////////////////////////////////////////////////////
-SessionTaskData::SessionTaskData(const Session *s, const Task *t):
-    session(s), task(t)
-{
+#ifdef DEBUG
+
+#include <iostream>
+
+namespace {
+
+struct Debug {
+    Debug(const std::string& file, const std::string& func, int line) {
+        std::cerr << std::string(file,SRC_PATH_LENGTH)
+            << ':' << func << '(' << line << "):";
+    }
+
+    ~Debug() {
+        std::cerr << std::endl;
+    }
+
+    template <class T>
+        const Debug& operator<<(const T& o) const {
+            std::cerr << ' ' << o;
+            return *this;
+        }
+};
+
+#define debug() Debug(__BASE_FILE__, __func__, __LINE__)
 }
+
+#else
+
+namespace {
+
+struct Debug {
+    template <class T>
+        const Debug& operator<<(const T&) const {
+            return *this;
+        }
+};
+
+#define debug() Debug()
+}
+
+#endif
+
+#endif // DEBUG_H

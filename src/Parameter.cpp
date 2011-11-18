@@ -22,18 +22,9 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include <ctime>
 
 #include "Parameter.h"
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace PdServ;
 

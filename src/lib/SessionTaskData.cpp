@@ -22,14 +22,6 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
-
 #include "../Session.h"
 #include "SessionTaskData.h"
 #include "Task.h"
@@ -48,7 +40,6 @@ SessionTaskData::SessionTaskData( PdServ::Session* s, Task* t):
     task->getSignalList(signals, &nelem, &signalListId);
     loadSignalList(signals, nelem, signalListId);
 
-    cout << "signallistid = " << signalListId << endl;
     task->initSession(signalListId, &pdo, &taskStatistics);
 }
 

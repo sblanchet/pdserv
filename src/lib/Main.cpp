@@ -22,7 +22,7 @@
  *
  *****************************************************************************/
 
-#include "config.h"
+#include "../Debug.h"
 
 #include <cerrno>
 #include <cstring>
@@ -31,10 +31,8 @@
 #include <ctime>
 #include <algorithm>
 #include <sys/mman.h>
-
 #include <sys/types.h>
 #include <unistd.h>             // fork()
-//#include <cc++/cmdoptns.h>
 
 #include "Main.h"
 #include "Task.h"
@@ -44,19 +42,7 @@
 #include "SessionShadow.h"
 #include "pdserv/pdserv.h"
 
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
-
-// static ost::CommandOption *optionList = 0;
-// 
-// ost::CommandOptionNoArg traditional(
-//         "traditional", "t", "Traditional MSR", false, &optionList
-//         );
-
+/////////////////////////////////////////////////////////////////////////////
 struct SDOStruct {
     const Parameter *parameter;
     unsigned int offset;
@@ -234,12 +220,11 @@ int Main::run()
     sdo     = ptr_align<struct SDOStruct>(shmem);
     sdoData = ptr_align<char>(ptr_align<double>(sdo + parameters.size() + 1));
 
-    cout << "shmemlen=" << shmem_len
+    debug() << "shmemlen=" << shmem_len
         << " shmem=" << shmem
         << " sdo=" << sdo
 //        << " sdoTaskTime=" << sdoTaskTime
-        << " sdoData=" << (void*)sdoData
-        << endl;
+        << " sdoData=" << (void*)sdoData;
 
     for (PdServ::Main::Parameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {

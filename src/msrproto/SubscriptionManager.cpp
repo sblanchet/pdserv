@@ -22,8 +22,6 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "../Main.h"
 #include "../Signal.h"
 #include "../SessionTaskData.h"
@@ -33,13 +31,6 @@
 #include "Subscription.h"
 
 #include <algorithm>
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace MsrProto;
 

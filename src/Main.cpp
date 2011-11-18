@@ -33,13 +33,6 @@
 //#include "etlproto/Server.h"
 #include "msrproto/Server.h"
 
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
-
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -135,7 +128,6 @@ int Main::run()
 //    etlproto.join();
     msrproto->join();
 
-    cout << "XXXXXXXXXXXXXXXXXXXXXX" << endl;
     return 0;
 }
 

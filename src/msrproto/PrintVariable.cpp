@@ -22,8 +22,6 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "PrintVariable.h"
 #include "XmlDoc.h"
 
@@ -31,13 +29,6 @@
 
 #include <stdint.h>
 #include <cstdio>
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace MsrProto;
 

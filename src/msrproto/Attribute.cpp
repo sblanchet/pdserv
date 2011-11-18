@@ -22,21 +22,12 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "Attribute.h"
 
 #include <cstring>
 #include <algorithm>
 #include <sstream>
 #include <locale>
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace MsrProto;
 

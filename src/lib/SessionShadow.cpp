@@ -22,14 +22,6 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
-
 #include "SessionShadow.h"
 #include "SessionTaskData.h"
 #include "Task.h"
@@ -39,7 +31,6 @@ using std::endl;
 SessionShadow::SessionShadow(const Main *main, PdServ::Session* session):
     main(main), session(session)
 {
-    cout << __func__ << endl;
     for (size_t i = 0; i < main->numTasks(); ++i) {
         Task *task = main->getTask(i);
         taskMap[task] = new SessionTaskData( session, task);
@@ -49,7 +40,6 @@ SessionShadow::SessionShadow(const Main *main, PdServ::Session* session):
 ////////////////////////////////////////////////////////////////////////////
 SessionShadow::~SessionShadow()
 {
-    cout << __func__ << endl;
     for (TaskMap::iterator it = taskMap.begin(); it != taskMap.end(); ++it)
         delete it->second;
 }

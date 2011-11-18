@@ -22,17 +22,10 @@
  *
  *****************************************************************************/
 
-#include "config.h"
+#include "../Debug.h"
 
 #include <algorithm>
 #include <numeric>
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 #include "SessionTaskData.h"
 #include "Task.h"
@@ -131,9 +124,9 @@ void Task::prepare(void *shmem, void *shmem_end)
 
     txMemBegin = ptr_align<struct Pdo>(poll->data + n);
     txMemEnd = shmem_end;
-    cout << "signallen=" << signalMemSize << " txpdosize=" 
+    debug() << "signallen=" << signalMemSize << " txpdosize=" 
         << sizeof(*txPdo) << " space="
-        << ((const char*)txMemEnd - (const char *)txMemBegin) << endl;
+        << ((const char*)txMemEnd - (const char *)txMemBegin);
 
     txPdo = txMemBegin;
     nextTxPdo = ptr_align<struct Pdo*>(shmem_end) - 2;
@@ -204,7 +197,6 @@ void Task::getSignalList(const Signal **signalList, size_t *nelem,
 void Task::initSession(unsigned int signalListId, struct Pdo **pdoPtr,
         const PdServ::TaskStatistics **taskStatistics) const
 {
-    cout << __func__ << signalListId;
     struct Pdo *pdo = txMemBegin;
     while (!(!pdo->next and pdo->type == Pdo::Data
                 and pdo->signalListId == signalListId)) {
@@ -216,13 +208,10 @@ void Task::initSession(unsigned int signalListId, struct Pdo **pdoPtr,
         if (pdo < txMemBegin or &pdo->data >= txMemEnd
                 or !pdo->type or pdo->type >= Pdo::End)
             pdo = txMemBegin;
-
-        cout << '.';
     }
 
     *pdoPtr = pdo;
     *taskStatistics = &pdo->taskStatistics;
-    cout << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -471,7 +460,7 @@ bool Task::rxPdo(struct Pdo **pdoPtr, SessionTaskData *std)
     return false;
 
 out:
-    cout << "failed" << endl;
+    debug() << "failed";
     *pdoPtr = 0;
     return true;
 }

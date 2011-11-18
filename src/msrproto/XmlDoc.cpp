@@ -22,8 +22,6 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "XmlDoc.h"
 #include "../Variable.h"
 
@@ -31,13 +29,6 @@
 #include <iomanip>
 #include <algorithm>
 #include <cstring>
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace MsrXml;
 

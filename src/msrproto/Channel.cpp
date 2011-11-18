@@ -22,21 +22,12 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "Channel.h"
 #include "Directory.h"
 #include "XmlDoc.h"
 #include "../Signal.h"
 
 #include <sstream>
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace MsrProto;
 

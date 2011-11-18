@@ -22,8 +22,6 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include <cerrno>       // ENAMETOOLONG
 #include <climits>      // HOST_NAME_MAX
 #include <unistd.h>     // gethostname
@@ -44,13 +42,6 @@
 #include "Directory.h"
 #include "SubscriptionManager.h"
 #include "TaskStatistics.h"
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace MsrProto;
 

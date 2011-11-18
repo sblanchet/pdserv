@@ -22,24 +22,15 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "Variable.h"
 #include "XmlDoc.h"
 #include "PrintVariable.h"
+#include "Directory.h"
 #include "../Variable.h"
 #include "../Signal.h"
 #include "../Parameter.h"
-#include "Directory.h"
 
 #include <sstream>
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace MsrProto;
 

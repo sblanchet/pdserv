@@ -22,8 +22,6 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "Parameter.h"
 #include "XmlDoc.h"
 #include "PrintVariable.h"
@@ -34,14 +32,6 @@
 #include <sstream>
 #include <cerrno>
 #include <stdint.h>
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
-
 
 #define MSR_R   0x01    /* Parameter is readable */
 #define MSR_W   0x02    /* Parameter is writeable */

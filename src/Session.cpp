@@ -22,19 +22,10 @@
  *
  *****************************************************************************/
 
-#include "config.h"
-
 #include "Session.h"
 #include "SessionShadow.h"
 #include "SessionStatistics.h"
 #include "Main.h"
-
-#ifdef DEBUG
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-#endif
 
 using namespace PdServ;
 
