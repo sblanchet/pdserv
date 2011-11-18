@@ -25,7 +25,7 @@
 #include "config.h"
 
 #include "Session.h"
-#include "SessionMirror.h"
+#include "SessionShadow.h"
 #include "SessionStatistics.h"
 #include "Main.h"
 

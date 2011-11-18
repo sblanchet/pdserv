@@ -22,39 +22,28 @@
  *
  *****************************************************************************/
 
-#ifndef LIBSESSIONMIRROR_H
-#define LIBSESSIONMIRROR_H
+#ifndef SESSIONSHADOW_H
+#define SESSIONSHADOW_H
 
-#include "../SessionMirror.h"
-
-#include <map>
+#include <set>
 
 namespace PdServ {
-    class Task;
-    class Session;
-    class SessionStatistics;
-}
 
-class Main;
-class SessionTaskData;
+class Session;
+class Task;
+class TaskStatistics;
 
-class SessionMirror: public PdServ::SessionMirror {
+class SessionShadow {
     public:
-        SessionMirror(const Main *main, PdServ::Session *session);
+        virtual ~SessionShadow() {}
 
-        ~SessionMirror();
+        virtual bool rxPdo() = 0;
+        virtual const TaskStatistics *getTaskStatistics(const Task *) const = 0;
+
+    protected:
 
     private:
-        const Main * const main;
-        PdServ::Session * const session;
-
-        typedef std::map<const PdServ::Task*, SessionTaskData*> TaskMap;
-        TaskMap taskMap;
-
-        // Reimplemented from PdServ::SessionMirror
-        bool rxPdo();
-        const PdServ::TaskStatistics *getTaskStatistics(
-                const PdServ::Task *) const;
 };
 
-#endif //LIBSESSIONMIRROR_H
+}
+#endif //SESSIONSHADOW_H

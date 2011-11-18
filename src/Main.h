@@ -45,7 +45,7 @@ class Parameter;
 class Variable;
 class Task;
 class Session;
-class SessionMirror;
+class SessionShadow;
 class SessionStatistics;
 
 class Main {
@@ -78,7 +78,7 @@ class Main {
 
         const Variable *findVariable(const std::string& path) const;
 
-        virtual SessionMirror *newSession(Session *) const = 0;
+        virtual SessionShadow *newSession(Session *) const = 0;
 
     protected:
         int argc;

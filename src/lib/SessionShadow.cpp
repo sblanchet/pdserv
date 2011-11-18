@@ -30,13 +30,13 @@ using std::cerr;
 using std::endl;
 #endif
 
-#include "SessionMirror.h"
+#include "SessionShadow.h"
 #include "SessionTaskData.h"
 #include "Task.h"
 #include "Main.h"
 
 ////////////////////////////////////////////////////////////////////////////
-SessionMirror::SessionMirror(const Main *main, PdServ::Session* session):
+SessionShadow::SessionShadow(const Main *main, PdServ::Session* session):
     main(main), session(session)
 {
     cout << __func__ << endl;
@@ -47,7 +47,7 @@ SessionMirror::SessionMirror(const Main *main, PdServ::Session* session):
 }
 
 ////////////////////////////////////////////////////////////////////////////
-SessionMirror::~SessionMirror()
+SessionShadow::~SessionShadow()
 {
     cout << __func__ << endl;
     for (TaskMap::iterator it = taskMap.begin(); it != taskMap.end(); ++it)
@@ -55,7 +55,7 @@ SessionMirror::~SessionMirror()
 }
 
 ////////////////////////////////////////////////////////////////////////////
-bool SessionMirror::rxPdo()
+bool SessionShadow::rxPdo()
 {
     bool error = false;
     for (TaskMap::iterator it = taskMap.begin(); it != taskMap.end(); ++it)
@@ -65,7 +65,7 @@ bool SessionMirror::rxPdo()
 }
 
 ////////////////////////////////////////////////////////////////////////////
-const PdServ::TaskStatistics *SessionMirror::getTaskStatistics(
+const PdServ::TaskStatistics *SessionShadow::getTaskStatistics(
         const PdServ::Task *task) const
 {
     return taskMap.find(task)->second->taskStatistics;

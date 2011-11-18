@@ -32,7 +32,7 @@
 #include "../Task.h"
 #include "../Signal.h"
 #include "../Parameter.h"
-#include "../SessionMirror.h"
+#include "../SessionShadow.h"
 #include "../SessionTaskData.h"
 #include "../TaskStatistics.h"
 

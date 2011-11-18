@@ -41,7 +41,7 @@
 #include "Signal.h"
 #include "Parameter.h"
 #include "Pointer.h"
-#include "SessionMirror.h"
+#include "SessionShadow.h"
 #include "pdserv/pdserv.h"
 
 #ifdef DEBUG
@@ -296,7 +296,7 @@ void Main::getParameters(Task *task, const struct timespec *t) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-PdServ::SessionMirror *Main::newSession(PdServ::Session *session) const
+PdServ::SessionShadow *Main::newSession(PdServ::Session *session) const
 {
-    return new SessionMirror(this, session);
+    return new SessionShadow(this, session);
 }

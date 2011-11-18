@@ -35,7 +35,7 @@ class Task;
 class Signal;
 class Main;
 class SessionTaskData;
-class SessionMirror;
+class SessionShadow;
 class SessionStatistics;
 
 class Session {
@@ -55,7 +55,7 @@ class Session {
         const Main * const main;
 
     protected:
-        SessionMirror * const shadow;
+        SessionShadow * const shadow;
 
         size_t inBytes;
         size_t outBytes;

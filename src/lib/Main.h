@@ -35,13 +35,13 @@
 namespace PdServ {
     class Session;
     class Signal;
-    class SessionMirror;
+    class SessionShadow;
 }
 
 class Parameter;
 class Signal;
 class Task;
-class SessionMirror;
+class SessionShadow;
 
 class Main: public PdServ::Main {
     public:
@@ -88,7 +88,7 @@ class Main: public PdServ::Main {
                 const PdServ::Signal * const *s, size_t nelem,
                 void * const *pollDest, struct timespec *t) const;
         int gettime(struct timespec *) const;
-        PdServ::SessionMirror *newSession(PdServ::Session *) const;
+        PdServ::SessionShadow *newSession(PdServ::Session *) const;
 };
 
 #endif // LIB_MAIN_H
