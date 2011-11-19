@@ -2,6 +2,6 @@ syntax: glob
 
 *~
 *.sw?
-build
+build*
 *.orig
 TAGS
