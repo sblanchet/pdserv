@@ -45,6 +45,8 @@ Main::Main(int argc, const char *argv[], const char *name, const char *version):
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
+    msrproto->join();
+
     delete msrproto;
 
     for (VariableMap::const_iterator it = variableMap.begin();
@@ -116,7 +118,7 @@ const Main::Parameters& Main::getParameters() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::run()
+void Main::startServers()
 {
     msrproto = new MsrProto::Server(this, argc, argv);
 
@@ -124,11 +126,6 @@ int Main::run()
 
 //    etlproto.start();
     msrproto->start();
-
-//    etlproto.join();
-    msrproto->join();
-
-    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////

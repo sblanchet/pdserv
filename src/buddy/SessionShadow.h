@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id$
+ *  $Id: SessionShadow.h,v 26930f4ff1e7 2011/11/18 17:44:41 lerichi $
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
@@ -22,47 +22,36 @@
  *
  *****************************************************************************/
 
-#ifndef SUBSCRIPTION_H
-#define SUBSCRIPTION_H
+#ifndef LIBSESSIONSHADOW_H
+#define LIBSESSIONSHADOW_H
 
-#include <set>
-#include "XmlElement.h"
+#include "../SessionShadow.h"
 
-namespace MsrProto {
+#include <map>
 
-class Subscription {
+namespace PdServ {
+    class Task;
+    class Session;
+    class SessionStatistics;
+}
+
+class Main;
+class SessionTaskData;
+
+class SessionShadow: public PdServ::SessionShadow {
     public:
-        Subscription(const Channel *);
-        ~Subscription();
+        SessionShadow(/*const Main *main,*/ PdServ::Session *session);
 
-        const Channel *channel;
-
-        bool sync();
-
-        void newValue(XmlElement *, const void *buf);
-
-        void set(bool event, bool sync, unsigned int decimation,
-                size_t blocksize, bool base64, size_t precision);
+        ~SessionShadow();
 
     private:
-        const size_t bufferOffset;
+//        const Main * const main;
+        PdServ::Session * const session;
 
-        XmlElement element;
-
-        bool _sync;
-
-        bool event;
-        unsigned int decimation;
-        unsigned int trigger;
-        size_t blocksize;
-
-        size_t precision;
-        bool base64;
-
-        char *data_bptr;
-        char *data_pptr;
-        char *data_eptr;
+        // Reimplemented from PdServ::SessionShadow
+        bool rxPdo();
+        const PdServ::TaskStatistics *getTaskStatistics(
+                const PdServ::Task *) const;
 };
 
-}
-#endif //SUBSCRIPTION_H
+#endif //LIBSESSIONSHADOW_H

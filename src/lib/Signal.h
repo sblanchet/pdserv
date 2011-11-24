@@ -43,7 +43,7 @@ class Signal: public PdServ::Signal {
                 size_t index,
                 unsigned int decimation,
                 const char *path,
-                enum si_datatype_t dtype,
+                Datatype dtype,
                 const void *addr,
                 unsigned int ndims = 1,
                 const unsigned int *dim = 0);
@@ -71,7 +71,8 @@ class Signal: public PdServ::Signal {
         const void *getValue(const PdServ::SessionTaskData*) const;
 
         // Reimplemented from PdServ::Variable
-        void getValue(PdServ::Session*, void *, struct timespec * = 0) const;
+        void getValue(const PdServ::Session*,
+                void *, size_t, size_t, struct timespec * = 0) const;
 };
 
 #endif //LIB_SIGNAL

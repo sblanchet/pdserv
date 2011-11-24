@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id$
+ *  $Id: Main.h,v 26930f4ff1e7 2011/11/18 17:44:41 lerichi $
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
@@ -22,13 +22,13 @@
  *
  *****************************************************************************/
 
-#ifndef LIB_MAIN_H
-#define LIB_MAIN_H
+#ifndef BUDDY_MAIN_H
+#define BUDDY_MAIN_H
 
 #include <map>
 
 #include "../Main.h"
-#include "../Variable.h"
+#include "fio_ioctl.h"
 
 #include <cc++/thread.h>
 
@@ -45,43 +45,44 @@ class SessionShadow;
 
 class Main: public PdServ::Main {
     public:
-        Main(int argc, const char *argv[],
-                const char *name, const char *version,
-                int (*gettime)(struct timespec*));
+        Main(int argc, const char *argv[], int instance, const char *node);
         ~Main();
 
-        int run();
-        void getParameters(Task *, const struct timespec *) const;
-
-        Task* addTask(double sampleTime, const char *name);
-        Task* getTask(size_t index) const;
-
-        Parameter* addParameter( const char *path,
-                unsigned int mode, PdServ::Variable::Datatype datatype,
-                void *addr, size_t n, const unsigned int *dim);
-
-        Signal* addSignal( Task *task, unsigned int decimation,
-                const char *path, PdServ::Variable::Datatype datatype,
-                const void *addr, size_t n, const unsigned int *dim);
+//        int run();
+//        void getParameters(Task *, const struct timespec *) const;
+//
+//        Task* addTask(double sampleTime, const char *name);
+//        Task* getTask(size_t index) const;
+//
+//        Parameter* addParameter( const char *path,
+//                unsigned int mode, enum si_datatype_t datatype,
+//                void *addr, size_t n, const unsigned int *dim);
+//
+//        Signal* addSignal( Task *task, unsigned int decimation,
+//                const char *path, enum si_datatype_t datatype,
+//                const void *addr, size_t n, const unsigned int *dim);
         int setParameter(const Parameter *p, size_t startIndex,
                 size_t nelem, const char *data,
                 struct timespec *) const;
-
-        static const double bufferTime;
+//
+//        static const double bufferTime;
 
     private:
-        mutable ost::Semaphore mutex;
+//        mutable ost::Semaphore mutex;
+        mutable ost::Semaphore paramMutex;
 
+        int fd;
         int pid;
 
-        size_t shmem_len;
+        Task *mainTask;
+        struct app_properties app_properties;
+
+        bool getVariable(int type, size_t index, struct signal_info &si);
+
+        char *parameterBuf;
         void *shmem;
-
-        struct SDOStruct *sdo;
-        mutable ost::Semaphore sdoMutex;
-        char *sdoData;
-
-        int (* const rttime)(struct timespec*);
+        int readPointer;
+//        int (* const rttime)(struct timespec*);
 
         // Reimplemented from PdServ::Main
         void processPoll(size_t delay_ms,
@@ -91,4 +92,4 @@ class Main: public PdServ::Main {
         PdServ::SessionShadow *newSession(PdServ::Session *) const;
 };
 
-#endif // LIB_MAIN_H
+#endif // BUDDY_MAIN_H

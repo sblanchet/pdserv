@@ -37,7 +37,7 @@ class Parameter: public PdServ::Parameter {
         Parameter ( Main *main,
                 const char *path,
                 unsigned int mode,
-                enum si_datatype_t dtype,
+                Datatype dtype,
                 void *addr,
                 unsigned int ndims = 1,
                 const unsigned int *dim = 0);
@@ -57,12 +57,12 @@ class Parameter: public PdServ::Parameter {
         mutable struct timespec mtime;
 
         // Reimplemented from PdServ::Parameter
-        int setValue(const char *buf,
-                size_t startIndex, size_t nelem) const;
+        int setValue(const PdServ::Session *,
+                const char *buf, size_t startIndex, size_t nelem) const;
 
         // Reimplemented from PdServ::Variable
-        void getValue(PdServ::Session *,
-                void *buf, struct timespec* t = 0) const;
+        void getValue(const PdServ::Session *,
+                void *buf, size_t, size_t, struct timespec* t = 0) const;
 
         // A default function used when paramcheck or paramupdate are not
         // specified by the user

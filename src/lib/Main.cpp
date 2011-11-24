@@ -93,7 +93,7 @@ int Main::gettime(struct timespec* t) const
 
 /////////////////////////////////////////////////////////////////////////////
 Parameter* Main::addParameter( const char *path,
-        unsigned int mode, enum si_datatype_t datatype,
+        unsigned int mode, PdServ::Variable::Datatype datatype,
         void *addr, size_t n, const unsigned int *dim)
 {
     if (variableMap.find(path) != variableMap.end())
@@ -109,7 +109,7 @@ Parameter* Main::addParameter( const char *path,
 
 /////////////////////////////////////////////////////////////////////////////
 Signal* Main::addSignal( Task *task, unsigned int decimation,
-        const char *path, enum si_datatype_t datatype,
+        const char *path, PdServ::Variable::Datatype datatype,
         const void *addr, size_t n, const unsigned int *dim)
 {
     if (variableMap.find(path) != variableMap.end())
@@ -262,7 +262,12 @@ int Main::run()
 
     pid = getpid();
 
-    return PdServ::Main::run();
+    startServers();
+
+    while (true) {
+        pause();
+    }
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////

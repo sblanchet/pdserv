@@ -22,51 +22,54 @@
  *
  *****************************************************************************/
 
-#include "XmlDoc.h"
+#include "XmlElement.h"
 #include "../Variable.h"
+#include "Variable.h"
 
 #include <stdint.h>
 #include <iomanip>
 #include <algorithm>
 #include <cstring>
 
-using namespace MsrXml;
+using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-// Element
+// XmlElement
 /////////////////////////////////////////////////////////////////////////////
-Element::Element(const char *name): name(name)
+XmlElement::XmlElement(const char *name): name(name)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Element::~Element()
+XmlElement::~XmlElement()
 {
     // If any children exist, kill them too
-    for (Element::Children::const_iterator it = children.begin();
+    for (XmlElement::Children::const_iterator it = children.begin();
             it != children.end(); it++)
         delete *it;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::ostream& MsrXml::operator<<(std::ostream& os, const Element& el)
-{
-    el.print(os);
-    return os;
+namespace MsrProto {
+    std::ostream& operator<<(std::ostream& os, const XmlElement& el)
+    {
+        el.print(os);
+        return os;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::print(std::ostream& os, size_t indent) const
+void XmlElement::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << '<' << name;
-    for (Element::AttributeList::const_iterator it = attrList.begin();
-            it != attrList.end(); it++)
-        os << ' ' << *it << "=\"" << attrMap.find(*it)->second << '"';
+    for (XmlElement::AttributeList::const_iterator it = attr.list.begin();
+            it != attr.list.end(); it++)
+        os << ' ' << *it->first << "=\"" << it->second << '"';
     if (children.empty())
         os << "/>\r\n";
     else {
         os << ">\r\n";
-        for (Element::Children::const_iterator it = children.begin();
+        for (XmlElement::Children::const_iterator it = children.begin();
                 it != children.end(); it++)
             (*it)->print(os, indent+2);
         os << std::string(indent, ' ') << "</" << name << ">\r\n";
@@ -74,80 +77,81 @@ void Element::print(std::ostream& os, size_t indent) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Element* Element::createChild(const char *name)
+XmlElement* XmlElement::createChild(const char *name)
 {
-    Element *child;
-    children.push_back(child = new Element(name));
+    XmlElement *child;
+    children.push_back(child = new XmlElement(name));
     return child;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::appendChild(Element *child)
+void XmlElement::appendChild(XmlElement *child)
 {
     if (child)
         children.push_back(child);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::releaseChildren()
+void XmlElement::releaseChildren()
 {
     children.clear();
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Element::hasChildren() const
+bool XmlElement::hasChildren() const
 {
     return !children.empty();
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::setAttribute(const char *a, const std::string &v)
+std::string& XmlElement::Attributes::operator[](const std::string &attr)
 {
-    if (attrMap.find(a) == attrMap.end())
-        attrList.push_back(a);
-
-    attrMap[a] = v;
+    AttributeMap::iterator it = find(attr);
+    if (it == end()) {
+        insert(std::make_pair(attr, reinterpret_cast<std::string*>(0)));
+        it = find(attr);
+        list.push_back(std::make_pair(&it->first, std::string()));
+        it->second = &list.back().second;
+    }
+    return *it->second;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::setAttribute(const char *a, const char *v, size_t n)
+void XmlElement::setAttribute(const char *a, const std::string &v)
 {
-    if (attrMap.find(a) == attrMap.end())
-        attrList.push_back(a);
+    attr[a] = v;
+}
 
-    attrMap[a] = n ? std::string(v,n) : v;
+/////////////////////////////////////////////////////////////////////////////
+void XmlElement::setAttribute(const char *a, const char *v, size_t n)
+{
+    attr[a] = n ? std::string(v,n) : v;
 }
 
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::setAttribute(const char *a, const struct timespec &t)
+void XmlElement::setAttribute(const char *a, const struct timespec &t)
 {
-    if (attrMap.find(a) == attrMap.end())
-        attrList.push_back(a);
-
     std::ostringstream os;
     os << t.tv_sec << '.' << std::setprecision(6)
         << std::setw(6) << std::setfill('0') << t.tv_nsec / 1000;
-    attrMap[a] = os.str();
+    attr[a] = os.str();
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::setAttributeCheck(const char *a, const std::string &v)
+void XmlElement::setAttributeCheck(const char *a, const std::string &v)
 {
     setAttributeCheck(a, v.c_str(), v.size());
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Element::setAttributeCheck(const char *a, const char *v, size_t n)
+void XmlElement::setAttributeCheck(const char *a, const char *v, size_t n)
 {
-    if (attrMap.find(a) == attrMap.end())
-        attrList.push_back(a);
-
     const char *escape = "<>&\"'";
     const char *escape_end = escape + 5;
     const char *v_end = v + (n ? n : strlen(v));
     const char *p;
-    std::string &s = attrMap[a];
+    std::string &s = attr[a];
     s = std::string();
 
     while ((p = std::find_first_of(v, v_end, escape, escape_end)) != v_end) {
@@ -178,4 +182,3 @@ void Element::setAttributeCheck(const char *a, const char *v, size_t n)
     }
     s += std::string(v, v_end - v);
 }
-

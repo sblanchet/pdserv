@@ -161,7 +161,7 @@ void Task::nrt_init()
 
 /////////////////////////////////////////////////////////////////////////////
 Signal* Task::addSignal( unsigned int decimation,
-        const char *path, enum si_datatype_t datatype,
+        const char *path, PdServ::Variable::Datatype datatype,
         const void *addr, size_t n, const unsigned int *dim)
 {
     Signal *s = new Signal(this, signals.size(),

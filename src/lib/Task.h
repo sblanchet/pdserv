@@ -30,7 +30,7 @@
 #include <cstddef>
 #include <cc++/thread.h>
 
-#include "pdserv/etl_data_info.h"
+#include "../Variable.h"
 #include "ShmemDataStructures.h"
 #include "../Task.h"
 
@@ -50,7 +50,7 @@ class Task: public PdServ::Task {
         Main * const main;
 
         Signal* addSignal( unsigned int decimation,
-                const char *path, enum si_datatype_t datatype,
+                const char *path, PdServ::Variable::Datatype datatype,
                 const void *addr, size_t n, const unsigned int *dim);
 
         size_t getShmemSpace(double t) const;

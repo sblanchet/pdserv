@@ -26,7 +26,8 @@
 #define MSRVARIABLE_H
 
 #include <string>
-#include "PrintVariable.h"
+#include <ostream>
+#include "../Variable.h"
 
 namespace PdServ {
     class Variable;
@@ -34,21 +35,17 @@ namespace PdServ {
     class Parameter;
 }
 
-namespace MsrXml {
-    class Element;
-}
-
 namespace MsrProto {
 
 class DirectoryNode;
+class XmlElement;
 
 class Variable {
     public:
         Variable( const DirectoryNode *directory,
                 const PdServ::Variable *v,
-                unsigned int index,
-                unsigned int element,
-                unsigned int nelem);
+                unsigned int variableIndex,
+                unsigned int elementIndex);
         ~Variable();
 
         std::string path() const;
@@ -56,16 +53,30 @@ class Variable {
         const PdServ::Parameter* parameter() const;
 
         const DirectoryNode * const directory;
-        const unsigned int index;
+        const unsigned int elementIndex;
         const PdServ::Variable * const variable;
+
+        const unsigned int variableIndex;
         const size_t nelem;
         const size_t memSize;
-        const size_t bufferOffset;
-        const size_t variableElement;
+//        const size_t bufferOffset;
 
-        const PrintFunc printFunc;
+        void setAttributes(XmlElement *element, bool shortReply) const;
+        void csvAttribute(XmlElement *element, const char *name,
+                size_t nblocks, const void *data, size_t precision) const;
+        void base64Attribute(XmlElement* element, const char *name,
+                size_t nblocks, const void *data) const;
+        void hexDecAttribute(XmlElement* element, const char *name,
+                size_t nblocks, const void *data) const;
 
     private:
+        typedef void (*PrintFunc)(std::ostream&,
+                const void *, size_t, unsigned int);
+        PrintFunc printFunc;
+
+        template <class T>
+            static void print(std::ostream& os,
+                    const void *data, size_t n, unsigned int precision);
 };
 
 }

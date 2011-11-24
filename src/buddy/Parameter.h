@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id$
+ *  $Id: Parameter.h,v d6df6a2df011 2011/11/10 13:11:37 lerichi $
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
@@ -22,47 +22,40 @@
  *
  *****************************************************************************/
 
-#ifndef SUBSCRIPTION_H
-#define SUBSCRIPTION_H
+#ifndef BUDDY_PARAMETER
+#define BUDDY_PARAMETER
 
-#include <set>
-#include "XmlElement.h"
+#include <ctime>
+#include <cc++/thread.h>
+#include "../Parameter.h"
+#include "SignalInfo.h"
 
-namespace MsrProto {
+class Main;
 
-class Subscription {
+class Parameter: public PdServ::Parameter {
     public:
-        Subscription(const Channel *);
-        ~Subscription();
+        Parameter ( const Main *main, char *parameterData,
+                const SignalInfo& si);
 
-        const Channel *channel;
+        ~Parameter();
 
-        bool sync();
-
-        void newValue(XmlElement *, const void *buf);
-
-        void set(bool event, bool sync, unsigned int decimation,
-                size_t blocksize, bool base64, size_t precision);
+        const Main * const main;
 
     private:
-        const size_t bufferOffset;
+        char * const valueBuf;      // Pointer to the real address
 
-        XmlElement element;
+        const SignalInfo si;
 
-        bool _sync;
+        mutable ost::Semaphore mutex;
+        mutable struct timespec mtime;
 
-        bool event;
-        unsigned int decimation;
-        unsigned int trigger;
-        size_t blocksize;
+        // Reimplemented from PdServ::Parameter
+        int setValue(const PdServ::Session *, const char *buf,
+                size_t startIndex, size_t nelem) const;
 
-        size_t precision;
-        bool base64;
-
-        char *data_bptr;
-        char *data_pptr;
-        char *data_eptr;
+        // Reimplemented from PdServ::Variable
+        void getValue(const PdServ::Session *, void *buf,
+                size_t start, size_t nelem, struct timespec* t = 0) const;
 };
 
-}
-#endif //SUBSCRIPTION_H
+#endif //BUDDY_PARAMETER

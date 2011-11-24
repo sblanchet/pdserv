@@ -38,7 +38,7 @@ Signal::Signal( Task *task,
         size_t index,
         unsigned int decimation,
         const char *path,
-        enum si_datatype_t dtype,
+        Datatype dtype,
         const void *addr,
         unsigned int ndims,
         const unsigned int *dim):
@@ -81,7 +81,8 @@ double Signal::poll(const PdServ::Session *,
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::getValue(PdServ::Session *, void *buf, struct timespec *t) const
+void Signal::getValue( const PdServ::Session *, void *buf,
+        size_t start, size_t count, struct timespec *t) const
 {
     const PdServ::Signal *s = this;
     task->main->poll(0, &s, 1, buf, t);

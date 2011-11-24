@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id$
+ *  $Id: Parameter.cpp,v ca2d0581b018 2011/11/18 21:54:07 lerichi $
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
@@ -22,65 +22,53 @@
  *
  *****************************************************************************/
 
-#include "Variable.h"
+#include <algorithm>
+#include <cerrno>
 
-#include <stdint.h>
-
-using namespace PdServ;
-
-//////////////////////////////////////////////////////////////////////
-const size_t Variable::dataTypeWidth[11] = {
-    sizeof(uint8_t),
-    sizeof(uint8_t), sizeof(int8_t),
-    sizeof(uint16_t), sizeof(int16_t),
-    sizeof(uint32_t), sizeof(int32_t),
-    sizeof(uint64_t), sizeof(int64_t),
-    sizeof(double), sizeof(float)
-};
+#include "Main.h"
+#include "../Debug.h"
+#include "Parameter.h"
 
 //////////////////////////////////////////////////////////////////////
-Variable::Variable(
-                const std::string& path,
-                Datatype dtype,
-                unsigned int ndims,
-                const unsigned int *dim):
-    path(path), dtype(dtype),
-    ndims(dim ? ndims : 1),
-    width(dataTypeWidth[dtype]),
-    nelem(getNElem(ndims, dim)),
-    memSize(nelem * width),
-    dim(new size_t[ndims])
+Parameter::Parameter( const Main *main, char *parameterData,
+        const SignalInfo &si):
+    PdServ::Parameter(si.path(), 0x666, si.dataType(), si.ndim(), si.dim()),
+    main(main), valueBuf(parameterData /*+ si.si->offset*/), si(si), mutex(1)
 {
-    if (dim)
-        std::copy(dim, dim+ndims, this->dim);
-    else
-        *this->dim = ndims;
+//    trigger = copy;
+
+    mtime.tv_sec = 0;
+    mtime.tv_nsec = 0;
 }
 
 //////////////////////////////////////////////////////////////////////
-Variable::~Variable()
+Parameter::~Parameter()
 {
-    delete[] dim;
 }
 
 //////////////////////////////////////////////////////////////////////
-const size_t *Variable::getDim() const
+int Parameter::setValue(const PdServ::Session *, const char* src,
+                size_t startIndex, size_t nelem) const
 {
-    return dim;
+    if (startIndex + nelem > this->nelem)
+        return -EINVAL;
+
+    ost::SemaphoreLock lock(mutex);
+
+    int rv = main->setParameter(this, startIndex, nelem, src, &mtime);
+
+    if (!rv)
+        main->parameterChanged(this, startIndex, nelem);
+
+    return rv;
 }
 
 //////////////////////////////////////////////////////////////////////
-size_t Variable::getNElem( unsigned int ndims, const unsigned int dim[])
+void Parameter::getValue(const PdServ::Session *, void* dst,
+        size_t startIndex, size_t nelem, struct timespec *time) const
 {
-    if (dim) {
-        size_t n = 1;
-
-        for (size_t i = 0; i < ndims; i++)
-            n *= dim[i];
-
-        return n;
-    }
-    else {
-        return ndims;
-    }
+    ost::SemaphoreLock lock(mutex);
+    si.read(dst, valueBuf, startIndex, nelem);
+    if (time)
+        *time = mtime;
 }

@@ -28,7 +28,6 @@
 #include <string>
 #include <map>
 #include <vector>
-#include <set>
 
 namespace PdServ {
     class Variable;
@@ -46,14 +45,13 @@ class Parameter;
 class DirectoryNode {
     public:
         DirectoryNode(DirectoryNode *parent,
-                const std::string& name, bool hide);
+                const std::string& name);
 //        ~DirectoryNode();
 
         std::string path() const;
 
         const DirectoryNode *parent;
         const std::string name;
-        const bool hidden;
 
         const Channel *findChannel(const std::string &path) const;
         const Parameter *findParameter(const std::string &path) const;
@@ -61,10 +59,9 @@ class DirectoryNode {
                 size_t pathOffset) const;
 
         DirectoryNode *mkdir(const PdServ::Variable *v,
-                const std::string& path, size_t index,
-                size_t elementCount, size_t pathOffset = 0);
-        DirectoryNode *mkdir(size_t index,
-                size_t nelem, size_t ndims, const size_t *dim);
+                char &hide, size_t pathOffset = 0);
+        DirectoryNode *mkdir(size_t index, size_t nelem,
+                size_t ndims, const size_t *dim);
 
         void insert(const Variable *v);
 
@@ -84,33 +81,26 @@ class VariableDirectory: public DirectoryNode {
         VariableDirectory();
         ~VariableDirectory();
 
-        bool insert(const PdServ::Signal *s, const std::string& path,
-                size_t index = 0, size_t elementCount = 0);
-        bool insert(const PdServ::Parameter *p, const std::string& path,
-                size_t index = 0, size_t elementCount = 0,
-                bool dependent = false);
+        bool insert(const PdServ::Signal *s, bool traditional);
+        bool insert(const PdServ::Parameter *p, bool traditional);
 
        typedef std::vector<const Channel*> Channels;
        typedef std::vector<const Parameter*> Parameters;
        const Channels& getChannels() const;
        const Channel* getChannel(unsigned int) const;
        const Parameters& getParameters() const;
-       std::set<size_t> getParameterIndex(
-               const PdServ::Parameter *p, size_t start, size_t nelem) const;
+       const Parameter *getParameter(const PdServ::Parameter *p) const;
        const Parameters& getParameters(const PdServ::Parameter *p) const;
        const Parameter* getParameter(unsigned int) const;
 
 
     private:
-
         Channels channels;
         Parameters parameters;
 
-        typedef std::vector<size_t> ParameterIndex;
-        typedef std::vector<ParameterIndex> ParameterStartIndex;
-        typedef std::map<const PdServ::Parameter*, ParameterStartIndex>
-            ParameterExtentMap;
-        ParameterExtentMap extents;
+        typedef std::map<const PdServ::Parameter *, const Parameter *>
+            ParameterMap;
+        ParameterMap parameterMap;
 };
 
 }

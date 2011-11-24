@@ -33,8 +33,9 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-StatSignal::StatSignal(const PdServ::Task *t, Type type):
-    PdServ::Signal("", t->sampleTime, si_uint32_T, 1, 0),
+StatSignal::StatSignal(const PdServ::Task *t,
+        const std::string& path, Type type):
+    PdServ::Signal(path, t->sampleTime, uint32_T, 1, 0),
     task(t), type(type)
 {
 }
@@ -94,8 +95,8 @@ const void *StatSignal::getValue(const PdServ::SessionTaskData* std) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void StatSignal::getValue(
-        PdServ::Session *session, void *buf, struct timespec* t) const
+void StatSignal::getValue( const PdServ::Session *session,
+        void *buf, size_t, size_t, struct timespec* t) const
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
     poll(session, buf, t);

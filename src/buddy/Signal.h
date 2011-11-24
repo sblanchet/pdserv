@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id$
+ *  $Id: Signal.h,v 9f4abd086e58 2011/11/15 08:52:58 lerichi $
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
@@ -22,46 +22,51 @@
  *
  *****************************************************************************/
 
-#ifndef MSRSTATSIGNAL_H
-#define MSRSTATSIGNAL_H
+#ifndef BUDDY_SIGNAL
+#define BUDDY_SIGNAL
+
+//#include <set>
+//#include <cc++/thread.h>
 
 #include "../Signal.h"
 
 namespace PdServ {
     class Session;
-    class Task;
     class SessionTaskData;
 }
 
-namespace MsrProto {
+class Task;
 
-class Server;
-
-class StatSignal: public PdServ::Signal {
+class Signal: public PdServ::Signal {
     public:
-        enum Type {ExecTime, Period, Overrun};
+        Signal( //Task *task,
+                const struct signal_info *si, double sampleTime);
 
-        StatSignal(const PdServ::Task *task,
-                const std::string& path, Type type);
-
-        const PdServ::Task * const task;
+//        const char * const addr;
+//
+//        static const size_t dataTypeIndex[PdServ::Variable::maxWidth+1];
+//        const size_t index;
 
     private:
-        const Type type;
-
-        const unsigned int *getAddr(
-                const PdServ::Session *session, struct timespec *t) const;
+        static std::string makePath(const struct signal_info *si);
+//        Task * const task;
+//
+//        mutable ost::Semaphore mutex;
+//
+//        typedef std::set<const PdServ::Session*> SessionSet;
+//        mutable SessionSet sessions;
 
         // Reimplemented from PdServ::Signal
         void subscribe(PdServ::Session *) const;
         void unsubscribe(PdServ::Session *) const;
+        double sampleTime() const;
         double poll(const PdServ::Session *s,
                 void *buf, struct timespec *t) const;
         const void *getValue(const PdServ::SessionTaskData*) const;
-        void getValue(const PdServ::Session*, void*,
-                size_t, size_t, timespec*) const;
+
+        // Reimplemented from PdServ::Variable
+        void getValue(const PdServ::Session*, void *buf,
+                size_t start, size_t nelem, struct timespec * = 0) const;
 };
 
-}
-
-#endif //MSRSTATSIGNAL_H
+#endif //BUDDY_SIGNAL

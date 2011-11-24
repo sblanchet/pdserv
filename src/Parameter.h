@@ -32,11 +32,13 @@ struct timespec;
 
 namespace PdServ {
 
+class Session;
+
 class Parameter: public Variable {
     public:
-        Parameter ( const char *path,
+        Parameter ( const std::string& path,
                 unsigned int mode,
-                enum si_datatype_t dtype,
+                Datatype dtype,
                 unsigned int ndims = 1,
                 const unsigned int *dim = 0);
 
@@ -44,7 +46,7 @@ class Parameter: public Variable {
 
         const unsigned int mode;
 
-        virtual int setValue(const char *buf,
+        virtual int setValue(const Session *, const char *buf,
                 size_t startIndex, size_t nelem) const = 0;
 
     protected:

@@ -1,6 +1,6 @@
 #############################################################################
 #
-#  $Id$
+#  $Id: CMakeLists.txt,v ca2d0581b018 2011/11/18 21:54:07 lerichi $
 #
 #  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
 #
@@ -22,49 +22,70 @@
 #
 #############################################################################
 
-INCLUDE_DIRECTORIES(${RTLAB_SOURCE_DIR})
-INCLUDE_DIRECTORIES(${LIBCCEXT2_INCLUDE_DIRS})
-INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR})      # for config.h
+INCLUDE_DIRECTORIES(
+        ${RTLAB_SOURCE_DIR}
+        ${LIBCCEXT2_INCLUDE_DIRS}
+        ${PROJECT_BINARY_DIR}       # for config.h
+        )
+
+SET (msrproto_src
+    msrproto/StatSignal.cpp             msrproto/StatSignal.h
+    msrproto/TimeSignal.cpp             msrproto/TimeSignal.h
+    msrproto/Subscription.cpp           msrproto/Subscription.h
+    msrproto/SubscriptionManager.cpp    msrproto/SubscriptionManager.h
+    msrproto/Outbuf.cpp                 msrproto/Outbuf.h
+    msrproto/Session.cpp                msrproto/Session.h
+    msrproto/XmlParser.cpp              msrproto/XmlParser.h
+    msrproto/Attribute.cpp              msrproto/Attribute.h
+    msrproto/XmlElement.cpp             msrproto/XmlElement.h
+    msrproto/Variable.cpp               msrproto/Variable.h
+    msrproto/Channel.cpp                msrproto/Channel.h
+    msrproto/Parameter.cpp              msrproto/Parameter.h
+    msrproto/Directory.cpp              msrproto/Directory.h
+    msrproto/Server.cpp                 msrproto/Server.h
+    )
+
+SET (main_src
+                        SessionStatistics.h
+    Session.cpp         Session.h
+    Task.cpp            Task.h
+    Main.cpp            Main.h
+    Variable.cpp        Variable.h
+    Signal.cpp          Signal.h
+    Parameter.cpp       Parameter.h
+                        SessionShadow.h
+    Debug.cpp           Debug.h
+    SessionTaskData.cpp SessionTaskData.h
+    )
+
+ADD_EXECUTABLE (etherlab_buddy
+    buddy/SignalInfo.cpp buddy/SignalInfo.h
+    buddy/Signal.cpp buddy/Signal.h
+    buddy/main.cpp
+    # buddy/ShmemDataStructures.h
+    # buddy/Task.cpp buddy/Task.h
+    buddy/Main.cpp buddy/Main.h
+    buddy/Parameter.cpp buddy/Parameter.h
+    buddy/SessionShadow.cpp buddy/SessionShadow.h
+    # buddy/SessionTaskData.cpp buddy/SessionTaskData.h
+
+    ${msrproto_src}
+    ${main_src}
+    )
+TARGET_LINK_LIBRARIES(etherlab_buddy ${LIBCCEXT2_LIBRARIES})
 
 ADD_LIBRARY( ${PROJECT_NAME} SHARED
-    SessionStatistics.h
-    Session.cpp Session.h
-    Task.cpp Task.h
-    Main.cpp Main.h
-    Variable.cpp Variable.h
-    Signal.cpp Signal.h
-    Parameter.cpp Parameter.h
-    SessionShadow.h
-    Debug.h
-    SessionTaskData.cpp SessionTaskData.h
-
     lib/interface.cpp
-    lib/ShmemDataStructures.h
-    lib/Task.cpp lib/Task.h
-    lib/Main.cpp lib/Main.h
-    lib/Signal.cpp lib/Signal.h
-    lib/Parameter.cpp lib/Parameter.h
-    lib/SessionShadow.cpp lib/SessionShadow.h
+                            lib/ShmemDataStructures.h
+    lib/Task.cpp            lib/Task.h
+    lib/Main.cpp            lib/Main.h
+    lib/Signal.cpp          lib/Signal.h
+    lib/Parameter.cpp       lib/Parameter.h
+    lib/SessionShadow.cpp   lib/SessionShadow.h
     lib/SessionTaskData.cpp lib/SessionTaskData.h
 
-    #etlproto/Server.cpp etlproto/Server.h
-    #etlproto/Session.cpp etlproto/Session.h
-
-    msrproto/StatSignal.cpp msrproto/StatSignal.h
-    msrproto/TimeSignal.cpp msrproto/TimeSignal.h
-    msrproto/Subscription.cpp msrproto/Subscription.h
-    msrproto/SubscriptionManager.cpp msrproto/SubscriptionManager.h
-    msrproto/Outbuf.cpp msrproto/Outbuf.h
-    msrproto/Session.cpp msrproto/Session.h
-    msrproto/PrintVariable.cpp msrproto/PrintVariable.h
-    msrproto/XmlParser.cpp msrproto/XmlParser.h
-    msrproto/Attribute.cpp msrproto/Attribute.h
-    msrproto/XmlDoc.cpp msrproto/XmlDoc.h
-    msrproto/Variable.cpp msrproto/Variable.h
-    msrproto/Channel.cpp msrproto/Channel.h
-    msrproto/Parameter.cpp msrproto/Parameter.h
-    msrproto/Directory.cpp msrproto/Directory.h
-    msrproto/Server.cpp msrproto/Server.h
+    ${msrproto_src}
+    ${main_src}
     )
 
 SET_TARGET_PROPERTIES ( ${PROJECT_NAME} PROPERTIES

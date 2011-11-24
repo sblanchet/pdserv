@@ -24,7 +24,7 @@
 
 #include "Channel.h"
 #include "Directory.h"
-#include "XmlDoc.h"
+#include "XmlElement.h"
 #include "../Signal.h"
 
 #include <sstream>
@@ -33,8 +33,8 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Channel::Channel( const DirectoryNode *directory, const PdServ::Signal *s,
-        unsigned int channelIndex, unsigned int index, unsigned int nelem):
-    Variable(directory, s, channelIndex, index, nelem),
+        unsigned int channelIndex, unsigned int elementIndex):
+    Variable(directory, s, channelIndex, elementIndex),
     signal(s)
 {
 
@@ -49,8 +49,8 @@ Channel::~Channel()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Channel::setXmlAttributes( MsrXml::Element *element,
-        bool shortReply, const char *data) const
+void Channel::setXmlAttributes( XmlElement *element,
+        bool shortReply, const char *data, size_t precision) const
 {
     // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
     //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
@@ -62,9 +62,9 @@ void Channel::setXmlAttributes( MsrXml::Element *element,
     // at a maximum of 10 seconds has to be stored.
     size_t bufsize = 10 * std::max( 1U, (unsigned int)(freq + 0.5));
 
-
-    setVariableAttributes(
-            element, signal, index, directory->path(), nelem, shortReply);
+    setAttributes(element, shortReply);
+//    setVariableAttributes( element, signal,
+//            elementIndex, directory->path(), nelem, shortReply);
 
     if (shortReply)
         return;
@@ -73,6 +73,5 @@ void Channel::setXmlAttributes( MsrXml::Element *element,
     element->setAttribute("bufsize", bufsize);
     element->setAttribute("HZ", freq);
 
-    csvAttribute(element, "value",
-            printFunc, signal, nelem, data + bufferOffset);
+    csvAttribute(element, "value", 1, data, precision);
 }

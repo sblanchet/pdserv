@@ -66,12 +66,30 @@ void pdserv_update(struct pdtask* task, const struct timespec *t,
     reinterpret_cast<Task*>(task)->update(t, exec_time, cycle_time);
 }
 
+static PdServ::Variable::Datatype getDataType(enum pdserv_datatype_t dt)
+{
+    switch (dt) {
+        case boolean_T: return PdServ::Variable::boolean_T;
+        case uint8_T:   return PdServ::Variable::uint8_T;
+        case uint16_T:  return PdServ::Variable::uint16_T;
+        case uint32_T:  return PdServ::Variable::uint32_T;
+        case uint64_T:  return PdServ::Variable::uint64_T;
+        case sint8_T:   return PdServ::Variable::int8_T;
+        case sint16_T:  return PdServ::Variable::int16_T;
+        case sint32_T:  return PdServ::Variable::int32_T;
+        case sint64_T:  return PdServ::Variable::int64_T;
+        case double_T:  return PdServ::Variable::double_T;
+        case single_T:  return PdServ::Variable::single_T;
+    }
+    return PdServ::Variable::boolean_T;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 struct variable *pdserv_signal(
         struct pdtask* pdtask,
         unsigned int decimation,
         const char *path,
-        enum si_datatype_t datatype,
+        enum pdserv_datatype_t datatype,
         const void *addr,
         size_t n,
         const unsigned int dim[]
@@ -79,8 +97,8 @@ struct variable *pdserv_signal(
 {
     Task *task = reinterpret_cast<Task*>(pdtask);
 
-    PdServ::Variable *v =
-        task->main->addSignal(task, decimation, path, datatype, addr, n, dim);
+    PdServ::Variable *v = task->main->addSignal(
+            task, decimation, path, getDataType(datatype), addr, n, dim);
 
     return reinterpret_cast<struct variable *>(v);
 }
@@ -90,7 +108,7 @@ struct variable *pdserv_parameter(
         struct pdserv* pdserv,
         const char *path,
         unsigned int mode,
-        enum si_datatype_t datatype,
+        enum pdserv_datatype_t datatype,
         void *addr,
         size_t n,
         const unsigned int dim[],
@@ -99,7 +117,8 @@ struct variable *pdserv_parameter(
         )
 {
     Main *main = reinterpret_cast<Main*>(pdserv);
-    Parameter *p = main->addParameter( path, mode, datatype, addr, n, dim);
+    Parameter *p = main->addParameter(
+            path, mode, getDataType(datatype), addr, n, dim);
     if (trigger)
         p->trigger = trigger;
     p->priv_data = priv_data;

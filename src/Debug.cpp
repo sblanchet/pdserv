@@ -22,47 +22,6 @@
  *
  *****************************************************************************/
 
-#ifndef SUBSCRIPTION_H
-#define SUBSCRIPTION_H
+#include "Debug.h"
 
-#include <set>
-#include "XmlElement.h"
-
-namespace MsrProto {
-
-class Subscription {
-    public:
-        Subscription(const Channel *);
-        ~Subscription();
-
-        const Channel *channel;
-
-        bool sync();
-
-        void newValue(XmlElement *, const void *buf);
-
-        void set(bool event, bool sync, unsigned int decimation,
-                size_t blocksize, bool base64, size_t precision);
-
-    private:
-        const size_t bufferOffset;
-
-        XmlElement element;
-
-        bool _sync;
-
-        bool event;
-        unsigned int decimation;
-        unsigned int trigger;
-        size_t blocksize;
-
-        size_t precision;
-        bool base64;
-
-        char *data_bptr;
-        char *data_pptr;
-        char *data_eptr;
-};
-
-}
-#endif //SUBSCRIPTION_H
+ost::Semaphore debugLock = ost::Semaphore(1);

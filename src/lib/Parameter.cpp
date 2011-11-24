@@ -33,7 +33,7 @@ Parameter::Parameter(
         Main *main,
         const char *path,
         unsigned int mode,
-        enum si_datatype_t dtype,
+        Datatype dtype,
         void *addr,
         unsigned int ndims,
         const unsigned int *dim):
@@ -52,7 +52,7 @@ Parameter::~Parameter()
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::setValue(const char* src,
+int Parameter::setValue(const PdServ::Session *, const char* src,
                 size_t startIndex, size_t nelem) const
 {
     if (startIndex + nelem > this->nelem)
@@ -69,11 +69,12 @@ int Parameter::setValue(const char* src,
 }
 
 //////////////////////////////////////////////////////////////////////
-void Parameter::getValue(PdServ::Session *,
-        void* buf, struct timespec *time) const
+void Parameter::getValue(const PdServ::Session *,
+        void* buf, size_t start, size_t count, struct timespec *time) const
 {
     ost::SemaphoreLock lock(mutex);
-    std::copy(valueBuf, valueBuf + memSize, reinterpret_cast<char*>(buf));
+    const char *src = valueBuf + start*width;
+    std::copy(src, src + count * width, reinterpret_cast<char*>(buf));
     if (time)
         *time = mtime;
 }

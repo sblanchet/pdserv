@@ -25,12 +25,15 @@
 #include "Directory.h"
 #include "Channel.h"
 #include "Parameter.h"
+#include "XmlParser.h"
 #include "../Signal.h"
 #include "../Parameter.h"
-#include "XmlParser.h"
+#include "../Debug.h"
+
 #include <cstring>
 #include <cerrno>
 #include <locale>
+#include <sstream>
 
 using namespace MsrProto;
 
@@ -40,84 +43,82 @@ VariableDirectory::VariableDirectory()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool VariableDirectory::insert(
-        const PdServ::Parameter *p, const std::string &path,
-        size_t index, size_t elementCount, bool dependent)
+bool VariableDirectory::insert( const PdServ::Parameter *p, bool traditional)
 {
-    DirectoryNode *dir = mkdir(p, path, index, elementCount);
+    char hide = 0;
+    DirectoryNode *dir = mkdir(p, hide);
     if (!dir)
         return true;
 
-    if (dir->hidden)
+    if (hide == 1 or hide == 'p') {
+//        debug() << "hide=" << hide << p->path;
         return false;
-
-    size_t n = parameters.size();
-    Parameter *parameter =
-        new Parameter(dir, dependent, p, n, elementCount, index);
-    dir->insert(parameter);
-
-    ParameterStartIndex& pi = extents[p];
-    if (!index) {
-        size_t n = p->nelem / elementCount;
-        parameters.reserve(parameters.size() + n);
-
-        pi.resize(pi.size() + 1);
-        pi[pi.size() - 1].reserve(p->nelem / elementCount);
     }
 
-    parameters.push_back(parameter);
+    Parameter *mainParam = new Parameter(dir, parameters.size(), p);
+    dir->insert(mainParam);
+    parameterMap[p] = mainParam;
+    parameters.push_back(mainParam);
 
-    pi[elementCount == 1 and pi.size() == 2].push_back(n);
+    if (traditional and p->nelem > 1) {
+        parameters.reserve(parameters.size() + p->nelem);
+
+        for (size_t i = 0; i < p->nelem; ++i) {
+            DirectoryNode *subdir =
+                dir->mkdir(i, p->nelem, p->ndims, p->getDim());
+            if (!subdir)
+                continue;
+
+            Parameter *parameter =
+                new Parameter(subdir, parameters.size(), p, i);
+            subdir->insert(parameter);
+            parameters.push_back(parameter);
+            mainParam->addChild(parameter);
+        }
+    }
 
     return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool VariableDirectory::insert(const PdServ::Signal *s,
-        const std::string &path, size_t index, size_t elementCount)
+bool VariableDirectory::insert(const PdServ::Signal *s, bool traditional)
 {
-    if (!elementCount)
-        elementCount = s->nelem;
-
-    DirectoryNode *dir = mkdir(s, path, index, elementCount);
+    char hide = 0;
+    DirectoryNode *dir = mkdir(s, hide);
     if (!dir)
         return true;
 
-    if (dir->hidden)
+    if (hide == 1 or hide == 'k') {
+//        debug() << "hide=" << hide << s->path;
         return false;
+    }
 
-    Channel *c = new Channel(dir, s, channels.size(), index, elementCount);
-    dir->insert(c);
-
-    if (!index)
-        channels.reserve(channels.size() + s->nelem / elementCount);
-
-    channels.push_back(c);
+    if (traditional) {
+        channels.reserve(channels.size() + s->nelem);
+        for (size_t i = 0; i < s->nelem; ++i) {
+            DirectoryNode *subdir =
+                dir->mkdir(i, s->nelem, s->ndims, s->getDim());
+            if (!subdir)
+                continue;
+            Channel *c = new Channel(subdir, s, channels.size(), i);
+            subdir->insert(c);
+            channels.push_back(c);
+        }
+    }
+    else {
+        Channel *c = new Channel(dir, s, channels.size());
+        dir->insert(c);
+        channels.push_back(c);
+    }
 
     return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::set<size_t> VariableDirectory::getParameterIndex(
-        const PdServ::Parameter *p, size_t start, size_t nelem) const
+const Parameter *VariableDirectory::getParameter(
+        const PdServ::Parameter *p) const
 {
-    std::set<size_t> indices;
-    const ParameterStartIndex& pi = extents.find(p)->second;
-
-    if (pi.size() == 2) {
-        size_t vectorLen = p->getDim()[p->ndims - 1];
-
-        for (size_t i = start / vectorLen;
-                i < (start + nelem) / vectorLen; ++i)
-            indices.insert(pi[0][i]);
-
-        for (size_t i = start; i < start + nelem; ++i)
-            indices.insert(pi[1][i]);
-    }
-    else
-        indices.insert(pi[0][0]);
-
-    return indices;
+    return parameterMap.find(p)->second;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -148,14 +149,14 @@ const Parameter* VariableDirectory::getParameter(unsigned int idx) const
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode::DirectoryNode():
-    parent(0), name(std::string()), hidden(false)
+    parent(0), name(std::string())
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode::DirectoryNode(
-        DirectoryNode *parent, const std::string& name, bool hide):
-    parent(parent), name(name), hidden(hide)
+        DirectoryNode *parent, const std::string& name):
+    parent(parent), name(name)
 {
 }
 
@@ -181,7 +182,7 @@ DirectoryNode* DirectoryNode::mkdir(size_t index,
 
     DirectoryNode *dir = entry[name];
     if (!dir) {
-        dir = new DirectoryNode(this, name, hidden);
+        dir = new DirectoryNode(this, name);
         entry[name] = dir;
     }
 
@@ -190,41 +191,48 @@ DirectoryNode* DirectoryNode::mkdir(size_t index,
 
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode* DirectoryNode::mkdir(
-        const PdServ::Variable *v, const std::string &path,
-        size_t index, size_t elementCount, size_t pathNameOffset)
+        const PdServ::Variable *v, char& hide, size_t pathNameOffset)
 {
-    if (path.size() == pathNameOffset)
-        return mkdir(index / elementCount, v->nelem / elementCount,
-                v->ndims, v->getDim());
-
-    if (path[pathNameOffset++] != '/')
+    if (v->path[pathNameOffset++] != '/')
         return 0;
     
     size_t nameStart = pathNameOffset;
 
-    pathNameOffset = path.find('/', pathNameOffset);
+    pathNameOffset = v->path.find('/', pathNameOffset);
     if (pathNameOffset == std::string::npos)
-        pathNameOffset = path.size();
+        pathNameOffset = v->path.size();
 
-    std::string name(path.substr(nameStart, pathNameOffset - nameStart));
-
-    bool hide = hidden;
+    std::string name(v->path.substr(nameStart, pathNameOffset - nameStart));
 
     size_t xmlpos = name.find('<');
     if (xmlpos != std::string::npos) {
         XmlParser p(name, xmlpos);
-        hide = p.isTrue("hide") or (hide and !p.isTrue("unhide"));
+        const char *value;
+
+        if (p.isTrue("hide"))
+            hide = 1;
+        else if (p.find("hide", value))
+            hide = *value;
+
+        if (p.isTrue("unhide"))
+            hide = 0;
 
         name.erase(xmlpos);
     }
 
+    size_t end = name.size() - 1;
+    while (end and std::isspace(name[end], std::locale::classic()))
+        --end;
+    name.erase(end + 1);
+
     DirectoryNode *dir = entry[name];
     if (!dir) {
-        dir = new DirectoryNode(this, name, hide);
+        dir = new DirectoryNode(this, name);
         entry[name] = dir;
     }
 
-    return dir->mkdir(v, path, index, elementCount, pathNameOffset);
+    return pathNameOffset == v->path.size()
+        ? dir : dir->mkdir(v, hide, pathNameOffset);
 }
 
 /////////////////////////////////////////////////////////////////////////////

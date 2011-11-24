@@ -25,22 +25,29 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
+#include <cc++/thread.h>
+
 #include "config.h"
 
 #ifdef DEBUG
 
 #include <iostream>
 
+extern ost::Semaphore debugLock;
+
 namespace {
 
 struct Debug {
     Debug(const std::string& file, const std::string& func, int line) {
+        debugLock.wait();
+
         std::cerr << std::string(file,SRC_PATH_LENGTH)
             << ':' << func << '(' << line << "):";
     }
 
     ~Debug() {
         std::cerr << std::endl;
+        debugLock.post();
     }
 
     template <class T>

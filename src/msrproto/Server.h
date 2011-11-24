@@ -38,10 +38,6 @@ namespace PdServ {
     class Parameter;
 }
 
-namespace MsrXml {
-    class Element;
-}
-
 namespace MsrProto {
 
 class Session;
@@ -49,13 +45,14 @@ class Channel;
 class TimeSignal;
 class Parameter;
 class VariableDirectory;
+class XmlElement;
 
 class Server: public ost::Thread {
     public:
         Server(const PdServ::Main *main, int argc, const char **argv);
         ~Server();
 
-        void broadcast(Session *s, const MsrXml::Element&);
+        void broadcast(Session *s, const XmlElement&);
 
         void parameterChanged(const PdServ::Parameter*,
                 size_t startIndex, size_t n);
@@ -72,12 +69,13 @@ class Server: public ost::Thread {
     private:
         std::set<Session*> sessions;
 
+        bool traditional;
         VariableDirectory *root;
 
         TimeSignal *time;
 
-        typedef std::map<const PdServ::Parameter*, size_t> ParameterMap;
-        ParameterMap parameterIndexMap;
+//        typedef std::map<const PdServ::Parameter*, size_t> ParameterMap;
+//        ParameterMap parameterIndexMap;
 
         mutable ost::Semaphore mutex;
 

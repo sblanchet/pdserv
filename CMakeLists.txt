@@ -61,7 +61,7 @@ IF (SYSCONFDIR)         # configuration files
     SET (PC_SYSCONFDIR "${SYSCONFDIR}")
 ELSE ()
     SET (ABS_SYSCONFDIR ${PREFIX}/etc)
-    SET (PC_SYSCONFDIR "\${prefix}/etc")
+    SET (PC_SYSCONFDIR "\${PREFIX}/etc")
 ENDIF ()
 
 IF (INCLUDEDIR)         # include files
@@ -69,7 +69,7 @@ IF (INCLUDEDIR)         # include files
     SET (PC_INCLUDEDIR "${INCLUDEDIR}")
 ELSE ()
     SET (ABS_INCLUDEDIR ${PREFIX}/include)
-    SET (PC_INCLUDEDIR "\${prefix}/include")
+    SET (PC_INCLUDEDIR "\${PREFIX}/include")
 ENDIF ()
 
 IF (EXECDIR)            # executables
@@ -77,7 +77,7 @@ IF (EXECDIR)            # executables
     SET (PC_EXECDIR "${EXECDIR}")
 ELSE ()
     SET (ABS_EXECDIR ${PREFIX}/bin)
-    SET (PC_EXECDIR "\${prefix}/bin")
+    SET (PC_EXECDIR "\${PREFIX}/bin")
 ENDIF ()
 
 IF (LIBDIR)             # libraries
@@ -85,7 +85,7 @@ IF (LIBDIR)             # libraries
     SET (PC_LIBDIR "${LIBDIR}")
 ELSE ()
     SET (ABS_LIBDIR ${PREFIX}/lib)
-    SET (PC_LIBDIR "\${prefix}/lib")
+    SET (PC_LIBDIR "\${PREFIX}/lib")
 ENDIF ()
 
 # Make sure that the project options are remembered
@@ -141,7 +141,7 @@ ENDIF ()
 
 ADD_DEFINITIONS ("-Wall -ansi")
 
-INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include")
+INCLUDE_DIRECTORIES("${ABS_INCLUDEDIR}" "${PROJECT_SOURCE_DIR}/include")
 ADD_SUBDIRECTORY (src)
 ADD_SUBDIRECTORY (test)
 

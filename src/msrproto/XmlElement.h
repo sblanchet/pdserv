@@ -32,27 +32,29 @@
 #include <string>
 #include <map>
 #include <list>
-#include "pdserv/etl_data_info.h"
+//#include "pdserv/etl_data_info.h"
 
 namespace PdServ {
     class Variable;
 }
 
-namespace MsrXml {
+namespace MsrProto {
 
-class Element {
+class Variable;
+
+class XmlElement {
     public:
-        Element(const char *name);
+        XmlElement(const char *name);
 
         /** Destructor.
          * Children are destroyed if they were not released beforehand */
-        ~Element();
+        ~XmlElement();
 
         /** Create an element child */
-        Element* createChild(const char *name);
+        XmlElement* createChild(const char *name);
 
         /** Append a child to the current element */
-        void appendChild(Element *);
+        void appendChild(XmlElement *);
 
         /** Release children.
          * The children will then not be destroyed when the parent is killed
@@ -80,37 +82,37 @@ class Element {
 
         /** Printing functions */
         void print(std::ostream& os, size_t indent = 0) const;
-        friend std::ostream& operator<<(std::ostream& os, const Element& el);
+        friend std::ostream& operator<<(std::ostream& os, const XmlElement& el);
 
 
     private:
         const std::string name;
 
-        typedef std::map<const std::string, std::string> AttributeMap;
-        AttributeMap attrMap;
+        typedef std::pair<const std::string *, std::string> AttributePair;
+        typedef std::list<AttributePair> AttributeList;
+        typedef std::map<std::string, std::string *> AttributeMap;
+        struct Attributes: private AttributeMap {
+            std::string& operator[](const std::string& attr);
+            AttributeList list;
+        };
+        Attributes attr;
 
-        typedef std::list<std::string> AttributeList;
-        AttributeList attrList;
-
-        typedef std::list<Element*> Children;
+        typedef std::list<XmlElement*> Children;
         Children children;
 };
 
-std::ostream& operator<<(std::ostream& os, const Element& el);
-
 template <class T>
-void Element::setAttribute(const char *name, const T& value,
-        std::ios::fmtflags flags)
-{
-    std::ostringstream o;
-    o.imbue(std::locale::classic());
-    o.setf(flags, std::ios_base::basefield);
-    o.setf(flags);
+    void XmlElement::setAttribute(const char *name, const T& value,
+            std::ios::fmtflags flags)
+    {
+        std::ostringstream os;
+        os.imbue(std::locale::classic());
+        os.setf(flags, std::ios_base::basefield);
+        os.setf(flags);
 
-    o << value;
-    setAttribute(name, o.str());
-}
-
+        os << value;
+        setAttribute(name, os.str());
+    }
 }
 
 #endif // XMLDOC_H

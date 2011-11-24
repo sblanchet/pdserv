@@ -89,12 +89,12 @@ class Main {
         Parameters parameters;
         Signals signals;
 
-        int run();
+        void startServers();
 
         static int localtime(struct timespec *);
 
-        virtual void processPoll(size_t delay_ms,
-                const Signal * const *s, size_t nelem, void * const *pollDest,
+        virtual void processPoll(size_t delay_ms, const Signal * const *s,
+                size_t nelem, void * const *pollDest,
                 struct timespec *t) const = 0;
 
         typedef std::map<const std::string, const Variable*> VariableMap;

@@ -34,9 +34,9 @@ class SessionTaskData;
 
 class Signal: public Variable {
     public:
-        Signal( const char *path,
+        Signal( const std::string& path,
                 double sampleTime,
-                enum si_datatype_t dtype,
+                Datatype dtype,
                 unsigned int ndims = 1,
                 const unsigned int *dim = 0);
 
@@ -53,8 +53,8 @@ class Signal: public Variable {
         virtual const void *getValue(const SessionTaskData*) const = 0;
 
         // Reimplemented from PdServ::Variable
-        virtual void getValue(Session*,
-                void *, struct timespec * = 0) const = 0;
+        virtual void getValue(const Session*, void *buf,
+                size_t start, size_t nelem, struct timespec * = 0) const = 0;
     private:
 
 };

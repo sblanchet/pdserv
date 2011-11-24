@@ -26,41 +26,46 @@
 #define MSRPARAMETER_H
 
 #include <string>
+#include <vector>
 #include "Variable.h"
 
 namespace PdServ {
     class Parameter;
 }
 
-namespace MsrXml {
-    class Element;
-}
-
 namespace MsrProto {
 
 class Session;
 class DirectoryNode;
+class XmlElement;
 
 class Parameter: public Variable {
     public:
-        Parameter( const DirectoryNode *directory, bool dependent,
-                const PdServ::Parameter *p, unsigned int index,
-                unsigned int nelem, unsigned int parameterElement = 0);
+        Parameter( const DirectoryNode *directory,
+                unsigned int parameterIndex,
+                const PdServ::Parameter *p,
+                unsigned int elementIndex = ~0U);
         ~Parameter();
 
-        void setXmlAttributes(Session *, MsrXml::Element*, bool shortReply,
-                    bool hex, bool writeAccess) const;
-        void getValue(Session *, char *) const;
-        int setHexValue(const char *str, size_t startindex,
-                size_t &count) const;
-        int setDoubleValue(const char *, size_t startindex,
-                size_t &count) const;
+        void setXmlAttributes(Session *, XmlElement*, bool shortReply,
+                    bool hex, bool writeAccess, size_t precision) const;
+        void getValue(const Session *, char *) const;
+        int setHexValue(const Session *,
+                const char *str, size_t startindex, size_t &count) const;
+        int setDoubleValue(const Session *,
+                const char *, size_t startindex, size_t &count) const;
 
-        const PdServ::Parameter * const mainParam;
+       void valueChanged(std::ostream& os, size_t start, size_t nelem) const;
+
+       const PdServ::Parameter * const mainParam;
+
+       void addChild(const Parameter *);
 
     private:
         const bool dependent;
         const bool persistent;
+
+        std::vector<const Parameter*> children;
 
         void (*append)(char *&, double);
 

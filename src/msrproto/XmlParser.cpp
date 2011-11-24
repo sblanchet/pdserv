@@ -104,7 +104,7 @@ const char *XmlParser::getCommand() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool XmlParser::find(const char *name, const char * &value) const
+bool XmlParser::find(const char *name, const char *&value) const
 {
     std::pair<AttributeMap::const_iterator, AttributeMap::const_iterator>
         ret(attribute.equal_range(*name));
@@ -166,7 +166,7 @@ bool XmlParser::getString(const char *name, std::string &s) const
 
     s.clear();
 
-    if (!(find(name, value)) or !value)
+    if (!(find(name, value) and value))
         return false;
 
     const char *pptr, *eptr = value + strlen(value);

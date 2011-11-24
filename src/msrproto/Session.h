@@ -52,7 +52,7 @@
 #include "../Session.h"
 #include "XmlParser.h"
 #include "Outbuf.h"
-#include "XmlDoc.h"
+#include "XmlElement.h"
 
 #include <cc++/socketport.h> 
 #include <map>
@@ -64,16 +64,13 @@ namespace PdServ {
     class TaskStatistics;
 }
 
-namespace MsrXml {
-    class Element;
-}
-
 namespace MsrProto {
 
 class SubscriptionManager;
 class TaskStatistics;
 class SessionStatistics;
 class Server;
+class XmlElement;
 
 class Session: public ost::SocketPort, public PdServ::Session {
     public:
@@ -83,7 +80,7 @@ class Session: public ost::SocketPort, public PdServ::Session {
                 const PdServ::Main *main);
         ~Session();
 
-        void broadcast(Session *s, const MsrXml::Element &element);
+        void broadcast(Session *s, const XmlElement &element);
         void parameterChanged(const PdServ::Parameter*,
                 size_t startIndex, size_t nelem);
         void requestOutput();
@@ -125,7 +122,7 @@ class Session: public ost::SocketPort, public PdServ::Session {
         bool echoOn;
 
         // <data> tag for the output stream
-        MsrXml::Element dataTag;
+        XmlElement dataTag;
 
         // Input and output buffering
         Outbuf outbuf;

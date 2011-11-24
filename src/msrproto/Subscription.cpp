@@ -24,8 +24,7 @@
 
 #include "../Signal.h"
 #include "../Receiver.h"
-#include "XmlDoc.h"
-#include "PrintVariable.h"
+#include "XmlElement.h"
 #include "Channel.h"
 #include "SubscriptionManager.h"
 #include "Subscription.h"
@@ -36,9 +35,11 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Subscription::Subscription(const Channel* channel):
-    channel(channel), element("F")
+    channel(channel),
+    bufferOffset(channel->elementIndex * channel->signal->width),
+    element("F")
 {
-    element.setAttribute("c", channel->index);
+    element.setAttribute("c", channel->variableIndex);
     data_bptr = 0;
 }
 
@@ -78,47 +79,36 @@ void Subscription::set( bool _event, bool sync, unsigned int _decimation,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Subscription::newValue(MsrXml::Element *parent, const void *dataBuf)
+void Subscription::newValue(XmlElement *parent, const void *dataBuf)
 {
-    const char *buf = reinterpret_cast<const char *>(dataBuf);
-//    cout << __func__ << channel->path() << ' ' << trigger << endl;
+    const char *buf = reinterpret_cast<const char *>(dataBuf) + bufferOffset;
     if (trigger and trigger--)
         return;
 
-    buf += channel->bufferOffset;
-//    cout << __func__ << channel->path() << offset << ' ' << *(double*)dataBuf << endl;
-
-    if (!event) {
+    size_t nblocks = 0;
+    if (!event or !std::equal(data_bptr, data_eptr, buf)) {
         trigger = decimation;
 
         std::copy(buf, buf + channel->memSize, data_pptr);
-        data_pptr += channel->memSize;
-//        cout << ' ' << (data_eptr - data_pptr) / channel->memSize << endl;
 
-        if (data_pptr == data_eptr) {
-            if (base64)
-                base64Attribute(&element, "d", channel->variable,
-                        channel->nelem * blocksize, data_bptr);
-            else
-                csvAttribute(&element, "d",
-                        channel->printFunc, channel->variable,
-                        channel->nelem * blocksize, data_bptr);
-
-            parent->appendChild(&element);
-            data_pptr = data_bptr;
-//            cout << "sent " << channel->path() << endl;
+        if (event) {
+            nblocks = 1;
+        }
+        else {
+            data_pptr += channel->memSize;
+            if (data_pptr == data_eptr) {
+                data_pptr = data_bptr;
+                nblocks = blocksize;
+            }
         }
     }
-    else if (!std::equal(data_bptr, data_eptr, buf)) {
-        trigger = decimation;
 
-        std::copy(buf, buf + channel->memSize, data_bptr);
+    if (nblocks) {
         if (base64)
-            base64Attribute(&element, "d",
-                    channel->variable, channel->nelem, data_bptr);
+            channel->base64Attribute(&element, "d", nblocks, data_bptr);
         else
-            csvAttribute(&element, "d", channel->printFunc,
-                    channel->variable, channel->nelem, data_bptr);
+            channel->csvAttribute(&element, "d", nblocks, data_bptr, precision);
+
         parent->appendChild(&element);
     }
 }

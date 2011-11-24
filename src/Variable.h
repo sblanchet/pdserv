@@ -25,8 +25,6 @@
 #ifndef VARIABLE
 #define VARIABLE
 
-#include "pdserv/etl_data_info.h"
-
 #include <cstddef>
 #include <string>
 
@@ -38,15 +36,24 @@ class Session;
 
 class Variable {
     public:
-        Variable( const char *path,
-                enum si_datatype_t dtype,
+        enum Datatype {
+            boolean_T,
+            uint8_T,  int8_T,
+            uint16_T, int16_T,
+            uint32_T, int32_T,
+            uint64_T, int64_T,
+            double_T, single_T
+        };
+
+        Variable( const std::string& path,
+                Datatype dtype,
                 unsigned int ndims = 1,
                 const unsigned int dim[] = 0);
 
         virtual ~Variable();
 
         const std::string path;         /**< Variable path */
-        const enum si_datatype_t dtype; /**< Data type */
+        const Datatype dtype;           /**< Data type */
         const size_t ndims;             /**< Number of dimensions */
         const size_t width;             /**< Width of a single element */
         const size_t nelem;             /**< Number of elements */
@@ -59,15 +66,15 @@ class Variable {
         const size_t *getDim() const;   /**< Get dimension vector */
 
         static const size_t maxWidth = 8; /**< Maximum supported data type
-                                            width */
+                                            width in bytes */
 
-        virtual void getValue(Session*,
-                void *, struct timespec * = 0) const = 0;
+        virtual void getValue(const Session*, void *buf,
+                size_t start, size_t nelem, struct timespec * = 0) const = 0;
 
+        static const size_t dataTypeWidth[11];
     private:
         size_t * const dim;
 
-        static size_t getDTypeSize(enum si_datatype_t dtype);
         static size_t getNElem( unsigned int dims, const unsigned int dim[]);
 };
 

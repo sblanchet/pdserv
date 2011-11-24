@@ -33,8 +33,8 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-TimeSignal::TimeSignal(const PdServ::Task *t):
-    PdServ::Signal("", t->sampleTime, si_double_T, 1, 0),
+TimeSignal::TimeSignal(const PdServ::Task *t, const std::string& path):
+    PdServ::Signal(path, t->sampleTime, double_T, 1, 0),
     task(t)
 {
 }
@@ -74,8 +74,8 @@ const void *TimeSignal::getValue(const PdServ::SessionTaskData* std) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TimeSignal::getValue(
-        PdServ::Session *session, void *buf, struct timespec* t) const
+void TimeSignal::getValue(const PdServ::Session *session,
+        void *buf, size_t start, size_t count, struct timespec* t) const
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
     poll(session, buf, t);

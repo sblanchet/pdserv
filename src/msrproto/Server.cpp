@@ -33,6 +33,7 @@
 #include "../Task.h"
 #include "../Signal.h"
 #include "../Parameter.h"
+#include "../Debug.h"
 
 #include <cc++/socketport.h>
 #include <algorithm>
@@ -43,7 +44,7 @@ using namespace MsrProto;
 Server::Server(const PdServ::Main *main, int argc, const char **argv):
     main(main), mutex(1)
 {
-    bool traditional = 1;
+    traditional = 1;
 
     root = new VariableDirectory;
 
@@ -51,14 +52,7 @@ Server::Server(const PdServ::Main *main, int argc, const char **argv):
     for (PdServ::Main::Signals::const_iterator it = mainSignals.begin();
             it != mainSignals.end(); it++) {
 
-        if (traditional) {
-            for (unsigned i = 0; i < (*it)->nelem; i++)
-                root->insert(*it, (*it)->path, i, 1);
-        }
-        else {
-            // New matrix channel
-            root->insert(*it, (*it)->path);
-        }
+        root->insert(*it, traditional);
     }
 
     const PdServ::Task *primaryTask;
@@ -75,51 +69,40 @@ Server::Server(const PdServ::Main *main, int argc, const char **argv):
 
         path = prefix.str() + "TaskTime";
         if (!root->findChannel(path)) {
-            TimeSignal *t = new TimeSignal(task);
-            root->insert(t, path);
+            TimeSignal *t = new TimeSignal(task, path);
+            root->insert(t, traditional);
             if (task == primaryTask)
                 primaryTaskTimeSignal = t;
         }
 
         path = prefix.str() + "ExecTime";
         if (!root->findChannel(path))
-            root->insert(new StatSignal(task, StatSignal::ExecTime), path);
+            root->insert(
+                    new StatSignal(task, path, StatSignal::ExecTime),
+                    traditional);
 
         path = prefix.str() + "Period";
         if (!root->findChannel(path))
-            root->insert(new StatSignal(task, StatSignal::Period), path);
+            root->insert(
+                    new StatSignal(task, path, StatSignal::Period),
+                    traditional);
 
         path = prefix.str() + "Overrun";
         if (!root->findChannel(path))
-            root->insert(new StatSignal(task, StatSignal::Overrun), path);
+            root->insert(
+                    new StatSignal(task, path, StatSignal::Overrun),
+                    traditional);
 
     }
 
     if (!main->findVariable("/Time"))
-        root->insert(new TimeSignal(primaryTask), "/Time");
+        root->insert(new TimeSignal(primaryTask, "/Time"), traditional);
 
     const PdServ::Main::Parameters& mainParameters = main->getParameters();
     for (PdServ::Main::Parameters::const_iterator it = mainParameters.begin();
             it != mainParameters.end(); it++) {
-        size_t nelem = (*it)->nelem;
-        const size_t *dim = (*it)->getDim();
-        size_t vectorLen = dim[(*it)->ndims-1];
 
-        parameterIndexMap[*it] = getRoot().getParameters().size();
-        if (traditional) {
-            bool dep = vectorLen > 1;
-            for (unsigned i = 0; i < nelem; i++) {
-                if (vectorLen > 1 && !(i % vectorLen)) {
-                    // New row parameter
-                    root->insert(*it, (*it)->path, i, vectorLen);
-                }
-                root->insert(*it, (*it)->path, i, 1, dep);
-            }
-        }
-        else {
-            // New matrix parameter
-            root->insert(*it, (*it)->path);
-        }
+        root->insert(*it, traditional);
     }
 
     if (!main->findVariable("/Taskinfo/Abtastfrequenz")) {
@@ -150,7 +133,7 @@ void Server::run()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::broadcast(Session *s, const MsrXml::Element &element)
+void Server::broadcast(Session *s, const XmlElement &element)
 {
     struct timespec ts;
     main->gettime(&ts);

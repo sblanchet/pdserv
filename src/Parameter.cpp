@@ -30,9 +30,9 @@ using namespace PdServ;
 
 //////////////////////////////////////////////////////////////////////
 Parameter::Parameter(
-        const char *path,
+        const std::string& path,
         unsigned int mode,
-        enum si_datatype_t dtype,
+        Datatype dtype,
         unsigned int ndims,
         const unsigned int *dim):
     Variable(path, dtype, ndims, dim), mode(mode)

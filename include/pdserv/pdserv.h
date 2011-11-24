@@ -1,12 +1,24 @@
 #ifndef PDSERV_H
 #define PDSERV_H
 
-#include "etl_data_info.h"
 #include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// Data type definitions. 
+// Let the enumeration start at 1 so that an unset data type could
+// be detected
+enum pdserv_datatype_t {
+    double_T = 1, single_T, 
+    uint8_T,  sint8_T, 
+    uint16_T, sint16_T, 
+    uint32_T, sint32_T, 
+    uint64_T, sint64_T, 
+    boolean_T, 
+    //datatype_max            // This must allways be last;
+};
 
 /** Structure declaration */
 struct pdserv;
@@ -74,7 +86,7 @@ struct variable* pdserv_signal(
         unsigned int decimation,  /**< Decimation with which the signal is
                                    * calculated */
         const char *path,         /**< Signal path */
-        enum si_datatype_t datatype, /**< Signal data type */
+        enum pdserv_datatype_t datatype, /**< Signal data type */
         const void *addr,         /**< Signal address */
         size_t n,                 /**< Element count.
                                    * If @dim != NULL, this is the number
@@ -129,7 +141,7 @@ struct variable *pdserv_parameter(
         struct pdserv* pdserv,    /**< Pointer to pdserv structure */
         const char *path,         /**< Parameter path */
         unsigned int mode,        /**< Access mode, same as unix file mode */
-        enum si_datatype_t datatype, /**< Parameter data type */
+        enum pdserv_datatype_t datatype, /**< Parameter data type */
         void *addr,               /**< Parameter address */
         size_t n,                 /**< Element count.  If @dim != NULL, this
                                    * is the number elements in * @dim */

@@ -23,11 +23,11 @@
  *****************************************************************************/
 
 #include "Parameter.h"
-#include "XmlDoc.h"
-#include "PrintVariable.h"
+#include "XmlElement.h"
 #include "Directory.h"
 #include "Session.h"
 #include "../Parameter.h"
+#include "../Debug.h"
 
 #include <sstream>
 #include <cerrno>
@@ -36,8 +36,8 @@
 #define MSR_R   0x01    /* Parameter is readable */
 #define MSR_W   0x02    /* Parameter is writeable */
 #define MSR_WOP 0x04    /* Parameter is writeable in real-time */
-#define MSR_MONOTONIC 0x8 /* List must be monotonic */
-#define MSR_S   0x10    /* Parameter must be saved by clients */
+//#define MSR_MONOTONIC 0x8 /* List must be monotonic */
+//#define MSR_S   0x10    /* Parameter must be saved by clients */
 #define MSR_G   0x20    /* Gruppenbezeichnung (unused) */
 #define MSR_AW  0x40    /* Writeable by admin only */
 #define MSR_P   0x80    /* Persistant parameter, written to disk */
@@ -55,26 +55,26 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Parameter::Parameter( const DirectoryNode *directory,
-        bool dependent, const PdServ::Parameter *p, unsigned int index,
-        unsigned int nelem, unsigned int parameterElement):
-    Variable(directory, p, index, parameterElement, nelem),
+        unsigned int variableIndex, const PdServ::Parameter *p,
+        unsigned int elementIndex):
+    Variable(directory, p, variableIndex, elementIndex),
     mainParam(p),
     dependent(dependent),
     persistent(false)
 {
     //cout << __PRETTY_FUNCTION__ << index << endl;
     switch (mainParam->dtype) {
-        case si_boolean_T: append = setTo<bool>;     break;
-        case si_uint8_T:   append = setTo<uint8_t>;  break;
-        case si_sint8_T:   append = setTo<int8_t>;   break;
-        case si_uint16_T:  append = setTo<uint16_t>; break;
-        case si_sint16_T:  append = setTo<int16_t>;  break;
-        case si_uint32_T:  append = setTo<uint32_t>; break;
-        case si_sint32_T:  append = setTo<int32_t>;  break;
-        case si_uint64_T:  append = setTo<uint64_t>; break;
-        case si_sint64_T:  append = setTo<int64_t>;  break;
-        case si_single_T:  append = setTo<float>;    break;
-        case si_double_T:  append = setTo<double>;   break;
+        case PdServ::Variable::boolean_T: append = setTo<bool>;     break;
+        case PdServ::Variable::uint8_T:   append = setTo<uint8_t>;  break;
+        case PdServ::Variable::int8_T:    append = setTo<int8_t>;   break;
+        case PdServ::Variable::uint16_T:  append = setTo<uint16_t>; break;
+        case PdServ::Variable::int16_T:   append = setTo<int16_t>;  break;
+        case PdServ::Variable::uint32_T:  append = setTo<uint32_t>; break;
+        case PdServ::Variable::int32_T:   append = setTo<int32_t>;  break;
+        case PdServ::Variable::uint64_T:  append = setTo<uint64_t>; break;
+        case PdServ::Variable::int64_T:   append = setTo<int64_t>;  break;
+        case PdServ::Variable::single_T:  append = setTo<float>;    break;
+        case PdServ::Variable::double_T:  append = setTo<double>;   break;
         default:           append = 0;               break;
     }
 }
@@ -85,21 +85,30 @@ Parameter::~Parameter()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Parameter::setXmlAttributes( Session *s, MsrXml::Element *element,
-        bool shortReply, bool hex, bool writeAccess) const
+void Parameter::addChild(const Parameter *p)
+{
+    if (children.empty())
+        children.reserve(nelem);
+    children.push_back(p);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Parameter::setXmlAttributes( Session *s, XmlElement *element,
+        bool shortReply, bool hex, bool writeAccess, size_t precision) const
 {
     struct timespec mtime;
-    char valueBuf[mainParam->memSize];
-    char *dataPtr = valueBuf + bufferOffset;
+    char valueBuf[memSize];
     unsigned int flags = writeAccess
-        ? MSR_R | MSR_W | MSR_WOP | MSR_MONOTONIC : MSR_R | MSR_MONOTONIC;
+        ? MSR_R | MSR_W | MSR_WOP : MSR_R;
 
-    mainParam->getValue(s, valueBuf, &mtime);
+    mainParam->getValue(s, valueBuf, elementIndex, nelem, &mtime);
 
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>
 
-    setVariableAttributes(element, mainParam, index, path(), nelem, shortReply);
+    setAttributes(element, shortReply);
+//    setVariableAttributes(element, mainParam,
+//            elementIndex, path(), nelem, shortReply);
 
     if (!shortReply) {
         element->setAttribute("flags", flags + (dependent ? 0x100 : 0));
@@ -113,31 +122,25 @@ void Parameter::setXmlAttributes( Session *s, MsrXml::Element *element,
     element->setAttribute("mtime", mtime);
 
     if (hex)
-        hexDecAttribute(element, "hexvalue",
-                mainParam, nelem, dataPtr);
+        hexDecAttribute(element, "hexvalue", 1, valueBuf);
     else
-        csvAttribute(element, "value",
-                printFunc, mainParam, nelem, dataPtr);
+        csvAttribute(element, "value", 1, valueBuf, precision);
+
     return;
-
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Parameter::getValue(Session *session, char *buf) const
+void Parameter::getValue(const Session *session, char *buf) const
 {
-    char valueBuf[mainParam->memSize];
-    char *dataPtr = valueBuf + bufferOffset;
-
-    mainParam->getValue(session, valueBuf);
-    std::copy(dataPtr, dataPtr + memSize, buf);
+    mainParam->getValue(session, buf, elementIndex, nelem);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Parameter::setHexValue(const char *s, size_t startindex,
-        size_t &count) const
+int Parameter::setHexValue(const Session *session,
+        const char *s, size_t startindex, size_t &count) const
 {
-    char valueBuf[mainParam->memSize];
-    const char *valueEnd = valueBuf + mainParam->memSize;
+    char valueBuf[memSize];
+    const char *valueEnd = valueBuf + memSize;
     static const char hexNum[] = {
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
         0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
@@ -157,14 +160,15 @@ int Parameter::setHexValue(const char *s, size_t startindex,
     // endianness!
 
     count = (c - valueBuf) / mainParam->width;
-    return mainParam->setValue( valueBuf, variableElement + startindex, count);
+    return mainParam->setValue(
+            session, valueBuf, elementIndex + startindex, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Parameter::setDoubleValue(const char *buf, size_t startindex,
-        size_t &count) const
+int Parameter::setDoubleValue(const Session *session,
+        const char *buf, size_t startindex, size_t &count) const
 {
-    char value[mainParam->memSize];
+    char value[memSize];
     char *dataBuf = value;
     std::istringstream is(buf);
     is.imbue(std::locale::classic());
@@ -186,5 +190,23 @@ int Parameter::setDoubleValue(const char *buf, size_t startindex,
         (*append)(dataBuf, v);
     }
 
-    return mainParam->setValue( value, variableElement + startindex, count);
+    return mainParam->setValue(
+            session, value, elementIndex + startindex, count);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Parameter::valueChanged(
+        std::ostream& os, size_t start, size_t nelem) const
+{
+    XmlElement pu("pu");
+
+    pu.setAttribute("index", variableIndex);
+    os << pu;
+
+    while (variableIndex + start < children.size() and nelem--) {
+        pu.setAttribute("index", variableIndex + start++);
+        os << pu;
+    }
+
+    os << std::flush;
 }

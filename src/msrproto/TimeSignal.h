@@ -39,7 +39,7 @@ class Server;
 
 class TimeSignal: public PdServ::Signal {
     public:
-        TimeSignal(const PdServ::Task *task);
+        TimeSignal(const PdServ::Task *task, const std::string& path);
 
         const PdServ::Task * const task;
 
@@ -50,7 +50,8 @@ class TimeSignal: public PdServ::Signal {
         double poll(const PdServ::Session *s,
                 void *buf, struct timespec *t) const;
         const void *getValue(const PdServ::SessionTaskData*) const;
-        void getValue(PdServ::Session*, void*, timespec*) const;
+        void getValue(const PdServ::Session*, void*,
+                size_t, size_t, timespec*) const;
 };
 
 }

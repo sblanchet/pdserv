@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id$
+ *  $Id: SessionShadow.cpp,v ca2d0581b018 2011/11/18 21:54:07 lerichi $
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
@@ -22,47 +22,35 @@
  *
  *****************************************************************************/
 
-#ifndef SUBSCRIPTION_H
-#define SUBSCRIPTION_H
+#include "SessionShadow.h"
+#include "../TaskStatistics.h"
+//#include "SessionTaskData.h"
+//#include "Task.h"
+//#include "Main.h"
 
-#include <set>
-#include "XmlElement.h"
-
-namespace MsrProto {
-
-class Subscription {
-    public:
-        Subscription(const Channel *);
-        ~Subscription();
-
-        const Channel *channel;
-
-        bool sync();
-
-        void newValue(XmlElement *, const void *buf);
-
-        void set(bool event, bool sync, unsigned int decimation,
-                size_t blocksize, bool base64, size_t precision);
-
-    private:
-        const size_t bufferOffset;
-
-        XmlElement element;
-
-        bool _sync;
-
-        bool event;
-        unsigned int decimation;
-        unsigned int trigger;
-        size_t blocksize;
-
-        size_t precision;
-        bool base64;
-
-        char *data_bptr;
-        char *data_pptr;
-        char *data_eptr;
-};
-
+////////////////////////////////////////////////////////////////////////////
+SessionShadow::SessionShadow(/*const Main *main,*/ PdServ::Session* session):
+    /*main(main), */ session(session)
+{
 }
-#endif //SUBSCRIPTION_H
+
+////////////////////////////////////////////////////////////////////////////
+SessionShadow::~SessionShadow()
+{
+}
+
+////////////////////////////////////////////////////////////////////////////
+bool SessionShadow::rxPdo()
+{
+    bool error = false;
+
+    return error;
+}
+
+////////////////////////////////////////////////////////////////////////////
+const PdServ::TaskStatistics *SessionShadow::getTaskStatistics(
+        const PdServ::Task *task) const
+{
+    static PdServ::TaskStatistics ts;
+    return &ts;
+}
