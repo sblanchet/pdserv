@@ -50,28 +50,47 @@ class DirectoryNode {
 
         std::string path() const;
 
-        const DirectoryNode *parent;
+        DirectoryNode * const parent;
         const std::string name;
 
         const Channel *findChannel(const std::string &path) const;
         const Parameter *findParameter(const std::string &path) const;
-        const Variable *findVariable(const std::string &path,
-                size_t pathOffset) const;
-
-        DirectoryNode *mkdir(const PdServ::Variable *v,
-                char &hide, size_t pathOffset = 0);
-        DirectoryNode *mkdir(size_t index, size_t nelem,
-                size_t ndims, const size_t *dim);
 
         void insert(const Variable *v);
+        DirectoryNode *create(size_t index, size_t nelem,
+                size_t ndims, const size_t *dim);
 
     protected:
+        DirectoryNode *getRoot();
+
+        const Variable* getVariable() const;
+
+
         DirectoryNode();
 
         const Variable *variable;
 
+        class Path {
+            public:
+                Path(const std::string& s);
+
+                DirectoryNode* create(DirectoryNode *, char& hide);
+
+                const Parameter *findParameter(const DirectoryNode *);
+                const Channel *findChannel(const DirectoryNode *);
+
+            private:
+                const std::string &path;
+                size_t offset;
+
+                bool getDir(std::string&);
+                bool getDir(std::string&, char &hide);
+
+                const Variable *findVariable(const DirectoryNode *);
+        };
+
     private:
-        typedef std::map<const std::string, DirectoryNode*> Entry;
+        typedef std::map<std::string, DirectoryNode*> Entry;
         Entry entry;
 };
 
@@ -86,13 +105,13 @@ class VariableDirectory: public DirectoryNode {
 
        typedef std::vector<const Channel*> Channels;
        typedef std::vector<const Parameter*> Parameters;
-       const Channels& getChannels() const;
-       const Channel* getChannel(unsigned int) const;
-       const Parameters& getParameters() const;
-       const Parameter *getParameter(const PdServ::Parameter *p) const;
-       const Parameters& getParameters(const PdServ::Parameter *p) const;
-       const Parameter* getParameter(unsigned int) const;
 
+       const Channels& getChannels() const;
+       const Channel * getChannel(unsigned int) const;
+
+       const Parameters& getParameters() const;
+       const Parameter * getParameter(unsigned int) const;
+       const Parameter * getParameter(const PdServ::Parameter *p) const;
 
     private:
         Channels channels;

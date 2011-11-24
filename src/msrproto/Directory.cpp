@@ -34,6 +34,7 @@
 #include <cerrno>
 #include <locale>
 #include <sstream>
+#include <stack>
 
 using namespace MsrProto;
 
@@ -46,12 +47,12 @@ VariableDirectory::VariableDirectory()
 bool VariableDirectory::insert( const PdServ::Parameter *p, bool traditional)
 {
     char hide = 0;
-    DirectoryNode *dir = mkdir(p, hide);
+    DirectoryNode *dir = Path(p->path).create(this, hide);
     if (!dir)
         return true;
 
     if (hide == 1 or hide == 'p') {
-//        debug() << "hide=" << hide << p->path;
+        //debug() << "hide=" << hide << p->path << dir->path();
         return false;
     }
 
@@ -65,7 +66,7 @@ bool VariableDirectory::insert( const PdServ::Parameter *p, bool traditional)
 
         for (size_t i = 0; i < p->nelem; ++i) {
             DirectoryNode *subdir =
-                dir->mkdir(i, p->nelem, p->ndims, p->getDim());
+                dir->create(i, p->nelem, p->ndims, p->getDim());
             if (!subdir)
                 continue;
 
@@ -84,12 +85,12 @@ bool VariableDirectory::insert( const PdServ::Parameter *p, bool traditional)
 bool VariableDirectory::insert(const PdServ::Signal *s, bool traditional)
 {
     char hide = 0;
-    DirectoryNode *dir = mkdir(s, hide);
+    DirectoryNode *dir = Path(s->path).create(this, hide);
     if (!dir)
         return true;
 
     if (hide == 1 or hide == 'k') {
-//        debug() << "hide=" << hide << s->path;
+        //debug() << "hide=" << hide << s->path << dir->path();
         return false;
     }
 
@@ -97,7 +98,7 @@ bool VariableDirectory::insert(const PdServ::Signal *s, bool traditional)
         channels.reserve(channels.size() + s->nelem);
         for (size_t i = 0; i < s->nelem; ++i) {
             DirectoryNode *subdir =
-                dir->mkdir(i, s->nelem, s->ndims, s->getDim());
+                dir->create(i, s->nelem, s->ndims, s->getDim());
             if (!subdir)
                 continue;
             Channel *c = new Channel(subdir, s, channels.size(), i);
@@ -149,14 +150,14 @@ const Parameter* VariableDirectory::getParameter(unsigned int idx) const
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode::DirectoryNode():
-    parent(0), name(std::string())
+    parent(this), name(std::string()), variable(0)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode::DirectoryNode(
         DirectoryNode *parent, const std::string& name):
-    parent(parent), name(name)
+    parent(parent), name(name), variable(0)
 {
 }
 
@@ -167,7 +168,7 @@ void DirectoryNode::insert(const Variable *v)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-DirectoryNode* DirectoryNode::mkdir(size_t index,
+DirectoryNode* DirectoryNode::create(size_t index,
                 size_t nelem, size_t ndims, const size_t *dim)
 {
     if (nelem == 1)
@@ -186,27 +187,115 @@ DirectoryNode* DirectoryNode::mkdir(size_t index,
         entry[name] = dir;
     }
 
-    return dir->mkdir(index - x*nelem , nelem, ndims - 1, dim);
+    return dir->create(index - x*nelem , nelem, ndims - 1, dim);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-DirectoryNode* DirectoryNode::mkdir(
-        const PdServ::Variable *v, char& hide, size_t pathNameOffset)
+DirectoryNode* DirectoryNode::getRoot()
 {
-    if (v->path[pathNameOffset++] != '/')
-        return 0;
+    DirectoryNode* node = this;
+    while (node != node->parent)
+        node = node->parent;
+
+    return node;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::string DirectoryNode::path() const
+{
+    std::stack<const std::string*> pathStack;
+
+    for (const DirectoryNode *node = this;
+            node != node->parent; node = node->parent)
+        pathStack.push(&node->name);
+
+    std::string p;
+    while (!pathStack.empty()) {
+        p.append(1,'/').append(*pathStack.top());
+        pathStack.pop();
+    }
+    return p;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Channel *DirectoryNode::findChannel(const std::string &p) const
+{
+    return Path(p).findChannel(this);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Parameter *DirectoryNode::findParameter(const std::string &p) const
+{
+    return Path(p).findParameter(this);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+DirectoryNode::Path::Path(const std::string &s):
+    path(s), offset(0)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Variable *DirectoryNode::Path::findVariable(const DirectoryNode* dir)
+{
+    std::string dirName;
+    char hide;
+
+    while (getDir(dirName, hide)) {
+        if (!dirName.compare(0, 2, ".."))
+            dir = dir->parent;
+        else if (dirName.size() and dirName.compare(0, 1, ".")) {
+            dir = dir->entry.find(dirName)->second;
+            if (!dir)
+                return 0;
+        }
+    }
+
+    return dir->variable;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Parameter *DirectoryNode::Path::findParameter(const DirectoryNode* dir)
+{
+    const Variable *v = findVariable(dir);
+    return v and v->parameter() ? static_cast<const Parameter*>(v) : 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Channel *DirectoryNode::Path::findChannel(const DirectoryNode* dir)
+{
+    const Variable *v = findVariable(dir);
+    return v and v->signal() ? static_cast<const Channel*>(v) : 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool DirectoryNode::Path::getDir(std::string& name, char &hide)
+{
+    // Skip whitespace at the beginning of the path
+    while (offset < path.size()
+            and std::isspace(name[offset], std::locale::classic()))
+        offset++;
+
+    // Finished?
+    if (offset == path.size())
+        return false;
+
+    size_t start = offset;
     
-    size_t nameStart = pathNameOffset;
+    offset = path.find('/', offset);
+    if (offset == path.npos) {
+        name.assign(path, start, path.size() - start);
+        offset = path.size();
+    }
+    else
+        name.assign(path, start, offset++ - start);
 
-    pathNameOffset = v->path.find('/', pathNameOffset);
-    if (pathNameOffset == std::string::npos)
-        pathNameOffset = v->path.size();
-
-    std::string name(v->path.substr(nameStart, pathNameOffset - nameStart));
-
-    size_t xmlpos = name.find('<');
-    if (xmlpos != std::string::npos) {
-        XmlParser p(name, xmlpos);
+    size_t n = name.find('<');
+    if (n == name.npos)
+        n = name.size();
+    else {
+        XmlParser p(name, n);
         const char *value;
 
         if (p.isTrue("hide"))
@@ -216,66 +305,34 @@ DirectoryNode* DirectoryNode::mkdir(
 
         if (p.isTrue("unhide"))
             hide = 0;
-
-        name.erase(xmlpos);
     }
 
-    size_t end = name.size() - 1;
-    while (end and std::isspace(name[end], std::locale::classic()))
-        --end;
-    name.erase(end + 1);
+    while (n and std::isspace(name[n-1], std::locale::classic()))
+        n--;
 
-    DirectoryNode *dir = entry[name];
-    if (!dir) {
-        dir = new DirectoryNode(this, name);
-        entry[name] = dir;
+    name.erase(n);
+
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+DirectoryNode *DirectoryNode::Path::create(DirectoryNode* dir, char &hide)
+{
+    std::string dirName;
+
+    while (getDir(dirName, hide)) {
+        if (!dirName.compare(0, 2, ".."))
+            dir = dir->parent;
+        else if (dirName.size() and dirName.compare(0, 1, ".")) {
+            DirectoryNode *d = dir;
+            dir = dir->entry[dirName];
+            if (!dir) {
+                dir = new DirectoryNode(d, dirName);
+
+                d->entry[dirName] = dir;
+            }
+        }
     }
 
-    return pathNameOffset == v->path.size()
-        ? dir : dir->mkdir(v, hide, pathNameOffset);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-std::string DirectoryNode::path() const
-{
-    return parent ? (parent->path() + '/' + name) : std::string();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Variable *DirectoryNode::findVariable(
-        const std::string &path, size_t pathOffset) const
-{
-    if (pathOffset >= path.size()
-            or (!pathOffset and path[pathOffset++] != '/'))
-        return 0;
-
-    size_t pos = path.find('/', pathOffset);
-    if (pos == std::string::npos)
-        pos = path.size();
-
-    Entry::const_iterator node =
-        entry.find(path.substr(pathOffset, pos - pathOffset));
-
-    if (node == entry.end())
-        return 0;
-
-    const DirectoryNode *dir = node->second;
-
-    return path.size() == pos
-        ? dir->variable : dir->findVariable(path, pos + 1);
-}
-
-
-/////////////////////////////////////////////////////////////////////////////
-const Channel *DirectoryNode::findChannel(const std::string &path) const
-{
-    const Variable *v = findVariable(path, 0);
-    return v and v->signal() ? static_cast<const Channel*>(v) : 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Parameter *DirectoryNode::findParameter(const std::string &path) const
-{
-    const Variable *v = findVariable(path, 0);
-    return v and v->parameter() ? static_cast<const Parameter*>(v) : 0;
+    return dir;
 }

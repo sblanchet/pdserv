@@ -29,6 +29,7 @@
 //#include <cc++/thread.h>
 
 #include "../Signal.h"
+#include "SignalInfo.h"
 
 namespace PdServ {
     class Session;
@@ -40,7 +41,7 @@ class Task;
 class Signal: public PdServ::Signal {
     public:
         Signal( //Task *task,
-                const struct signal_info *si, double sampleTime);
+                double sampleTime, const SignalInfo& si);
 
 //        const char * const addr;
 //
@@ -48,7 +49,7 @@ class Signal: public PdServ::Signal {
 //        const size_t index;
 
     private:
-        static std::string makePath(const struct signal_info *si);
+        const SignalInfo si;
 //        Task * const task;
 //
 //        mutable ost::Semaphore mutex;

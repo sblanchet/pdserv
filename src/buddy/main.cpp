@@ -26,26 +26,11 @@
 #include "../Debug.h"
 
 #include <cerrno>
-#include <cstring>
-#include <cstdlib>
-#include <ctime>
-#include <algorithm>
-
 #include <sys/ioctl.h>          // ioctl()
-#include <sys/types.h>          // kill()
-#include <signal.h>
-
-#include <sys/mman.h>
-#include <sys/select.h>
-#include <unistd.h>             // fork()
-#include <cc++/cmdoptns.h>
+#include <fcntl.h>              // open()
+//#include <cc++/cmdoptns.h>
 
 #include "Main.h"
-//#include "Task.h"
-#include "Signal.h"
-#include "SessionShadow.h"
-#include "Parameter.h"
-//#include "Pointer.h"
 
 const char *device_node = "/dev/etl";
 
@@ -65,7 +50,7 @@ int main(int argc, char **argv)
     path = device_node;
     path.append("0");
 
-    int etl_main = open(path.c_str(), O_NONBLOCK | O_RDWR);
+    int etl_main = ::open(path.c_str(), O_NONBLOCK | O_RDWR);
     if (etl_main < 0) {
         debug() << "could not open" << path;
         return errno;

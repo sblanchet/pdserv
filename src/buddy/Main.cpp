@@ -25,55 +25,22 @@
 #include "config.h"
 #include "../Debug.h"
 
+#include <sstream>
 #include <cerrno>
-#include <cstring>
-#include <cstdlib>
-#include <ctime>
-#include <algorithm>
-
+#include <cstdlib>              // exit()
 #include <sys/ioctl.h>          // ioctl()
-#include <sys/types.h>          // kill()
-#include <signal.h>
-
+#include <unistd.h>             // fork()
+// #include <sys/types.h>          // kill()
 #include <sys/mman.h>
 #include <sys/select.h>
-#include <unistd.h>             // fork()
-#include <cc++/cmdoptns.h>
 
 #include "Main.h"
-//#include "Task.h"
 #include "Signal.h"
 #include "SessionShadow.h"
 #include "Parameter.h"
-//#include "Pointer.h"
 
 //ost::CommandOptionNoArg traditional(
 //        "traditional", "t", "Traditional MSR", false);
-
-bool Main::getVariable(int type, size_t index, struct signal_info &si)
-{
-    si.index = index;
-    if (ioctl(fd, type, &si))
-        return true;
-
-    size_t n = si.dim[0] * si.dim[1];
-    if (!n)
-        return true;
-
-    if (si.dim[0] == 1 or si.dim[1] == 1) {
-        si.dim[0] = n;
-        si.dim[1] = 0;
-    }
-    else {
-        n = 2;
-        if (si.orientation == si_matrix_col_major) {
-            debug() << "swap";
-            std::swap(si.dim[0], si.dim[1]);
-        }
-    }
-
-    return false;
-}
 
 /////////////////////////////////////////////////////////////////////////////
 Main::Main(int argc, const char **argv,
@@ -127,10 +94,12 @@ Main::Main(int argc, const char **argv,
     for (size_t i = 0; i < app_properties.signal_count; i++) {
 
         si.index = i;
-        if (ioctl(fd, GET_SIGNAL_INFO, &si))
+        if (ioctl(fd, GET_SIGNAL_INFO, &si) or !si.dim[0])
             continue;
 
-        Signal *s = new Signal(&si, 1.0e-9 * app_properties.sample_period);
+        //debug() << app_properties.name << '|' << si.path << '|' << si.name;
+        Signal *s = new Signal(1.0e-9 * app_properties.sample_period,
+                SignalInfo(app_properties.name, &si));
         signals.push_back(s);
         variableMap[s->path] = s;
     }

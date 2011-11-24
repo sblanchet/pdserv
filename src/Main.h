@@ -97,7 +97,7 @@ class Main {
                 size_t nelem, void * const *pollDest,
                 struct timespec *t) const = 0;
 
-        typedef std::map<const std::string, const Variable*> VariableMap;
+        typedef std::map<std::string, const Variable*> VariableMap;
         VariableMap variableMap;
 
     private:

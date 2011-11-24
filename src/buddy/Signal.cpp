@@ -24,52 +24,19 @@
 
 #include "Signal.h"
 
-extern "C" {
-#include <etl_data_info.h>
-}
-
 //#include "Task.h"
 //#include "Main.h"
 //#include "SessionTaskData.h"
 
-static PdServ::Variable::Datatype dataType(const enum si_datatype_t& dt)
-{
-    switch (dt) {
-        case si_boolean_T: return PdServ::Variable::boolean_T;
-        case si_uint8_T:   return PdServ::Variable::uint8_T;
-        case si_sint8_T:   return PdServ::Variable::int8_T;
-        case si_uint16_T:  return PdServ::Variable::uint16_T;
-        case si_sint16_T:  return PdServ::Variable::int16_T;
-        case si_uint32_T:  return PdServ::Variable::uint32_T;
-        case si_sint32_T:  return PdServ::Variable::int32_T;
-        case si_double_T:  return PdServ::Variable::double_T;
-        case si_single_T:  return PdServ::Variable::single_T;
-        default:           return PdServ::Variable::double_T;
-    }
-
-}
-
-// //////////////////////////////////////////////////////////////////////
-// const size_t Signal::dataTypeIndex[PdServ::Variable::maxWidth+1] = {
-//     3 /*0*/, 3 /*1*/, 2 /*2*/, 3 /*3*/,
-//     1 /*4*/, 3 /*5*/, 3 /*6*/, 3 /*7*/, 0 /*8*/
-// };
-
 //////////////////////////////////////////////////////////////////////
 Signal::Signal( //Task *task,
-        const struct signal_info *si, double sampleTime):
-    PdServ::Signal(makePath(si), sampleTime,
-            dataType(si->data_type), 1 + (si->dim[1] > 0))
+                double sampleTime, const SignalInfo& si):
+    PdServ::Signal(si.path(), sampleTime, si.dataType(), si.ndim(), si.dim()),
+    si(si)
 //    addr(reinterpret_cast<const char *>(addr)),
 //    index(index), task(task),
 //    mutex(1)
 {
-}
-
-//////////////////////////////////////////////////////////////////////
-std::string Signal::makePath(const struct signal_info *si)
-{
-    return std::string(1,'/').append(si->path).append(1,'/').append(si->name);
 }
 
 //////////////////////////////////////////////////////////////////////
