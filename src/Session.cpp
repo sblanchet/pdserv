@@ -63,11 +63,3 @@ bool Session::rxPdo()
 {
     return shadow->rxPdo();
 }
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::resendSignalList(const Task *task) const
-{
-//    for (unsigned int i = 0; i < main->getTasks().size(); i++)
-//        if (receiver[i]->task == task)
-//            receiver[i]->resendSignalList();
-}

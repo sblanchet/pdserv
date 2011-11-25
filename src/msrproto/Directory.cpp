@@ -246,9 +246,10 @@ const Variable *DirectoryNode::Path::findVariable(const DirectoryNode* dir)
         if (!dirName.compare(0, 2, ".."))
             dir = dir->parent;
         else if (dirName.size() and dirName.compare(0, 1, ".")) {
-            dir = dir->entry.find(dirName)->second;
-            if (!dir)
+            Entry::const_iterator it = dir->entry.find(dirName);
+            if (it == dir->entry.end())
                 return 0;
+            dir = it->second;
         }
     }
 
@@ -274,7 +275,7 @@ bool DirectoryNode::Path::getDir(std::string& name, char &hide)
 {
     // Skip whitespace at the beginning of the path
     while (offset < path.size()
-            and std::isspace(name[offset], std::locale::classic()))
+            and std::isspace(path[offset], std::locale::classic()))
         offset++;
 
     // Finished?

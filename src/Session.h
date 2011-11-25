@@ -50,8 +50,6 @@ class Session {
                 const Signal * const *, size_t n) = 0;
         virtual void newSignalData(const SessionTaskData*) = 0;
 
-        void resendSignalList(const Task *) const;
-
         const Main * const main;
 
     protected:

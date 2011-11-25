@@ -25,8 +25,6 @@
 #ifndef SESSIONSHADOW_H
 #define SESSIONSHADOW_H
 
-#include <set>
-
 namespace PdServ {
 
 class Session;
@@ -39,8 +37,6 @@ class SessionShadow {
 
         virtual bool rxPdo() = 0;
         virtual const TaskStatistics *getTaskStatistics(const Task *) const = 0;
-
-    protected:
 
     private:
 };

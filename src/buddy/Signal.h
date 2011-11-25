@@ -37,19 +37,21 @@ namespace PdServ {
 }
 
 class Task;
+class Main;
 
 class Signal: public PdServ::Signal {
     public:
-        Signal( //Task *task,
-                double sampleTime, const SignalInfo& si);
+        Signal( const Main * main, double sampleTime, const SignalInfo& si);
 
+        const Main * const main;
+        const size_t offset;
+        const SignalInfo info;
 //        const char * const addr;
 //
 //        static const size_t dataTypeIndex[PdServ::Variable::maxWidth+1];
 //        const size_t index;
 
     private:
-        const SignalInfo si;
 //        Task * const task;
 //
 //        mutable ost::Semaphore mutex;

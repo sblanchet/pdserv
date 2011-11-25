@@ -24,50 +24,34 @@
 
 #include "Signal.h"
 
-//#include "Task.h"
-//#include "Main.h"
+#include "../Session.h"
+#include "../Debug.h"
+#include "Main.h"
 //#include "SessionTaskData.h"
 
 //////////////////////////////////////////////////////////////////////
-Signal::Signal( //Task *task,
-                double sampleTime, const SignalInfo& si):
+Signal::Signal( const Main *main, double sampleTime, const SignalInfo& si):
     PdServ::Signal(si.path(), sampleTime, si.dataType(), si.ndim(), si.dim()),
-    si(si)
-//    addr(reinterpret_cast<const char *>(addr)),
-//    index(index), task(task),
-//    mutex(1)
+    main(main), offset(si.si->offset), info(si)
 {
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::subscribe(PdServ::Session *s) const
+void Signal::subscribe(PdServ::Session *session) const
 {
-//    ost::SemaphoreLock lock(mutex);
-//
-//    if (sessions.empty())
-//        task->subscribe(this, true);
-//
-//    sessions.insert(s);
+    const PdServ::Signal *signal = this;
+    session->newSignalList(0, &signal, 1);
 }
 
 //////////////////////////////////////////////////////////////////////
 void Signal::unsubscribe(PdServ::Session *s) const
 {
-//    ost::SemaphoreLock lock(mutex);
-//
-//    sessions.erase(s);
-//
-//    if (sessions.empty())
-//        task->subscribe(this, false);
 }
 
 //////////////////////////////////////////////////////////////////////
 double Signal::poll(const PdServ::Session *,
         void *dest, struct timespec *) const
 {
-//    task->pollPrepare(this, dest);
-//
-//    return task->sampleTime / 2;
     return 0;
 }
 
@@ -75,6 +59,9 @@ double Signal::poll(const PdServ::Session *,
 void Signal::getValue( const PdServ::Session *, void *buf,
         size_t start, size_t count, struct timespec *t) const
 {
+    const PdServ::Signal *signal = this;
+    debug();
+    main->poll(0, &signal, 1, buf, t);
 //    const PdServ::Signal *s = this;
 //    task->main->poll(0, &s, 1, buf, t);
 }

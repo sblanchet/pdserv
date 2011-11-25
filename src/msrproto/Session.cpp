@@ -124,7 +124,7 @@ void Session::parameterChanged(const PdServ::Parameter *p,
 /////////////////////////////////////////////////////////////////////////////
 void Session::requestOutput()
 {
-    setDetectOutput(true);
+    output();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -195,23 +195,18 @@ void Session::pending()
 /////////////////////////////////////////////////////////////////////////////
 void Session::output()
 {
-    //cout << __LINE__ << __PRETTY_FUNCTION__ << endl;
-
     ssize_t n = send(outbuf.bufptr(), outbuf.size());
 
-    // In case of error, exit
-    if (n <= 0) {
+    if (n < 0) {
         setDetectOutput(false);
         setDetectPending(false);
         return;
     }
-//    cout << std::string(outbuf.bufptr(), n);
+    debug() << n;
 
     outBytes += n;       // PdServ::Session output byte counter
 
-    if (outbuf.clear(n)) {
-        setDetectOutput(false);
-    }
+    setDetectOutput(outbuf.clear(n));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -433,7 +428,7 @@ void Session::readChannel()
                 it != chanList.end(); it++) {
             XmlElement *el = channels.createChild("channel");
             (*it)->setXmlAttributes(el, shortReply,
-                    buf + bufOffset[(*it)->signal], 3);
+                    buf + bufOffset[(*it)->signal], 16);
         }
 
         outbuf << channels << std::flush;
@@ -447,7 +442,7 @@ void Session::readChannel()
         c->signal->getValue(this, buf, c->elementIndex, c->nelem);
 
         XmlElement channel("channel");
-        c->setXmlAttributes(&channel, shortReply, buf, 3);
+        c->setXmlAttributes(&channel, shortReply, buf, 16);
 
         outbuf << channel << std::flush;
     }

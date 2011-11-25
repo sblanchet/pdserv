@@ -94,7 +94,7 @@ class Main {
         static int localtime(struct timespec *);
 
         virtual void processPoll(size_t delay_ms, const Signal * const *s,
-                size_t nelem, void * const *pollDest,
+                size_t nelem, void * const * pollDest,
                 struct timespec *t) const = 0;
 
         typedef std::map<std::string, const Variable*> VariableMap;

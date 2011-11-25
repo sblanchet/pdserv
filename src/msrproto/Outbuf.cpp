@@ -66,7 +66,7 @@ bool Outbuf::clear(size_t n)
         pptr = eptr = bptr;
     }
 
-    return pptr == eptr;
+    return pptr != eptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////

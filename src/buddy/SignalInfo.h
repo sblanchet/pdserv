@@ -42,8 +42,9 @@ class SignalInfo {
         void write( void *dst, const void *src,
                 size_t start, size_t count) const;
 
-    private:
         const struct signal_info * const si;
+
+    private:
         const char * const model;
 
         size_t _dim[2];

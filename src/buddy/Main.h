@@ -26,6 +26,7 @@
 #define BUDDY_MAIN_H
 
 #include <map>
+#include <set>
 
 #include "../Main.h"
 #include "fio_ioctl.h"
@@ -68,7 +69,7 @@ class Main: public PdServ::Main {
 //        static const double bufferTime;
 
     private:
-//        mutable ost::Semaphore mutex;
+        mutable ost::Semaphore mutex;
         mutable ost::Semaphore paramMutex;
 
         int fd;
@@ -81,13 +82,16 @@ class Main: public PdServ::Main {
 
         char *parameterBuf;
         void *shmem;
+        const char *photoAlbum;
         int readPointer;
 //        int (* const rttime)(struct timespec*);
+
+        size_t *readyList;
 
         // Reimplemented from PdServ::Main
         void processPoll(size_t delay_ms,
                 const PdServ::Signal * const *s, size_t nelem,
-                void * const *pollDest, struct timespec *t) const;
+                void * const * pollDest, struct timespec *t) const;
         int gettime(struct timespec *) const;
         PdServ::SessionShadow *newSession(PdServ::Session *) const;
 };

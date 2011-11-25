@@ -22,12 +22,13 @@
  *
  *****************************************************************************/
 
-#ifndef LIBSESSIONSHADOW_H
-#define LIBSESSIONSHADOW_H
+#ifndef BUDDY_SESSIONSHADOW_H
+#define BUDDY_SESSIONSHADOW_H
 
 #include "../SessionShadow.h"
 
-#include <map>
+#include <queue>
+#include <cc++/thread.h>
 
 namespace PdServ {
     class Task;
@@ -48,10 +49,14 @@ class SessionShadow: public PdServ::SessionShadow {
 //        const Main * const main;
         PdServ::Session * const session;
 
+        mutable ost::Semaphore mutex;
+
+        std::queue<size_t> photos;
+
         // Reimplemented from PdServ::SessionShadow
         bool rxPdo();
         const PdServ::TaskStatistics *getTaskStatistics(
                 const PdServ::Task *) const;
 };
 
-#endif //LIBSESSIONSHADOW_H
+#endif //BUDDY_SESSIONSHADOW_H

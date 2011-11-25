@@ -37,6 +37,7 @@
 #include "Main.h"
 #include "Signal.h"
 #include "SessionShadow.h"
+#include "../Session.h"
 #include "Parameter.h"
 
 //ost::CommandOptionNoArg traditional(
@@ -45,7 +46,8 @@
 /////////////////////////////////////////////////////////////////////////////
 Main::Main(int argc, const char **argv,
         int instance, const char *device_node):
-    PdServ::Main(argc, argv, "", ""), paramMutex(1), parameterBuf(0)
+    PdServ::Main(argc, argv, "", ""),
+    mutex(1), paramMutex(1), parameterBuf(0)
 {
     pid = fork();
     if (pid < 0) {
@@ -98,7 +100,7 @@ Main::Main(int argc, const char **argv,
             continue;
 
         //debug() << app_properties.name << '|' << si.path << '|' << si.name;
-        Signal *s = new Signal(1.0e-9 * app_properties.sample_period,
+        Signal *s = new Signal(this, 1.0e-9 * app_properties.sample_period,
                 SignalInfo(app_properties.name, &si));
         signals.push_back(s);
         variableMap[s->path] = s;
@@ -109,6 +111,8 @@ Main::Main(int argc, const char **argv,
             PROT_READ, MAP_PRIVATE, fd, 0);
     if (shmem == MAP_FAILED)
         goto out;
+
+    photoAlbum = reinterpret_cast<const char *>(shmem);
 
     readPointer = ioctl(fd, RESET_BLOCKIO_RP);
 
@@ -141,9 +145,9 @@ Main::Main(int argc, const char **argv,
                 readPointer = ioctl(fd, RESET_BLOCKIO_RP);
             }
             else {
-                for (int i = readPointer; i < data_p.wp; ++i) {
-                    std::cerr << '.';
-                }
+                ost::SemaphoreLock lock(mutex);
+//                for (int i = readPointer; i < data_p.wp; ++i)
+//                    readyList[i]++;
                 readPointer = ioctl(fd, SET_BLOCKIO_RP, data_p.wp);
             }
         }
@@ -184,8 +188,17 @@ Main::~Main()
 /////////////////////////////////////////////////////////////////////////////
 void Main::processPoll(size_t delay_ms,
         const PdServ::Signal * const *s, size_t nelem,
-        void * const *pollDest, struct timespec *t) const
+        void * const * pollDest, struct timespec *t) const
 {
+    const char *data = photoAlbum + readPointer * app_properties.rtB_size;
+
+    for (size_t i = 0; i < nelem; ++i) {
+        const Signal *signal = dynamic_cast<const Signal *>(s[i]);
+        if (signal) {
+            signal->info.read(
+                    pollDest[i], data + signal->offset, 0, signal->nelem);
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////

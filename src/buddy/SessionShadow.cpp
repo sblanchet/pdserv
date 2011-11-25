@@ -24,13 +24,15 @@
 
 #include "SessionShadow.h"
 #include "../TaskStatistics.h"
+#include "../Session.h"
+#include "../Debug.h"
 //#include "SessionTaskData.h"
 //#include "Task.h"
 //#include "Main.h"
 
 ////////////////////////////////////////////////////////////////////////////
-SessionShadow::SessionShadow(/*const Main *main,*/ PdServ::Session* session):
-    /*main(main), */ session(session)
+SessionShadow::SessionShadow(PdServ::Session* session):
+    session(session)
 {
 }
 
@@ -42,6 +44,7 @@ SessionShadow::~SessionShadow()
 ////////////////////////////////////////////////////////////////////////////
 bool SessionShadow::rxPdo()
 {
+    //session->newSignalData(0);
     bool error = false;
 
     return error;
