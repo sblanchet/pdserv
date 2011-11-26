@@ -38,6 +38,7 @@
 #include "Signal.h"
 #include "SessionShadow.h"
 #include "../Session.h"
+#include "Task.h"
 #include "Parameter.h"
 
 //ost::CommandOptionNoArg traditional(
@@ -92,7 +93,8 @@ Main::Main(int argc, const char **argv,
     }
     debug() << app_properties.param_count << "parameters";
 
-//    mainTask = new Task(this, 1.0e-9 * app_properties.sample_period);
+    mainTask = new Task(this, 1.0e-9 * app_properties.sample_period);
+    task.push_back(mainTask);
     for (size_t i = 0; i < app_properties.signal_count; i++) {
 
         si.index = i;

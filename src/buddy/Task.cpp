@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id$
+ *  $Id: Signal.cpp,v ca2d0581b018 2011/11/18 21:54:07 lerichi $
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
@@ -22,58 +22,10 @@
  *
  *****************************************************************************/
 
-#ifndef DEBUG_H
-#define DEBUG_H
+#include "Task.h"
 
-#include <cc++/thread.h>
-
-#include "config.h"
-
-#ifdef DEBUG
-
-#include <iostream>
-
-extern ost::Semaphore debugLock;
-
-namespace {
-
-struct Debug {
-    Debug(const std::string& file, const std::string& func, int line) {
-        //debugLock.wait();
-
-        std::cerr << std::string(file,SRC_PATH_LENGTH)
-            << ':' << func << '(' << line << "):";
-    }
-
-    ~Debug() {
-        std::cerr << std::endl;
-        //debugLock.post();
-    }
-
-    template <class T>
-        const Debug& operator<<(const T& o) const {
-            std::cerr << ' ' << o;
-            return *this;
-        }
-};
-
-#define debug() Debug(__BASE_FILE__, __func__, __LINE__)
+//////////////////////////////////////////////////////////////////////
+Task::Task( Main *main, double sampleTime):
+    PdServ::Task(sampleTime), main(main)
+{
 }
-
-#else
-
-namespace {
-
-struct Debug {
-    template <class T>
-        const Debug& operator<<(const T&) const {
-            return *this;
-        }
-};
-
-#define debug() Debug()
-}
-
-#endif
-
-#endif // DEBUG_H

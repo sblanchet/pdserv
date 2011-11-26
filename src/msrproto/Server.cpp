@@ -63,6 +63,7 @@ Server::Server(const PdServ::Main *main, int argc, const char **argv):
         std::ostringstream prefix;
         prefix << "/Taskinfo/" << i << '/';
         std::string path;
+        debug() << prefix;
 
         if (!i or primaryTask->sampleTime > task->sampleTime)
             primaryTask = task;
@@ -88,10 +89,15 @@ Server::Server(const PdServ::Main *main, int argc, const char **argv):
                     traditional);
 
         path = prefix.str() + "Overrun";
-        if (!root->findChannel(path))
+        if (!root->findChannel(path)) {
+            debug() << "insert" << path;
             root->insert(
                     new StatSignal(task, path, StatSignal::Overrun),
                     traditional);
+        }
+        else {
+            debug() << "cant find" << path;
+        }
 
     }
 

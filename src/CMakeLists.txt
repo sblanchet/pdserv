@@ -63,7 +63,7 @@ ADD_EXECUTABLE (etherlab_buddy
     buddy/Signal.cpp buddy/Signal.h
     buddy/main.cpp
     # buddy/ShmemDataStructures.h
-    # buddy/Task.cpp buddy/Task.h
+    buddy/Task.cpp buddy/Task.h
     buddy/Main.cpp buddy/Main.h
     buddy/Parameter.cpp buddy/Parameter.h
     buddy/SessionShadow.cpp buddy/SessionShadow.h

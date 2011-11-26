@@ -22,58 +22,19 @@
  *
  *****************************************************************************/
 
-#ifndef DEBUG_H
-#define DEBUG_H
+#ifndef BUDDY_TASK_H
+#define BUDDY_TASK_H
 
-#include <cc++/thread.h>
+#include "../Task.h"
 
-#include "config.h"
+class Main;
 
-#ifdef DEBUG
+class Task: public PdServ::Task {
+    public:
+        Task(Main *main, double sampleTime);
 
-#include <iostream>
-
-extern ost::Semaphore debugLock;
-
-namespace {
-
-struct Debug {
-    Debug(const std::string& file, const std::string& func, int line) {
-        //debugLock.wait();
-
-        std::cerr << std::string(file,SRC_PATH_LENGTH)
-            << ':' << func << '(' << line << "):";
-    }
-
-    ~Debug() {
-        std::cerr << std::endl;
-        //debugLock.post();
-    }
-
-    template <class T>
-        const Debug& operator<<(const T& o) const {
-            std::cerr << ' ' << o;
-            return *this;
-        }
+    private:
+        Main * const main;
 };
 
-#define debug() Debug(__BASE_FILE__, __func__, __LINE__)
-}
-
-#else
-
-namespace {
-
-struct Debug {
-    template <class T>
-        const Debug& operator<<(const T&) const {
-            return *this;
-        }
-};
-
-#define debug() Debug()
-}
-
-#endif
-
-#endif // DEBUG_H
+#endif // BUDDY_TASK_H

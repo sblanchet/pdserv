@@ -107,8 +107,6 @@ void Parameter::setXmlAttributes( Session *s, XmlElement *element,
     //            index="30" value="0"/>
 
     setAttributes(element, shortReply);
-//    setVariableAttributes(element, mainParam,
-//            elementIndex, path(), nelem, shortReply);
 
     if (!shortReply) {
         element->setAttribute("flags", flags + (dependent ? 0x100 : 0));

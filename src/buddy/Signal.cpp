@@ -56,14 +56,15 @@ double Signal::poll(const PdServ::Session *,
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::getValue( const PdServ::Session *, void *buf,
+void Signal::getValue( const PdServ::Session *, void *dest,
         size_t start, size_t count, struct timespec *t) const
 {
     const PdServ::Signal *signal = this;
-    debug();
+    char buf[memSize];
+
     main->poll(0, &signal, 1, buf, t);
-//    const PdServ::Signal *s = this;
-//    task->main->poll(0, &s, 1, buf, t);
+    std::copy(buf + start * width, buf + (start + count) * width,
+            reinterpret_cast<char*>(dest));
 }
 
 //////////////////////////////////////////////////////////////////////

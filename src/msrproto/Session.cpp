@@ -197,12 +197,11 @@ void Session::output()
 {
     ssize_t n = send(outbuf.bufptr(), outbuf.size());
 
-    if (n < 0) {
+    if (n < 0 and errno != EAGAIN and errno != EWOULDBLOCK) {
         setDetectOutput(false);
         setDetectPending(false);
         return;
     }
-    debug() << n;
 
     outBytes += n;       // PdServ::Session output byte counter
 
@@ -427,8 +426,12 @@ void Session::readChannel()
         for (VariableDirectory::Channels::const_iterator it = chanList.begin();
                 it != chanList.end(); it++) {
             XmlElement *el = channels.createChild("channel");
+            debug() << (*it)->path();
             (*it)->setXmlAttributes(el, shortReply,
-                    buf + bufOffset[(*it)->signal], 16);
+                    (buf
+                     + bufOffset[(*it)->signal]
+                     + (*it)->elementIndex * (*it)->signal->width),
+                    16);
         }
 
         outbuf << channels << std::flush;
@@ -437,7 +440,7 @@ void Session::readChannel()
 
     // A single signal was requested
     if (c) {
-        char buf[c->signal->memSize];
+        char buf[c->memSize];
 
         c->signal->getValue(this, buf, c->elementIndex, c->nelem);
 
