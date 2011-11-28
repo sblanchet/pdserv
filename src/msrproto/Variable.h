@@ -61,13 +61,10 @@ class Variable {
         const size_t memSize;
 //        const size_t bufferOffset;
 
-        void setAttributes(XmlElement *element, bool shortReply) const;
-        void csvAttribute(XmlElement *element, const char *name,
-                size_t nblocks, const void *data, size_t precision) const;
-        void base64Attribute(XmlElement* element, const char *name,
-                size_t nblocks, const void *data) const;
-        void hexDecAttribute(XmlElement* element, const char *name,
-                size_t nblocks, const void *data) const;
+        void setAttributes(XmlElement &element, bool shortReply) const;
+
+        void toCSV(std::ostream& os,
+                const void *buf, size_t nblocks, size_t precision) const;
 
     private:
         typedef void (*PrintFunc)(std::ostream&,

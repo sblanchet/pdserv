@@ -121,9 +121,6 @@ class Session: public ost::SocketPort, public PdServ::Session {
         bool quiet;
         bool echoOn;
 
-        // <data> tag for the output stream
-        XmlElement dataTag;
-
         // Input and output buffering
         Outbuf outbuf;
         XmlParser inbuf;

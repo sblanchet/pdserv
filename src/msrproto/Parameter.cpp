@@ -93,7 +93,7 @@ void Parameter::addChild(const Parameter *p)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Parameter::setXmlAttributes( Session *s, XmlElement *element,
+void Parameter::setXmlAttributes( Session *s, XmlElement &element,
         bool shortReply, bool hex, bool writeAccess, size_t precision) const
 {
     struct timespec mtime;
@@ -109,20 +109,20 @@ void Parameter::setXmlAttributes( Session *s, XmlElement *element,
     setAttributes(element, shortReply);
 
     if (!shortReply) {
-        element->setAttribute("flags", flags + (dependent ? 0x100 : 0));
+        element.setAttribute("flags", flags + (dependent ? 0x100 : 0));
 
         // persistent=
         if (persistent)
-            element->setAttribute("persistent", persistent);
+            element.setAttribute("persistent", persistent);
     }
 
     // mtime=
-    element->setAttribute("mtime", mtime);
+    element.setAttribute("mtime", mtime);
 
     if (hex)
-        hexDecAttribute(element, "hexvalue", 1, valueBuf);
+        element.hexDecAttribute("hexvalue", valueBuf, memSize);
     else
-        csvAttribute(element, "value", 1, valueBuf, precision);
+        element.csvAttribute("value", this, valueBuf, 1, precision);
 
     return;
 }
@@ -196,15 +196,15 @@ int Parameter::setDoubleValue(const Session *session,
 void Parameter::valueChanged(
         std::ostream& os, size_t start, size_t nelem) const
 {
-    XmlElement pu("pu");
-
-    pu.setAttribute("index", variableIndex);
-    os << pu;
-
-    while (variableIndex + start < children.size() and nelem--) {
-        pu.setAttribute("index", variableIndex + start++);
-        os << pu;
-    }
-
-    os << std::flush;
+//    XmlElement pu("pu");
+//
+//    pu.setAttribute("index", variableIndex);
+//    os << pu;
+//
+//    while (variableIndex + start < children.size() and nelem--) {
+//        pu.setAttribute("index", variableIndex + start++);
+//        os << pu;
+//    }
+//
+//    os << std::flush;
 }

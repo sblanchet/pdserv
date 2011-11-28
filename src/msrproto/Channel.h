@@ -45,7 +45,7 @@ class Channel: public Variable {
                 unsigned int index = ~0U);
         ~Channel();
 
-        void setXmlAttributes(XmlElement*, bool shortReply,
+        void setXmlAttributes(XmlElement&, bool shortReply,
                     const char *signalBuf, size_t precision) const;
 
         const PdServ::Signal *signal;

@@ -26,7 +26,6 @@
 #define SUBSCRIPTION_H
 
 #include <set>
-#include "XmlElement.h"
 
 namespace MsrProto {
 
@@ -39,15 +38,13 @@ class Subscription {
 
         bool sync();
 
-        void newValue(XmlElement *, const void *buf);
+        void newValue(XmlElement &, const void *buf);
 
         void set(bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
 
     private:
         const size_t bufferOffset;
-
-        XmlElement element;
 
         bool _sync;
 

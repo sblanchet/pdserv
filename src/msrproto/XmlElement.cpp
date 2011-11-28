@@ -36,112 +36,66 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 // XmlElement
 /////////////////////////////////////////////////////////////////////////////
-XmlElement::XmlElement(const char *name): name(name)
+XmlElement::XmlElement(const char *name, std::ostream& os):
+    os(os), name(name)
 {
+    os << '<' << name;
+    printed = false;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+XmlElement::XmlElement(const char *name, XmlElement &parent):
+    os(parent.prefix()), name(name)
+{
+    os << '<' << name;
+    printed = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 XmlElement::~XmlElement()
 {
-    // If any children exist, kill them too
-    for (XmlElement::Children::const_iterator it = children.begin();
-            it != children.end(); it++)
-        delete *it;
+    if (printed)
+        os << "</" << name;
+    else
+        os << '/';
+
+    os << ">\r\n" << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-namespace MsrProto {
-    std::ostream& operator<<(std::ostream& os, const XmlElement& el)
-    {
-        el.print(os);
-        return os;
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void XmlElement::print(std::ostream& os, size_t indent) const
+std::ostream& XmlElement::prefix()
 {
-    os << std::string(indent, ' ') << '<' << name;
-    for (XmlElement::AttributeList::const_iterator it = attr.list.begin();
-            it != attr.list.end(); it++)
-        os << ' ' << *it->first << "=\"" << it->second << '"';
-    if (children.empty())
-        os << "/>\r\n";
-    else {
+    if (!printed)
         os << ">\r\n";
-        for (XmlElement::Children::const_iterator it = children.begin();
-                it != children.end(); it++)
-            (*it)->print(os, indent+2);
-        os << std::string(indent, ' ') << "</" << name << ">\r\n";
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-XmlElement* XmlElement::createChild(const char *name)
-{
-    XmlElement *child;
-    children.push_back(child = new XmlElement(name));
-    return child;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void XmlElement::appendChild(XmlElement *child)
-{
-    if (child)
-        children.push_back(child);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void XmlElement::releaseChildren()
-{
-    children.clear();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-bool XmlElement::hasChildren() const
-{
-    return !children.empty();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-std::string& XmlElement::Attributes::operator[](const std::string &attr)
-{
-    AttributeMap::iterator it = find(attr);
-    if (it == end()) {
-        insert(std::make_pair(attr, reinterpret_cast<std::string*>(0)));
-        it = find(attr);
-        list.push_back(std::make_pair(&it->first, std::string()));
-        it->second = &list.back().second;
-    }
-    return *it->second;
+    printed = true;
+    return os;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void XmlElement::setAttribute(const char *a, const std::string &v)
 {
-    attr[a] = v;
+    os << ' ' << a << "=\"" << v << '"';
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void XmlElement::setAttribute(const char *a, const char *v, size_t n)
 {
-    attr[a] = n ? std::string(v,n) : v;
+    setAttribute(a, n ? std::string(v,n) : std::string(v));
 }
 
 
 /////////////////////////////////////////////////////////////////////////////
 void XmlElement::setAttribute(const char *a, const struct timespec &t)
 {
-    std::ostringstream os;
-    os << t.tv_sec << '.' << std::setprecision(6)
-        << std::setw(6) << std::setfill('0') << t.tv_nsec / 1000;
-    attr[a] = os.str();
+    os << ' ' << a << "=\"" << t.tv_sec << '.' << std::setprecision(6)
+        << std::setw(6) << std::setfill('0') << t.tv_nsec / 1000
+        << std::setw(0) << '"';
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void XmlElement::setAttributeCheck(const char *a, const std::string &v)
 {
-    setAttributeCheck(a, v.c_str(), v.size());
+    setAttributeCheck(a, v.data(), v.size());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -151,34 +105,116 @@ void XmlElement::setAttributeCheck(const char *a, const char *v, size_t n)
     const char *escape_end = escape + 5;
     const char *v_end = v + (n ? n : strlen(v));
     const char *p;
-    std::string &s = attr[a];
-    s = std::string();
 
+    os << ' ' << a << "=\"";
     while ((p = std::find_first_of(v, v_end, escape, escape_end)) != v_end) {
-        s += std::string(v, p - v);
+        os << std::string(v, p - v);
         switch (*p) {
             case '<':
-                s += "&lt;";
+                os << "&lt;";
                 break;
 
             case '>':
-                s += "&gt;";
+                os << "&gt;";
                 break;
 
             case '&':
-                s += "&amp;";
+                os << "&amp;";
                 break;
 
             case '"':
-                s += "&quot;";
+                os << "&quot;";
                 break;
 
             case '\'':
-                s += "&apos;";
+                os << "&apos;";
                 break;
         }
 
         v = p + 1;
     }
-    s += std::string(v, v_end - v);
+    os << std::string(v, v_end - v) << '"';
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void XmlElement::csvAttribute(const char *name, const Variable *variable,
+        const void *buf, size_t nblocks, size_t precision)
+{
+    os << ' ' << name << "=\"";
+    variable->toCSV(os, buf, nblocks, precision);
+    os << '"';
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void XmlElement::base64Attribute(const char *name,
+        const void *data, size_t len) const
+{
+     static const char *base64Chr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+         "abcdefghijklmnopqrstuvwxyz0123456789+/";
+     size_t i = 0;
+     size_t rem = len % 3;
+     const unsigned char *buf = reinterpret_cast<const unsigned char*>(data);
+ 
+     // First convert all characters in chunks of 3
+     while (i != len - rem) {
+         os <<  base64Chr[  buf[i  ]         >> 2]
+             << base64Chr[((buf[i  ] & 0x03) << 4) + (buf[i+1] >> 4)]
+             << base64Chr[((buf[i+1] & 0x0f) << 2) + (buf[i+2] >> 6)]
+             << base64Chr[ (buf[i+2] & 0x3f)     ];
+ 
+         i += 3;
+     }
+ 
+     // Convert the remaining 1 or 2 characters
+     switch (rem) {
+         case 2:
+             os <<  base64Chr[  buf[i  ]         >> 2]
+                 << base64Chr[((buf[i  ] & 0x03) << 4) + (buf[i+1] >> 4)]
+                 << base64Chr[ (buf[i+1] & 0x0f) << 2]
+                 << '=';
+             break;
+         case 1:
+             os <<  base64Chr[  buf[i]         >> 2]
+                 << base64Chr[ (buf[i] & 0x03) << 4]
+                 << "==";
+             break;
+     }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void XmlElement::hexDecAttribute( const char *name,
+        const void *data, size_t len) const
+{
+     const unsigned char *buf =
+         reinterpret_cast<const unsigned char*>(data);
+     const char *hexValue[256] = {
+         "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", 
+         "0A", "0B", "0C", "0D", "0E", "0F", "10", "11", "12", "13", 
+         "14", "15", "16", "17", "18", "19", "1A", "1B", "1C", "1D", 
+         "1E", "1F", "20", "21", "22", "23", "24", "25", "26", "27", 
+         "28", "29", "2A", "2B", "2C", "2D", "2E", "2F", "30", "31", 
+         "32", "33", "34", "35", "36", "37", "38", "39", "3A", "3B", 
+         "3C", "3D", "3E", "3F", "40", "41", "42", "43", "44", "45", 
+         "46", "47", "48", "49", "4A", "4B", "4C", "4D", "4E", "4F", 
+         "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", 
+         "5A", "5B", "5C", "5D", "5E", "5F", "60", "61", "62", "63", 
+         "64", "65", "66", "67", "68", "69", "6A", "6B", "6C", "6D", 
+         "6E", "6F", "70", "71", "72", "73", "74", "75", "76", "77", 
+         "78", "79", "7A", "7B", "7C", "7D", "7E", "7F", "80", "81", 
+         "82", "83", "84", "85", "86", "87", "88", "89", "8A", "8B", 
+         "8C", "8D", "8E", "8F", "90", "91", "92", "93", "94", "95", 
+         "96", "97", "98", "99", "9A", "9B", "9C", "9D", "9E", "9F", 
+         "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", 
+         "AA", "AB", "AC", "AD", "AE", "AF", "B0", "B1", "B2", "B3", 
+         "B4", "B5", "B6", "B7", "B8", "B9", "BA", "BB", "BC", "BD", 
+         "BE", "BF", "C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", 
+         "C8", "C9", "CA", "CB", "CC", "CD", "CE", "CF", "D0", "D1", 
+         "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "DA", "DB", 
+         "DC", "DD", "DE", "DF", "E0", "E1", "E2", "E3", "E4", "E5", 
+         "E6", "E7", "E8", "E9", "EA", "EB", "EC", "ED", "EE", "EF", 
+         "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", 
+         "FA", "FB", "FC", "FD", "FE", "FF"};
+ 
+     while (len--)
+         os << hexValue[*buf++];
 }

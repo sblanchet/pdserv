@@ -44,25 +44,15 @@ class Variable;
 
 class XmlElement {
     public:
-        XmlElement(const char *name);
+        //XmlElement(const char *name);
+        XmlElement(const char *name, std::ostream &os);
+        XmlElement(const char *name, XmlElement &parent);
 
         /** Destructor.
          * Children are destroyed if they were not released beforehand */
         ~XmlElement();
 
-        /** Create an element child */
-        XmlElement* createChild(const char *name);
-
-        /** Append a child to the current element */
-        void appendChild(XmlElement *);
-
-        /** Release children.
-         * The children will then not be destroyed when the parent is killed
-         */
-        void releaseChildren();
-
-        /** Return true if the node has children */
-        bool hasChildren() const;
+        std::ostream& prefix();
 
         /** Set string attribute, checking for characters that need to be
          * escaped */
@@ -77,41 +67,43 @@ class XmlElement {
         /** Various variations of numerical attributes */
         void setAttribute(const char *name, const struct timespec&);
         template<class T>
-            void setAttribute(const char *name, const T& value,
-                    std::ios::fmtflags flags = std::ios::dec);
+            void setAttribute(const char *name, const T& value);
+
+        void csvAttribute(const char *name, const Variable *variable,
+                const void *buf, size_t nblocks, size_t precision);
+        void base64Attribute(const char *name,
+                const void *data, size_t len) const;
+        void hexDecAttribute(const char *name,
+                const void *data, size_t len) const;
 
         /** Printing functions */
-        void print(std::ostream& os, size_t indent = 0) const;
-        friend std::ostream& operator<<(std::ostream& os, const XmlElement& el);
+//        void print(std::ostream& os, size_t indent = 0) const;
+//        friend std::ostream& operator<<(std::ostream& os, const XmlElement& el);
 
 
     private:
+        std::ostream& os;
+
         const std::string name;
+        bool printed;
 
-        typedef std::pair<const std::string *, std::string> AttributePair;
-        typedef std::list<AttributePair> AttributeList;
-        typedef std::map<std::string, std::string *> AttributeMap;
-        struct Attributes: private AttributeMap {
-            std::string& operator[](const std::string& attr);
-            AttributeList list;
-        };
-        Attributes attr;
-
-        typedef std::list<XmlElement*> Children;
-        Children children;
+//        typedef std::pair<const std::string *, std::string> AttributePair;
+//        typedef std::list<AttributePair> AttributeList;
+//        typedef std::map<std::string, std::string *> AttributeMap;
+//        struct Attributes: private AttributeMap {
+//            std::string& operator[](const std::string& attr);
+//            AttributeList list;
+//        };
+//        Attributes attr;
+//
+//        typedef std::list<XmlElement*> Children;
+//        Children children;
 };
 
 template <class T>
-    void XmlElement::setAttribute(const char *name, const T& value,
-            std::ios::fmtflags flags)
+    void XmlElement::setAttribute(const char *name, const T& value)
     {
-        std::ostringstream os;
-        os.imbue(std::locale::classic());
-        os.setf(flags, std::ios_base::basefield);
-        os.setf(flags);
-
-        os << value;
-        setAttribute(name, os.str());
+        os << ' ' << name << "=\"" << value << '"';
     }
 }
 

@@ -52,7 +52,7 @@ class SubscriptionManager {
                 bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
         bool newSignalList( const PdServ::Signal * const *, size_t n);
-        void newSignalData(XmlElement *parent,
+        void newSignalData(XmlElement &parent,
                 const PdServ::SessionTaskData *);
 
         void sync();
@@ -64,7 +64,7 @@ class SubscriptionManager {
             public std::map<const Channel*, Subscription*> {
                 ~SignalSubscription();
 
-                void newSignalData(XmlElement *parent, const void *);
+                void newSignalData(XmlElement &parent, const void *);
                 void clear();
                 bool sync();
             };

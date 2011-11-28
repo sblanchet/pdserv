@@ -141,9 +141,6 @@ void Server::run()
 /////////////////////////////////////////////////////////////////////////////
 void Server::broadcast(Session *s, const XmlElement &element)
 {
-    struct timespec ts;
-    main->gettime(&ts);
-
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)

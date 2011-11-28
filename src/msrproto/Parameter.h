@@ -47,7 +47,7 @@ class Parameter: public Variable {
                 unsigned int elementIndex = ~0U);
         ~Parameter();
 
-        void setXmlAttributes(Session *, XmlElement*, bool shortReply,
+        void setXmlAttributes(Session *, XmlElement&, bool shortReply,
                     bool hex, bool writeAccess, size_t precision) const;
         void getValue(const Session *, char *) const;
         int setHexValue(const Session *,

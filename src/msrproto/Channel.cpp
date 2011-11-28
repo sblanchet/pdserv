@@ -49,7 +49,7 @@ Channel::~Channel()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Channel::setXmlAttributes( XmlElement *element,
+void Channel::setXmlAttributes( XmlElement &element,
         bool shortReply, const char *data, size_t precision) const
 {
     // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
@@ -63,15 +63,13 @@ void Channel::setXmlAttributes( XmlElement *element,
     size_t bufsize = 10 * std::max( 1U, (unsigned int)(freq + 0.5));
 
     setAttributes(element, shortReply);
-//    setVariableAttributes( element, signal,
-//            elementIndex, directory->path(), nelem, shortReply);
 
     if (shortReply)
         return;
 
     // bufsize=
-    element->setAttribute("bufsize", bufsize);
-    element->setAttribute("HZ", freq);
+    element.setAttribute("bufsize", bufsize);
+    element.setAttribute("HZ", freq);
 
-    csvAttribute(element, "value", 1, data, precision);
+    element.csvAttribute("value", this, data, 1, precision);
 }

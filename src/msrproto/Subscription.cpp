@@ -36,10 +36,8 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 Subscription::Subscription(const Channel* channel):
     channel(channel),
-    bufferOffset(channel->elementIndex * channel->signal->width),
-    element("F")
+    bufferOffset(channel->elementIndex * channel->signal->width)
 {
-    element.setAttribute("c", channel->variableIndex);
     data_bptr = 0;
 }
 
@@ -79,7 +77,7 @@ void Subscription::set( bool _event, bool sync, unsigned int _decimation,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Subscription::newValue(XmlElement *parent, const void *dataBuf)
+void Subscription::newValue(XmlElement &parent, const void *dataBuf)
 {
     const char *buf = reinterpret_cast<const char *>(dataBuf) + bufferOffset;
     if (trigger and trigger--)
@@ -104,12 +102,13 @@ void Subscription::newValue(XmlElement *parent, const void *dataBuf)
     }
 
     if (nblocks) {
-        if (base64)
-            channel->base64Attribute(&element, "d", nblocks, data_bptr);
-        else
-            channel->csvAttribute(&element, "d", nblocks, data_bptr, precision);
+        XmlElement datum("F", parent);
+        datum.setAttribute("c", channel->variableIndex);
 
-        parent->appendChild(&element);
+        if (base64)
+            datum.base64Attribute("d", data_bptr, nblocks * channel->memSize);
+        else
+            datum.csvAttribute("d", channel, data_bptr, nblocks, precision);
     }
 }
 
