@@ -205,18 +205,9 @@ DirectoryNode* DirectoryNode::getRoot()
 /////////////////////////////////////////////////////////////////////////////
 std::string DirectoryNode::path() const
 {
-    std::stack<const std::string*> pathStack;
-
-    for (const DirectoryNode *node = this;
-            node != node->parent; node = node->parent)
-        pathStack.push(&node->name);
-
-    std::string p;
-    while (!pathStack.empty()) {
-        p.append(1,'/').append(*pathStack.top());
-        pathStack.pop();
-    }
-    return p;
+    return this == parent
+        ? std::string()
+        : parent->path().append(1,'/').append(name);
 }
 
 /////////////////////////////////////////////////////////////////////////////
