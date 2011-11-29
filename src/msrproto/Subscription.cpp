@@ -27,6 +27,7 @@
 #include "Channel.h"
 #include "SubscriptionManager.h"
 #include "Subscription.h"
+#include "Session.h"
 
 #include <cstdio> // snprintf
 
@@ -76,13 +77,13 @@ void Subscription::set( bool _event, bool sync, unsigned int _decimation,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Subscription::newValue(XmlElement &parent, const void *dataBuf)
+void Subscription::newValue( PrintQ &printQ, const void *dataBuf)
 {
     const char *buf = reinterpret_cast<const char *>(dataBuf) + bufferOffset;
     if (trigger and trigger--)
         return;
 
-    size_t nblocks = 0;
+    nblocks = 0;
     if (!event or !std::equal(data_bptr, data_eptr, buf)) {
         trigger = decimation;
 
@@ -100,15 +101,20 @@ void Subscription::newValue(XmlElement &parent, const void *dataBuf)
         }
     }
 
-    if (nblocks) {
-        XmlElement datum("F", parent);
-        datum.setAttribute("c", channel->variableIndex);
+    if (nblocks)
+        printQ.push(this);
+}
 
-        if (base64)
-            datum.base64Attribute("d", data_bptr, nblocks * channel->memSize);
-        else
-            datum.csvAttribute("d", channel, data_bptr, nblocks, precision);
-    }
+/////////////////////////////////////////////////////////////////////////////
+void Subscription::print(XmlElement &parent) const
+{
+    XmlElement datum("F", parent);
+    datum.setAttribute("c", channel->variableIndex);
+
+    if (base64)
+        datum.base64Attribute("d", data_bptr, nblocks * channel->memSize);
+    else
+        datum.csvAttribute("d", channel, data_bptr, nblocks, precision);
 }
 
 /////////////////////////////////////////////////////////////////////////////

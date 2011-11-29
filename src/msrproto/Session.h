@@ -56,6 +56,7 @@
 
 #include <cc++/socketport.h> 
 #include <map>
+#include <queue>
 
 namespace PdServ {
     class Parameter;
@@ -71,6 +72,10 @@ class TaskStatistics;
 class SessionStatistics;
 class Server;
 class XmlElement;
+class Subscription;
+
+class PrintQ: public std::queue<const Subscription*> {
+};
 
 class Session: public ost::SocketPort, public PdServ::Session {
     public:
@@ -114,7 +119,8 @@ class Session: public ost::SocketPort, public PdServ::Session {
         // Reimplemented from PdServ::Session
         void newSignalList(const PdServ::Task *task,
                 const PdServ::Signal * const *, size_t n);
-        void newSignalData(const PdServ::SessionTaskData*);
+        void newSignalData(const PdServ::SessionTaskData*,
+                const PdServ::TaskStatistics *stats);
 
         // Management variables
         bool writeAccess;

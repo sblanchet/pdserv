@@ -38,10 +38,6 @@ class SessionTaskData {
 
         const Session * const session;
         const Task * const task;
-        const TaskStatistics *taskStatistics;
-
-    protected:
-//        const struct timespec *time;
 
     private:
 };

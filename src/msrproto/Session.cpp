@@ -43,6 +43,7 @@
 #include "Directory.h"
 #include "SubscriptionManager.h"
 #include "TaskStatistics.h"
+#include "Subscription.h"
 
 using namespace MsrProto;
 
@@ -236,18 +237,27 @@ void Session::updateStatistics(
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalData(const PdServ::SessionTaskData *std)
+void Session::newSignalData(const PdServ::SessionTaskData *std,
+        const PdServ::TaskStatistics *stats)
 {
-    updateStatistics(std->task, std->taskStatistics);
+    updateStatistics(std->task, stats);
 
     if (quiet)
         return;
 
-    XmlElement dataTag("data", outbuf);
-    dataTag.setAttribute("level", std->task->sampleTime);
-    dataTag.setAttribute("time", std->taskStatistics->time);
+    PrintQ printQueue;
+    subscriptionManager[std->task]->newSignalData(printQueue, std);
 
-    subscriptionManager[std->task]->newSignalData(dataTag, std);
+    if (!printQueue.empty()) {
+        XmlElement dataTag("data", outbuf);
+        dataTag.setAttribute("level", 0);
+        dataTag.setAttribute("time", stats->time);
+
+        while (!printQueue.empty()) {
+            printQueue.front()->print(dataTag);
+            printQueue.pop();
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////

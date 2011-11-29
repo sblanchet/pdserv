@@ -37,6 +37,7 @@ class Main;
 class SessionTaskData;
 class SessionShadow;
 class SessionStatistics;
+class TaskStatistics;
 
 class Session {
     public:
@@ -48,7 +49,8 @@ class Session {
         // These methods are called from within the context of rxPdo
         virtual void newSignalList(const Task *,
                 const Signal * const *, size_t n) = 0;
-        virtual void newSignalData(const SessionTaskData*) = 0;
+        virtual void newSignalData(const SessionTaskData*,
+                const PdServ::TaskStatistics *stats)  = 0;
 
         const Main * const main;
 

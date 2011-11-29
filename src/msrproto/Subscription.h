@@ -29,6 +29,8 @@
 
 namespace MsrProto {
 
+class PrintQ;
+
 class Subscription {
     public:
         Subscription(const Channel *);
@@ -38,7 +40,8 @@ class Subscription {
 
         bool sync();
 
-        void newValue(XmlElement &, const void *buf);
+        void newValue(PrintQ &, const void *buf);
+        void print(XmlElement &parent) const;
 
         void set(bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
@@ -52,6 +55,7 @@ class Subscription {
         unsigned int decimation;
         unsigned int trigger;
         size_t blocksize;
+        size_t nblocks;         // number of blocks to print
 
         size_t precision;
         bool base64;

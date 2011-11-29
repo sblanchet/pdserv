@@ -194,8 +194,7 @@ void Task::getSignalList(const Signal **signalList, size_t *nelem,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::initSession(unsigned int signalListId, struct Pdo **pdoPtr,
-        const PdServ::TaskStatistics **taskStatistics) const
+void Task::initSession(unsigned int signalListId, struct Pdo **pdoPtr) const
 {
     struct Pdo *pdo = txMemBegin;
     while (!(!pdo->next and pdo->type == Pdo::Data
@@ -211,7 +210,6 @@ void Task::initSession(unsigned int signalListId, struct Pdo **pdoPtr,
     }
 
     *pdoPtr = pdo;
-    *taskStatistics = &pdo->taskStatistics;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -292,6 +290,12 @@ bool Task::pollFinished( const PdServ::Signal * const *s, size_t nelem,
         *t = poll->time;
 
     return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const PdServ::TaskStatistics* Task::getTaskStatistics( const struct Pdo *pdo)
+{
+    return &pdo->taskStatistics;
 }
 
 /////////////////////////////////////////////////////////////////////////////

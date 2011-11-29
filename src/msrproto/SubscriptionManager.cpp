@@ -114,14 +114,14 @@ bool SubscriptionManager::newSignalList(
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::newSignalData(XmlElement &parent,
-        const PdServ::SessionTaskData *std)
+void SubscriptionManager::newSignalData(
+        PrintQ &printQ, const PdServ::SessionTaskData *std)
 {
 //    cout << __func__ << receiver.seqNo << endl;
     for (ActiveSignalSet::const_iterator sit = activeSignalSet.begin();
             sit != activeSignalSet.end(); sit++) {
         signalSubscriptionMap[*sit].newSignalData(
-                parent, (*sit)->getValue(std));
+                printQ, (*sit)->getValue(std));
     }
 }
 
@@ -146,10 +146,10 @@ SubscriptionManager::SignalSubscription::~SignalSubscription()
 
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::SignalSubscription::newSignalData(
-        XmlElement &parent, const void *data)
+        PrintQ &printQ, const void *data)
 {
     for (const_iterator it = begin(); data and it != end(); it++) {
-        it->second->newValue(parent, data);
+        it->second->newValue(printQ, data);
     }
 }
 

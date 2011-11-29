@@ -50,6 +50,7 @@ class SessionTaskData: public PdServ::SessionTaskData {
                 const PdServ::TaskStatistics *stats,
                 const char *buf, unsigned int buflen);
         const char *getValue(const PdServ::Signal *) const;
+        const PdServ::TaskStatistics* getTaskStatistics() const;
 
     private:
         Task * const task;

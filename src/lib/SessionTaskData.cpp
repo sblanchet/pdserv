@@ -40,7 +40,7 @@ SessionTaskData::SessionTaskData( PdServ::Session* s, Task* t):
     task->getSignalList(signals, &nelem, &signalListId);
     loadSignalList(signals, nelem, signalListId);
 
-    task->initSession(signalListId, &pdo, &taskStatistics);
+    task->initSession(signalListId, &pdo);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -89,10 +89,9 @@ void SessionTaskData::newSignalData( unsigned int id,
 //    cout << ' ' << pdoError << endl;
 
     signalBuffer = buf;
-    taskStatistics = stats;
 
     if (!pdoError)
-        session->newSignalData(this);
+        session->newSignalData(this, stats);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -106,4 +105,10 @@ const char *SessionTaskData::getValue(const PdServ::Signal *s) const
 //    return 0;
     return (pdoError or n + signal->memSize > pdoSize)
         ? 0 : signalBuffer + n;
+}
+
+////////////////////////////////////////////////////////////////////////////
+const PdServ::TaskStatistics* SessionTaskData::getTaskStatistics() const
+{
+    return Task::getTaskStatistics(pdo);
 }

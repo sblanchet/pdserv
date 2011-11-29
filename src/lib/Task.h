@@ -71,9 +71,10 @@ class Task: public PdServ::Task {
         size_t signalCount() const;
         void getSignalList(const Signal **s, size_t *n,
                 unsigned int *signalListId) const;
-        void initSession(unsigned int signalListId, struct Pdo **,
-                const PdServ::TaskStatistics **taskStatistics) const;
+        void initSession(unsigned int signalListId, struct Pdo **) const;
 
+        static const PdServ::TaskStatistics* getTaskStatistics(
+                const struct Pdo *);
     private:
         mutable ost::Semaphore mutex;
 

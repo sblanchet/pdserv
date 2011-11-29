@@ -39,6 +39,7 @@ namespace MsrProto {
 class Channel;
 class Subscription;
 class Session;
+class PrintQ;
 class XmlElement;
 
 class SubscriptionManager {
@@ -52,7 +53,7 @@ class SubscriptionManager {
                 bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
         bool newSignalList( const PdServ::Signal * const *, size_t n);
-        void newSignalData(XmlElement &parent,
+        void newSignalData( PrintQ &printQ,
                 const PdServ::SessionTaskData *);
 
         void sync();
@@ -64,7 +65,7 @@ class SubscriptionManager {
             public std::map<const Channel*, Subscription*> {
                 ~SignalSubscription();
 
-                void newSignalData(XmlElement &parent, const void *);
+                void newSignalData( PrintQ &printQ, const void *);
                 void clear();
                 bool sync();
             };
