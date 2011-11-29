@@ -23,7 +23,6 @@
  *****************************************************************************/
 
 #include "../Signal.h"
-#include "../Receiver.h"
 #include "XmlElement.h"
 #include "Channel.h"
 #include "SubscriptionManager.h"

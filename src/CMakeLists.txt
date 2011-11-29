@@ -1,6 +1,6 @@
 #############################################################################
 #
-#  $Id: CMakeLists.txt,v ca2d0581b018 2011/11/18 21:54:07 lerichi $
+#  $Id$
 #
 #  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
 #
@@ -58,6 +58,12 @@ SET (main_src
     SessionTaskData.cpp SessionTaskData.h
     )
 
+# Search for files required by buddy.
+FIND_FILE (ETL_DATA "etl_data_info.h")
+FIND_FILE (BUDDY_IOCTL "fio_ioctl.h")
+#MESSAGE("ETL_DATA=${ETL_DATA} BUDDY_IOCTL=${BUDDY_IOCTL}")
+
+IF (ETL_DATA AND BUDDY_IOCTL)
 ADD_EXECUTABLE (etherlab_buddy
     buddy/SignalInfo.cpp buddy/SignalInfo.h
     buddy/Signal.cpp buddy/Signal.h
@@ -69,10 +75,14 @@ ADD_EXECUTABLE (etherlab_buddy
     buddy/SessionShadow.cpp buddy/SessionShadow.h
     # buddy/SessionTaskData.cpp buddy/SessionTaskData.h
 
+    "${ETL_DATA}" "${BUDDY_IOCTL}"
+
     ${msrproto_src}
     ${main_src}
     )
 TARGET_LINK_LIBRARIES(etherlab_buddy ${LIBCCEXT2_LIBRARIES})
+INSTALL (TARGETS etherlab_buddy DESTINATION "${ABS_EXECDIR}" RUNTIME)
+ENDIF ()
 
 ADD_LIBRARY( ${PROJECT_NAME} SHARED
     lib/interface.cpp
@@ -95,8 +105,10 @@ SET_TARGET_PROPERTIES ( ${PROJECT_NAME} PROPERTIES
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBCCEXT2_LIBRARIES})
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION "${ABS_LIBDIR}" LIBRARY)
 
+# pkgconfig files
 CONFIGURE_FILE (
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/libpdserv.pc.in"
     "${CMAKE_CURRENT_BINARY_DIR}/libpdserv.pc" @ONLY
     )
-INSTALL (FILES "${CMAKE_CURRENT_BINARY_DIR}/libpdserv.pc" DESTINATION "${ABS_LIBDIR}/pkgconfig")
+INSTALL (FILES "${CMAKE_CURRENT_BINARY_DIR}/libpdserv.pc"
+    DESTINATION "${ABS_LIBDIR}/pkgconfig")

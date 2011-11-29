@@ -48,28 +48,29 @@ SET (VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL})
 #SET (${PROJECT_NAME}_SOVERSION "SOVERSION")
 #    ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL})
 
-
 # Project path options
 IF (NOT PREFIX)         # Project root
     SET (PREFIX "/opt/etherlab")
 ENDIF ()
 
-SET(CMAKE_INSTALL_PREFIX ${PREFIX})
+SET (CMAKE_INSTALL_PREFIX "${PREFIX}")
+LIST (APPEND CMAKE_PREFIX_PATH "${PREFIX}")
 
 IF (SYSCONFDIR)         # configuration files
     SET (ABS_SYSCONFDIR "${SYSCONFDIR}")
     SET (PC_SYSCONFDIR "${SYSCONFDIR}")
 ELSE ()
     SET (ABS_SYSCONFDIR ${PREFIX}/etc)
-    SET (PC_SYSCONFDIR "\${PREFIX}/etc")
+    SET (PC_SYSCONFDIR "\${prefix}/etc")
 ENDIF ()
 
 IF (INCLUDEDIR)         # include files
     SET (ABS_INCLUDEDIR "${INCLUDEDIR}")
     SET (PC_INCLUDEDIR "${INCLUDEDIR}")
+    LIST (APPEND CMAKE_INCLUDE_PATH "${INCLUDEDIR}")
 ELSE ()
     SET (ABS_INCLUDEDIR ${PREFIX}/include)
-    SET (PC_INCLUDEDIR "\${PREFIX}/include")
+    SET (PC_INCLUDEDIR "\${prefix}/include")
 ENDIF ()
 
 IF (EXECDIR)            # executables
@@ -77,7 +78,7 @@ IF (EXECDIR)            # executables
     SET (PC_EXECDIR "${EXECDIR}")
 ELSE ()
     SET (ABS_EXECDIR ${PREFIX}/bin)
-    SET (PC_EXECDIR "\${PREFIX}/bin")
+    SET (PC_EXECDIR "\${prefix}/bin")
 ENDIF ()
 
 IF (LIBDIR)             # libraries
@@ -85,7 +86,7 @@ IF (LIBDIR)             # libraries
     SET (PC_LIBDIR "${LIBDIR}")
 ELSE ()
     SET (ABS_LIBDIR ${PREFIX}/lib)
-    SET (PC_LIBDIR "\${PREFIX}/lib")
+    SET (PC_LIBDIR "\${prefix}/lib")
 ENDIF ()
 
 # Make sure that the project options are remembered
@@ -103,7 +104,6 @@ SET (LIBDIR "${LIBDIR}" CACHE PATH
 ENABLE_TESTING()
 
 INCLUDE (InstallRequiredSystemLibraries)
-
 
 SET (CPACK_PACKAGE_DESCRIPTION_SUMMARY "Process data communications library")
 SET (CPACK_PACKAGE_VENDOR "Richard Hacker")
@@ -145,10 +145,9 @@ INCLUDE_DIRECTORIES("${ABS_INCLUDEDIR}" "${PROJECT_SOURCE_DIR}/include")
 ADD_SUBDIRECTORY (src)
 ADD_SUBDIRECTORY (test)
 
-INSTALL (DIRECTORY include
+INSTALL (DIRECTORY include/
     DESTINATION "${ABS_INCLUDEDIR}"
-    PATTERN "*~" EXCLUDE
-    PATTERN "*.orig" EXCLUDE)
+    FILES_MATCHING PATTERN "*.h")
 
 OPTION ( DEBUG "Debugging output" OFF )
 
