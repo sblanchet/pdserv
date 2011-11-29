@@ -25,7 +25,7 @@
 #ifndef TASK_H
 #define TASK_H
 
-#include <set>
+#include <list>
 
 namespace PdServ {
 
@@ -38,7 +38,7 @@ class Task {
 
         const double sampleTime;
 
-        typedef std::set<Signal*> Signals;
+        typedef std::list<const Signal*> Signals;
         const Signals& getSignals() const;
 
     protected:

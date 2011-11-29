@@ -63,8 +63,8 @@ class Main {
         const Task *getTask(unsigned int n) const;
         const Task *getTask(double sampleTime) const;
 
-        typedef std::list<const Signal*> Signals;
-        const Signals& getSignals() const;
+        //typedef std::list<const Signal*> Signals;
+        //const Signals& getSignals() const;
 
         typedef std::list<const Parameter*> Parameters;
         const Parameters& getParameters() const;
@@ -87,7 +87,6 @@ class Main {
         typedef std::vector<Task*> TaskList;
         TaskList task;
         Parameters parameters;
-        Signals signals;
 
         void startServers();
 

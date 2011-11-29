@@ -23,9 +23,18 @@
  *****************************************************************************/
 
 #include "Task.h"
+#include "Signal.h"
 
 //////////////////////////////////////////////////////////////////////
 Task::Task( Main *main, double sampleTime):
     PdServ::Task(sampleTime), main(main)
 {
+}
+
+//////////////////////////////////////////////////////////////////////
+const PdServ::Signal *Task::addSignal(const SignalInfo& si)
+{
+    Signal *s = new Signal(main, sampleTime, si);
+    signals.push_back(s);
+    return s;
 }

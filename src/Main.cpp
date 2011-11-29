@@ -106,12 +106,6 @@ const Task* Main::getTask(double sampleTime) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const Main::Signals& Main::getSignals() const
-{
-    return signals;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 const Main::Parameters& Main::getParameters() const
 {
     return parameters;
