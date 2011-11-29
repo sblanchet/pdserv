@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id: Signal.cpp,v ca2d0581b018 2011/11/18 21:54:07 lerichi $
+ *  $Id$
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *

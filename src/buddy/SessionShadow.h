@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id: SessionShadow.h,v 26930f4ff1e7 2011/11/18 17:44:41 lerichi $
+ *  $Id$
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *

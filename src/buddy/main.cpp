@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id: interface.cpp,v e5a3be5ee8cb 2011/11/09 20:15:56 lerichi $
+ *  $Id$
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *

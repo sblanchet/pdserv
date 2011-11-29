@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id: Parameter.h,v d6df6a2df011 2011/11/10 13:11:37 lerichi $
+ *  $Id$
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
