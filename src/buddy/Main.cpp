@@ -71,6 +71,9 @@ Main::Main(int argc, const char **argv,
     if (ioctl(fd, GET_APP_PROPERTIES, &app_properties))
         goto out;
 
+    name = app_properties.name;
+    version = app_properties.version;
+
     // Get a copy of the parameters
     parameterBuf = new char[app_properties.rtP_size];
     if (ioctl(fd, GET_PARAM, parameterBuf))

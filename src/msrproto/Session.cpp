@@ -85,8 +85,8 @@ Session::Session( Server *s, ost::SocketService *ss,
 
     // Greet the new client
     XmlElement greeting("connected", outbuf);
-    greeting.setAttribute("name", main->name);
-    greeting.setAttribute("version", main->version);
+    greeting.setAttribute("name", main->getName());
+    greeting.setAttribute("version", main->getVersion());
     greeting.setAttribute("host", hostname);
     greeting.setAttribute("version", MSR_VERSION);
     greeting.setAttribute("features", MSR_FEATURES);

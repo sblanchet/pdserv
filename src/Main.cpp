@@ -37,7 +37,7 @@ using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
 Main::Main(int argc, const char *argv[], const char *name, const char *version):
-    name(name), version(version), argc(argc), argv(argv), mutex(1)
+    argc(argc), argv(argv), name(name), version(version), mutex(1)
 {
     msrproto = 0;
 }
@@ -60,6 +60,18 @@ const Variable *Main::findVariable(const std::string& path) const
     VariableMap::const_iterator it = variableMap.find(path);
 
     return it == variableMap.end() ? 0 : it->second;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const std::string& Main::getName() const
+{
+    return name;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const std::string& Main::getVersion() const
+{
+    return version;
 }
 
 /////////////////////////////////////////////////////////////////////////////

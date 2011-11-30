@@ -54,8 +54,8 @@ class Main {
                 const char *name, const char *version);
         virtual ~Main();
 
-        const std::string name;
-        const std::string version;
+        const std::string& getName() const;
+        const std::string& getVersion() const;
 
         virtual int gettime(struct timespec *) const = 0;
 
@@ -83,6 +83,9 @@ class Main {
     protected:
         int argc;
         const char **argv;
+
+        std::string name;
+        std::string version;
 
         typedef std::vector<Task*> TaskList;
         TaskList task;
