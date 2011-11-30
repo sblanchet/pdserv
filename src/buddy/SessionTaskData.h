@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id: SessionTaskData.h,v 9f4abd086e58 2011/11/15 08:52:58 lerichi $
+ *  $Id$
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
