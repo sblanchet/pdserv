@@ -54,6 +54,13 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
+template<class T>
+void Parameter::setTo(char *&dst, double src) {
+    *reinterpret_cast<T*>(dst) = src;
+    dst += sizeof(T);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 Parameter::Parameter( const DirectoryNode *directory,
         unsigned int variableIndex, const PdServ::Parameter *p,
         unsigned int elementIndex):

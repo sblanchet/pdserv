@@ -70,10 +70,7 @@ class Parameter: public Variable {
         void (*append)(char *&, double);
 
         template<class T>
-            static void setTo(char *&dst, double src) {
-                *reinterpret_cast<T*>(dst) = src;
-                dst += sizeof(T);
-            }
+            static void setTo(char *&dst, double src);
 };
 
 }
