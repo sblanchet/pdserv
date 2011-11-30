@@ -58,29 +58,58 @@ SET (main_src
     SessionTaskData.cpp SessionTaskData.h
     )
 
+# # Search for files required by buddy.
+# SET (CMAKE_REQUIRED_INCLUDES ${ABS_INCLUDEDIR})
+# INCLUDE( CheckIncludeFile )
+# CHECK_INCLUDE_FILE(etl_data_info.h ETL_DATA)
+# CHECK_INCLUDE_FILE(fio_ioctl.h BUDDY_IOCTL)
+
 # Search for files required by buddy.
 FIND_FILE (ETL_DATA "etl_data_info.h")
 FIND_FILE (BUDDY_IOCTL "fio_ioctl.h")
+
 #MESSAGE("ETL_DATA=${ETL_DATA} BUDDY_IOCTL=${BUDDY_IOCTL}")
 
 IF (ETL_DATA AND BUDDY_IOCTL)
-ADD_EXECUTABLE (etherlab_buddy
-    buddy/SignalInfo.cpp buddy/SignalInfo.h
-    buddy/Signal.cpp buddy/Signal.h
-    buddy/main.cpp
-    buddy/Task.cpp buddy/Task.h
-    buddy/Main.cpp buddy/Main.h
-    buddy/Parameter.cpp buddy/Parameter.h
-    buddy/SessionShadow.cpp buddy/SessionShadow.h
-    buddy/SessionTaskData.cpp buddy/SessionTaskData.h
 
-    "${ETL_DATA}" "${BUDDY_IOCTL}"
+    SET (TESTFILE "${CMAKE_CURRENT_BINARY_DIR}/test_taskstat.c")
+    FILE (WRITE "${TESTFILE}"
+        "#include <app_taskstats.h>
+        main() {
+        struct task_stats ts;
+        struct timespec tv = ts.time;
+        }
+        ")
 
-    ${msrproto_src}
-    ${main_src}
-    )
-TARGET_LINK_LIBRARIES(etherlab_buddy ${LIBCCEXT2_LIBRARIES})
-INSTALL (TARGETS etherlab_buddy DESTINATION "${ABS_EXECDIR}" RUNTIME)
+    TRY_COMPILE (TIMESPEC "${CMAKE_CURRENT_BINARY_DIR}" "${TESTFILE}"
+        CMAKE_FLAGS "-DINCLUDE_DIRECTORIES=${ABS_INCLUDEDIR}")
+
+    IF (TIMESPEC)
+        set_source_files_properties (buddy/SessionTaskData.cpp
+            PROPERTIES COMPILE_DEFINITIONS TIMESPEC)
+    ENDIF()
+
+    #MESSAGE("TIME=${TIMESPEC} ${TS}")
+
+    ADD_EXECUTABLE (etherlab_buddy
+        buddy/SignalInfo.cpp buddy/SignalInfo.h
+        buddy/Signal.cpp buddy/Signal.h
+        buddy/main.cpp
+        buddy/Task.cpp buddy/Task.h
+        buddy/Main.cpp buddy/Main.h
+        buddy/Parameter.cpp buddy/Parameter.h
+        buddy/SessionShadow.cpp buddy/SessionShadow.h
+        buddy/SessionTaskData.cpp buddy/SessionTaskData.h
+
+        "${ETL_DATA}" "${BUDDY_IOCTL}"
+
+        ${msrproto_src}
+        ${main_src}
+        )
+
+    TARGET_LINK_LIBRARIES(etherlab_buddy ${LIBCCEXT2_LIBRARIES})
+    INSTALL (TARGETS etherlab_buddy DESTINATION "${ABS_EXECDIR}" RUNTIME)
+
 ENDIF ()
 
 ADD_LIBRARY( ${PROJECT_NAME} SHARED
