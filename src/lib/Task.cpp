@@ -167,7 +167,7 @@ Signal* Task::addSignal( unsigned int decimation,
     Signal *s = new Signal(this, signals.size(),
             decimation, path, datatype, addr, n, dim);
 
-    signals.insert(s);
+    signals.push_back(s);
     signalTypeCount[s->dataTypeIndex[s->width]]++;
     signalMemSize += s->memSize;
 

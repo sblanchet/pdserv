@@ -48,17 +48,17 @@ Server::Server(const PdServ::Main *main, int argc, const char **argv):
 
     root = new VariableDirectory;
 
-    const PdServ::Main::Signals& mainSignals = main->getSignals();
-    for (PdServ::Main::Signals::const_iterator it = mainSignals.begin();
-            it != mainSignals.end(); it++) {
-
-        root->insert(*it, traditional);
-    }
-
     const PdServ::Task *primaryTask;
     TimeSignal *primaryTaskTimeSignal = 0;
     for (unsigned int i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
+
+        const PdServ::Task::Signals& signals = task->getSignals();
+        for (PdServ::Task::Signals::const_iterator it = signals.begin();
+                it != signals.end(); it++) {
+
+            root->insert(*it, traditional);
+        }
 
         std::ostringstream prefix;
         prefix << "/Taskinfo/" << i << '/';

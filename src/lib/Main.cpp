@@ -118,7 +118,6 @@ Signal* Main::addSignal( Task *task, unsigned int decimation,
     Signal *s = task->addSignal(decimation, path, datatype, addr, n, dim);
 
     variableMap[path] = s;
-    signals.push_back(s);
 
     return s;
 }

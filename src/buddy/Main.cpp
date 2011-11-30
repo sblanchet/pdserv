@@ -93,7 +93,7 @@ Main::Main(int argc, const char **argv,
     }
     debug() << app_properties.param_count << "parameters";
 
-    mainTask = new Task(this, 1.0e-9 * app_properties.sample_period);
+    mainTask = new Task(this, 1.0e-6 * app_properties.sample_period);
     task.push_back(mainTask);
     for (size_t i = 0; i < app_properties.signal_count; i++) {
 
@@ -102,9 +102,8 @@ Main::Main(int argc, const char **argv,
             continue;
 
         //debug() << app_properties.name << '|' << si.path << '|' << si.name;
-        Signal *s = new Signal(this, 1.0e-9 * app_properties.sample_period,
+        const PdServ::Signal *s = mainTask->addSignal(
                 SignalInfo(app_properties.name, &si));
-        signals.push_back(s);
         variableMap[s->path] = s;
     }
     debug() << app_properties.signal_count << "sginals";

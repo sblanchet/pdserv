@@ -87,7 +87,7 @@ void XmlElement::setAttribute(const char *a, const char *v, size_t n)
 /////////////////////////////////////////////////////////////////////////////
 void XmlElement::setAttribute(const char *a, const struct timespec &t)
 {
-    os << ' ' << a << "=\"" << t.tv_sec << '.' << std::setprecision(6)
+    os << ' ' << a << "=\"" << t.tv_sec << '.'
         << std::setw(6) << std::setfill('0') << t.tv_nsec / 1000
         << std::setw(0) << '"';
 }
