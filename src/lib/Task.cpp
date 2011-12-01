@@ -445,8 +445,7 @@ bool Task::rxPdo(struct Pdo **pdoPtr, SessionTaskData *std)
                 if (pdo->data + pdo->count > txMemEnd)
                     goto out;
 
-                std->newSignalData(pdo->signalListId,
-                        &pdo->taskStatistics, pdo->data, pdo->count);
+                std->newSignalData(pdo->signalListId, pdo->data, pdo->count);
                 break;
 
             default:

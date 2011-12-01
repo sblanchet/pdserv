@@ -57,7 +57,6 @@ Session::Session( Server *s, ost::SocketService *ss,
         const PdServ::Task *task = main->getTask(i);
 
         subscriptionManager[task] = new SubscriptionManager(this);
-        updateStatistics(task, shadow->getTaskStatistics(task));
     }
 
     // Setup some internal variables
@@ -225,46 +224,35 @@ void Session::newSignalList(const PdServ::Task *task,
         it->second->sync();
 }
 
-/////////////////////////////////////////////////////////////////////////////
-void Session::updateStatistics(
-        const PdServ::Task *task, const PdServ::TaskStatistics *stat)
-{
-    TaskStatistics& taskStats = taskStatistics[task];
-    taskStats.doubleTime = 1.0e-9 * stat->time.tv_nsec + stat->time.tv_sec;
-    taskStats.taskStatistics = stat;
-    taskStats.execTime = taskStats.taskStatistics->exec_time * 1e6;
-    taskStats.cycleTime = taskStats.taskStatistics->cycle_time * 1e6;
-}
+// /////////////////////////////////////////////////////////////////////////////
+// void Session::updateStatistics(
+//         const PdServ::Task *task, const PdServ::TaskStatistics *stat)
+// {
+//     TaskStatistics& taskStats = taskStatistics[task];
+//     taskStats.doubleTime = 1.0e-9 * stat->time.tv_nsec + stat->time.tv_sec;
+//     taskStats.taskStatistics = stat;
+//     taskStats.execTime = taskStats.taskStatistics->exec_time * 1e6;
+//     taskStats.cycleTime = taskStats.taskStatistics->cycle_time * 1e6;
+// }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalData(const PdServ::SessionTaskData *std,
-        const PdServ::TaskStatistics *stats)
+void Session::newSignalData(const PdServ::SessionTaskData *std)
 {
-    updateStatistics(std->task, stats);
-
-    if (quiet)
-        return;
-
     PrintQ printQueue;
     subscriptionManager[std->task]->newSignalData(printQueue, std);
 
-    if (!printQueue.empty()) {
+    if (!printQueue.empty() and !quiet) {
+        const PdServ::TaskStatistics *stat =
+            std->session->getTaskStatistics(std->task);
         XmlElement dataTag("data", outbuf);
         dataTag.setAttribute("level", 0);
-        dataTag.setAttribute("time", stats->time);
+        dataTag.setAttribute("time", stat->time);
 
         while (!printQueue.empty()) {
             printQueue.front()->print(dataTag);
             printQueue.pop();
         }
     }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const TaskStatistics& Session::getTaskStatistics(
-        const PdServ::Task* task) const
-{
-    return taskStatistics.find(task)->second;
 }
 
 /////////////////////////////////////////////////////////////////////////////

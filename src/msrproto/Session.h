@@ -94,7 +94,13 @@ class Session: public ost::SocketPort, public PdServ::Session {
 
         void requestSignal(const PdServ::Signal *s, bool state);
 
-        const TaskStatistics& getTaskStatistics(const PdServ::Task*) const;
+        uint32_t *getUInt32() const {
+            return &tmp.uint32;
+        }
+
+        double *getDouble() const {
+            return &tmp.dbl;
+        }
 
     private:
         Server * const server;
@@ -103,12 +109,11 @@ class Session: public ost::SocketPort, public PdServ::Session {
             SubscriptionManagerMap;
         SubscriptionManagerMap subscriptionManager;
 
-        typedef std::map<const PdServ::Task*, TaskStatistics>
-            TaskStatisticsMap;
-        TaskStatisticsMap taskStatistics;
-
-        void updateStatistics(
-                const PdServ::Task *task, const PdServ::TaskStatistics *stat);
+        // Temporary memory space needed to handle statistic channels
+        union {
+            uint32_t uint32;
+            double dbl;
+        } mutable tmp;
 
         // Reimplemented from SocketPort
         void expired();
@@ -119,8 +124,7 @@ class Session: public ost::SocketPort, public PdServ::Session {
         // Reimplemented from PdServ::Session
         void newSignalList(const PdServ::Task *task,
                 const PdServ::Signal * const *, size_t n);
-        void newSignalData(const PdServ::SessionTaskData*,
-                const PdServ::TaskStatistics *stats);
+        void newSignalData(const PdServ::SessionTaskData*);
 
         // Management variables
         bool writeAccess;

@@ -27,12 +27,14 @@
 #include "../Session.h"
 #include "../Debug.h"
 #include "Main.h"
-//#include "SessionTaskData.h"
+#include "Task.h"
+#include "SessionTaskData.h"
 
 //////////////////////////////////////////////////////////////////////
-Signal::Signal( const Main *main, double sampleTime, const SignalInfo& si):
-    PdServ::Signal(si.path(), sampleTime, si.dataType(), si.ndim(), si.dim()),
-    main(main), offset(si.si->offset), info(si)
+Signal::Signal( const Task *task, const SignalInfo& si):
+    PdServ::Signal(si.path(), task->sampleTime,
+            si.dataType(), si.ndim(), si.dim()),
+    main(task->main), offset(si.si->offset), info(si), task(task)
 {
 }
 
@@ -40,7 +42,7 @@ Signal::Signal( const Main *main, double sampleTime, const SignalInfo& si):
 void Signal::subscribe(PdServ::Session *session) const
 {
     const PdServ::Signal *signal = this;
-    session->newSignalList(0, &signal, 1);
+    session->newSignalList(task, &signal, 1);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -70,6 +72,5 @@ void Signal::getValue( const PdServ::Session *, void *dest,
 //////////////////////////////////////////////////////////////////////
 const void *Signal::getValue(const PdServ::SessionTaskData *std) const
 {
-//    return static_cast<const SessionTaskData*>(std)->getValue(this);
-    return 0;
+    return static_cast<const SessionTaskData*>(std)->getValue(this);
 }

@@ -55,11 +55,14 @@ void TimeSignal::unsubscribe(PdServ::Session *) const
 double TimeSignal::poll(const PdServ::Session *session,
         void *buf, struct timespec *t) const
 {
-    const TaskStatistics& stats =
+    const PdServ::TaskStatistics *stats =
         static_cast<const Session*>(session)->getTaskStatistics(task);
-    *reinterpret_cast<double*>(buf) = stats.doubleTime;
+
+    *reinterpret_cast<double*>(buf) =
+        1.0e-9 * stats->time.tv_nsec + stats->time.tv_sec;
+
     if (t)
-        *t = stats.taskStatistics->time;
+        *t = stats->time;
 
     return 0;
 }
@@ -67,16 +70,17 @@ double TimeSignal::poll(const PdServ::Session *session,
 /////////////////////////////////////////////////////////////////////////////
 const void *TimeSignal::getValue(const PdServ::SessionTaskData* std) const
 {
-//    cout << __PRETTY_FUNCTION__ << endl;
-    const TaskStatistics& stats =
-        static_cast<const Session*>(std->session)->getTaskStatistics(task);
-    return &stats.doubleTime;
+    double* value =
+        static_cast<const Session*>(std->session)->getDouble();
+
+    poll(std->session, value, 0);
+
+    return value;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void TimeSignal::getValue(const PdServ::Session *session,
         void *buf, size_t start, size_t count, struct timespec* t) const
 {
-//    cout << __PRETTY_FUNCTION__ << endl;
     poll(session, buf, t);
 }

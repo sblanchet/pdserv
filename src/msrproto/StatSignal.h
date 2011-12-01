@@ -26,6 +26,7 @@
 #define MSRSTATSIGNAL_H
 
 #include "../Signal.h"
+#include <stdint.h>
 
 namespace PdServ {
     class Session;
@@ -49,8 +50,8 @@ class StatSignal: public PdServ::Signal {
     private:
         const Type type;
 
-        const unsigned int *getAddr(
-                const PdServ::Session *session, struct timespec *t) const;
+        uint32_t getValue( const PdServ::Session *session,
+                struct timespec *t) const;
 
         // Reimplemented from PdServ::Signal
         void subscribe(PdServ::Session *) const;

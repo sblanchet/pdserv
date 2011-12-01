@@ -27,7 +27,7 @@
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
-SessionTaskData::SessionTaskData(const Session *s, const Task *t):
+SessionTaskData::SessionTaskData(Session *s, const Task *t):
     session(s), task(t)
 {
 }

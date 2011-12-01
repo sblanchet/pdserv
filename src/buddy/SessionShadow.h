@@ -26,32 +26,31 @@
 #define BUDDY_SESSIONSHADOW_H
 
 #include "../SessionShadow.h"
-
-#include <queue>
-#include <cc++/thread.h>
+#include "SessionTaskData.h"
 
 namespace PdServ {
     class Task;
     class Session;
-    class SessionStatistics;
 }
 
-class Main;
-class SessionTaskData;
+class Task;
 
 class SessionShadow: public PdServ::SessionShadow {
     public:
-        SessionShadow(/*const Main *main,*/ PdServ::Session *session);
+        SessionShadow(PdServ::Session *session,
+                const Task *task, unsigned int current,
+                const unsigned int* photoReady, const char *album,
+                const struct app_properties *app_properties);
 
         ~SessionShadow();
 
     private:
-//        const Main * const main;
-        PdServ::Session * const session;
+        SessionTaskData taskData;
 
-        mutable ost::Semaphore mutex;
-
-        std::queue<size_t> photos;
+        unsigned int current;
+        const unsigned int * const photoReady;
+        unsigned int lastPhoto;
+        size_t count;
 
         // Reimplemented from PdServ::SessionShadow
         bool rxPdo();

@@ -27,19 +27,17 @@
 
 namespace PdServ {
 
-class Signal;
 class Task;
 class Session;
 class TaskStatistics;
 
 class SessionTaskData {
     public:
-        SessionTaskData(const Session *, const Task *);
+        SessionTaskData(Session *, const Task *);
 
-        const Session * const session;
+        Session * const session;
         const Task * const task;
 
-    private:
 };
 }
 

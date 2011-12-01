@@ -59,6 +59,12 @@ void Session::getSessionStatistics(std::list<SessionStatistics> &stats) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+const TaskStatistics *Session::getTaskStatistics(const Task *task) const
+{
+    return shadow->getTaskStatistics(task);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 bool Session::rxPdo()
 {
     return shadow->rxPdo();

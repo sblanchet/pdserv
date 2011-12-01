@@ -48,7 +48,7 @@
 Main::Main(int argc, const char **argv,
         int instance, const char *device_node):
     PdServ::Main(argc, argv, "", ""),
-    mutex(1), paramMutex(1), parameterBuf(0)
+    paramMutex(1), parameterBuf(0)
 {
     pid = fork();
     if (pid < 0) {
@@ -117,6 +117,9 @@ Main::Main(int argc, const char **argv,
 
     readPointer = ioctl(fd, RESET_BLOCKIO_RP);
 
+    photoReady = new unsigned int[app_properties.rtB_count];
+    std::fill_n(photoReady, app_properties.rtB_count, 0);
+
     debug() << app_properties.name << app_properties.version;
     startServers();
     debug() << "Servers started";
@@ -146,9 +149,8 @@ Main::Main(int argc, const char **argv,
                 readPointer = ioctl(fd, RESET_BLOCKIO_RP);
             }
             else {
-                ost::SemaphoreLock lock(mutex);
-//                for (int i = readPointer; i < data_p.wp; ++i)
-//                    readyList[i]++;
+                for (int i = readPointer; i < data_p.wp; ++i)
+                    photoReady[i] = photoCount++;
                 readPointer = ioctl(fd, SET_BLOCKIO_RP, data_p.wp);
             }
         }
@@ -211,7 +213,8 @@ int Main::gettime(struct timespec *) const
 /////////////////////////////////////////////////////////////////////////////
 PdServ::SessionShadow *Main::newSession(PdServ::Session *session) const
 {
-    return new SessionShadow(session);
+    return new SessionShadow(session, mainTask, readPointer, photoReady,
+            photoAlbum, &app_properties);
 }
 
 /////////////////////////////////////////////////////////////////////////////

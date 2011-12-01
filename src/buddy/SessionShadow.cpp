@@ -23,17 +23,21 @@
  *****************************************************************************/
 
 #include "SessionShadow.h"
-#include "../TaskStatistics.h"
+#include "Task.h"
 #include "../Session.h"
+#include "../TaskStatistics.h"
 #include "../Debug.h"
-//#include "SessionTaskData.h"
-//#include "Task.h"
-//#include "Main.h"
+#include <fio_ioctl.h>
 
 ////////////////////////////////////////////////////////////////////////////
-SessionShadow::SessionShadow(PdServ::Session* session):
-    session(session)
+SessionShadow::SessionShadow(PdServ::Session *session,
+        const Task *task, unsigned int current,
+        const unsigned int* photoReady, const char *album,
+        const struct app_properties *app_properties):
+    taskData(session, task, album, current, app_properties),
+    current(current), photoReady(photoReady), count(app_properties->rtB_count)
 {
+    lastPhoto = photoReady[current] - 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -44,16 +48,21 @@ SessionShadow::~SessionShadow()
 ////////////////////////////////////////////////////////////////////////////
 bool SessionShadow::rxPdo()
 {
-    //session->newSignalData(0);
-    bool error = false;
+    while (static_cast<int>(photoReady[current] - lastPhoto) > 0) {
+        taskData.newSignalData(current);
 
-    return error;
+        std::cerr << '.';
+        lastPhoto = photoReady[current];
+        if (++current == count)
+            current = 0;
+    }
+
+    return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////
 const PdServ::TaskStatistics *SessionShadow::getTaskStatistics(
         const PdServ::Task *task) const
 {
-    static PdServ::TaskStatistics ts;
-    return &ts;
+    return taskData.getTaskStatistics(static_cast<const Task*>(task));
 }

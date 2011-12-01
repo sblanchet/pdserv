@@ -41,7 +41,7 @@ class Main;
 
 class Signal: public PdServ::Signal {
     public:
-        Signal( const Main * main, double sampleTime, const SignalInfo& si);
+        Signal(const Task*, const SignalInfo& si);
 
         const Main * const main;
         const size_t offset;
@@ -52,7 +52,7 @@ class Signal: public PdServ::Signal {
 //        const size_t index;
 
     private:
-//        Task * const task;
+        const Task * const task;
 //
 //        mutable ost::Semaphore mutex;
 //

@@ -80,7 +80,6 @@ void SessionTaskData::newSignalList(
 
 ////////////////////////////////////////////////////////////////////////////
 void SessionTaskData::newSignalData( unsigned int id, 
-        const PdServ::TaskStatistics *stats,
         const char *buf, unsigned int buflen)
 {
 //    cout << __func__ << signalListId << "==" << id << ' '
@@ -91,7 +90,7 @@ void SessionTaskData::newSignalData( unsigned int id,
     signalBuffer = buf;
 
     if (!pdoError)
-        session->newSignalData(this, stats);
+        session->newSignalData(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////

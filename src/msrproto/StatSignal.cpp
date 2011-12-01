@@ -53,26 +53,26 @@ void StatSignal::unsubscribe(PdServ::Session *) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const unsigned int *StatSignal::getAddr(
+uint32_t StatSignal::getValue(
         const PdServ::Session *session, struct timespec *t) const
 {
-    const TaskStatistics& stats =
+    const PdServ::TaskStatistics* stats =
         static_cast<const Session*>(session)->getTaskStatistics(task);
 
     if (t)
-        *t = stats.taskStatistics->time;
+        *t = stats->time;
 
     switch (type) {
         case ExecTime:
-            return &stats.execTime;
+            return stats->exec_time * 1.0e9;
             break;
 
         case Period:
-            return &stats.cycleTime;
+            return stats->cycle_time * 1.0e9;
             break;
 
         case Overrun:
-            return &stats.taskStatistics->overrun;
+            return stats->overrun;
     }
 
     return 0;
@@ -82,7 +82,7 @@ const unsigned int *StatSignal::getAddr(
 double StatSignal::poll(const PdServ::Session *session,
         void *buf, struct timespec *t) const
 {
-    *reinterpret_cast<uint32_t*>(buf) = *getAddr(session, t);
+    *reinterpret_cast<uint32_t*>(buf) = getValue(session, t);
 
     return 0;
 }
@@ -91,7 +91,10 @@ double StatSignal::poll(const PdServ::Session *session,
 const void *StatSignal::getValue(const PdServ::SessionTaskData* std) const
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
-    return getAddr(std->session, 0);
+    uint32_t* value =
+        static_cast<const Session*>(std->session)->getUInt32();
+    *value = getValue(std->session, 0);
+    return value;
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id$
+ *  $Id: SessionTaskData.h,v 9f4abd086e58 2011/11/15 08:52:58 lerichi $
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
@@ -22,21 +22,39 @@
  *
  *****************************************************************************/
 
-#ifndef BUDDY_TASK_H
-#define BUDDY_TASK_H
+#ifndef BUDDY_SESSIONTASKDATA_H
+#define BUDDY_SESSIONTASKDATA_H
 
-#include "../Task.h"
+#include "../SessionTaskData.h"
+#include "../TaskStatistics.h"
 
-class Main;
-class SignalInfo;
+namespace PdServ {
+    class Session;
+}
 
-class Task: public PdServ::Task {
+class Task;
+class Signal;
+struct Pdo;
+
+class SessionTaskData: public PdServ::SessionTaskData {
     public:
-        Task(Main *main, double sampleTime);
+        SessionTaskData(PdServ::Session* session, const Task* t,
+                const char *album, unsigned int current,
+                const struct app_properties*);
 
-        const PdServ::Signal *addSignal(const SignalInfo& si);
+        const void *getValue(const Signal *) const;
+        const PdServ::TaskStatistics* getTaskStatistics(const Task*) const;
+        void newSignalData(unsigned int current);
 
-        const Main * const main;
+    private:
+        const char * const album;
+        size_t const photoSize;
+        size_t const statsOffset;
+
+        const char *photo;
+        PdServ::TaskStatistics stat;
+
+        void updateStatistics();
 };
 
-#endif // BUDDY_TASK_H
+#endif //BUDDY_SESSIONTASKDATA_H

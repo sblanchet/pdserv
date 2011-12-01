@@ -47,7 +47,6 @@ class SessionTaskData: public PdServ::SessionTaskData {
         void newSignalList( unsigned int signalListId,
                 const Signal * const *sp, size_t n);
         void newSignalData( unsigned int signalListId, 
-                const PdServ::TaskStatistics *stats,
                 const char *buf, unsigned int buflen);
         const char *getValue(const PdServ::Signal *) const;
         const PdServ::TaskStatistics* getTaskStatistics() const;

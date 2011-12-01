@@ -69,7 +69,7 @@ class Main: public PdServ::Main {
 //        static const double bufferTime;
 
     private:
-        mutable ost::Semaphore mutex;
+        //mutable ost::Semaphore mutex;
         mutable ost::Semaphore paramMutex;
 
         int fd;
@@ -84,6 +84,8 @@ class Main: public PdServ::Main {
         void *shmem;
         const char *photoAlbum;
         int readPointer;
+        unsigned int *photoReady;
+        unsigned int photoCount;
 //        int (* const rttime)(struct timespec*);
 
         size_t *readyList;
