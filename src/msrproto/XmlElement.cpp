@@ -155,6 +155,8 @@ void XmlElement::base64Attribute(const char *name,
      size_t rem = len % 3;
      const unsigned char *buf = reinterpret_cast<const unsigned char*>(data);
  
+     os << ' ' << name << "=\"";
+
      // First convert all characters in chunks of 3
      while (i != len - rem) {
          os <<  base64Chr[  buf[i  ]         >> 2]
@@ -179,6 +181,8 @@ void XmlElement::base64Attribute(const char *name,
                  << "==";
              break;
      }
+
+     os << '"';
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -215,6 +219,10 @@ void XmlElement::hexDecAttribute( const char *name,
          "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", 
          "FA", "FB", "FC", "FD", "FE", "FF"};
  
+     os << ' ' << name << "=\"";
+
      while (len--)
          os << hexValue[*buf++];
+
+     os << '"';
 }

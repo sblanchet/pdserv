@@ -47,7 +47,6 @@ SessionTaskData::SessionTaskData( PdServ::Session* s, const Task* t,
 const PdServ::TaskStatistics* SessionTaskData::getTaskStatistics(
         const Task*) const
 {
-    debug();
     return &stat;
 }
 
