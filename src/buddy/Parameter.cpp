@@ -55,7 +55,8 @@ int Parameter::setValue(const PdServ::Session *, const char* src,
 
     ost::SemaphoreLock lock(mutex);
 
-    int rv = main->setParameter(this, startIndex, nelem, src, &mtime);
+    si.write(valueBuf, src, startIndex, nelem);
+    int rv = main->setParameter(this, 0, this->nelem, valueBuf, &mtime);
 
     if (!rv)
         main->parameterChanged(this, startIndex, nelem);

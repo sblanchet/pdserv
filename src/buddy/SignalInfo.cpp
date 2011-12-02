@@ -30,7 +30,7 @@
 #include "Parameter.h"
 
 //////////////////////////////////////////////////////////////////////
-template <class T, char dir>
+template <typename T, char dir>
 void SignalInfo::copy(void *_dst, const void *_src,
         size_t start, size_t count, size_t , size_t)
 {
@@ -42,7 +42,7 @@ void SignalInfo::copy(void *_dst, const void *_src,
 }
 
 //////////////////////////////////////////////////////////////////////
-template <class T, char dir>
+template <typename T, char dir>
 void SignalInfo::transpose( void *_dst, const void *_src,
         size_t start, size_t count, size_t nelem, size_t cols)
 {
@@ -168,5 +168,6 @@ void SignalInfo::read( void *dst, const void *src,
 void SignalInfo::write( void *dst, const void *src,
         size_t start, size_t count) const
 {
+    writeFunc(dst, src, start, count, nelem, _dim[1]);
 }
 
