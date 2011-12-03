@@ -87,7 +87,6 @@ bool VariableDirectory::insert(const PdServ::Signal *s, bool traditional)
     char hide = 0;
     DirectoryNode *dir = Path(s->path).create(this, hide);
     if (!dir) {
-    debug() << s->path;
         return true;
     }
 

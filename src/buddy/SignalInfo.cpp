@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <sstream>
 
 #include "Main.h"
 #include "../Debug.h"
@@ -122,10 +123,20 @@ SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
 //////////////////////////////////////////////////////////////////////
 std::string SignalInfo::path() const
 {
-    return
-        std::string(1,'/').append(model)
-        .append(1,'/').append(si->path)
-        .append(1,'/').append(si->name);
+    std::ostringstream p;
+    p << '/' << model
+        << '/' << si->path
+        << '/' << si->name;
+
+    if (si->port) {
+        p << '/';
+        if (*si->alias)
+            p << si->alias;
+        else
+            p << si->port-1;
+    }
+
+    return p.str();
 }
 
 //////////////////////////////////////////////////////////////////////

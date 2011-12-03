@@ -464,8 +464,10 @@ void Session::readParameter()
     
     if (p) {
         XmlElement parameter("parameter", outbuf);
+        std::string id;
+        inbuf.getString("id", id);
         p->setXmlAttributes(
-                this, parameter, shortReply, hex, writeAccess, 16);
+                this, parameter, shortReply, hex, writeAccess, 16, id);
     }
 }
 
@@ -595,7 +597,7 @@ void Session::writeParameter()
 /////////////////////////////////////////////////////////////////////////////
 void Session::xsad()
 {
-    unsigned int reduction, blocksize, precision = 10;
+    unsigned int reduction, blocksize, precision = 16;
     bool base64 = inbuf.isEqual("coding", "Base64");
     bool event = inbuf.isTrue("event");
     bool sync = inbuf.isTrue("sync");

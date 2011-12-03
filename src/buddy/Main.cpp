@@ -160,6 +160,7 @@ Main::Main(int argc, const char **argv,
     } while (true);
     
 out:
+    debug() << errno << strerror(errno);
     ::exit(errno);
 }
 

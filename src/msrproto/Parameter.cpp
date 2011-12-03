@@ -101,7 +101,8 @@ void Parameter::addChild(const Parameter *p)
 
 /////////////////////////////////////////////////////////////////////////////
 void Parameter::setXmlAttributes( Session *s, XmlElement &element,
-        bool shortReply, bool hex, bool writeAccess, size_t precision) const
+        bool shortReply, bool hex, bool writeAccess, size_t precision,
+        const std::string& id) const
 {
     struct timespec mtime;
     char valueBuf[memSize];
@@ -130,6 +131,9 @@ void Parameter::setXmlAttributes( Session *s, XmlElement &element,
         element.hexDecAttribute("hexvalue", valueBuf, memSize);
     else
         element.csvAttribute("value", this, valueBuf, 1, precision);
+
+    if (!id.empty())
+        element.setAttributeCheck("id", id);
 
     return;
 }
@@ -203,15 +207,8 @@ int Parameter::setDoubleValue(const Session *session,
 void Parameter::valueChanged(
         std::ostream& os, size_t start, size_t nelem) const
 {
-//    XmlElement pu("pu");
-//
-//    pu.setAttribute("index", variableIndex);
-//    os << pu;
-//
-//    while (variableIndex + start < children.size() and nelem--) {
-//        pu.setAttribute("index", variableIndex + start++);
-//        os << pu;
-//    }
-//
-//    os << std::flush;
+    XmlElement("pu", os).setAttribute("index", variableIndex);
+
+    while (variableIndex + start < children.size() and nelem--)
+        XmlElement("pu",os).setAttribute("index", variableIndex + start++);
 }
