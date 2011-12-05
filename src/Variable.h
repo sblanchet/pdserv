@@ -69,7 +69,7 @@ class Variable {
                                             width in bytes */
 
         virtual void getValue(const Session*, void *buf,
-                size_t start, size_t nelem, struct timespec * = 0) const = 0;
+                struct timespec * = 0) const = 0;
 
         static const size_t dataTypeWidth[11];
     private:

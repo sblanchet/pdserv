@@ -54,7 +54,7 @@ class Signal: public Variable {
 
         // Reimplemented from PdServ::Variable
         virtual void getValue(const Session*, void *buf,
-                size_t start, size_t nelem, struct timespec * = 0) const = 0;
+                struct timespec * = 0) const = 0;
     private:
 
 };

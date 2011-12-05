@@ -110,12 +110,13 @@ void Subscription::newValue( PrintQ &printQ, const void *dataBuf)
 void Subscription::print(XmlElement &parent) const
 {
     XmlElement datum("F", parent);
-    datum.setAttribute("c", channel->variableIndex);
+    XmlElement::Attribute(datum, "c") << channel->variableIndex;
 
+    XmlElement::Attribute value(datum, "d");
     if (base64)
-        datum.base64Attribute("d", data_bptr, nblocks * channel->memSize);
+        value.base64(data_bptr, nblocks * channel->memSize);
     else
-        datum.csvAttribute("d", channel, data_bptr, nblocks, precision);
+        value.csv(channel, data_bptr, nblocks, precision);
 }
 
 /////////////////////////////////////////////////////////////////////////////

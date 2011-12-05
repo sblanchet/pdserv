@@ -139,89 +139,89 @@ const PdServ::Parameter* Variable::parameter() const
 /////////////////////////////////////////////////////////////////////////////
 void Variable::setAttributes(XmlElement &element, bool shortReply) const
 {
-     // name=
-     // value=
-     // index=
-     element.setAttribute("index", variableIndex);
-     element.setAttributeCheck("name", path());
+    // name=
+    // value=
+    // index=
+    XmlElement::Attribute(element, "index") << variableIndex;
+    XmlElement::Attribute(element, "name") << path();
  
-     if (shortReply)
-         return;
- 
-     // alias=
-     // unit=
-     // comment=
-     if (!variable->alias.empty())
-         element.setAttributeCheck("alias", variable->alias);
-     if (!variable->unit.empty())
-         element.setAttributeCheck("unit", variable->unit);
-     if (!variable->comment.empty())
-         element.setAttributeCheck("comment", variable->comment);
- 
-     // datasize=
-     element.setAttribute("datasize", variable->width);
- 
-     // typ=
-     const char *dtype = 0;
-     switch (variable->dtype) {
-         case PdServ::Variable::boolean_T: dtype = "TCHAR";     break;
-         case PdServ::Variable::uint8_T:   dtype = "TUCHAR";    break;
-         case PdServ::Variable::int8_T:    dtype = "TCHAR";     break;
-         case PdServ::Variable::uint16_T:  dtype = "TUSHORT";   break;
-         case PdServ::Variable::int16_T:   dtype = "TSHORT";    break;
-         case PdServ::Variable::uint32_T:  dtype = "TUINT";     break;
-         case PdServ::Variable::int32_T:   dtype = "TINT";      break;
-         case PdServ::Variable::uint64_T:  dtype = "TULINT";    break;
-         case PdServ::Variable::int64_T:   dtype = "TLINT";     break;
-         case PdServ::Variable::single_T:  dtype = "TFLT";      break;
-         case PdServ::Variable::double_T:  dtype = "TDBL";      break;
-         default:                                break;
-     }
-     if (nelem > 1)
-         element.setAttribute("typ",
-                 std::string(dtype)
-                 .append(variable->ndims == 1 ? "_LIST" : "_MATRIX"));
-     else
-         element.setAttribute("typ", dtype);
- 
-     // For vectors:
-     // anz=
-     // cnum=
-     // rnum=
-     // orientation=
-     if (nelem > 1) {
-         element.setAttribute("anz",nelem);
-         const char *orientation;
-         size_t cnum, rnum;
+    if (shortReply)
+        return;
 
-         // Transmit either a vector or a matrix
-         if (variable->ndims == 1) {
-             cnum = variable->nelem;
-             rnum = 1;
-             orientation = "VECTOR";
-         }
-         else {
-             const size_t *dim = variable->getDim();
-             cnum = dim[variable->ndims - 1];
-             rnum = variable->nelem / cnum;
-             orientation = "MATRIX_ROW_MAJOR";
-         }
+    // alias=
+    // unit=
+    // comment=
+    if (!variable->alias.empty())
+        XmlElement::Attribute(element, "alias") << variable->alias;
+    if (!variable->unit.empty())
+        XmlElement::Attribute(element, "unit") << variable->unit;
+    if (!variable->comment.empty())
+        XmlElement::Attribute(element, "comment") << variable->comment;
+ 
+    // datasize=
+    XmlElement::Attribute(element, "datasize") << variable->width;
+ 
+    // typ=
+    const char *dtype = 0;
+    switch (variable->dtype) {
+        case PdServ::Variable::boolean_T: dtype = "TCHAR";     break;
+        case PdServ::Variable::uint8_T:   dtype = "TUCHAR";    break;
+        case PdServ::Variable::int8_T:    dtype = "TCHAR";     break;
+        case PdServ::Variable::uint16_T:  dtype = "TUSHORT";   break;
+        case PdServ::Variable::int16_T:   dtype = "TSHORT";    break;
+        case PdServ::Variable::uint32_T:  dtype = "TUINT";     break;
+        case PdServ::Variable::int32_T:   dtype = "TINT";      break;
+        case PdServ::Variable::uint64_T:  dtype = "TULINT";    break;
+        case PdServ::Variable::int64_T:   dtype = "TLINT";     break;
+        case PdServ::Variable::single_T:  dtype = "TFLT";      break;
+        case PdServ::Variable::double_T:  dtype = "TDBL";      break;
+        default:                                break;
+    }
+    if (nelem > 1)
+        XmlElement::Attribute(element, "typ")
+            << dtype
+            << (variable->ndims == 1 ? "_LIST" : "_MATRIX");
+    else
+        XmlElement::Attribute(element, "typ") << dtype;
+ 
+    // For vectors:
+    // anz=
+    // cnum=
+    // rnum=
+    // orientation=
+    if (nelem > 1) {
+        XmlElement::Attribute(element, "anz") << nelem;
+        const char *orientation;
+        size_t cnum, rnum;
 
-         element.setAttribute("cnum", cnum);
-         element.setAttribute("rnum", rnum);
-         element.setAttribute("orientation", orientation);
-     }
+        // Transmit either a vector or a matrix
+        if (variable->ndims == 1) {
+            cnum = variable->nelem;
+            rnum = 1;
+            orientation = "VECTOR";
+        }
+        else {
+            const size_t *dim = variable->getDim();
+            cnum = dim[variable->ndims - 1];
+            rnum = variable->nelem / cnum;
+            orientation = "MATRIX_ROW_MAJOR";
+        }
+
+        XmlElement::Attribute(element, "cnum") << cnum;
+        XmlElement::Attribute(element, "rnum") << rnum;
+        XmlElement::Attribute(element, "orientation") << orientation;
+    }
  
-     // unit=
-     if (!variable->unit.empty())
-         element.setAttributeCheck("unit", variable->unit);
- 
-     // text=
-     if (!variable->comment.empty())
-         element.setAttributeCheck("text", variable->comment);
- 
-     // hide=
-     // unhide=
+    // unit=
+    if (!variable->unit.empty())
+        XmlElement::Attribute(element, "unit") << variable->unit;
+
+    // text=
+    if (!variable->comment.empty())
+        XmlElement::Attribute(element, "text") << variable->comment;
+
+    // hide=
+    // unhide=
 }
 
 /////////////////////////////////////////////////////////////////////////////

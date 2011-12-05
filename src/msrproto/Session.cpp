@@ -85,12 +85,13 @@ Session::Session( Server *s, ost::SocketService *ss,
 
     // Greet the new client
     XmlElement greeting("connected", outbuf);
-    greeting.setAttribute("name", main->getName());
-    //greeting.setAttribute("version", main->getVersion());
-    greeting.setAttribute("host", hostname);
-    greeting.setAttribute("version", MSR_VERSION);
-    greeting.setAttribute("features", MSR_FEATURES);
-    greeting.setAttribute("recievebufsize", 100000000);
+    XmlElement::Attribute(greeting, "name")
+        << main->getName() << ' ' << main->getVersion();
+    XmlElement::Attribute(greeting, "host")
+        << reinterpret_cast<const char*>(hostname);
+    XmlElement::Attribute(greeting, "version") << MSR_VERSION;
+    XmlElement::Attribute(greeting, "features") << MSR_FEATURES;
+    XmlElement::Attribute(greeting, "recievebufsize") << 100000000;
 
     expired();
 }
@@ -145,7 +146,7 @@ void Session::expired()
     else if (rxPdo()) {
         // Unknown command warning
         XmlElement error("error", outbuf);
-        error.setAttribute("text", "process synchronization lost");
+        XmlElement::Attribute(error, "text") << "process synchronization lost";
 
         setDetectPending(false);
     }
@@ -245,8 +246,8 @@ void Session::newSignalData(const PdServ::SessionTaskData *std)
         const PdServ::TaskStatistics *stat =
             std->session->getTaskStatistics(std->task);
         XmlElement dataTag("data", outbuf);
-        dataTag.setAttribute("level", 0);
-        dataTag.setAttribute("time", stat->time);
+        XmlElement::Attribute(dataTag, "level") << 0;
+        XmlElement::Attribute(dataTag, "time") << stat->time;
 
         while (!printQueue.empty()) {
             printQueue.front()->print(dataTag);
@@ -303,7 +304,7 @@ void Session::processCommand()
             std::string id;
             if (inbuf.getString("id", id)) {
                 XmlElement ack("ack", outbuf);
-                ack.setAttributeCheck("id", id);
+                XmlElement::Attribute(ack,"id").setWithCare(id.c_str());
             }
 
             // Finished
@@ -313,9 +314,9 @@ void Session::processCommand()
 
     // Unknown command warning
     XmlElement warn("warn", outbuf);
-    warn.setAttribute("num", 1000);
-    warn.setAttribute("text", "unknown command");
-    warn.setAttributeCheck("command", command);
+    XmlElement::Attribute(warn, "num") << 1000;
+    XmlElement::Attribute(warn, "text") << "unknown command";
+    XmlElement::Attribute(warn, "command").setWithCare(command);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -327,15 +328,15 @@ void Session::broadcast()
     std::string s;
 
     main->gettime(&ts);
-    broadcast.setAttribute("time", ts);
+    XmlElement::Attribute(broadcast, "time") << ts;
 
     if (inbuf.getString("action", s))
-        broadcast.setAttributeCheck("action", s);
+        XmlElement::Attribute(broadcast, "action").setWithCare(s.c_str());
 
     if (inbuf.getString("text", s))
-        broadcast.setAttributeCheck("text", s);
+        XmlElement::Attribute(broadcast, "text").setWithCare(s.c_str());
 
-    server->broadcast(this, broadcast);
+    //server->broadcast(this, broadcast);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -351,7 +352,7 @@ void Session::ping()
     std::string id;
 
     if (inbuf.getString("id",id))
-        ping.setAttributeCheck("id", id);
+        XmlElement::Attribute(ping, "id").setWithCare(id.c_str());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -410,22 +411,18 @@ void Session::readChannel()
 
         XmlElement channels("channels", outbuf);
         for (VariableDirectory::Channels::const_iterator it = chanList.begin();
-                it != chanList.end(); it++) {
-            XmlElement channel("channel", channels);
-            (*it)->setXmlAttributes(channel, shortReply,
-                    (buf + bufOffset[(*it)->signal]
-                     + (*it)->elementIndex * (*it)->signal->width),
-                    16);
-        }
+                it != chanList.end(); it++)
+            XmlElement("channel", channels).setAttributes(*it,
+                    buf + bufOffset[(*it)->signal], shortReply, 16);
 
         return;
     }
 
     // A single signal was requested
     if (c) {
-        char buf[c->memSize];
+        char buf[c->signal->memSize];
 
-        c->signal->getValue(this, buf, c->elementIndex, c->nelem);
+        c->signal->getValue(this, buf);
 
         XmlElement channel("channel", outbuf);
         c->setXmlAttributes(channel, shortReply, buf, 16);
@@ -435,62 +432,77 @@ void Session::readChannel()
 /////////////////////////////////////////////////////////////////////////////
 void Session::readParameter()
 {
-    const Parameter *p = 0;
     bool shortReply = inbuf.isTrue("short");
     bool hex = inbuf.isTrue("hex");
     std::string name;
     unsigned int index;
 
+    const Parameter *p = 0;
     if (inbuf.getString("name", name)) {
         p = server->getRoot().findParameter(name.c_str());
     }
     else if (inbuf.getUnsigned("index", index)) {
         p = server->getRoot().getParameter(index);
     }
-    else {
-        const VariableDirectory::Parameters& parameter =
-            server->getRoot().getParameters();
-        XmlElement parameters("parameters", outbuf);
 
-        for (VariableDirectory::Parameters::const_iterator it =
-                parameter.begin(); it != parameter.end(); it++) {
-            XmlElement var("parameter",  parameters);
-            (*it)->setXmlAttributes(this, var,
-                    shortReply, hex, writeAccess, 16);
-        }
+    if (p) {
+        char buf[p->mainParam->memSize];
+        struct timespec ts;
+
+        p->mainParam->getValue(this, buf, &ts);
+
+        std::string id;
+        inbuf.getString("id", id);
+        XmlElement ("parameter", outbuf)
+            .setAttributes(p, buf, ts, shortReply, hex, writeAccess, 16, id);
 
         return;
     }
-    
-    if (p) {
-        XmlElement parameter("parameter", outbuf);
-        std::string id;
-        inbuf.getString("id", id);
-        p->setXmlAttributes(
-                this, parameter, shortReply, hex, writeAccess, 16, id);
+
+    const PdServ::Main::Parameters& mainParameters = main->getParameters();
+
+    XmlElement parametersElement("parameters", outbuf);
+
+    for (PdServ::Main::Parameters::const_iterator it = mainParameters.begin();
+            it != mainParameters.end(); ++it) {
+        const Parameter* parameter = server->getRoot().getParameter(*it);
+        char buf[parameter->memSize];
+        struct timespec ts;
+
+        parameter->mainParam->getValue(this, buf, &ts);
+
+        XmlElement ("parameter",  parametersElement).setAttributes(
+                parameter, buf, ts, shortReply, hex, writeAccess, 16);
+
+        const Parameter::ChildList& children = parameter->getChildren();
+        for (Parameter::ChildList::const_iterator it = children.begin();
+                it != children.end(); ++it) {
+            XmlElement ("parameter",  parametersElement)
+                .setAttributes( *it, buf, ts, shortReply, hex, writeAccess, 16);
+        }
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::readParamValues()
 {
+    const PdServ::Main::Parameters& mainParameters = main->getParameters();
+
     XmlElement param_values("param_values", outbuf);
-    const VariableDirectory::Parameters& parameter =
-        server->getRoot().getParameters();
-    std::string v;
+    XmlElement::Attribute values(param_values, "value");
 
-    for (VariableDirectory::Parameters::const_iterator it = parameter.begin();
-            it != parameter.end(); it++) {
-        if (it != parameter.begin()) v.append(1,'|');
+    for (PdServ::Main::Parameters::const_iterator it = mainParameters.begin();
+            it != mainParameters.end(); ++it) {
+        const Parameter* parameter = server->getRoot().getParameter(*it);
+        char buf[parameter->memSize];
 
-        char buf[(*it)->memSize];
-        (*it)->getValue(this, buf);
-//        v.append(toCSV((*it)->printFunc, (*it)->mainParam, (*it)->nelem, buf));
+        parameter->mainParam->getValue(this, buf);
+
+        if (it != mainParameters.begin())
+            values << ';';
+
+        values.csv(parameter, buf, 1, 16);
     }
-
-    param_values.setAttribute("value", v);
-
-    //outbuf << param_values << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -511,13 +523,13 @@ void Session::readStatistics()
     for (StatList::const_iterator it = stats.begin();
             it != stats.end(); it++) {
         XmlElement client("client", clients);
-        client.setAttributeCheck("name",
-                (*it).remote.size() ? (*it).remote : "unknown");
-        client.setAttributeCheck("apname",
-                (*it).client.size() ? (*it).client : "unknown");
-        client.setAttribute("countin", (*it).countIn);
-        client.setAttribute("countout", (*it).countOut);
-        client.setAttribute("connectedtime", (*it).connectedTime);
+        XmlElement::Attribute(client,"name").setWithCare(
+                (*it).remote.size() ? (*it).remote.c_str() : "unknown");
+        XmlElement::Attribute(client,"apname").setWithCare(
+                (*it).client.size() ? (*it).client.c_str() : "unknown");
+        XmlElement::Attribute(client,"countin") << (*it).countIn;
+        XmlElement::Attribute(client,"countout") << (*it).countOut;
+        XmlElement::Attribute(client,"connectedtime") << (*it).connectedTime;
     }
 }
 
@@ -539,11 +551,11 @@ void Session::remoteHost()
                                         // ost::Socket
         {
             XmlElement info("info", message);
-            info.setAttribute("time",ts);
-            info.setAttribute("text", os.str());
+            XmlElement::Attribute(info, "time") << ts;
+            XmlElement::Attribute(info, "text") << os.str();
         }
 
-        //server->broadcast(this, info);
+//        server->broadcast(this, info);
     }
 }
 
@@ -552,7 +564,7 @@ void Session::writeParameter()
 {
     if (!writeAccess) {
         XmlElement warn("warn", outbuf);
-        warn.setAttribute("text", "No write access");
+        XmlElement::Attribute(warn, "text") << "No write access";
         return;
     }
 
@@ -622,9 +634,9 @@ void Session::xsad()
     if (inbuf.getUnsigned("reduction", reduction)) {
         if (!reduction) {
             XmlElement warn("warn", outbuf);
-            warn.setAttribute("command", "xsad");
-            warn.setAttribute("text",
-                    "specified reduction=0, choosing reduction=1");
+            XmlElement::Attribute(warn, "command") << "xsad";
+            XmlElement::Attribute(warn, "text")
+                << "specified reduction=0, choosing reduction=1";
 
             reduction = 1;
         }
@@ -634,10 +646,9 @@ void Session::xsad()
     if (inbuf.getUnsigned("blocksize", blocksize)) {
         if (!blocksize) {
             XmlElement warn("warn", outbuf);
-            warn.setAttribute("command", "xsad");
-            warn.setAttribute("text",
-                    "specified blocksize=0, choosing blocksize=1");
-            //outbuf << warn << std::flush;
+            XmlElement::Attribute(warn, "command") << "xsad";
+            XmlElement::Attribute(warn, "text")
+                << "specified blocksize=0, choosing blocksize=1";
 
             blocksize = 1;
         }

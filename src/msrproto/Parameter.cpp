@@ -92,6 +92,12 @@ Parameter::~Parameter()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+const Parameter::ChildList& Parameter::getChildren() const
+{
+    return children;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Parameter::addChild(const Parameter *p)
 {
     if (children.empty())
@@ -100,16 +106,12 @@ void Parameter::addChild(const Parameter *p)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Parameter::setXmlAttributes( Session *s, XmlElement &element,
-        bool shortReply, bool hex, bool writeAccess, size_t precision,
-        const std::string& id) const
+void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
+        struct timespec const& mtime, bool shortReply, bool hex,
+        bool writeAccess, size_t precision, const std::string& id) const
 {
-    struct timespec mtime;
-    char valueBuf[memSize];
     unsigned int flags = writeAccess
         ? MSR_R | MSR_W | MSR_WOP : MSR_R;
-
-    mainParam->getValue(s, valueBuf, elementIndex, nelem, &mtime);
 
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>
@@ -117,31 +119,28 @@ void Parameter::setXmlAttributes( Session *s, XmlElement &element,
     setAttributes(element, shortReply);
 
     if (!shortReply) {
-        element.setAttribute("flags", flags + (dependent ? 0x100 : 0));
+        XmlElement::Attribute(element, "flags")
+            << flags + (dependent ? 0x100 : 0);
 
         // persistent=
         if (persistent)
-            element.setAttribute("persistent", persistent);
+            XmlElement::Attribute(element, "persistent") << persistent;
     }
 
     // mtime=
-    element.setAttribute("mtime", mtime);
+    XmlElement::Attribute(element, "mtime") << mtime;
 
     if (hex)
-        element.hexDecAttribute("hexvalue", valueBuf, memSize);
+        XmlElement::Attribute(element, "hexvalue")
+            .hexDec( valueBuf + elementIndex * mainParam->width, memSize);
     else
-        element.csvAttribute("value", this, valueBuf, 1, precision);
+        XmlElement::Attribute(element, "value").csv(
+                this, valueBuf + elementIndex * mainParam->width, 1, precision);
 
     if (!id.empty())
-        element.setAttributeCheck("id", id);
+        XmlElement::Attribute(element, "id").setWithCare(id.c_str());
 
     return;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Parameter::getValue(const Session *session, char *buf) const
-{
-    mainParam->getValue(session, buf, elementIndex, nelem);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -207,8 +206,13 @@ int Parameter::setDoubleValue(const Session *session,
 void Parameter::valueChanged(
         std::ostream& os, size_t start, size_t nelem) const
 {
-    XmlElement("pu", os).setAttribute("index", variableIndex);
+    {
+        XmlElement pu("pu", os);
+        XmlElement::Attribute(pu, "index") << variableIndex;
+    }
 
-    while (variableIndex + start < children.size() and nelem--)
-        XmlElement("pu",os).setAttribute("index", variableIndex + start++);
+    while (nelem--) {
+        XmlElement pu("pu", os);
+        XmlElement::Attribute(pu, "index") << children[start++]->variableIndex;
+    }
 }

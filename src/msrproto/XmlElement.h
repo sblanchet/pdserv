@@ -41,6 +41,8 @@ namespace PdServ {
 namespace MsrProto {
 
 class Variable;
+class Parameter;
+class Channel;
 
 class XmlElement {
     public:
@@ -54,32 +56,39 @@ class XmlElement {
 
         std::ostream& prefix();
 
-        /** Set string attribute, checking for characters that need to be
-         * escaped */
-        void setAttributeCheck(const char *name,
-                const char *value, size_t n = 0);
-        void setAttributeCheck(const char *name, const std::string& value);
+        void setAttributes(const Parameter *p,
+                const char *buf, struct timespec const&,
+                bool shortReply, bool hex, bool writeAccess,
+                size_t precision, const std::string& id = std::string());
+        void setAttributes(const Channel *c, const char *buf,
+                bool shortReply, size_t precision);
 
-        /** Set verbatim string attribute */
-        void setAttribute(const char *name, const char *value, size_t n = 0);
-        void setAttribute(const char *name, const std::string& value);
+        class Attribute {
+            public:
+                Attribute(XmlElement&, const char *name);
+                ~Attribute();
 
-        /** Various variations of numerical attributes */
-        void setAttribute(const char *name, const struct timespec&);
-        template<class T>
-            void setAttribute(const char *name, const T& value);
+                /** Set string attribute, checking for characters
+                 * that need to be escaped */
+                void setWithCare( const char *value, size_t n = 0);
 
-        void csvAttribute(const char *name, const Variable *variable,
-                const void *buf, size_t nblocks, size_t precision);
-        void base64Attribute(const char *name,
-                const void *data, size_t len) const;
-        void hexDecAttribute(const char *name,
-                const void *data, size_t len) const;
+                void csv(const Variable* var, const char *buf,
+                        size_t nblocks, size_t precision);
+                void base64( const void *data, size_t len) const;
+                void hexDec( const void *data, size_t len) const;
 
-        /** Printing functions */
-//        void print(std::ostream& os, size_t indent = 0) const;
-//        friend std::ostream& operator<<(std::ostream& os, const XmlElement& el);
 
+                std::ostream& operator<<(const struct timespec &t);
+
+                /** Various variations of numerical attributes */
+                std::ostream& operator<<(const char *s);
+                template <typename T>
+                    std::ostream& operator<<(T const& val);
+
+            private:
+                std::ostream& os;
+                
+        };
 
     private:
         std::ostream& os;
@@ -100,11 +109,13 @@ class XmlElement {
 //        Children children;
 };
 
-template <class T>
-    void XmlElement::setAttribute(const char *name, const T& value)
-    {
-        os << ' ' << name << "=\"" << value << '"';
-    }
+    template <typename T>
+std::ostream& XmlElement::Attribute::operator<<(T const& val)
+{
+    os << val;
+    return os;
+}
+
 }
 
 #endif // XMLDOC_H

@@ -99,7 +99,7 @@ const void *StatSignal::getValue(const PdServ::SessionTaskData* std) const
 
 /////////////////////////////////////////////////////////////////////////////
 void StatSignal::getValue( const PdServ::Session *session,
-        void *buf, size_t, size_t, struct timespec* t) const
+        void *buf, struct timespec* t) const
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
     poll(session, buf, t);

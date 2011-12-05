@@ -169,10 +169,9 @@ PdServ::Variable::Datatype SignalInfo::dataType() const
 }
 
 //////////////////////////////////////////////////////////////////////
-void SignalInfo::read( void *dst, const void *src,
-        size_t start, size_t count) const
+void SignalInfo::read( void *dst, const void *src) const
 {
-    readFunc(dst, src, start, count, nelem, _dim[1]);
+    readFunc(dst, src, 0, nelem, nelem, _dim[1]);
 }
 
 //////////////////////////////////////////////////////////////////////

@@ -25,6 +25,8 @@
 #include "XmlElement.h"
 #include "../Variable.h"
 #include "Variable.h"
+#include "Parameter.h"
+#include "Channel.h"
 
 #include <stdint.h>
 #include <iomanip>
@@ -72,41 +74,69 @@ std::ostream& XmlElement::prefix()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void XmlElement::setAttribute(const char *a, const std::string &v)
+void XmlElement::setAttributes(const Parameter *p, const char *buf,
+        struct timespec const& ts, bool shortReply, bool hex,
+        bool writeAccess, size_t precision, const std::string& id)
 {
-    os << ' ' << a << "=\"" << v << '"';
+    p->setXmlAttributes(
+            *this, buf, ts, shortReply, hex, writeAccess, precision, id);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void XmlElement::setAttribute(const char *a, const char *v, size_t n)
+void XmlElement::setAttributes(const Channel *c, const char *buf,
+        bool shortReply, size_t precision)
 {
-    setAttribute(a, n ? std::string(v,n) : std::string(v));
-}
-
-
-/////////////////////////////////////////////////////////////////////////////
-void XmlElement::setAttribute(const char *a, const struct timespec &t)
-{
-    os << ' ' << a << "=\"" << t.tv_sec << '.'
-        << std::setw(6) << std::setfill('0') << t.tv_nsec / 1000
-        << std::setw(0) << '"';
+    c->setXmlAttributes( *this, shortReply, buf, precision);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void XmlElement::setAttributeCheck(const char *a, const std::string &v)
+// XmlElement::Attribute
+/////////////////////////////////////////////////////////////////////////////
+XmlElement::Attribute::Attribute(XmlElement& el, const char *name):
+    os(el.os)
 {
-    setAttributeCheck(a, v.data(), v.size());
+    os << ' ' << name << "=\"";
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void XmlElement::setAttributeCheck(const char *a, const char *v, size_t n)
+XmlElement::Attribute::~Attribute()
+{
+    os << '"';
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void XmlElement::Attribute::csv(const Variable* var, const char *buf,
+        size_t nblocks, size_t precision)
+{
+    var->toCSV(os, buf, nblocks, precision);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::ostream& XmlElement::Attribute::operator<<(const char *s)
+{
+    os << s;
+    return os;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::ostream& XmlElement::Attribute::operator <<( struct timespec const& ts)
+{
+    std::ostringstream time;
+    time << ts.tv_sec << '.'
+        << std::setfill('0') << std::setw(6) << ts.tv_nsec / 1000;
+
+    os << time.str();
+    return os;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void XmlElement::Attribute::setWithCare( const char *v, size_t n)
 {
     const char *escape = "<>&\"'";
     const char *escape_end = escape + 5;
     const char *v_end = v + (n ? n : strlen(v));
     const char *p;
 
-    os << ' ' << a << "=\"";
     while ((p = std::find_first_of(v, v_end, escape, escape_end)) != v_end) {
         os << std::string(v, p - v);
         switch (*p) {
@@ -133,21 +163,10 @@ void XmlElement::setAttributeCheck(const char *a, const char *v, size_t n)
 
         v = p + 1;
     }
-    os << std::string(v, v_end - v) << '"';
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void XmlElement::csvAttribute(const char *name, const Variable *variable,
-        const void *buf, size_t nblocks, size_t precision)
-{
-    os << ' ' << name << "=\"";
-    variable->toCSV(os, buf, nblocks, precision);
-    os << '"';
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void XmlElement::base64Attribute(const char *name,
-        const void *data, size_t len) const
+void XmlElement::Attribute::base64( const void *data, size_t len) const
 {
      static const char *base64Chr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
          "abcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -155,8 +174,6 @@ void XmlElement::base64Attribute(const char *name,
      size_t rem = len % 3;
      const unsigned char *buf = reinterpret_cast<const unsigned char*>(data);
  
-     os << ' ' << name << "=\"";
-
      // First convert all characters in chunks of 3
      while (i != len - rem) {
          os <<  base64Chr[  buf[i  ]         >> 2]
@@ -181,13 +198,10 @@ void XmlElement::base64Attribute(const char *name,
                  << "==";
              break;
      }
-
-     os << '"';
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void XmlElement::hexDecAttribute( const char *name,
-        const void *data, size_t len) const
+void XmlElement::Attribute::hexDec( const void *data, size_t len) const
 {
      const unsigned char *buf =
          reinterpret_cast<const unsigned char*>(data);
@@ -219,10 +233,6 @@ void XmlElement::hexDecAttribute( const char *name,
          "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", 
          "FA", "FB", "FC", "FD", "FE", "FF"};
  
-     os << ' ' << name << "=\"";
-
      while (len--)
          os << hexValue[*buf++];
-
-     os << '"';
 }

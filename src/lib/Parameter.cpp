@@ -70,11 +70,11 @@ int Parameter::setValue(const PdServ::Session *, const char* src,
 
 //////////////////////////////////////////////////////////////////////
 void Parameter::getValue(const PdServ::Session *,
-        void* buf, size_t start, size_t count, struct timespec *time) const
+        void* valueBuf,  struct timespec *time) const
 {
     ost::SemaphoreLock lock(mutex);
-    const char *src = valueBuf + start*width;
-    std::copy(src, src + count * width, reinterpret_cast<char*>(buf));
+
+    std::copy(addr, addr + memSize, reinterpret_cast<char*>(valueBuf));
     if (time)
         *time = mtime;
 }

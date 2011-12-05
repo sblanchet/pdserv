@@ -109,17 +109,16 @@ class VariableDirectory: public DirectoryNode {
        const Channels& getChannels() const;
        const Channel * getChannel(unsigned int) const;
 
-       const Parameters& getParameters() const;
        const Parameter * getParameter(unsigned int) const;
        const Parameter * getParameter(const PdServ::Parameter *p) const;
 
     private:
-        Channels channels;
-        Parameters parameters;
+       Channels channels;
+       Parameters parameters;
 
-        typedef std::map<const PdServ::Parameter *, const Parameter *>
-            ParameterMap;
-        ParameterMap parameterMap;
+       typedef std::map<const PdServ::Parameter *, const Parameter *>
+           ParameterMap;
+       ParameterMap parameterMap;
 };
 
 }

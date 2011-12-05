@@ -37,8 +37,7 @@ class SignalInfo {
         const size_t *dim() const;
         PdServ::Variable::Datatype dataType() const;
 
-        void read( void *dst, const void *src,
-                size_t start, size_t count) const;
+        void read( void *dst, const void *src) const;
         void write( void *dst, const void *src,
                 size_t start, size_t count) const;
 

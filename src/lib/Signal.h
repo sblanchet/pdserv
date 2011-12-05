@@ -72,7 +72,7 @@ class Signal: public PdServ::Signal {
 
         // Reimplemented from PdServ::Variable
         void getValue(const PdServ::Session*,
-                void *, size_t, size_t, struct timespec * = 0) const;
+                void *, struct timespec * = 0) const;
 };
 
 #endif //LIB_SIGNAL

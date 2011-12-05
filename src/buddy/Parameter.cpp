@@ -66,10 +66,10 @@ int Parameter::setValue(const PdServ::Session *, const char* src,
 
 //////////////////////////////////////////////////////////////////////
 void Parameter::getValue(const PdServ::Session *, void* dst,
-        size_t startIndex, size_t nelem, struct timespec *time) const
+        struct timespec *time) const
 {
     ost::SemaphoreLock lock(mutex);
-    si.read(dst, valueBuf, startIndex, nelem);
+    si.read(dst, valueBuf);
     if (time)
         *time = mtime;
 }

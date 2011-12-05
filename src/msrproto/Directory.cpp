@@ -136,12 +136,6 @@ const Channel* VariableDirectory::getChannel(unsigned int idx) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const VariableDirectory::Parameters& VariableDirectory::getParameters() const
-{
-    return parameters;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 const Parameter* VariableDirectory::getParameter(unsigned int idx) const
 {
     return idx < parameters.size() ? parameters[idx] : 0;

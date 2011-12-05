@@ -179,10 +179,8 @@ void Main::processPoll(size_t delay_ms,
 
     for (size_t i = 0; i < nelem; ++i) {
         const Signal *signal = dynamic_cast<const Signal *>(s[i]);
-        if (signal) {
-            signal->info.read(
-                    pollDest[i], data + signal->offset, 0, signal->nelem);
-        }
+        if (signal)
+            signal->info.read( pollDest[i], data + signal->offset);
     }
 }
 

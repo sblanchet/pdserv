@@ -47,10 +47,11 @@ class Parameter: public Variable {
                 unsigned int elementIndex = ~0U);
         ~Parameter();
 
-        void setXmlAttributes(Session *, XmlElement&, bool shortReply,
-                    bool hex, bool writeAccess, size_t precision,
-                    const std::string& id = std::string()) const;
-        void getValue(const Session *, char *) const;
+        void setXmlAttributes(XmlElement&, const char *buf,
+                struct timespec const& ts, bool shortReply,
+                bool hex, bool writeAccess, size_t precision,
+                const std::string& id = std::string()) const;
+
         int setHexValue(const Session *,
                 const char *str, size_t startindex, size_t &count) const;
         int setDoubleValue(const Session *,
@@ -60,13 +61,15 @@ class Parameter: public Variable {
 
        const PdServ::Parameter * const mainParam;
 
+       typedef std::vector<const Parameter*> ChildList;
+       const ChildList& getChildren() const;
        void addChild(const Parameter *);
 
     private:
         const bool dependent;
         const bool persistent;
 
-        std::vector<const Parameter*> children;
+       ChildList children;
 
         void (*append)(char *&, double);
 
