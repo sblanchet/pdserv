@@ -109,6 +109,7 @@ class VariableDirectory: public DirectoryNode {
        const Channels& getChannels() const;
        const Channel * getChannel(unsigned int) const;
 
+       const Parameters& getParameters() const;
        const Parameter * getParameter(unsigned int) const;
        const Parameter * getParameter(const PdServ::Parameter *p) const;
 

@@ -369,54 +369,6 @@ void Session::readChannel()
     else if (inbuf.getUnsigned("index", index)) {
         c = server->getRoot().getChannel(index);
     }
-    else {
-        size_t buflen = 0;
-        const PdServ::Signal *mainSignal = 0;
-        std::map<const PdServ::Signal*, size_t> bufOffset;
-
-        const VariableDirectory::Channels& chanList =
-            server->getRoot().getChannels();
-
-        typedef std::list<const PdServ::Signal*> SignalList;
-        SignalList orderedSignals[PdServ::Variable::maxWidth + 1];
-
-        for (VariableDirectory::Channels::const_iterator it = chanList.begin();
-                it != chanList.end(); it++) {
-            mainSignal = (*it)->signal;
-            if (bufOffset.find(mainSignal) != bufOffset.end())
-                continue;
-
-            bufOffset[mainSignal] = 0;
-            orderedSignals[mainSignal->width].push_back(mainSignal);
-        }
-
-        const PdServ::Signal *signalList[bufOffset.size()];
-
-        index = 0;
-        for (size_t w = 8; w; w /= 2) {
-            for (SignalList::const_iterator it = orderedSignals[w].begin();
-                    it != orderedSignals[w].end(); it++) {
-                mainSignal = *it;
-
-                signalList[index] = mainSignal;
-                bufOffset[mainSignal] = buflen;
-                buflen += mainSignal->memSize;
-
-                index++;
-            }
-        }
-
-        char buf[buflen];
-        main->poll(this, signalList, bufOffset.size(), buf, 0);
-
-        XmlElement channels("channels", outbuf);
-        for (VariableDirectory::Channels::const_iterator it = chanList.begin();
-                it != chanList.end(); it++)
-            XmlElement("channel", channels).setAttributes(*it,
-                    buf + bufOffset[(*it)->signal], shortReply, 16);
-
-        return;
-    }
 
     // A single signal was requested
     if (c) {
@@ -426,7 +378,54 @@ void Session::readChannel()
 
         XmlElement channel("channel", outbuf);
         c->setXmlAttributes(channel, shortReply, buf, 16);
+
+        return;
     }
+
+    size_t buflen = 0;
+    const PdServ::Signal *mainSignal = 0;
+    std::map<const PdServ::Signal*, size_t> bufOffset;
+
+    const VariableDirectory::Channels& chanList =
+        server->getRoot().getChannels();
+
+    typedef std::list<const PdServ::Signal*> SignalList;
+    SignalList orderedSignals[PdServ::Variable::maxWidth + 1];
+
+    for (VariableDirectory::Channels::const_iterator it = chanList.begin();
+            it != chanList.end(); it++) {
+        mainSignal = (*it)->signal;
+        if (bufOffset.find(mainSignal) != bufOffset.end())
+            continue;
+
+        bufOffset[mainSignal] = 0;
+        orderedSignals[mainSignal->width].push_back(mainSignal);
+    }
+
+    const PdServ::Signal *signalList[bufOffset.size()];
+
+    index = 0;
+    for (size_t w = 8; w; w /= 2) {
+        for (SignalList::const_iterator it = orderedSignals[w].begin();
+                it != orderedSignals[w].end(); it++) {
+            mainSignal = *it;
+
+            signalList[index] = mainSignal;
+            bufOffset[mainSignal] = buflen;
+            buflen += mainSignal->memSize;
+
+            index++;
+        }
+    }
+
+    char buf[buflen];
+    main->poll(this, signalList, bufOffset.size(), buf, 0);
+
+    XmlElement channels("channels", outbuf);
+    for (VariableDirectory::Channels::const_iterator it = chanList.begin();
+            it != chanList.end(); it++)
+        XmlElement("channel", channels).setAttributes(*it,
+                buf + bufOffset[(*it)->signal], shortReply, 16);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -459,49 +458,46 @@ void Session::readParameter()
         return;
     }
 
-    const PdServ::Main::Parameters& mainParameters = main->getParameters();
-
     XmlElement parametersElement("parameters", outbuf);
 
-    for (PdServ::Main::Parameters::const_iterator it = mainParameters.begin();
-            it != mainParameters.end(); ++it) {
-        const Parameter* parameter = server->getRoot().getParameter(*it);
-        char buf[parameter->memSize];
+    const VariableDirectory::Parameters& parameters =
+        server->getRoot().getParameters();
+    VariableDirectory::Parameters::const_iterator it = parameters.begin();
+    while ( it != parameters.end()) {
+        const PdServ::Parameter* mainParam = (*it)->mainParam;
+        char buf[mainParam->memSize];
         struct timespec ts;
 
-        parameter->mainParam->getValue(this, buf, &ts);
+        mainParam->getValue(this, buf, &ts);
 
-        XmlElement ("parameter",  parametersElement).setAttributes(
-                parameter, buf, ts, shortReply, hex, writeAccess, 16);
-
-        const Parameter::ChildList& children = parameter->getChildren();
-        for (Parameter::ChildList::const_iterator it = children.begin();
-                it != children.end(); ++it) {
-            XmlElement ("parameter",  parametersElement)
-                .setAttributes( *it, buf, ts, shortReply, hex, writeAccess, 16);
-        }
+        while (it != parameters.end() and mainParam == (*it)->mainParam)
+            XmlElement ("parameter",  parametersElement).setAttributes(
+                    *it++, buf, ts, shortReply, hex, writeAccess, 16);
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::readParamValues()
 {
-    const PdServ::Main::Parameters& mainParameters = main->getParameters();
-
     XmlElement param_values("param_values", outbuf);
     XmlElement::Attribute values(param_values, "value");
 
-    for (PdServ::Main::Parameters::const_iterator it = mainParameters.begin();
-            it != mainParameters.end(); ++it) {
-        const Parameter* parameter = server->getRoot().getParameter(*it);
-        char buf[parameter->memSize];
+    const VariableDirectory::Parameters& parameters =
+        server->getRoot().getParameters();
+    VariableDirectory::Parameters::const_iterator it = parameters.begin();
+    while ( it != parameters.end()) {
+        const PdServ::Parameter* mainParam = (*it)->mainParam;
+        char buf[mainParam->memSize];
+        struct timespec ts;
 
-        parameter->mainParam->getValue(this, buf);
+        mainParam->getValue(this, buf, &ts);
 
-        if (it != mainParameters.begin())
+        if (it != parameters.begin())
             values << ';';
+        values.csv(*it, buf, 1, 16);
 
-        values.csv(parameter, buf, 1, 16);
+        while (it != parameters.end() and mainParam == (*it)->mainParam)
+            ++it;
     }
 }
 
