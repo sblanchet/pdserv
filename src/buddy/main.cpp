@@ -68,14 +68,14 @@ int main(int argc, char **argv)
         for (unsigned i = 0; apps; i++, apps >>= 1) {
             if ((apps & 0x1) and !app[i]) {
                 debug() << "new Application" << i;
-                app[i] = new Main(argc, args, i, device_node);
+                app[i] = new Main(std::string(device_node).append(1, '1' + 1));
             }
             else if (!(apps & 0x1) and app[i]) {
                 debug() << "finished Application" << i;
                 delete app[i];
                 app[i] = 0;
             }
-            sleep(2);
+            sleep(1);
         }
 
         int n;

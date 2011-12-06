@@ -36,8 +36,7 @@
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
-Main::Main(int argc, const char *argv[], const char *name, const char *version):
-    argc(argc), argv(argv), name(name), version(version), mutex(1)
+Main::Main(): mutex(1)
 {
     msrproto = 0;
 }
@@ -126,7 +125,7 @@ const Main::Parameters& Main::getParameters() const
 /////////////////////////////////////////////////////////////////////////////
 void Main::startServers()
 {
-    msrproto = new MsrProto::Server(this, argc, argv);
+    msrproto = new MsrProto::Server(this);
 
 //    EtlProto::Server etlproto(this);
 

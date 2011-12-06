@@ -29,12 +29,17 @@
 #include "pdserv/pdserv.h"
 
 /////////////////////////////////////////////////////////////////////////////
-struct pdserv* pdserv_create(int argc, const char *argv[], 
-        const char *name, const char *version,
+struct pdserv* pdserv_create( const char *name, const char *version,
         int (*gettime)(struct timespec*))
 {
     return reinterpret_cast<struct pdserv*>(
-            new Main(argc, argv, name, version, gettime));
+            new Main(name, version, gettime));
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int pdserv_config_file( struct pdserv* pdserv, const char *name)
+{
+    return reinterpret_cast<Main*>(pdserv)->configFile(name);
 }
 
 /////////////////////////////////////////////////////////////////////////////

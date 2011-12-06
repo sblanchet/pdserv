@@ -45,10 +45,11 @@ class SessionShadow;
 
 class Main: public PdServ::Main {
     public:
-        Main(int argc, const char *argv[],
-                const char *name, const char *version,
+        Main( const char *name, const char *version,
                 int (*gettime)(struct timespec*));
         ~Main();
+
+        int configFile(const std::string& name);
 
         int run();
         void getParameters(Task *, const struct timespec *) const;

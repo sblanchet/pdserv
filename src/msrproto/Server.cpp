@@ -41,8 +41,7 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Server::Server(const PdServ::Main *main, int argc, const char **argv):
-    main(main), mutex(1)
+Server::Server(const PdServ::Main *main): main(main), mutex(1)
 {
     traditional = 1;
 

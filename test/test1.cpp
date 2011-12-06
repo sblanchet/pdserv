@@ -30,8 +30,7 @@ int gettime(struct timespec *t)
 
 int main(int argc, const char *argv[])
 {
-    struct pdserv *pdserv =
-        pdserv_create(argc, argv, argv[0], "1.0", gettime);
+    struct pdserv *pdserv = pdserv_create(argv[0], "1.0", gettime);
     unsigned int var1_dims[] = {2,3,4};
     struct timespec time;
     double dbl[3] = { 13,14,15};

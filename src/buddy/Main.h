@@ -46,8 +46,10 @@ class SessionShadow;
 
 class Main: public PdServ::Main {
     public:
-        Main(int argc, const char *argv[], int instance, const char *node);
+        Main(const std::string& device);
         ~Main();
+
+        int configFile(const std::string& name);
 
 //        int run();
 //        void getParameters(Task *, const struct timespec *) const;

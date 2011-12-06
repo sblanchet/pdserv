@@ -55,12 +55,14 @@ struct SDOStruct {
 const double Main::bufferTime = 2.0;
 
 /////////////////////////////////////////////////////////////////////////////
-Main::Main(int argc, const char **argv,
-        const char *name, const char *version,
+Main::Main( const char *name, const char *version,
         int (*gettime)(struct timespec*)):
-    PdServ::Main(argc, argv, name, version), mutex(1), sdoMutex(1),
+    mutex(1), sdoMutex(1),
     rttime(gettime ? gettime : &PdServ::Main::localtime)
 {
+    this->name = name;
+    this->version = version;
+
     shmem_len = 0;
     shmem = 0;
 }
@@ -69,6 +71,12 @@ Main::Main(int argc, const char **argv,
 Main::~Main()
 {
     ::munmap(shmem, shmem_len);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::configFile(const std::string& file)
+{
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////

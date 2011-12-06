@@ -33,6 +33,7 @@
 // #include <sys/types.h>          // kill()
 #include <sys/mman.h>
 #include <sys/select.h>
+#include <sys/wait.h>           // waitpid()
 
 #include "Main.h"
 #include "Signal.h"
@@ -45,9 +46,7 @@
 //        "traditional", "t", "Traditional MSR", false);
 
 /////////////////////////////////////////////////////////////////////////////
-Main::Main(int argc, const char **argv,
-        int instance, const char *device_node):
-    PdServ::Main(argc, argv, "", ""),
+Main::Main(const std::string& device):
     paramMutex(1), parameterBuf(0)
 {
     pid = fork();
@@ -59,14 +58,10 @@ Main::Main(int argc, const char **argv,
     }
     debug() << "fork()" << pid;
 
-    std::ostringstream device;
-
-    device << device_node << instance + 1;
-
-    fd = open(device.str().c_str(), O_NONBLOCK | O_RDONLY);
+    fd = open(device.c_str(), O_NONBLOCK | O_RDONLY);
     if (fd < 0)
         goto out;
-    debug() << "opened" << device.str() << '=' << fd;
+    debug() << "opened" << device << '=' << fd;
 
     if (ioctl(fd, GET_APP_PROPERTIES, &app_properties))
         goto out;
@@ -167,7 +162,8 @@ out:
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
-    delete parameterBuf;
+    ::kill(pid, SIGTERM);
+    ::waitpid(pid, 0, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////

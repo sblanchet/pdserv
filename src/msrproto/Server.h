@@ -49,7 +49,7 @@ class XmlElement;
 
 class Server: public ost::Thread {
     public:
-        Server(const PdServ::Main *main, int argc, const char **argv);
+        Server(const PdServ::Main *main);
         ~Server();
 
         void broadcast(Session *s, const XmlElement&);

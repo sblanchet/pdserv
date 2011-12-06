@@ -34,8 +34,6 @@ struct variable;
  *      pointer to struct pdserv on success
  */
 struct pdserv* pdserv_create(
-        int argc,               /**< Argument count */
-        const char *argv[],     /**< Arguments */
         const char *name,       /**< Name of the process */
         const char *version,    /**< Version string */
         int (*gettime)(struct timespec*)   /**< Function used by the library
@@ -44,6 +42,11 @@ struct pdserv* pdserv_create(
                                             * should call clock_gettime().
                                             * If NULL, gettimeofday() is
                                             * used */
+        );
+
+int pdserv_config_file(
+        struct pdserv* pdserv,  /**< Pointer to pdserv struct */
+        const char *file
         );
 
 /** Create a cyclic task

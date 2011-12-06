@@ -50,8 +50,7 @@ class SessionStatistics;
 
 class Main {
     public:
-        Main(int argc, const char **argv,
-                const char *name, const char *version);
+        Main();
         virtual ~Main();
 
         const std::string& getName() const;
@@ -81,9 +80,6 @@ class Main {
         virtual SessionShadow *newSession(Session *) const = 0;
 
     protected:
-        int argc;
-        const char **argv;
-
         std::string name;
         std::string version;
 
