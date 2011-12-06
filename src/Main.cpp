@@ -130,8 +130,6 @@ void Main::startServers()
 
 //    EtlProto::Server etlproto(this);
 
-//    etlproto.start();
-    msrproto->start();
 }
 
 /////////////////////////////////////////////////////////////////////////////

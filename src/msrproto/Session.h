@@ -77,18 +77,16 @@ class Subscription;
 class PrintQ: public std::queue<const Subscription*> {
 };
 
-class Session: public ost::SocketPort, public PdServ::Session {
+class Session: public ost::TCPSession, public PdServ::Session {
     public:
         Session( Server *s,
-                ost::SocketService *ss,
-                ost::TCPSocket &socket,
-                const PdServ::Main *main);
+                ost::TCPSocket &socket);
         ~Session();
 
         void broadcast(Session *s, const XmlElement &element);
         void parameterChanged(const PdServ::Parameter*,
                 size_t startIndex, size_t nelem);
-        void requestOutput();
+        //void requestOutput();
 
         void processCommand();
 
@@ -115,11 +113,8 @@ class Session: public ost::SocketPort, public PdServ::Session {
             double dbl;
         } mutable tmp;
 
-        // Reimplemented from SocketPort
-        void expired();
-        void pending();
-        void output();
-        void disconnect();
+        // Reimplemented from TCPSession
+        void run();
 
         // Reimplemented from PdServ::Session
         void newSignalList(const PdServ::Task *task,
@@ -132,7 +127,6 @@ class Session: public ost::SocketPort, public PdServ::Session {
         bool echoOn;
 
         // Input and output buffering
-        Outbuf outbuf;
         XmlParser inbuf;
 
         // Here are all the commands the MSR protocol supports

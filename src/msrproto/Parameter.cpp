@@ -204,7 +204,7 @@ int Parameter::setDoubleValue(const Session *session,
 
 /////////////////////////////////////////////////////////////////////////////
 void Parameter::valueChanged(
-        std::ostream& os, size_t start, size_t nelem) const
+        std::ostream* os, size_t start, size_t nelem) const
 {
     {
         XmlElement pu("pu", os);

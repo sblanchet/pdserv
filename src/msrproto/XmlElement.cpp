@@ -38,10 +38,10 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 // XmlElement
 /////////////////////////////////////////////////////////////////////////////
-XmlElement::XmlElement(const char *name, std::ostream& os):
-    os(os), name(name)
+XmlElement::XmlElement(const char *name, std::ostream* os):
+    os(*os), name(name)
 {
-    os << '<' << name;
+    this->os << '<' << name;
     printed = false;
 }
 

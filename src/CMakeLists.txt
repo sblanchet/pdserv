@@ -33,7 +33,7 @@ SET (msrproto_src
     msrproto/TimeSignal.cpp             msrproto/TimeSignal.h
     msrproto/Subscription.cpp           msrproto/Subscription.h
     msrproto/SubscriptionManager.cpp    msrproto/SubscriptionManager.h
-    msrproto/Outbuf.cpp                 msrproto/Outbuf.h
+    #msrproto/Outbuf.cpp                 msrproto/Outbuf.h
     msrproto/Session.cpp                msrproto/Session.h
     msrproto/XmlParser.cpp              msrproto/XmlParser.h
     msrproto/Attribute.cpp              msrproto/Attribute.h

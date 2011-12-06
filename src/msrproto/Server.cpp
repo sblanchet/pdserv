@@ -113,6 +113,8 @@ Server::Server(const PdServ::Main *main, int argc, const char **argv):
 
     if (!main->findVariable("/Taskinfo/Abtastfrequenz")) {
     }
+
+    start();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -121,17 +123,36 @@ Server::~Server()
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
         delete *it;
-
-//    delete time;
 }
+
+// class TSession: public ost::TCPSession {
+//     public:
+//         TSession(Server *server, ost::TCPSocket &socket):
+//             TCPSession(socket) {
+//                 detach();
+//             }
+//         ~TSession() {
+//             debug();
+//         }
+// 
+//     private:
+//         void run() {
+//             *this << "hallo\r\n" << std::flush;
+//         }
+// 
+//         void _final() {
+//             disconnect();
+// //            delete this;
+//         }
+// };
 
 /////////////////////////////////////////////////////////////////////////////
 void Server::run()
 {
-    ost::SocketService svc;
-    ost::TCPSocket socket(ost::IPV4Address("0.0.0.0"), 2345);
-    while (true) {
-        Session *s = new Session(this, &svc, socket, main);
+    ost::TCPSocket server(ost::IPV4Address("0.0.0.0"), 2345);
+
+    while (server.isPendingConnection()) {
+        Session *s = new Session(this, server);
 
         ost::SemaphoreLock lock(mutex);
         sessions.insert(s);
