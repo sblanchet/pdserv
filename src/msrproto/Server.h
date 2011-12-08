@@ -52,7 +52,7 @@ class Server: public ost::Thread {
         Server(const PdServ::Main *main);
         ~Server();
 
-        void broadcast(Session *s, const XmlElement&);
+        void broadcast(Session *s, const std::string&);
 
         void parameterChanged(const PdServ::Parameter*,
                 size_t startIndex, size_t n);

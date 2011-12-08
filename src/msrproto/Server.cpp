@@ -159,12 +159,12 @@ void Server::run()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::broadcast(Session *s, const XmlElement &element)
+void Server::broadcast(Session *s, const std::string &message)
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
-        (*it)->broadcast(s, element);
+        (*it)->broadcast(s, message);
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -83,7 +83,7 @@ class Session: public ost::TCPSession, public PdServ::Session {
                 ost::TCPSocket &socket);
         ~Session();
 
-        void broadcast(Session *s, const XmlElement &element);
+        void broadcast(Session *s, const std::string &element);
         void parameterChanged(const PdServ::Parameter*,
                 size_t startIndex, size_t nelem);
         //void requestOutput();

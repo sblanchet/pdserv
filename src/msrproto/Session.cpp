@@ -63,9 +63,6 @@ Session::Session( Server *server, ost::TCPSocket &socket):
     echoOn = false;
     quiet = false;
 
-    // Non-blocking read() and write()
-    //setCompletion(false);
-
     // Get the hostname
     char hostname[HOST_NAME_MAX+1];
     switch (gethostname(hostname, HOST_NAME_MAX)) {
@@ -104,9 +101,9 @@ Session::~Session()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::broadcast(Session *s, const XmlElement &element)
+void Session::broadcast(Session *s, const std::string &message)
 {
-    //outbuf << element << std::flush;
+    *this << message << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -252,20 +249,22 @@ void Session::processCommand()
 void Session::broadcast()
 {
     std::ostringstream os;
-    XmlElement broadcast("broadcast", &os);
-    struct timespec ts;
-    std::string s;
+    {
+        XmlElement broadcast("broadcast", &os);
+        struct timespec ts;
+        std::string s;
 
-    main->gettime(&ts);
-    XmlElement::Attribute(broadcast, "time") << ts;
+        main->gettime(&ts);
+        XmlElement::Attribute(broadcast, "time") << ts;
 
-    if (inbuf.getString("action", s))
-        XmlElement::Attribute(broadcast, "action").setWithCare(s.c_str());
+        if (inbuf.getString("action", s))
+            XmlElement::Attribute(broadcast, "action").setWithCare(s.c_str());
 
-    if (inbuf.getString("text", s))
-        XmlElement::Attribute(broadcast, "text").setWithCare(s.c_str());
+        if (inbuf.getString("text", s))
+            XmlElement::Attribute(broadcast, "text").setWithCare(s.c_str());
+    }
 
-    //server->broadcast(this, broadcast);
+    server->broadcast(this, os.str());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -465,7 +464,8 @@ void Session::remoteHost()
 
     inbuf.getString("applicationname", client);
 
-    writeAccess = inbuf.isEqual("access", "allow");
+    writeAccess =
+        inbuf.isEqual("access", "allow") or inbuf.isTrue("access");
 
     if (writeAccess and inbuf.isTrue("isadmin")) {
         struct timespec ts;
@@ -480,7 +480,7 @@ void Session::remoteHost()
             XmlElement::Attribute(info, "text") << os.str();
         }
 
-//        server->broadcast(this, info);
+        server->broadcast(this, message.str());
     }
 }
 
