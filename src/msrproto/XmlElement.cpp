@@ -24,6 +24,7 @@
 
 #include "XmlElement.h"
 #include "../Variable.h"
+#include "../Debug.h"
 #include "Variable.h"
 #include "Parameter.h"
 #include "Channel.h"
@@ -163,6 +164,8 @@ void XmlElement::Attribute::setWithCare( const char *v, size_t n)
 
         v = p + 1;
     }
+
+    os << v;
 }
 
 /////////////////////////////////////////////////////////////////////////////
