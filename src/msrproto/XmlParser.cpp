@@ -24,6 +24,7 @@
 
 #include "XmlParser.h"
 #include "Session.h"
+#include "../Debug.h"
 
 #include <algorithm>
 
@@ -36,7 +37,6 @@ XmlParser::XmlParser(size_t bufMax): bufLenMax(bufMax)
     buf = new char[bufIncrement];
     bufLen = bufIncrement;
 
-    begin = 0;
     parsePos = 0;
     inputEnd = 0;
 }
@@ -49,7 +49,6 @@ XmlParser::XmlParser(const std::string &s, size_t offset):
     buf = new char[bufLenMax];
     bufLen = bufLenMax;
 
-    begin = 0;
     parsePos = 0;
     inputEnd = 0;
 
@@ -64,54 +63,36 @@ XmlParser::~XmlParser()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void XmlParser::checkFreeSpace()
-{
-    if (inputEnd == bufLen) {
-        bufLen += bufIncrement;
-
-        if (bufLen > bufLenMax) {
-            bufLen = bufIncrement;
-            parseState = FindStart;
-            begin = parsePos = inputEnd = 0;
-        }
-
-        char *data = new char[bufLen];
-        std::copy(buf, buf + inputEnd, data);
-        
-        delete[] buf;
-        buf = data;
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
 size_t XmlParser::free()
 {
-    checkFreeSpace();
     return bufLen - inputEnd;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 char *XmlParser::bufptr()
 {
-    checkFreeSpace();
     return buf + inputEnd;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 const char *XmlParser::getCommand() const
 {
-    return commandPos ? buf + commandPos : 0;
+    return buf + commandPos;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 bool XmlParser::find(const char *name, const char *&value) const
 {
-    std::pair<AttributeMap::const_iterator, AttributeMap::const_iterator>
-        ret(attribute.equal_range(*name));
+    AttributeMap::const_iterator it = attribute.find(*name);
+    if (it == attribute.end())
+        return false;
 
-    for (AttributeMap::const_iterator it(ret.first); it != ret.second; it++) {
-        if (!strcasecmp(name, buf + it->second.namePos)) {
-            value = it->second.valuePos ? buf + it->second.valuePos : 0;
+    const AttributePos& pos = it->second;
+
+    for (AttributePos::const_iterator it = pos.begin();
+            it != pos.end(); ++it) {
+        if (!strcasecmp(name, buf + it->first)) {
+            value = it->second ? buf + it->second : 0;
             return true;
         }
     }
@@ -241,177 +222,171 @@ bool XmlParser::getUnsignedList(const char *name,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool XmlParser::next()
+void XmlParser::newData(size_t n)
 {
-    begin = parsePos;
-    parseState = FindStart;
-    if (begin >= inputEnd) {
-        begin = parsePos = inputEnd = 0;
-        return false;
-    }
-
-    return newData(0);
+    inputEnd += n;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool XmlParser::newData(size_t n)
+bool XmlParser::next()
 {
-    inputEnd += n;
+    bool finished = false;
 
-    while (true) {
+    while (parsePos < inputEnd) {
+
+        char& c = buf[parsePos++];
+
         switch (parseState) {
             case FindStart:
-                //cout << __LINE__ << "FindStart" << endl;
-
-                attribute.clear();
-                
-                // Move forward in the buffer until '<' is found
-                parsePos = std::find(buf + parsePos, buf + inputEnd, '<') - buf;
-                if (begin == inputEnd) {
-                    begin = parsePos = inputEnd = 0;
-                    return false;
-                }
-
-                begin = parsePos;
-                commandPos = 0;
-                parseState = GetToken;
-
-                parsePos = begin + 1;
-                attrNamePos = parsePos;
-                // no break here
-
-            case GetToken:
-                do {
-                    if (parsePos == inputEnd)
-                        return false;
-                    if (!isalpha(buf[parsePos]) and buf[parsePos] != '_')
-                        break;
-                    parsePos++;
-                } while (1);
-
-                // Decide what to do with the next character
-                if (buf[parsePos] == '=') {
-                    parseState = GetQuote;
+                if (c == '<') {
+                    // Found beginning
+                    attribute.clear();
+                    commandPos = parsePos;
+                    parseState = ExpectToken;
                 }
                 else {
-                    if (!commandPos and attrNamePos != parsePos)
-                        commandPos = attrNamePos;
-
-                    if (buf[parsePos] == '>') {
-                        buf[parsePos++] = 0;
-
-                        std::pair<char, AttributePos> ap( buf[attrNamePos],
-                                AttributePos(attrNamePos, 0));
-                        attribute.insert(ap);
-                        begin = parsePos;
-                        parseState = FindStart;
-                        return true;
-                    }
-                    else if (buf[parsePos] == '/') {
-                        if (inputEnd - parsePos < 2)
-                            return false;
-
-                        if (buf[parsePos+1] != '>') {
-                            // Error: start over again
-                            parsePos++; // Skip the first '/' only
-                            parseState = FindStart;
-                            break;
-                        }
-
-                        buf[parsePos] = 0;
-                        parsePos += 2;
-
-                        std::pair<char, AttributePos> ap( buf[attrNamePos],
-                                AttributePos(attrNamePos, 0));
-                        attribute.insert(ap);
-                        parseState = FindStart;
-                        return true;
-                    }
-                    else if (isspace(buf[parsePos])) {
-                        if (parsePos == attrNamePos) {
-                            // No new attribute - discard
-                            parseState = FindStart;
-                            break;
-                        }
-
-                        buf[parsePos] = 0;
-                        std::pair<char, AttributePos> ap( buf[attrNamePos],
-                                AttributePos(attrNamePos, 0));
-                        attribute.insert(ap);
-                        parseState = SkipSpace;
-                    }
-                    else {
-                        parseState = FindStart;
-                    }
+                    // Move forward in the buffer until '<' is found
+                    parsePos =
+                        std::find(buf + parsePos, buf + inputEnd, '<') - buf;
                 }
+                break;
 
-                buf[parsePos++] = 0;
+            case ExpectToken:
+                // Moves forward until an alpha character is found
+                if (isalpha(c)) {
+                    attrNamePos = &c - buf;
+                    parseState = FindTokenEnd;
+                    attribute[buf[attrNamePos]][attrNamePos] = 0;
+                }
+                else
+                    parseState = FindStart;
                 break;
 
             case SkipSpace:
-                //cout << __LINE__ << "GetCommand" << endl;
-                do {
-                    if (parsePos == inputEnd)
-                        return false;
-                    if (!isspace(buf[parsePos]))
-                        break;
-                    parsePos++;
-                } while(1);
+                // Check for end of XML Element
+                if (isalpha(c)) {
+                    parseState = ExpectToken;
+                    --parsePos;
+                    break;
+                }
+                else if (c == '/')
+                    parseState = ExpectGT;
+                else if (c == '>')
+                    finished = true;
+                else if (!isspace(c))
+                    parseState = FindStart;
 
-                attrNamePos = parsePos;
-                parseState = GetToken;
+                c = '\0';
                 break;
-                // no break
 
-            case GetQuote:
-                if (parsePos == inputEnd)
-                    return false;
+            case FindTokenEnd:
+                // Moves forward until non-alpha is found
+                if (isalpha(c) or c == '_')
+                    break;
 
-                if (buf[parsePos] == '\'' or buf[parsePos] == '"') {
-                    quote = buf[parsePos];
-                    attrValuePos = ++parsePos;
+                if (c == '=') {
+                    parseState = GetAttribute;
+                    c = '\0';
                 }
                 else {
-                    quote = 0;
-                    attrValuePos = parsePos;
+                    parseState = SkipSpace;
+                    --parsePos;
                 }
 
-                parseState = GetAttribute;
-                // no break;
-                
+                break;
+
             case GetAttribute:
-                do {
-                    if (parsePos == inputEnd)
-                        return false;
-
-                    if (quote) {
-                        if (buf[parsePos] == quote)
-                            break;
+                {
+                    size_t attrValuePos;
+                    if (c == '\'' or c == '"') {
+                        quote = c;
+                        attrValuePos = parsePos;
+                        parseState = GetQuotedAttribute;
                     }
-                    else if (isspace(buf[parsePos]))
-                        break;
-                    else if (buf[parsePos] == '>') {
-                        parseState = FindStart;
-                        break;
-                    }
-                    else if (buf[parsePos] == '/') {
-                        parseState = GetToken;
-                        break;
+                    else {
+                        attrValuePos = &c - buf;
+                        parseState = GetUnquotedAttribute;
                     }
 
-                    parsePos++;
-                } while (1);
+                    attribute[buf[attrNamePos]][attrNamePos] = attrValuePos;
+                }
 
-                std::pair<char, AttributePos> ap( buf[attrNamePos],
-                        AttributePos(attrNamePos, attrValuePos));
-                attribute.insert(ap);
-                if (parseState != GetToken) {
-                    buf[parsePos++] = 0;
-                    if (parseState == FindStart)
-                        return true;
+                break;
+                
+            case GetQuotedAttribute:
+                // Skip Escape char
+                if (c == '\\')
+                    break;
+
+                if (c == quote) {
+                    c = '\0';
+
                     parseState = SkipSpace;
                 }
                 break;
+
+            case GetUnquotedAttribute:
+                if (c == '>') {
+                    c = '\0';
+                    finished = true;
+                }
+                else if (c == '/')
+                    parseState = MaybeGT;
+                else if (isspace(c)) {
+                    c = '\0';
+                    parseState = SkipSpace;
+                }
+
+                break;
+
+            case ExpectGT:
+                parseState = FindStart;
+                finished = c == '>';
+
+                break;
+
+            case MaybeGT:
+                if (c == '>') {
+                    *(&c - 1) = '\0';
+                    finished = true;
+                }
+                else
+                    parseState = GetUnquotedAttribute;
+                break;
+        }
+
+        if (finished) {
+            parseState = FindStart;
+            return true;
         }
     }
+
+    if (parseState == FindStart)
+        parsePos = inputEnd = 0;
+    else if (inputEnd == bufLen) {
+        if (commandPos > 1) {
+            size_t s = commandPos - 1;
+            std::copy(buf + s, buf + inputEnd, buf);
+            inputEnd -= s;
+            parsePos = 0;
+            parseState = FindStart;     // Start all over again
+        }
+        else {
+            bufLen += bufIncrement;
+
+            if (bufLen > bufLenMax) {
+                bufLen = bufIncrement;
+                parseState = FindStart;
+                parsePos = inputEnd = 0;
+            }
+
+            char *data = new char[bufLen];
+            std::copy(buf, buf + inputEnd, data);
+
+            delete[] buf;
+            buf = data;
+        }
+    }
+
+    return false;
 }

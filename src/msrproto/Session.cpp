@@ -121,11 +121,9 @@ void Session::parameterChanged(const PdServ::Parameter *p,
 void Session::run()
 {
     ssize_t n;
-    int count;
 
     while (true) {
-        count = inbuf.free();
-        n = readData(inbuf.bufptr(), count, 0, 100);
+        n = readData(inbuf.bufptr(), inbuf.free(), 0, 100);
 
         if (n < 0) {
             switch (getErrorNumber()) {
@@ -138,11 +136,9 @@ void Session::run()
         }
         else if (n) {
             inBytes += n;
-            if (inbuf.newData(n)) {
-                do {
-                    processCommand();
-                } while (inbuf.next());
-            }
+            inbuf.newData(n);
+            while (inbuf.next())
+                processCommand();
         }
         else {
             return;

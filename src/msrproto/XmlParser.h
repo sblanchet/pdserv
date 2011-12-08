@@ -44,7 +44,7 @@ class XmlParser {
         char *bufptr();
         size_t free();
 
-        bool newData(size_t n);
+        void newData(size_t n);
         bool next();
 
         const char *getCommand() const;
@@ -59,33 +59,25 @@ class XmlParser {
     private:
         const size_t bufLenMax;
 
-        struct AttributePos {
-            AttributePos(size_t n, size_t v): namePos(n), valuePos(v) {}
-            const size_t namePos;
-            const size_t valuePos;
-        };
-        typedef std::multimap<char, AttributePos> AttributeMap;
+        typedef std::map<size_t, size_t> AttributePos;
+        typedef std::map<char, AttributePos> AttributeMap;
         AttributeMap attribute;
-
-        void tokenize();
-        void checkFreeSpace();
 
         static const size_t bufIncrement = 1024;
         size_t bufLen;
         char *buf;
 
-        size_t begin;           // Start of an element
         size_t parsePos;        // Current parsing position
         size_t inputEnd;        // End of input data
+        size_t commandPos;
+        size_t attrNamePos;
+        char quote;
 
         enum ParseState {
-            FindStart, GetToken, SkipSpace, GetAttribute, GetQuote
+            FindStart, ExpectToken, SkipSpace, FindTokenEnd, GetAttribute,
+            GetQuotedAttribute, GetUnquotedAttribute,  ExpectGT, MaybeGT
         };
         ParseState parseState;
-
-        size_t commandPos;
-        size_t attrNamePos, attrValuePos;
-        char quote;
 };
 
 }
