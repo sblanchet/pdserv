@@ -145,6 +145,15 @@ INCLUDE_DIRECTORIES("${ABS_INCLUDEDIR}" "${PROJECT_SOURCE_DIR}/include")
 ADD_SUBDIRECTORY (src)
 ADD_SUBDIRECTORY (test)
 
+# include (ExternalProject)
+# ExternalProject_Add(
+#     iniparser
+#     URL ${CMAKE_CURRENT_SOURCE_DIR}/iniparser-3.0.tar.gz
+#     CONFIGURE_COMMAND ""
+#     BUILD_IN_SOURCE 1
+#     INSTALL_COMMAND ""
+# )
+
 INSTALL (DIRECTORY include/
     DESTINATION "${ABS_INCLUDEDIR}"
     FILES_MATCHING PATTERN "*.h")

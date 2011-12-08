@@ -1,5 +1,6 @@
 #include "XmlParser.h"
 #include <cstring>
+#include <cstdio>
 #include <assert.h>
 
 #include <iostream>
@@ -21,7 +22,8 @@ int main(int argc, const char *argv[])
     assert( buf);                // Buffer may not be null
     assert( inbuf.free());       // and have some space
     strcpy( inbuf.bufptr(), s);
-    assert( inbuf.newData(strlen(s)));  // Must report a true here
+    inbuf.newData(strlen(s));  // Must report a true here
+    assert(inbuf.next());
     assert( inbuf.getCommand());         // There is a command
     assert(!strcmp(inbuf.getCommand(), "rp"));  // which is "rp"
     assert(!inbuf.next());              // and no next command
@@ -30,15 +32,15 @@ int main(int argc, const char *argv[])
     // An illegal command - no space after '<'
     s = "< rp>";
     strcpy( inbuf.bufptr(), s);
-    assert(!inbuf.newData(strlen(s)));  // No command found
-    assert(!inbuf.getCommand());        // same here
-    assert(!inbuf.next());              // and no next command
+    inbuf.newData(strlen(s));
+    assert(!inbuf.next());
     assert(buf == inbuf.bufptr());      // Buffer pointer does not change
 
     // Two legal commands
     s = "<a_long_command_with_slash /><wp >";
     strcpy( inbuf.bufptr(), s);
-    assert(inbuf.newData(strlen(s)));
+    inbuf.newData(strlen(s));
+    assert(inbuf.next());
     assert(inbuf.getCommand());
     assert(!strcmp(inbuf.getCommand(), "a_long_command_with_slash"));
     assert(inbuf.next());
@@ -48,7 +50,8 @@ int main(int argc, const char *argv[])
 
     s = " lkj <wrong/ >\n<still-incorrect /> <right> lkjs dfkl";
     strcpy( inbuf.bufptr(), s);
-    assert(inbuf.newData(strlen(s)));
+    inbuf.newData(strlen(s));
+    assert(inbuf.next());
     assert(inbuf.getCommand());
     assert(!strcmp(inbuf.getCommand(), "right"));
     assert(!inbuf.next());
@@ -58,8 +61,10 @@ int main(int argc, const char *argv[])
             " and=\"quoted /> > &quot; &apos;\" />";
             *s; s++) {
         *inbuf.bufptr() = *s;
-        assert(inbuf.newData(1) == (*s == '>' and !s[1]));
+        inbuf.newData(1); // == (*s == '>' and !s[1]);
+        assert(!s[1] or !inbuf.next());
     }
+    assert(inbuf.next());
     assert(inbuf.getCommand());
     assert(!strcmp(inbuf.getCommand(), "tag"));
     assert(!inbuf.isTrue("with"));
@@ -79,7 +84,8 @@ int main(int argc, const char *argv[])
 
     s = "<tag with=no-quot/>attr and=\"quoted /> > &quot; &apos;\" />";
     strcpy( inbuf.bufptr(), s);
-    assert(inbuf.newData(strlen(s)));
+    inbuf.newData(strlen(s));
+    assert(inbuf.next());
     assert(inbuf.getCommand());
     assert(!strcmp(inbuf.getCommand(), "tag"));
     assert(inbuf.isTrue("tag"));        // "tag" is also an attribute
@@ -89,8 +95,9 @@ int main(int argc, const char *argv[])
 
     s = "<with=no-quot-attr and=\"quoted /> > &quot; &apos;\" />";
     strcpy( inbuf.bufptr(), s);
-    assert(inbuf.newData(strlen(s)));
-    assert(!inbuf.getCommand());        // There is no command
+    inbuf.newData(strlen(s));
+    assert(inbuf.next());
+    assert(inbuf.getCommand());        // There is no command
     assert(inbuf.find("with", s));
     assert(!strcmp(s, "no-quot-attr"));
     assert(!inbuf.next());
