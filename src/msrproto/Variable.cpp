@@ -141,7 +141,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
     // value=
     // index=
     XmlElement::Attribute(element, "index") << variableIndex;
-    XmlElement::Attribute(element, "name").setWithCare(path().c_str());
+    XmlElement::Attribute(element, "name").setEscaped(path().c_str());
  
     if (shortReply)
         return;

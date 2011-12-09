@@ -131,7 +131,7 @@ std::ostream& XmlElement::Attribute::operator <<( struct timespec const& ts)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void XmlElement::Attribute::setWithCare( const char *v, size_t n)
+void XmlElement::Attribute::setEscaped( const char *v, size_t n)
 {
     const char *escape = "<>&\"'";
     const char *escape_end = escape + 5;

@@ -137,7 +137,7 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
                 this, valueBuf + elementIndex * mainParam->width, 1, precision);
 
     if (!id.empty())
-        XmlElement::Attribute(element, "id").setWithCare(id.c_str());
+        XmlElement::Attribute(element, "id").setEscaped(id.c_str());
 
     return;
 }

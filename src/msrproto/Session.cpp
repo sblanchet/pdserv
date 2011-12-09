@@ -230,7 +230,7 @@ void Session::processCommand()
             std::string id;
             if (inbuf.getString("id", id)) {
                 XmlElement ack("ack", this);
-                XmlElement::Attribute(ack,"id").setWithCare(id.c_str());
+                XmlElement::Attribute(ack,"id").setEscaped(id.c_str());
             }
 
             // Finished
@@ -242,7 +242,7 @@ void Session::processCommand()
     XmlElement warn("warn", this);
     XmlElement::Attribute(warn, "num") << 1000;
     XmlElement::Attribute(warn, "text") << "unknown command";
-    XmlElement::Attribute(warn, "command").setWithCare(command);
+    XmlElement::Attribute(warn, "command").setEscaped(command);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -258,10 +258,10 @@ void Session::broadcast()
         XmlElement::Attribute(broadcast, "time") << ts;
 
         if (inbuf.getString("action", s))
-            XmlElement::Attribute(broadcast, "action").setWithCare(s.c_str());
+            XmlElement::Attribute(broadcast, "action").setEscaped(s.c_str());
 
         if (inbuf.getString("text", s))
-            XmlElement::Attribute(broadcast, "text").setWithCare(s.c_str());
+            XmlElement::Attribute(broadcast, "text").setEscaped(s.c_str());
     }
 
     server->broadcast(this, os.str());
@@ -280,7 +280,7 @@ void Session::ping()
     std::string id;
 
     if (inbuf.getString("id",id))
-        XmlElement::Attribute(ping, "id").setWithCare(id.c_str());
+        XmlElement::Attribute(ping, "id").setEscaped(id.c_str());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -447,9 +447,9 @@ void Session::readStatistics()
     for (StatList::const_iterator it = stats.begin();
             it != stats.end(); it++) {
         XmlElement client("client", clients);
-        XmlElement::Attribute(client,"name").setWithCare(
+        XmlElement::Attribute(client,"name").setEscaped(
                 (*it).remote.size() ? (*it).remote.c_str() : "unknown");
-        XmlElement::Attribute(client,"apname").setWithCare(
+        XmlElement::Attribute(client,"apname").setEscaped(
                 (*it).client.size() ? (*it).client.c_str() : "unknown");
         XmlElement::Attribute(client,"countin") << (*it).countIn;
         XmlElement::Attribute(client,"countout") << (*it).countOut;

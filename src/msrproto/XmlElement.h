@@ -70,7 +70,7 @@ class XmlElement {
 
                 /** Set string attribute, checking for characters
                  * that need to be escaped */
-                void setWithCare( const char *value, size_t n = 0);
+                void setEscaped( const char *value, size_t n = 0);
 
                 void csv(const Variable* var, const char *buf,
                         size_t nblocks, size_t precision);
