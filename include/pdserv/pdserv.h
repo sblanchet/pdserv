@@ -7,17 +7,18 @@
 extern "C" {
 #endif
 
-// Data type definitions. 
-// Let the enumeration start at 1 so that an unset data type could
-// be detected
+/** Data type definitions.
+ *
+ * Let the enumeration start at 1 so that an unset data type could be
+ * detected.
+ */
 enum pdserv_datatype_t {
-    double_T = 1, single_T, 
-    uint8_T,  sint8_T, 
-    uint16_T, sint16_T, 
-    uint32_T, sint32_T, 
-    uint64_T, sint64_T, 
-    boolean_T, 
-    //datatype_max            // This must allways be last;
+    double_T = 1, single_T,
+    uint8_T,  sint8_T,
+    uint16_T, sint16_T,
+    uint32_T, sint32_T,
+    uint64_T, sint64_T,
+    boolean_T
 };
 
 /** Structure declaration */
@@ -28,7 +29,8 @@ struct variable;
 /** Initialise pdserv library
  *
  * This is the first call that initialises the library. It should be called
- * before any other library calls
+ * before any other library calls.
+ *
  * returns:
  *      NULL on error
  *      pointer to struct pdserv on success
@@ -82,7 +84,7 @@ struct pdtask* pdserv_create_task(
  *
  *   @n = 3;
  *   @dim = {2,3,4}
- *   
+ *
  */
 struct variable* pdserv_signal(
         struct pdtask* pdtask,    /**< Pointer to pdtask structure */
@@ -121,10 +123,10 @@ typedef int (*paramtrigger_t)(
  * similar function arguments.
  *
  * During the registration of a parameter, the caller has the chance to
- * register callback functions which are called inside (@paramupdate) and
- * outside (@paramcheck) of real time context when a parameter is updated.  The
+ * register callback functions which are called inside (@trigger) and outside
+ * (@paramcheck) of real time context when a parameter is updated.  The
  * function is responsible for copying, and optionally modifying, data from
- * @src to @dst.  The value of @priv_data will be passed to the callback
+ * @src to @dst. The value of @priv_data will be passed to the callback
  * function.
  *
  * By default @memcpy will be used automatically for an unspecified callback.
@@ -143,16 +145,16 @@ typedef int (*paramtrigger_t)(
 struct variable *pdserv_parameter(
         struct pdserv* pdserv,    /**< Pointer to pdserv structure */
         const char *path,         /**< Parameter path */
-        unsigned int mode,        /**< Access mode, same as unix file mode */
+        unsigned int mode,        /**< Access mode, same as Unix file mode */
         enum pdserv_datatype_t datatype, /**< Parameter data type */
         void *addr,               /**< Parameter address */
         size_t n,                 /**< Element count.  If @dim != NULL, this
                                    * is the number elements in * @dim */
         const unsigned int dim[], /**< Dimensions. If NULL, consider the
                                    * parameter to be a vector of length @n */
-        paramtrigger_t paramopy,  /**< Callback for updating the parameter
+        paramtrigger_t trigger,   /**< Callback for updating the parameter
                                    * inside real time context */
-        void *priv_data           /**< Arbitrary pointer passed to @paramcopy
+        void *priv_data           /**< Arbitrary pointer passed to @trigger
                                    * when it is called */
         );
 
