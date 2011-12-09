@@ -88,10 +88,8 @@ namespace MsrProto {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Variable::Variable( const DirectoryNode *directory,
-        const PdServ::Variable *v, unsigned int variableIndex,
+Variable::Variable( const PdServ::Variable *v, unsigned int variableIndex,
         unsigned int elementIndex):
-    directory(directory),
     elementIndex(elementIndex != ~0U ? elementIndex : 0),
     variable(v),
     variableIndex(variableIndex),
@@ -143,7 +141,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
     // value=
     // index=
     XmlElement::Attribute(element, "index") << variableIndex;
-    XmlElement::Attribute(element, "name") << path();
+    XmlElement::Attribute(element, "name").setWithCare(path().c_str());
  
     if (shortReply)
         return;

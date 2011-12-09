@@ -32,9 +32,9 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Channel::Channel( const DirectoryNode *directory, const PdServ::Signal *s,
-        unsigned int channelIndex, unsigned int elementIndex):
-    Variable(directory, s, channelIndex, elementIndex),
+Channel::Channel(const PdServ::Signal *s, unsigned int channelIndex,
+        unsigned int elementIndex):
+    Variable(s, channelIndex, elementIndex),
     signal(s)
 {
 

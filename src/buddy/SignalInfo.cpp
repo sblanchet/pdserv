@@ -22,6 +22,8 @@
  *
  *****************************************************************************/
 
+#include "config.h"
+
 #include <algorithm>
 #include <cerrno>
 #include <sstream>
@@ -29,6 +31,12 @@
 #include "Main.h"
 #include "../Debug.h"
 #include "Parameter.h"
+
+#ifdef TRADITIONAL
+    static const bool traditional = 1;
+#else
+    static const bool traditional = 0;
+#endif
 
 //////////////////////////////////////////////////////////////////////
 template <typename T, char dir>
@@ -124,11 +132,13 @@ SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
 std::string SignalInfo::path() const
 {
     std::ostringstream p;
-    p << '/' << model
-        << '/' << si->path
-        << '/' << si->name;
 
-    if (si->port) {
+    if (traditional)
+        p << '/' << model;
+
+    p << '/' << si->path << '/' << si->name;
+
+    if (!traditional and si->port) {
         p << '/';
         if (*si->alias)
             p << si->alias;

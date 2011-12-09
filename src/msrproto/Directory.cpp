@@ -22,6 +22,8 @@
  *
  *****************************************************************************/
 
+#include "config.h"
+
 #include "Directory.h"
 #include "Channel.h"
 #include "Parameter.h"
@@ -36,6 +38,12 @@
 #include <sstream>
 #include <stack>
 
+#ifdef TRADITIONAL
+    static const bool traditional = 1;
+#else
+    static const bool traditional = 0;
+#endif
+
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -44,19 +52,19 @@ VariableDirectory::VariableDirectory()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool VariableDirectory::insert( const PdServ::Parameter *p, bool traditional)
+bool VariableDirectory::insert( const PdServ::Parameter *p)
 {
     char hide = 0;
     DirectoryNode *dir = Path(p->path).create(this, hide);
     if (!dir)
         return true;
 
-    if (hide == 1 or hide == 'p') {
+    if (traditional and (hide == 1 or hide == 'p')) {
         //debug() << "hide=" << hide << p->path << dir->path();
         return false;
     }
 
-    Parameter *mainParam = new Parameter(dir, parameters.size(), p);
+    Parameter *mainParam = new Parameter(parameters.size(), p);
     dir->insert(mainParam);
     parameterMap[p] = mainParam;
     parameters.push_back(mainParam);
@@ -70,8 +78,7 @@ bool VariableDirectory::insert( const PdServ::Parameter *p, bool traditional)
             if (!subdir)
                 continue;
 
-            Parameter *parameter =
-                new Parameter(subdir, parameters.size(), p, i);
+            Parameter *parameter = new Parameter(parameters.size(), p, i);
             subdir->insert(parameter);
             parameters.push_back(parameter);
             mainParam->addChild(parameter);
@@ -82,7 +89,7 @@ bool VariableDirectory::insert( const PdServ::Parameter *p, bool traditional)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool VariableDirectory::insert(const PdServ::Signal *s, bool traditional)
+bool VariableDirectory::insert(const PdServ::Signal *s)
 {
     char hide = 0;
     DirectoryNode *dir = Path(s->path).create(this, hide);
@@ -90,7 +97,7 @@ bool VariableDirectory::insert(const PdServ::Signal *s, bool traditional)
         return true;
     }
 
-    if (hide == 1 or hide == 'k') {
+    if (traditional and (hide == 1 or hide == 'k')) {
         //debug() << "hide=" << hide << s->path << dir->path();
         return false;
     }
@@ -102,13 +109,13 @@ bool VariableDirectory::insert(const PdServ::Signal *s, bool traditional)
                 dir->create(i, s->nelem, s->ndims, s->getDim());
             if (!subdir)
                 continue;
-            Channel *c = new Channel(subdir, s, channels.size(), i);
+            Channel *c = new Channel(s, channels.size(), i);
             subdir->insert(c);
             channels.push_back(c);
         }
     }
     else {
-        Channel *c = new Channel(dir, s, channels.size());
+        Channel *c = new Channel(s, channels.size());
         dir->insert(c);
         channels.push_back(c);
     }
@@ -151,21 +158,48 @@ const Parameter* VariableDirectory::getParameter(unsigned int idx) const
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode::DirectoryNode():
-    parent(this), name(std::string()), variable(0)
+    parent(this), name(std::string()), variable(0), count(~0U)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode::DirectoryNode(
         DirectoryNode *parent, const std::string& name):
-    parent(parent), name(name), variable(0)
+    parent(parent), name(name), variable(0), count(~0U)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void DirectoryNode::insert(const Variable *v)
 {
-    variable = v;
+    if (traditional) {
+        if (count != ~0U) {
+            // Indexed variable insertion
+            std::ostringstream os;
+            os << count++;
+            DirectoryNode *dir = new DirectoryNode(this, os.str());
+            dir->insert(v);
+            v->directory = dir;
+            //debug() << "leel " << count << "for" << dir->path();
+            return;
+        }
+        else if (variable) {
+            // Variable exists, so now insert them with indices
+            count = 0;
+
+            this->insert(variable);
+            variable = 0;
+
+            this->insert(v);
+            return;
+        }
+        else
+            variable = v;
+    }
+    else
+        variable = v;
+
+    v->directory = this;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -287,17 +321,19 @@ bool DirectoryNode::Path::getDir(std::string& name, char &hide)
     size_t n = name.find('<');
     if (n == name.npos)
         n = name.size();
-    else {
+    else if (traditional) {
         XmlParser p(name, n);
-        const char *value;
 
-        if (p.isTrue("hide"))
-            hide = 1;
-        else if (p.find("hide", value))
-            hide = *value;
+        if (p.next()) {
+            const char *value;
+            if (p.isTrue("hide"))
+                hide = 1;
+            else if (p.find("hide", value))
+                hide = *value;
 
-        if (p.isTrue("unhide"))
-            hide = 0;
+            if (p.isTrue("unhide"))
+                hide = 0;
+        }
     }
 
     while (n and std::isspace(name[n-1], std::locale::classic()))

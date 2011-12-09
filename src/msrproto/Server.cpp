@@ -43,8 +43,6 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 Server::Server(const PdServ::Main *main): main(main), mutex(1)
 {
-    traditional = 1;
-
     root = new VariableDirectory;
 
     const PdServ::Task *primaryTask;
@@ -56,7 +54,7 @@ Server::Server(const PdServ::Main *main): main(main), mutex(1)
         for (PdServ::Task::Signals::const_iterator it = signals.begin();
                 it != signals.end(); it++) {
 
-            root->insert(*it, traditional);
+            root->insert(*it);
         }
 
         std::ostringstream prefix;
@@ -70,29 +68,23 @@ Server::Server(const PdServ::Main *main): main(main), mutex(1)
         path = prefix.str() + "TaskTime";
         if (!root->findChannel(path)) {
             TimeSignal *t = new TimeSignal(task, path);
-            root->insert(t, traditional);
+            root->insert(t);
             if (task == primaryTask)
                 primaryTaskTimeSignal = t;
         }
 
         path = prefix.str() + "ExecTime";
         if (!root->findChannel(path))
-            root->insert(
-                    new StatSignal(task, path, StatSignal::ExecTime),
-                    traditional);
+            root->insert( new StatSignal(task, path, StatSignal::ExecTime));
 
         path = prefix.str() + "Period";
         if (!root->findChannel(path))
-            root->insert(
-                    new StatSignal(task, path, StatSignal::Period),
-                    traditional);
+            root->insert( new StatSignal(task, path, StatSignal::Period));
 
         path = prefix.str() + "Overrun";
         if (!root->findChannel(path)) {
             debug() << "insert" << path;
-            root->insert(
-                    new StatSignal(task, path, StatSignal::Overrun),
-                    traditional);
+            root->insert( new StatSignal(task, path, StatSignal::Overrun));
         }
         else {
             debug() << "cant find" << path;
@@ -101,13 +93,13 @@ Server::Server(const PdServ::Main *main): main(main), mutex(1)
     }
 
     if (!main->findVariable("/Time"))
-        root->insert(new TimeSignal(primaryTask, "/Time"), traditional);
+        root->insert(new TimeSignal(primaryTask, "/Time"));
 
     const PdServ::Main::Parameters& mainParameters = main->getParameters();
     for (PdServ::Main::Parameters::const_iterator it = mainParameters.begin();
             it != mainParameters.end(); it++) {
 
-        root->insert(*it, traditional);
+        root->insert(*it);
     }
 
     if (!main->findVariable("/Taskinfo/Abtastfrequenz")) {

@@ -69,6 +69,7 @@ class DirectoryNode {
         DirectoryNode();
 
         const Variable *variable;
+        size_t count;
 
         class Path {
             public:
@@ -100,8 +101,8 @@ class VariableDirectory: public DirectoryNode {
         VariableDirectory();
         ~VariableDirectory();
 
-        bool insert(const PdServ::Signal *s, bool traditional);
-        bool insert(const PdServ::Parameter *p, bool traditional);
+        bool insert(const PdServ::Signal *s);
+        bool insert(const PdServ::Parameter *p);
 
        typedef std::vector<const Channel*> Channels;
        typedef std::vector<const Parameter*> Parameters;

@@ -61,10 +61,9 @@ void Parameter::setTo(char *&dst, double src) {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Parameter::Parameter( const DirectoryNode *directory,
-        unsigned int variableIndex, const PdServ::Parameter *p,
+Parameter::Parameter( unsigned int variableIndex, const PdServ::Parameter *p,
         unsigned int elementIndex):
-    Variable(directory, p, variableIndex, elementIndex),
+    Variable(p, variableIndex, elementIndex),
     mainParam(p),
     dependent(dependent),
     persistent(false)

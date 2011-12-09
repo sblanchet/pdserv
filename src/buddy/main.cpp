@@ -25,6 +25,7 @@
 #include "config.h"
 #include "../Debug.h"
 
+#include <sstream>
 #include <cerrno>
 #include <sys/ioctl.h>          // ioctl()
 #include <fcntl.h>              // open()
@@ -68,7 +69,9 @@ int main(int argc, char **argv)
         for (unsigned i = 0; apps; i++, apps >>= 1) {
             if ((apps & 0x1) and !app[i]) {
                 debug() << "new Application" << i;
-                app[i] = new Main(std::string(device_node).append(1, '1' + 1));
+                std::ostringstream os;
+                os << device_node << (i+1);
+                app[i] = new Main(os.str());
             }
             else if (!(apps & 0x1) and app[i]) {
                 debug() << "finished Application" << i;

@@ -43,5 +43,6 @@
 
 #cmakedefine SRC_PATH_LENGTH @SRC_PATH_LENGTH@
 #cmakedefine DEBUG
+#cmakedefine TRADITIONAL
 
 #endif //CONFIG_H

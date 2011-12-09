@@ -12,6 +12,7 @@
 #       -DINCLUDEDIR=<${prefix}/include>
 #       -DEXECDIR=<${prefix}/bin>
 #       -DLIBDIR=<${prefix}/lib>
+#       -DTRADITIONAL=1           # Traditional mode for MSR
 #
 #  For debugging, use the
 #       -DCMAKE_BUILD_TYPE=Debug|Release|RelWithDebInfo|MinSizeRel
@@ -100,6 +101,9 @@ SET (EXECDIR "${EXECDIR}" CACHE PATH
     "Directory for executables" FORCE)
 SET (LIBDIR "${LIBDIR}" CACHE PATH
     "Directory for libraries" FORCE)
+
+SET (TRADITIONAL "${TRADITIONAL}" CACHE BOOL
+    "Traditional mode for MSR" FORCE)
 
 ENABLE_TESTING()
 

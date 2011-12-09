@@ -69,7 +69,6 @@ class Server: public ost::Thread {
     private:
         std::set<Session*> sessions;
 
-        bool traditional;
         VariableDirectory *root;
 
         TimeSignal *time;

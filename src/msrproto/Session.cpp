@@ -464,8 +464,7 @@ void Session::remoteHost()
 
     inbuf.getString("applicationname", client);
 
-    writeAccess =
-        inbuf.isEqual("access", "allow") or inbuf.isTrue("access");
+    writeAccess = inbuf.isEqual("access", "allow") or inbuf.isTrue("access");
 
     if (writeAccess and inbuf.isTrue("isadmin")) {
         struct timespec ts;

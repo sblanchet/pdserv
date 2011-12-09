@@ -42,8 +42,7 @@ class XmlElement;
 
 class Variable {
     public:
-        Variable( const DirectoryNode *directory,
-                const PdServ::Variable *v,
+        Variable( const PdServ::Variable *v,
                 unsigned int variableIndex,
                 unsigned int elementIndex);
         ~Variable();
@@ -52,7 +51,7 @@ class Variable {
         const PdServ::Signal* signal() const;
         const PdServ::Parameter* parameter() const;
 
-        const DirectoryNode * const directory;
+        mutable const DirectoryNode *directory;
         const unsigned int elementIndex;
         const PdServ::Variable * const variable;
 
