@@ -1,7 +1,27 @@
 syntax: glob
 
-*~
-*.sw?
-build*
-*.orig
+**.sw?
+**~
+CMakeCache.txt
+CMakeFiles
+CPackConfig.cmake
+CPackSourceConfig.cmake
+CTestTestfile.cmake
+Makefile
 TAGS
+build*
+cmake_install.cmake
+config.h
+src/CMakeFiles
+src/CTestTestfile.cmake
+src/Makefile
+src/cmake_install.cmake
+src/libpdserv.pc
+src/libpdserv.so
+src/libpdserv.so.*
+test/CMakeFiles
+test/CTestTestfile.cmake
+test/Makefile
+test/cmake_install.cmake
+test/parser
+test/test1
