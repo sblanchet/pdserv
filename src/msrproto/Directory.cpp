@@ -318,10 +318,12 @@ bool DirectoryNode::Path::getDir(std::string& name, char &hide)
     else
         name.assign(path, start, offset++ - start);
 
-    size_t n = name.find('<');
-    if (n == name.npos)
-        n = name.size();
-    else if (traditional) {
+    size_t n;
+    if (traditional) {
+        n = name.find('<');
+        if (n == name.npos)
+            n = name.size();
+
         XmlParser p(name, n);
 
         if (p.next()) {
@@ -335,6 +337,8 @@ bool DirectoryNode::Path::getDir(std::string& name, char &hide)
                 hide = 0;
         }
     }
+    else
+        n = name.size();
 
     while (n and std::isspace(name[n-1], std::locale::classic()))
         n--;
