@@ -24,7 +24,7 @@ enum pdserv_datatype_t {
 /** Structure declaration */
 struct pdserv;
 struct pdtask;
-struct variable;
+struct pdvariable;
 
 /** Initialise pdserv library
  *
@@ -86,7 +86,7 @@ struct pdtask* pdserv_create_task(
  *   @dim = {2,3,4}
  *
  */
-struct variable* pdserv_signal(
+struct pdvariable *pdserv_signal(
         struct pdtask* pdtask,    /**< Pointer to pdtask structure */
         unsigned int decimation,  /**< Decimation with which the signal is
                                    * calculated */
@@ -109,8 +109,8 @@ struct variable* pdserv_signal(
  * \returns 0 on success
  */
 typedef int (*paramtrigger_t)(
-        struct pdtask *pdtask,    /**< Pointer to pdtask structure */
-        const struct variable *param,   /**< Pointer to parameter */
+        struct pdtask *pdtask,  /**< Pointer to pdtask structure */
+        const struct pdvariable *param, /**< Pointer to parameter */
         void *dst,              /**< Destination address @addr */
         const void *src,        /**< Data source */
         size_t len,             /**< Data length in bytes */
@@ -142,7 +142,7 @@ typedef int (*paramtrigger_t)(
  * events at the same time for example. Incidentally @dst is the address
  * specified by @addr during registration. The return value is ignored.
  */
-struct variable *pdserv_parameter(
+struct pdvariable *pdserv_parameter(
         struct pdserv* pdserv,    /**< Pointer to pdserv structure */
         const char *path,         /**< Parameter path */
         unsigned int mode,        /**< Access mode, same as Unix file mode */
@@ -165,25 +165,25 @@ struct variable *pdserv_parameter(
  * to set the alias name for a variable.
  */
 void pdserv_set_alias(
-        struct variable *variable, /**< Parameter or Signal address */
+        struct pdvariable *variable, /**< Parameter or Signal address */
         const char *alias       /**< Variable's alias */
         );
 
 /** Set the optional unit of a variable */
 void pdserv_set_unit(
-        struct variable *variable, /**< Parameter or Signal address */
+        struct pdvariable *variable, /**< Parameter or Signal address */
         const char *unit        /**< Variable's unit */
         );
 
 /** Set the optional comment of a variable */
 void pdserv_set_comment(
-        struct variable *variable, /**< Parameter or Signal address */
+        struct pdvariable *variable, /**< Parameter or Signal address */
         const char *comment     /**< Variable's comment */
         );
 
 ///** Make the parameter or signal persistent */
 //void pdserv_set_persistent(
-//        struct variable *variable, /**< Parameter or Signal address */
+//        struct pdvariable *variable, /**< Parameter or Signal address */
 //        unsigned int value
 //        );
 

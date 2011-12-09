@@ -80,7 +80,7 @@ void Parameter::getValue(const PdServ::Session *,
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::copy(struct pdtask *, const struct variable *,
+int Parameter::copy(struct pdtask *, const struct pdvariable *,
         void *buf, const void *src, size_t len, void *)
 {
 //    cout << __PRETTY_FUNCTION__ << checkOnly << endl;

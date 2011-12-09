@@ -15,7 +15,7 @@ uint16_t var1[2][3][4] = {
     { {1,2,3,4}, {5,6,7}, },
 };
 
-int copy_param(struct pdtask *, const struct variable *,
+int copy_param(struct pdtask *, const struct pdvariable *,
         void* dst, const void* src, size_t len, void *priv_data)
 {
     memcpy(dst, src, len);
@@ -53,15 +53,15 @@ int main(int argc, const char *argv[])
     assert(pdserv_signal(task[0], 1, "/path/to/var2",
             uint16_T, var1, 3, var1_dims));
 
-    struct variable *p3 = pdserv_parameter(pdserv, "/path/to/mdimparam", 0666,
-            uint16_T, var1, 3, var1_dims, copy_param, (void*)10);
+    struct pdvariable *p3 = pdserv_parameter(pdserv, "/path/to/mdimparam",
+            0666, uint16_T, var1, 3, var1_dims, copy_param, (void*) 10);
     assert(p3);
 
-    struct variable *p1 = pdserv_parameter(pdserv,
+    struct pdvariable *p1 = pdserv_parameter(pdserv,
             "/Taskinfo/Abtastfrequenz", 0666, double_T, &tick, 1, 0, 0, 0);
     assert(p1);
 
-    struct variable *p = pdserv_parameter(pdserv, "/path/to/param", 0666,
+    struct pdvariable *p = pdserv_parameter(pdserv, "/path/to/param", 0666,
             uint32_T, param, 4, 0, copy_param, (void*)10);
     assert(p);
 
