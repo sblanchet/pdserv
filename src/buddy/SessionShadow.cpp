@@ -51,7 +51,6 @@ bool SessionShadow::rxPdo()
     while (static_cast<int>(photoReady[current] - lastPhoto) > 0) {
         taskData.newSignalData(current);
 
-        std::cerr << '.';
         lastPhoto = photoReady[current];
         if (++current == count)
             current = 0;
