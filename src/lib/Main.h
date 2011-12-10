@@ -84,6 +84,8 @@ class Main: public PdServ::Main {
 
         int (* const rttime)(struct timespec*);
 
+        int daemonize();
+
         // Reimplemented from PdServ::Main
         void processPoll(size_t delay_ms,
                 const PdServ::Signal * const *s, size_t nelem,

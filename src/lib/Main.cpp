@@ -32,8 +32,13 @@
 #include <algorithm>
 #include <sys/mman.h>
 #include <sys/types.h>
-#include <unistd.h>             // fork()
+#include <sys/stat.h>
+#include <unistd.h>             // fork(), getpid(), chdir, sysconf
+#include <signal.h>             // signal()
+#include <fcntl.h>              // open()
+#include <limits.h>             // _POSIX_OPEN_MAX
 
+#include "config.h"
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
@@ -250,6 +255,12 @@ int Main::run()
         buf += taskMemSize[i];
     }
 
+    return daemonize();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::daemonize()
+{
     pid = ::fork();
     if (pid < 0) {
         // Some error occurred
@@ -264,13 +275,45 @@ int Main::run()
         return 0;
     }
 
+    // Only child runs after this point
+    pid = getpid();
+
+    // Go to root
+    ::chdir("/");
+    ::umask(027);
+
+    // Reset signal handlers
+    ::signal(SIGHUP,  SIG_DFL);
+    ::signal(SIGINT,  SIG_DFL);
+    ::signal(SIGTERM, SIG_DFL);
+
+    // close all file handles
+    // sysconf() usually returns one more than max file handle
+    long int fd_max = ::sysconf(_SC_OPEN_MAX);
+    if (fd_max < _POSIX_OPEN_MAX)
+        fd_max = _POSIX_OPEN_MAX;
+    else if (fd_max > 100000)
+        fd_max = 512;   // no rediculous values please
+    while (fd_max--)
+        ::close(fd_max);
+
+    const char *tty;
+#ifdef DEBUG
+    tty = "/dev/tty";
+#else
+    tty = "/dev/null";
+#endif
+    ::open(tty, O_RDONLY | O_NOCTTY);    // stdin
+    ::open(tty, O_WRONLY | O_NOCTTY);    // stdout
+    ::open(tty, O_WRONLY | O_NOCTTY);    // stderr
+
+    // Initialize non-real time tasks
     for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
         static_cast<Task*>(*it)->nrt_init();
 
-    pid = getpid();
+    PdServ::Main::startServers();
 
-    startServers();
-
+    // Hang here forever
     while (true) {
         pause();
     }
