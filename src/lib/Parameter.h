@@ -66,8 +66,9 @@ class Parameter: public PdServ::Parameter {
 
         // A default function used when paramcheck or paramupdate are not
         // specified by the user
-        static int copy(struct pdtask *task, const struct variable *parameter,
-                void *dst, const void *src, size_t len, void *priv_data);
+        static int copy(struct pdtask *task,
+                const struct pdvariable *parameter, void *dst,
+                const void *src, size_t len, void *priv_data);
 };
 
 #endif //LIB_PARAMETER

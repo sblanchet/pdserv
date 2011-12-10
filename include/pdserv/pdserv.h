@@ -7,28 +7,30 @@
 extern "C" {
 #endif
 
-// Data type definitions. 
-// Let the enumeration start at 1 so that an unset data type could
-// be detected
+/** Data type definitions.
+ *
+ * Let the enumeration start at 1 so that an unset data type could be
+ * detected.
+ */
 enum pdserv_datatype_t {
-    double_T = 1, single_T, 
-    uint8_T,  sint8_T, 
-    uint16_T, sint16_T, 
-    uint32_T, sint32_T, 
-    uint64_T, sint64_T, 
-    boolean_T, 
-    //datatype_max            // This must allways be last;
+    double_T = 1, single_T,
+    uint8_T,  sint8_T,
+    uint16_T, sint16_T,
+    uint32_T, sint32_T,
+    uint64_T, sint64_T,
+    boolean_T
 };
 
 /** Structure declaration */
 struct pdserv;
 struct pdtask;
-struct variable;
+struct pdvariable;
 
 /** Initialise pdserv library
  *
  * This is the first call that initialises the library. It should be called
- * before any other library calls
+ * before any other library calls.
+ *
  * returns:
  *      NULL on error
  *      pointer to struct pdserv on success
@@ -82,9 +84,9 @@ struct pdtask* pdserv_create_task(
  *
  *   @n = 3;
  *   @dim = {2,3,4}
- *   
+ *
  */
-struct variable* pdserv_signal(
+struct pdvariable *pdserv_signal(
         struct pdtask* pdtask,    /**< Pointer to pdtask structure */
         unsigned int decimation,  /**< Decimation with which the signal is
                                    * calculated */
@@ -107,8 +109,8 @@ struct variable* pdserv_signal(
  * \returns 0 on success
  */
 typedef int (*paramtrigger_t)(
-        struct pdtask *pdtask,    /**< Pointer to pdtask structure */
-        const struct variable *param,   /**< Pointer to parameter */
+        struct pdtask *pdtask,  /**< Pointer to pdtask structure */
+        const struct pdvariable *param, /**< Pointer to parameter */
         void *dst,              /**< Destination address @addr */
         const void *src,        /**< Data source */
         size_t len,             /**< Data length in bytes */
@@ -121,10 +123,10 @@ typedef int (*paramtrigger_t)(
  * similar function arguments.
  *
  * During the registration of a parameter, the caller has the chance to
- * register callback functions which are called inside (@paramupdate) and
- * outside (@paramcheck) of real time context when a parameter is updated.  The
+ * register callback functions which are called inside (@trigger) and outside
+ * (@paramcheck) of real time context when a parameter is updated.  The
  * function is responsible for copying, and optionally modifying, data from
- * @src to @dst.  The value of @priv_data will be passed to the callback
+ * @src to @dst. The value of @priv_data will be passed to the callback
  * function.
  *
  * By default @memcpy will be used automatically for an unspecified callback.
@@ -140,19 +142,19 @@ typedef int (*paramtrigger_t)(
  * events at the same time for example. Incidentally @dst is the address
  * specified by @addr during registration. The return value is ignored.
  */
-struct variable *pdserv_parameter(
+struct pdvariable *pdserv_parameter(
         struct pdserv* pdserv,    /**< Pointer to pdserv structure */
         const char *path,         /**< Parameter path */
-        unsigned int mode,        /**< Access mode, same as unix file mode */
+        unsigned int mode,        /**< Access mode, same as Unix file mode */
         enum pdserv_datatype_t datatype, /**< Parameter data type */
         void *addr,               /**< Parameter address */
         size_t n,                 /**< Element count.  If @dim != NULL, this
                                    * is the number elements in * @dim */
         const unsigned int dim[], /**< Dimensions. If NULL, consider the
                                    * parameter to be a vector of length @n */
-        paramtrigger_t paramopy,  /**< Callback for updating the parameter
+        paramtrigger_t trigger,   /**< Callback for updating the parameter
                                    * inside real time context */
-        void *priv_data           /**< Arbitrary pointer passed to @paramcopy
+        void *priv_data           /**< Arbitrary pointer passed to @trigger
                                    * when it is called */
         );
 
@@ -163,25 +165,25 @@ struct variable *pdserv_parameter(
  * to set the alias name for a variable.
  */
 void pdserv_set_alias(
-        struct variable *variable, /**< Parameter or Signal address */
+        struct pdvariable *variable, /**< Parameter or Signal address */
         const char *alias       /**< Variable's alias */
         );
 
 /** Set the optional unit of a variable */
 void pdserv_set_unit(
-        struct variable *variable, /**< Parameter or Signal address */
+        struct pdvariable *variable, /**< Parameter or Signal address */
         const char *unit        /**< Variable's unit */
         );
 
 /** Set the optional comment of a variable */
 void pdserv_set_comment(
-        struct variable *variable, /**< Parameter or Signal address */
+        struct pdvariable *variable, /**< Parameter or Signal address */
         const char *comment     /**< Variable's comment */
         );
 
 ///** Make the parameter or signal persistent */
 //void pdserv_set_persistent(
-//        struct variable *variable, /**< Parameter or Signal address */
+//        struct pdvariable *variable, /**< Parameter or Signal address */
 //        unsigned int value
 //        );
 

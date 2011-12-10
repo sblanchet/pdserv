@@ -90,7 +90,7 @@ static PdServ::Variable::Datatype getDataType(enum pdserv_datatype_t dt)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-struct variable *pdserv_signal(
+struct pdvariable *pdserv_signal(
         struct pdtask* pdtask,
         unsigned int decimation,
         const char *path,
@@ -105,11 +105,11 @@ struct variable *pdserv_signal(
     PdServ::Variable *v = task->main->addSignal(
             task, decimation, path, getDataType(datatype), addr, n, dim);
 
-    return reinterpret_cast<struct variable *>(v);
+    return reinterpret_cast<struct pdvariable *>(v);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-struct variable *pdserv_parameter(
+struct pdvariable *pdserv_parameter(
         struct pdserv* pdserv,
         const char *path,
         unsigned int mode,
@@ -128,24 +128,24 @@ struct variable *pdserv_parameter(
         p->trigger = trigger;
     p->priv_data = priv_data;
 
-    return
-        reinterpret_cast<struct variable *>(static_cast<PdServ::Variable*>(p));
+    return reinterpret_cast<struct pdvariable *>
+        (static_cast<PdServ::Variable*>(p));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdserv_set_alias( struct variable *var, const char *alias)
+void pdserv_set_alias(struct pdvariable *var, const char *alias)
 {
     reinterpret_cast<PdServ::Variable*>(var)->alias = alias;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdserv_set_unit( struct variable *var, const char *unit)
+void pdserv_set_unit(struct pdvariable *var, const char *unit)
 {
     reinterpret_cast<PdServ::Variable*>(var)->unit = unit;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdserv_set_comment( struct variable *var, const char *comment)
+void pdserv_set_comment(struct pdvariable *var, const char *comment)
 {
     reinterpret_cast<PdServ::Variable*>(var)->comment = comment;
 }
