@@ -74,7 +74,8 @@ void Parameter::getValue(const PdServ::Session *,
 {
     ost::SemaphoreLock lock(mutex);
 
-    std::copy(addr, addr + memSize, reinterpret_cast<char*>(valueBuf));
+    std::copy(this->valueBuf, this->valueBuf + memSize,
+            reinterpret_cast<char*>(valueBuf));
     if (time)
         *time = mtime;
 }
