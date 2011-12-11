@@ -279,8 +279,10 @@ int Main::daemonize()
     pid = getpid();
 
     // Go to root
+#ifndef DEBUG
     ::chdir("/");
-    ::umask(027);
+    ::umask(000);
+#endif
 
     // Reset signal handlers
     ::signal(SIGHUP,  SIG_DFL);
@@ -297,15 +299,21 @@ int Main::daemonize()
     while (fd_max--)
         ::close(fd_max);
 
-    const char *tty;
+    // Reopen STDIN, STDOUT and STDERR
+    int fd = -1;
 #ifdef DEBUG
-    tty = "/dev/tty";
-#else
-    tty = "/dev/null";
+    fd = ::open("/dev/tty", O_RDWR);
 #endif
-    ::open(tty, O_RDONLY | O_NOCTTY);    // stdin
-    ::open(tty, O_WRONLY | O_NOCTTY);    // stdout
-    ::open(tty, O_WRONLY | O_NOCTTY);    // stderr
+    if (fd < 0)
+        fd = ::open("/dev/null", O_RDWR);
+    if (fd == STDIN_FILENO) {
+        dup2(STDIN_FILENO, STDOUT_FILENO);
+        dup2(STDIN_FILENO, STDERR_FILENO);
+
+        fcntl( STDIN_FILENO, F_SETFL, O_RDONLY);
+        fcntl(STDOUT_FILENO, F_SETFL, O_WRONLY);
+        fcntl(STDERR_FILENO, F_SETFL, O_WRONLY);
+    }
 
     // Initialize non-real time tasks
     for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
