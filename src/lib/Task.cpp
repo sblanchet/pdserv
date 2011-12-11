@@ -137,26 +137,27 @@ void Task::rt_init()
 {
     signalMemSize = 0;
 
-    for (int i = 0; i < 4; i++) {
-        copyList[i] = i
-            ? copyList[i-1] + signalTypeCount[i-1] + 1
-            : new struct CopyList[signals.size() + 4];
+    copyList[0] = new struct CopyList[signals.size() + 4];
+    for (int i = 1; i < 4; i++)
+        copyList[i] = copyList[i-1] + signalTypeCount[i-1] + 1;
 
-        copyList[i]->src = 0;
-    }
     std::fill_n(signalTypeCount, 4, 0);
+    for (size_t i = 0; i < signals.size() + 4; ++i)
+        copyList[0][i].src = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Task::nrt_init()
 {
     signalPosition = new unsigned int[signals.size()];
-    for (int i = 0; i < 4; i++) {
-        signalCopyList[i] = i
-            ? signalCopyList[i-i] + signalTypeCount[i-i]
-            : new const Signal*[signalTypeCount[i]];
-    }
+
+    signalCopyList[0] = new const Signal*[signals.size() + 4];
+    for (int i = 1; i < 4; i++)
+        signalCopyList[i] = signalCopyList[i-1] + signalTypeCount[i-1] + 1;
+
     std::fill_n(signalTypeCount, 4, 0);
+    std::fill_n(signalCopyList[0], signals.size() + 4,
+            reinterpret_cast<Signal const*>(0));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -224,6 +225,7 @@ void Task::subscribe(const Signal* s, bool insert)
     while (wp == *signalListRp)
         ost::Thread::sleep(sampleTime * 1000 / 2 + 1);
 
+//    debug() << insert << s->path;
     size_t w = s->dataTypeIndex[s->width];
     if (insert) {
         size_t i = signalTypeCount[w]++;
@@ -234,13 +236,26 @@ void Task::subscribe(const Signal* s, bool insert)
 
         signalCopyList[w][i] = s;
         signalPosition[s->index] = i;
+//        debug() << "insert" << s->path << w << i << (void*)signalCopyList[w];
     }
     else {
         wp->action = SignalList::Remove;
         wp->signalPosition = signalPosition[s->index];
 
         const Signal **dst = signalCopyList[w] + signalPosition[s->index];
-        std::copy( dst + 1, signalCopyList[w] + signalTypeCount[w]--, dst);
+//        debug() << "erase" << s->path << w << signalPosition[s->index]
+//            << "copy("
+//            << (void*)(signalCopyList[w])
+//            << signalPosition[s->index] + 1
+//            << signalTypeCount[w]
+//            << signalPosition[s->index];
+        std::copy( dst + 1, signalCopyList[w] + signalTypeCount[w]-- + 1, dst);
+
+        for (; *dst; ++dst) {
+            --signalPosition[(*dst)->index];
+//            debug() << "position for" << (*dst)->path
+//                << signalPosition[(*dst)->index];
+        }
     }
     wp->signal = s;
     wp->signalListId = ++signalListId;
@@ -349,7 +364,6 @@ void Task::update(const struct timespec *t,
                 cl->src = signal->addr;
                 cl->len = signal->memSize;
                 cl->signal = signal;
-                cl[1].src = 0;  // Null terminate the list
 
                 signalMemSize += signal->memSize;
                 signalTypeCount[type]++;
