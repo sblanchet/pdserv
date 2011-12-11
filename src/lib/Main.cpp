@@ -75,6 +75,8 @@ Main::Main( const char *name, const char *version,
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
+    ::kill(pid, SIGHUP);
+
     ::munmap(shmem, shmem_len);
 }
 

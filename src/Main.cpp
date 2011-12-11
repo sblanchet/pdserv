@@ -44,10 +44,6 @@ Main::Main(): mutex(1)
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
-    msrproto->join();
-
-    delete msrproto;
-
     for (VariableMap::const_iterator it = variableMap.begin();
             it != variableMap.end(); it++)
         delete it->second;
