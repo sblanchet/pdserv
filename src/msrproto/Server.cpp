@@ -177,6 +177,15 @@ void Server::getSessionStatistics(
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Server::setAic(const Parameter *p)
+{
+    ost::SemaphoreLock lock(mutex);
+    for (std::set<Session*>::iterator it = sessions.begin();
+            it != sessions.end(); it++)
+        (*it)->setAIC(p);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Server::parameterChanged(const PdServ::Parameter *p, 
         size_t startIndex, size_t nelem)
 {

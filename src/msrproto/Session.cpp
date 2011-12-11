@@ -50,7 +50,7 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 Session::Session( Server *server, ost::TCPSocket &socket):
     TCPSession(socket), PdServ::Session(server->main),
-    server(server)
+    server(server), mutex(1)
 {
     for (unsigned int i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
@@ -62,6 +62,7 @@ Session::Session( Server *server, ost::TCPSocket &socket):
     writeAccess = false;
     echoOn = false;
     quiet = false;
+    aicDelay = 0;
 
     // Get the hostname
     char hostname[HOST_NAME_MAX+1];
@@ -107,11 +108,24 @@ void Session::broadcast(Session *s, const std::string &message)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::setAIC(const Parameter *p)
+{
+    ost::SemaphoreLock lock(mutex);
+    aic.insert(p->mainParam);
+
+    if (!aicDelay)
+        aicDelay = 5;  // 2Hz AIC
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::parameterChanged(const PdServ::Parameter *p,
         size_t startIndex, size_t nelem)
 {
     const Parameter *param = server->getRoot().getParameter(p);
-    param->valueChanged(this, startIndex, nelem);
+
+    ost::SemaphoreLock lock(mutex);
+    if (aic.find(p) == aic.end())
+        param->valueChanged(this, startIndex, nelem);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -147,6 +161,17 @@ void Session::run()
             XmlElement::Attribute(error, "text")
                 << "process synchronization lost";
         }
+
+        ost::SemaphoreLock lock(mutex);
+        if (aicDelay and !--aicDelay) {
+            for ( AicSet::iterator it = aic.begin(); it != aic.end(); ++it) {
+                const Parameter *param = server->getRoot().getParameter(*it);
+                param->valueChanged(this, 0, param->nelem);
+            }
+
+            aic.clear();
+        }
+
     }
 }
 
@@ -511,6 +536,9 @@ void Session::writeParameter()
         if (startindex >= p->nelem)
             return;
     }
+
+    if (inbuf.isTrue("aic"))
+        server->setAic(p);
 
     int errno;
     const char *s;

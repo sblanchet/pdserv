@@ -54,6 +54,7 @@ class Server: public ost::Thread {
 
         void broadcast(Session *s, const std::string&);
 
+        void setAic(const Parameter*);
         void parameterChanged(const PdServ::Parameter*,
                 size_t startIndex, size_t n);
 

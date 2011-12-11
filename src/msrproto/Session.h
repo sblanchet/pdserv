@@ -54,8 +54,10 @@
 #include "Outbuf.h"
 #include "XmlElement.h"
 
+#include <cc++/thread.h> 
 #include <cc++/socketport.h> 
 #include <map>
+#include <set>
 #include <queue>
 
 namespace PdServ {
@@ -86,7 +88,7 @@ class Session: public ost::TCPSession, public PdServ::Session {
         void broadcast(Session *s, const std::string &element);
         void parameterChanged(const PdServ::Parameter*,
                 size_t startIndex, size_t nelem);
-        //void requestOutput();
+        void setAIC(const Parameter* p);
 
         void processCommand();
 
@@ -102,6 +104,11 @@ class Session: public ost::TCPSession, public PdServ::Session {
 
     private:
         Server * const server;
+
+        ost::Semaphore mutex;
+        size_t aicDelay;
+        typedef std::set<const PdServ::Parameter*> AicSet;
+        AicSet aic;
 
         typedef std::map<const PdServ::Task*, SubscriptionManager*>
             SubscriptionManagerMap;
