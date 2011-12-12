@@ -210,7 +210,7 @@ void Parameter::valueChanged(
         XmlElement::Attribute(pu, "index") << variableIndex;
     }
 
-    while (nelem--) {
+    while (!children.empty() and nelem--) {
         XmlElement pu("pu", os);
         XmlElement::Attribute(pu, "index") << children[start++]->variableIndex;
     }
