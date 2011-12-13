@@ -37,8 +37,8 @@ class Signal: public Variable {
         Signal( const std::string& path,
                 double sampleTime,
                 Datatype dtype,
-                unsigned int ndims = 1,
-                const unsigned int *dim = 0);
+                size_t ndims = 1,
+                const size_t *dim = 0);
 
         virtual ~Signal();
 

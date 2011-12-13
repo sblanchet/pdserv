@@ -44,7 +44,7 @@ StatSignal::StatSignal(const PdServ::Task *t,
 void StatSignal::subscribe(PdServ::Session *session) const
 {
     const PdServ::Signal *signal = this;
-    session->newSignalList(task, &signal, 1);
+    session->newSignal(task, signal);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -56,11 +56,10 @@ void StatSignal::unsubscribe(PdServ::Session *) const
 uint32_t StatSignal::getValue(
         const PdServ::Session *session, struct timespec *t) const
 {
-    const PdServ::TaskStatistics* stats =
-        static_cast<const Session*>(session)->getTaskStatistics(task);
+    const PdServ::TaskStatistics* stats = session->getTaskStatistics(task);
 
     if (t)
-        *t = stats->time;
+        *t = *session->getTaskTime(task);
 
     switch (type) {
         case ExecTime:

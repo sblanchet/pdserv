@@ -39,8 +39,8 @@ class Parameter: public PdServ::Parameter {
                 unsigned int mode,
                 Datatype dtype,
                 void *addr,
-                unsigned int ndims = 1,
-                const unsigned int *dim = 0);
+                size_t ndims = 1,
+                const size_t *dim = 0);
 
         ~Parameter();
 

@@ -96,7 +96,7 @@ struct pdvariable *pdserv_signal(
         size_t n,                 /**< Element count.
                                    * If @dim != NULL, this is the number
                                    * elements in @dim */
-        const unsigned int dim[] /**< Dimensions. If NULL, consider the
+        const size_t dim[]        /**< Dimensions. If NULL, consider the
                                    * parameter to be a vector of length @n */
         );
 
@@ -150,7 +150,7 @@ struct pdvariable *pdserv_parameter(
         void *addr,               /**< Parameter address */
         size_t n,                 /**< Element count.  If @dim != NULL, this
                                    * is the number elements in * @dim */
-        const unsigned int dim[], /**< Dimensions. If NULL, consider the
+        const size_t dim[],       /**< Dimensions. If NULL, consider the
                                    * parameter to be a vector of length @n */
         paramtrigger_t trigger,   /**< Callback for updating the parameter
                                    * inside real time context */
@@ -212,6 +212,18 @@ void pdserv_get_parameters(
         const struct timespec *t
         );
 
+/** Update task statistics variables
+ *
+ * Call this function at the end of the calculation cycle just before
+ * @pdserv_update to update statistics
+ */
+void pdserv_update_statistics(
+        struct pdtask* pdtask,  /**< Pointer to pdtask structure */
+        double exec_time,       /**< Execution time in [s] */
+        double cycle_time,      /**< Time since last call */
+        unsigned int overrun    /**< total overrun count */
+        );
+
 /** Update variables
  *
  * Call this function at the end of the calculation cycle to update
@@ -219,10 +231,8 @@ void pdserv_get_parameters(
  */
 void pdserv_update(
         struct pdtask* pdtask,  /**< Pointer to pdtask structure */
-        const struct timespec *t, /**< Current model time.
+        const struct timespec *t  /**< Current model time.
                                   * If NULL, zero is assumed */
-        double exec_time,       /**< Execution time in [s] */
-        double cycle_time       /**< Time since last call */
         );
 
 /** Cleanup pdserv */

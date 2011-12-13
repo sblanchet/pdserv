@@ -42,8 +42,8 @@ const size_t Variable::dataTypeWidth[11] = {
 Variable::Variable(
                 const std::string& path,
                 Datatype dtype,
-                unsigned int ndims,
-                const unsigned int *dim):
+                size_t ndims,
+                const size_t *dim):
     path(path), dtype(dtype),
     ndims(dim ? ndims : 1),
     width(dataTypeWidth[dtype]),
@@ -70,7 +70,7 @@ const size_t *Variable::getDim() const
 }
 
 //////////////////////////////////////////////////////////////////////
-size_t Variable::getNElem( unsigned int ndims, const unsigned int dim[])
+size_t Variable::getNElem( size_t ndims, const size_t dim[])
 {
     if (dim) {
         size_t n = 1;

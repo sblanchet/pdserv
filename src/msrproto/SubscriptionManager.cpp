@@ -88,27 +88,23 @@ void SubscriptionManager::unsubscribe(const Channel *c)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool SubscriptionManager::newSignalList(
-        const PdServ::Signal * const *s, size_t n)
+bool SubscriptionManager::newSignal( const PdServ::Signal *s)
 {
 //    cout << __func__ << n << endl;
 
-    bool sync = false;
 //    cout << __func__ << __LINE__ << signalSubscriptionMap.size() << endl;
 
-    for (; n--; s++) {
-        SignalSubscriptionMap::iterator sit =
-            signalSubscriptionMap.find(*s);
+    SignalSubscriptionMap::iterator sit = signalSubscriptionMap.find(s);
 
 //        cout << __LINE__ << (*s)->path << bufOffset << endl;
-        if (sit == signalSubscriptionMap.end())
-            continue;
+    if (sit == signalSubscriptionMap.end())
+        return false;
 
-        if (sit->second.sync())
-            sync = true;
+    bool sync = false;
+    if (sit->second.sync())
+        sync = true;
 
-        activeSignalSet.insert(*s);
-    }
+    activeSignalSet.insert(s);
 
     return sync;
 }

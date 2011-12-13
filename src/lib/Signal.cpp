@@ -22,6 +22,7 @@
  *
  *****************************************************************************/
 
+#include "../Session.h"
 #include "Signal.h"
 #include "Task.h"
 #include "Main.h"
@@ -40,8 +41,8 @@ Signal::Signal( Task *task,
         const char *path,
         Datatype dtype,
         const void *addr,
-        unsigned int ndims,
-        const unsigned int *dim):
+        size_t ndims,
+        const size_t *dim):
     PdServ::Signal(path, task->sampleTime * decimation, dtype, ndims, dim),
     addr(reinterpret_cast<const char *>(addr)),
     index(index), task(task),
@@ -56,6 +57,8 @@ void Signal::subscribe(PdServ::Session *s) const
 
     if (sessions.empty())
         task->subscribe(this, true);
+    else
+        s->newSignal(task, this);
 
     sessions.insert(s);
 }

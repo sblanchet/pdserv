@@ -43,7 +43,7 @@ TimeSignal::TimeSignal(const PdServ::Task *t, const std::string& path):
 void TimeSignal::subscribe(PdServ::Session *session) const
 {
     const PdServ::Signal *signal = this;
-    session->newSignalList(task, &signal, 1);
+    session->newSignal(task, signal);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -55,14 +55,12 @@ void TimeSignal::unsubscribe(PdServ::Session *) const
 double TimeSignal::poll(const PdServ::Session *session,
         void *buf, struct timespec *t) const
 {
-    const PdServ::TaskStatistics *stats =
-        static_cast<const Session*>(session)->getTaskStatistics(task);
+    const struct timespec *time = session->getTaskTime(task);
 
-    *reinterpret_cast<double*>(buf) =
-        1.0e-9 * stats->time.tv_nsec + stats->time.tv_sec;
+    *reinterpret_cast<double*>(buf) = 1.0e-9 * time->tv_nsec + time->tv_sec;
 
     if (t)
-        *t = stats->time;
+        *t = *time;
 
     return 0;
 }

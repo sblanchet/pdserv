@@ -59,6 +59,12 @@ void Session::getSessionStatistics(std::list<SessionStatistics> &stats) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+const struct timespec *Session::getTaskTime(const Task *task) const
+{
+    return shadow->getTaskTime(task);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 const TaskStatistics *Session::getTaskStatistics(const Task *task) const
 {
     return shadow->getTaskStatistics(task);

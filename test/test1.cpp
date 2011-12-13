@@ -31,7 +31,7 @@ int gettime(struct timespec *t)
 int main(int argc, const char *argv[])
 {
     struct pdserv *pdserv = pdserv_create(argv[0], "1.0", gettime);
-    unsigned int var1_dims[] = {2,3,4};
+    size_t var1_dims[] = {2,3,4};
     struct timespec time;
     double dbl[3] = { 13,14,15};
     double dbltime;
@@ -82,7 +82,8 @@ int main(int argc, const char *argv[])
         dbl[2] += param[2];
         var1[5][0][0] += param[1];
         dbltime = time.tv_sec + time.tv_nsec * 1.0e-9;
-        pdserv_update(task[0], &time, 10, 20);
+        pdserv_update_statistics(task[0], 10, 20, 30);
+        pdserv_update(task[0], &time);
     }
 
     pdserv_exit(pdserv);

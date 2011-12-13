@@ -41,30 +41,32 @@ struct Pdo;
 
 class SessionTaskData: public PdServ::SessionTaskData {
     public:
-        SessionTaskData(PdServ::Session* session, Task* t);
+        SessionTaskData(PdServ::Session* session, Task* t,
+                struct Pdo *txMemBegin, const void *txMemEnd);
 
         bool rxPdo();
-        void newSignalList( unsigned int signalListId,
-                const Signal * const *sp, size_t n);
-        void newSignalData( unsigned int signalListId, 
-                const char *buf, unsigned int buflen);
         const char *getValue(const PdServ::Signal *) const;
         const PdServ::TaskStatistics* getTaskStatistics() const;
+        const struct timespec *getTaskTime() const;
 
     private:
         Task * const task;
         PdServ::Session * const session;
 
+        struct Pdo * const txMemBegin;
+        void const * const txMemEnd;
+
         std::vector<size_t> signalPosition;
 
-        bool pdoError;
+        unsigned int seqNo;
         unsigned int signalListId;
-        unsigned int pdoSize;
+        size_t pdoSize;
         const char *signalBuffer;
 
-        struct Pdo *pdo;
+        struct Pdo * volatile pdo;
 
-        void loadSignalList(const Signal * const *sp, size_t n,
+        void init();
+        void loadSignalList(const Signal * const* sp, size_t n,
                 unsigned int signalListId);
 };
 

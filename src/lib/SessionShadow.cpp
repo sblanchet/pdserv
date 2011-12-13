@@ -33,7 +33,7 @@ SessionShadow::SessionShadow(const Main *main, PdServ::Session* session):
 {
     for (size_t i = 0; i < main->numTasks(); ++i) {
         Task *task = main->getTask(i);
-        taskMap[task] = new SessionTaskData( session, task);
+        taskMap[task] = task->newSession(session);
     }
 }
 
@@ -59,4 +59,11 @@ const PdServ::TaskStatistics *SessionShadow::getTaskStatistics(
         const PdServ::Task *task) const
 {
     return taskMap.find(task)->second->getTaskStatistics();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const struct timespec *SessionShadow::getTaskTime(
+        const PdServ::Task *task) const
+{
+    return taskMap.find(task)->second->getTaskTime();
 }

@@ -22,17 +22,28 @@
  *
  *****************************************************************************/
 
-#ifndef SHMEM_DATA_STRUCTURES_H
-#define SHMEM_DATA_STRUCTURES_H
+#ifndef SHMDATASTRUCTURES_H
+#define SHMDATASTRUCTURES_H
 
-#include <ctime>
+#include "../TaskStatistics.h"
 
-struct TxFrame {
-    TxFrame *next;
-    unsigned int signalListNo;
+/////////////////////////////////////////////////////////////////////////////
+// Data structures used in Task
+/////////////////////////////////////////////////////////////////////////////
+class Signal;
+
+struct Pdo {
+    enum {Empty = 0, SignalList, Data, End} type;
+    unsigned int signalListId;
+    size_t count;
     unsigned int seqNo;
     struct timespec time;
-    char data[];
+    struct PdServ::TaskStatistics taskStatistics;
+    struct Pdo *next;
+    union {
+        char data[];
+        size_t signal[];
+    };
 };
 
-#endif // SHMEM_DATA_STRUCTURES_H
+#endif
