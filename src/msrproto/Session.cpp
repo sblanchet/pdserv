@@ -62,6 +62,7 @@ Session::Session( Server *server, ost::TCPSocket &socket):
     writeAccess = false;
     echoOn = false;
     quiet = false;
+    sync = false;
     aicDelay = 0;
 
     // Get the hostname
@@ -160,7 +161,8 @@ void Session::run()
             XmlElement error("error", this);
             XmlElement::Attribute(error, "text")
                 << "process synchronization lost";
-            resync();
+
+            sync = true;
         }
 
         ost::SemaphoreLock lock(mutex);
@@ -172,31 +174,27 @@ void Session::run()
 
             aic.clear();
         }
-
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::newSignal(const PdServ::Task *task, const PdServ::Signal *s)
 {
-    if (!subscriptionManager[task]->newSignal(s))
-        return;
-
-    resync();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::resync()
-{
-    for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
-            it != subscriptionManager.end(); ++it)
-        it->second->sync();
+    sync |= subscriptionManager[task]->newSignal(s);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::newSignalData(const PdServ::SessionTaskData *std,
         const struct timespec *time)
 {
+    if (sync) {
+        sync = false;
+
+        for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
+                it != subscriptionManager.end(); ++it)
+            it->second->sync();
+    }
+    
     PrintQ printQueue;
     subscriptionManager[std->task]->newSignalData(printQueue, std);
 
@@ -580,8 +578,7 @@ void Session::xsad()
     quiet = !sync and inbuf.isTrue("quiet");
 
     if (!inbuf.getUnsignedList("channels", indexList)) {
-        if (sync)
-            resync();
+        this->sync = sync;
         return;
     }
 

@@ -132,12 +132,10 @@ class Session: public ost::TCPSession, public PdServ::Session {
         bool writeAccess;
         bool quiet;
         bool echoOn;
+        bool sync;
 
         // Input and output buffering
         XmlParser inbuf;
-
-        // Reset all channel buffer pointers
-        void resync();
 
         // Here are all the commands the MSR protocol supports
         void broadcast();

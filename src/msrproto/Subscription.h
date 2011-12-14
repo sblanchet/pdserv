@@ -38,7 +38,7 @@ class Subscription {
 
         const Channel *channel;
 
-        bool sync();
+        bool reset();
 
         void newValue(PrintQ &, const void *buf);
         void print(XmlElement &parent) const;
@@ -49,7 +49,7 @@ class Subscription {
     private:
         const size_t bufferOffset;
 
-        bool _sync;
+        bool sync;
 
         bool event;
         unsigned int decimation;

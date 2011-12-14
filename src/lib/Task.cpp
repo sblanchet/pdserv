@@ -395,8 +395,9 @@ void Task::update(const struct timespec *t)
         for (int i = 0; i < 4; i++)
             for (CopyList *cl = copyList[i]; cl->src; ++cl) {
                 *sp++ = cl->signal->index;
-//                cout << ' ' << cl->signal->index;
+                std::cerr << ' ' << cl->signal->index;
             }
+        std::cerr << std::endl;
 //        cout << endl;
 
         *nextTxPdo = txPdo;

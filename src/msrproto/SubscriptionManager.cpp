@@ -22,6 +22,7 @@
  *
  *****************************************************************************/
 
+#include "../Debug.h"
 #include "../Main.h"
 #include "../Signal.h"
 #include "../SessionTaskData.h"
@@ -90,23 +91,17 @@ void SubscriptionManager::unsubscribe(const Channel *c)
 /////////////////////////////////////////////////////////////////////////////
 bool SubscriptionManager::newSignal( const PdServ::Signal *s)
 {
-//    cout << __func__ << n << endl;
-
-//    cout << __func__ << __LINE__ << signalSubscriptionMap.size() << endl;
-
     SignalSubscriptionMap::iterator sit = signalSubscriptionMap.find(s);
 
-//        cout << __LINE__ << (*s)->path << bufOffset << endl;
-    if (sit == signalSubscriptionMap.end())
+    // Find out whether this signal is used or whether it is active already
+    if (sit == signalSubscriptionMap.end()
+            or activeSignalSet.find(s) != activeSignalSet.end())
         return false;
 
-    bool sync = false;
-    if (sit->second.sync())
-        sync = true;
-
+    debug() << s->path;
     activeSignalSet.insert(s);
 
-    return sync;
+    return sit->second.sync();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -128,6 +123,7 @@ void SubscriptionManager::sync()
     for (ActiveSignalSet::const_iterator sit = activeSignalSet.begin();
             sit != activeSignalSet.end(); sit++) {
         signalSubscriptionMap[*sit].sync();
+        debug() << (*sit)->path;
     }
 }
 
@@ -153,9 +149,8 @@ void SubscriptionManager::SignalSubscription::newSignalData(
 bool SubscriptionManager::SignalSubscription::sync()
 {
     bool sync = false;
-    for (const_iterator it = begin(); it != end(); it++) {
-        if (it->second->sync())
-            sync = true;
-    }
+    for (const_iterator it = begin(); it != end(); it++)
+        sync |= it->second->reset();
+
     return sync;
 }

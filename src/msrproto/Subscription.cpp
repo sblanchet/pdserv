@@ -48,25 +48,25 @@ Subscription::~Subscription()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Subscription::set( bool _event, bool sync, unsigned int _decimation,
-        size_t _blocksize, bool _base64, size_t _precision)
+void Subscription::set( bool event, bool sync, unsigned int decimation,
+        size_t blocksize, bool base64, size_t precision)
 {
 //    cout << __PRETTY_FUNCTION__ << signal->path << endl;
-    event = _event;
-    _sync = sync;
-    decimation = _decimation ? _decimation-1 : 0;
+    this->event = event;
+    this->sync = sync;
+    this->decimation = decimation ? decimation-1 : 0;
     trigger = 0;
 
     if (event)
         // Event triggering
-        _blocksize = 1;
-    else if (!_blocksize)
-        _blocksize = 1;
+        blocksize = 1;
+    else if (!blocksize)
+        blocksize = 1;
 
-    blocksize = _blocksize;
+    this->blocksize = blocksize;
 
-    precision = _precision;
-    base64 = _base64;
+    this->precision = precision;
+    this->base64 = base64;
 
     size_t dataLen = blocksize * channel->memSize;
     if (data_eptr != data_bptr + dataLen) {
@@ -120,13 +120,14 @@ void Subscription::print(XmlElement &parent) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Subscription::sync()
+bool Subscription::reset()
 {
-    bool sync = _sync;
+    bool sync = this->sync;
 
-    _sync = false;
+    this->sync = false;
     data_pptr = data_bptr;
     trigger = decimation;
 
+    debug() << channel->variableIndex << channel->path() << sync << decimation;
     return sync;
 }
