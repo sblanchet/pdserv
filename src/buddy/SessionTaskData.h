@@ -25,6 +25,8 @@
 #ifndef BUDDY_SESSIONTASKDATA_H
 #define BUDDY_SESSIONTASKDATA_H
 
+#include <ctime>
+
 #include "../SessionTaskData.h"
 #include "../TaskStatistics.h"
 
@@ -44,6 +46,7 @@ class SessionTaskData: public PdServ::SessionTaskData {
 
         const void *getValue(const Signal *) const;
         const PdServ::TaskStatistics* getTaskStatistics(const Task*) const;
+        const struct timespec *getTaskTime(const Task*) const;
         void newSignalData(unsigned int current);
 
     private:
@@ -53,6 +56,7 @@ class SessionTaskData: public PdServ::SessionTaskData {
 
         const char *photo;
         PdServ::TaskStatistics stat;
+        struct timespec time;
 
         void updateStatistics();
 };

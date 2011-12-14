@@ -65,3 +65,10 @@ const PdServ::TaskStatistics *SessionShadow::getTaskStatistics(
 {
     return taskData.getTaskStatistics(static_cast<const Task*>(task));
 }
+
+////////////////////////////////////////////////////////////////////////////
+const timespec *SessionShadow::getTaskTime(
+        const PdServ::Task *task) const
+{
+    return taskData.getTaskTime(static_cast<const Task*>(task));
+}

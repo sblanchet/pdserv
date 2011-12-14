@@ -44,6 +44,13 @@ SessionTaskData::SessionTaskData( PdServ::Session* s, const Task* t,
 }
 
 ////////////////////////////////////////////////////////////////////////////
+const struct timespec *SessionTaskData::getTaskTime(
+        const Task*) const
+{
+    return &time;
+}
+
+////////////////////////////////////////////////////////////////////////////
 const PdServ::TaskStatistics* SessionTaskData::getTaskStatistics(
         const Task*) const
 {
@@ -56,13 +63,11 @@ void SessionTaskData::updateStatistics()
     const struct task_stats *task_stats =
         reinterpret_cast<const struct task_stats*>(photo + statsOffset);
 
-    stat.seqNo++;
-
 #ifdef TIMESPEC
-    stat.time = task_stats[0].time;
+    time = task_stats[0].time;
 #else
-    stat.time.tv_sec = task_stats[0].time.tv_sec;
-    stat.time.tv_nsec = 1000*task_stats[0].time.tv_usec;
+    time.tv_sec = task_stats[0].time.tv_sec;
+    time.tv_nsec = 1000*task_stats[0].time.tv_usec;
 #endif
 
     stat.exec_time = 1.0e-6 * task_stats[0].exec_time;
@@ -77,7 +82,7 @@ void SessionTaskData::newSignalData(unsigned int current)
 
     updateStatistics();
 
-    session->newSignalData(this);
+    session->newSignalData(this, &time);
 }
 
 ////////////////////////////////////////////////////////////////////////////

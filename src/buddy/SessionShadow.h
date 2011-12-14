@@ -56,6 +56,7 @@ class SessionShadow: public PdServ::SessionShadow {
         bool rxPdo();
         const PdServ::TaskStatistics *getTaskStatistics(
                 const PdServ::Task *) const;
+        const struct timespec *getTaskTime(const PdServ::Task *) const;
 };
 
 #endif //BUDDY_SESSIONSHADOW_H
