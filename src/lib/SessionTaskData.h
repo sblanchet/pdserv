@@ -63,7 +63,7 @@ class SessionTaskData: public PdServ::SessionTaskData {
         size_t pdoSize;
         const char *signalBuffer;
 
-        struct Pdo * volatile pdo;
+        struct Pdo * pdo;
 
         void init();
         void loadSignalList(const Signal * const* sp, size_t n,
