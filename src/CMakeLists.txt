@@ -70,7 +70,7 @@ FIND_FILE (BUDDY_IOCTL "fio_ioctl.h")
 
 #MESSAGE("ETL_DATA=${ETL_DATA} BUDDY_IOCTL=${BUDDY_IOCTL}")
 
-IF (ETL_DATA AND BUDDY_IOCTL)
+IF (ETL_DATA AND BUDDY_IOCTL AND NOT DISABLE_BUDDY)
 
     SET (TESTFILE "${CMAKE_CURRENT_BINARY_DIR}/test_taskstat.c")
     FILE (WRITE "${TESTFILE}"
@@ -91,7 +91,7 @@ IF (ETL_DATA AND BUDDY_IOCTL)
 
     #MESSAGE("TIME=${TIMESPEC} ${TS}")
 
-    ADD_EXECUTABLE (etherlab_buddy
+    ADD_EXECUTABLE (etherlab_buddy2
         buddy/SignalInfo.cpp buddy/SignalInfo.h
         buddy/Signal.cpp buddy/Signal.h
         buddy/main.cpp
@@ -107,8 +107,8 @@ IF (ETL_DATA AND BUDDY_IOCTL)
         ${main_src}
         )
 
-    TARGET_LINK_LIBRARIES(etherlab_buddy ${LIBCCEXT2_LIBRARIES})
-    INSTALL (TARGETS etherlab_buddy DESTINATION "${ABS_EXECDIR}" RUNTIME)
+    TARGET_LINK_LIBRARIES(etherlab_buddy2 ${LIBCCEXT2_LIBRARIES})
+    INSTALL (TARGETS etherlab_buddy2 DESTINATION "${ABS_EXECDIR}" RUNTIME)
 
 ENDIF ()
 
