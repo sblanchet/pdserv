@@ -62,7 +62,7 @@ class Subscription {
 
         char *data_bptr;
         char *data_pptr;
-        char *data_eptr;
+        const char *data_eptr;
 };
 
 }

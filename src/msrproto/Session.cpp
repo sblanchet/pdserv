@@ -591,6 +591,7 @@ void Session::xsad()
 
             reduction = 1;
         }
+
         foundReduction = true;
     }
 
@@ -624,21 +625,15 @@ void Session::xsad()
                 // max of 10Hz automatically
                 reduction = 0.1 / mainSignal->sampleTime + 0.5;
         }
-        else if (!foundReduction and !foundBlocksize) {
+        else if (!foundReduction or !foundBlocksize) {
             // Quite possibly user input; choose reduction for 1Hz
-            reduction = 1.0 / mainSignal->sampleTime + 0.5;
-            blocksize = 1;
-        }
-        else if (foundReduction and !foundBlocksize) {
-            // Choose blocksize so that a datum is sent at 10Hz
-            blocksize = 0.1 / mainSignal->sampleTime + 0.5;
-        }
-        else if (!foundReduction and foundBlocksize) {
-            reduction = 1;
-        }
 
-        if (!reduction) reduction = 1;
-        if (!blocksize) blocksize = 1;
+            if (!foundBlocksize)
+                blocksize = 1;
+
+            if (!foundReduction)
+                reduction = 1.0 / mainSignal->sampleTime / blocksize + 0.5;
+        }
 
         double ts = mainSignal->sampleTime;
         subscriptionManager[main->getTask(ts)]->subscribe( channel[*it], event,

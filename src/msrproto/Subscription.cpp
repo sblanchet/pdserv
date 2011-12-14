@@ -40,6 +40,7 @@ Subscription::Subscription(const Channel* channel):
     bufferOffset(channel->elementIndex * channel->signal->width)
 {
     data_bptr = 0;
+    trigger = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -54,38 +55,35 @@ void Subscription::set( bool event, bool sync, unsigned int decimation,
 //    cout << __PRETTY_FUNCTION__ << signal->path << endl;
     this->event = event;
     this->sync = sync;
-    this->decimation = decimation ? decimation-1 : 0;
-    trigger = 0;
-
-    if (event)
-        // Event triggering
-        blocksize = 1;
-    else if (!blocksize)
-        blocksize = 1;
-
-    this->blocksize = blocksize;
-
     this->precision = precision;
     this->base64 = base64;
 
-    size_t dataLen = blocksize * channel->memSize;
+    this->decimation = std::max(1U, decimation);
+    this->blocksize = event ? 1 : std::max(1U, blocksize);
+
+    this->trigger %= this->decimation;
+
+    size_t dataLen = this->blocksize * channel->memSize;
     if (data_eptr != data_bptr + dataLen) {
         delete[] data_bptr;
         data_bptr = new char[dataLen];
         data_eptr = data_bptr + dataLen;
+
+        data_pptr = data_bptr;
+        this->trigger = 1;
     }
-    data_pptr = data_bptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Subscription::newValue( PrintQ &printQ, const void *dataBuf)
 {
     const char *buf = reinterpret_cast<const char *>(dataBuf) + bufferOffset;
-    if (trigger and trigger--)
+    if (trigger and --trigger)
         return;
 
     nblocks = 0;
-    if (!event or !std::equal(data_bptr, data_eptr, buf)) {
+    if (!event or
+            !std::equal(static_cast<const char*>(data_bptr), data_eptr, buf)) {
         trigger = decimation;
 
         std::copy(buf, buf + channel->memSize, data_pptr);
@@ -128,6 +126,5 @@ bool Subscription::reset()
     data_pptr = data_bptr;
     trigger = decimation;
 
-    debug() << channel->variableIndex << channel->path() << sync << decimation;
     return sync;
 }
