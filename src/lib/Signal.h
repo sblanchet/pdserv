@@ -45,8 +45,8 @@ class Signal: public PdServ::Signal {
                 const char *path,
                 Datatype dtype,
                 const void *addr,
-                unsigned int ndims = 1,
-                const unsigned int *dim = 0);
+                size_t ndims = 1,
+                const size_t *dim = 0);
 
         const char * const addr;
 

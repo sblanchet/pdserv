@@ -22,6 +22,8 @@
  *
  *****************************************************************************/
 
+#include "config.h"
+
 #include "../Debug.h"
 
 #include <cerrno>
@@ -109,7 +111,7 @@ int Main::gettime(struct timespec* t) const
 /////////////////////////////////////////////////////////////////////////////
 Parameter* Main::addParameter( const char *path,
         unsigned int mode, PdServ::Variable::Datatype datatype,
-        void *addr, size_t n, const unsigned int *dim)
+        void *addr, size_t n, const size_t *dim)
 {
     if (variableMap.find(path) != variableMap.end())
         return 0;
@@ -125,7 +127,7 @@ Parameter* Main::addParameter( const char *path,
 /////////////////////////////////////////////////////////////////////////////
 Signal* Main::addSignal( Task *task, unsigned int decimation,
         const char *path, PdServ::Variable::Datatype datatype,
-        const void *addr, size_t n, const unsigned int *dim)
+        const void *addr, size_t n, const size_t *dim)
 {
     if (variableMap.find(path) != variableMap.end())
         return 0;

@@ -35,8 +35,8 @@ Parameter::Parameter(
         unsigned int mode,
         Datatype dtype,
         void *addr,
-        unsigned int ndims,
-        const unsigned int *dim):
+        size_t ndims,
+        const size_t *dim):
     PdServ::Parameter(path, mode, dtype, ndims, dim),
     addr(reinterpret_cast<char*>(addr)), main(main), mutex(1)
 {

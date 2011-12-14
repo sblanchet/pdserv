@@ -22,35 +22,122 @@
  *
  *****************************************************************************/
 
+#include "../Debug.h"
 #include "../Session.h"
 #include "SessionTaskData.h"
+#include "ShmemDataStructures.h"
 #include "Task.h"
 #include "Signal.h"
 
 ////////////////////////////////////////////////////////////////////////////
-SessionTaskData::SessionTaskData( PdServ::Session* s, Task* t):
-    PdServ::SessionTaskData(s, t), task(t), session(s)
+SessionTaskData::SessionTaskData( PdServ::Session* s, Task* t,
+        struct Pdo *txMemBegin, const void *txMemEnd):
+    PdServ::SessionTaskData(s, t),
+    task(t), session(s), txMemBegin(txMemBegin), txMemEnd(txMemEnd)
 {
-    pdoError = false;
+    signalListId = 0;
 
     signalPosition.resize(task->signalCount());
-    const Signal *signals[signalPosition.size()];
-    size_t nelem;
 
-    task->getSignalList(signals, &nelem, &signalListId);
-    loadSignalList(signals, nelem, signalListId);
+    init();
+}
 
-    task->initSession(signalListId, &pdo);
+////////////////////////////////////////////////////////////////////////////
+void SessionTaskData::init()
+{
+    pdo = txMemBegin;
+
+    do {
+        while (!pdo->next)
+            ost::Thread::sleep(task->sampleTime * 1000 / 2 + 1);
+
+        seqNo = pdo->seqNo;
+        pdo = pdo->next;
+
+        // Check that pdo still points to a valid range
+        if (pdo < txMemBegin
+                or &pdo->data >= txMemEnd
+                or !pdo->type
+                or pdo->type >= Pdo::End
+                or (pdo->type == Pdo::Data
+                    and pdo->data + pdo->count >= txMemEnd)
+                or (pdo->type == Pdo::SignalList
+                    and pdo->signal + pdo->count >= txMemEnd))
+            pdo = txMemBegin;
+
+        // Make sure signalListId has not changed
+        if (static_cast<int>(pdo->signalListId - signalListId) > 0) {
+            const Signal *signals[signalPosition.size()];
+            size_t nelem;
+
+            task->getSignalList(signals, &nelem, &signalListId);
+            loadSignalList(signals, nelem, signalListId);
+        }
+
+    } while (!(!pdo->next and pdo->type == Pdo::Data
+                and pdo->signalListId == signalListId));
 }
 
 ////////////////////////////////////////////////////////////////////////////
 bool SessionTaskData::rxPdo()
 {
-    return pdoError or task->rxPdo(&pdo, this);
+    while (pdo and pdo->next) {
+        size_t n = pdo->count;
+
+        switch (pdo->type) {
+            case Pdo::SignalList:
+                {
+                    const Task::SignalVector& signals = task->getSignals();
+                    const Signal *sp[signals.size()];
+
+                    if (pdo->signal + n > txMemEnd)
+                        goto out;
+
+                    for (size_t i = 0; i < n; ++i) {
+                        size_t idx = pdo->signal[i];
+                        if (idx >= signals.size())
+                            goto out;
+                        sp[i] = static_cast<const Signal*>(signals[idx]);
+                    }
+                    loadSignalList(sp, n, pdo->signalListId);
+
+                    for (size_t i = 0; i < n; ++i)
+                        session->newSignal(task, sp[i]);
+                }
+
+                break;
+
+            case Pdo::Data:
+                if (pdo->data + pdoSize >= txMemEnd
+                        or pdo->signalListId != signalListId
+                        or pdo->seqNo - seqNo != 1)
+                    goto out;
+
+                seqNo = pdo->seqNo;
+                signalBuffer = pdo->data;
+
+                session->newSignalData(this, &pdo->time);
+                break;
+
+            default:
+                goto out;
+        }
+
+        pdo = pdo->next;
+
+        if (pdo < txMemBegin or &pdo->data > txMemEnd)
+            goto out;
+    }
+
+    return false;
+
+out:
+    init();
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void SessionTaskData::loadSignalList(const Signal * const *sp, size_t n,
+void SessionTaskData::loadSignalList(const Signal * const* sp, size_t n,
         unsigned int id)
 {
 //    cout << __func__ << " n=" << n << " id=" << id;
@@ -66,48 +153,19 @@ void SessionTaskData::loadSignalList(const Signal * const *sp, size_t n,
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void SessionTaskData::newSignalList(
-        unsigned int signalListId, const Signal * const *sp, size_t n)
-{
-    loadSignalList(sp, n, signalListId);
-
-    const PdServ::Signal *signals[n];
-    std::copy(sp, sp+n, signals);
-//    cout << __func__ << " signallistid = " << signalListId << endl;
-
-    session->newSignalList(task, signals, n);
-}
-
-////////////////////////////////////////////////////////////////////////////
-void SessionTaskData::newSignalData( unsigned int id, 
-        const char *buf, unsigned int buflen)
-{
-//    cout << __func__ << signalListId << "==" << id << ' '
-//        << pdoSize << "==" << buflen;
-    pdoError |= !(signalListId == id and pdoSize == buflen);
-//    cout << ' ' << pdoError << endl;
-
-    signalBuffer = buf;
-
-    if (!pdoError)
-        session->newSignalData(this);
-}
-
-////////////////////////////////////////////////////////////////////////////
 const char *SessionTaskData::getValue(const PdServ::Signal *s) const
 {
-    const Signal *signal = static_cast<const Signal*>(s);
+    return signalBuffer + signalPosition[static_cast<const Signal*>(s)->index];
+}
 
-    size_t n = signalPosition[signal->index];
-
-//    cout << pdoError << ' ' << pdoSize << ' ' << n + signal->memSize << endl;
-//    return 0;
-    return (pdoError or n + signal->memSize > pdoSize)
-        ? 0 : signalBuffer + n;
+////////////////////////////////////////////////////////////////////////////
+const struct timespec *SessionTaskData::getTaskTime() const
+{
+    return &pdo->time;
 }
 
 ////////////////////////////////////////////////////////////////////////////
 const PdServ::TaskStatistics* SessionTaskData::getTaskStatistics() const
 {
-    return Task::getTaskStatistics(pdo);
+    return &pdo->taskStatistics;
 }

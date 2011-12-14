@@ -124,9 +124,9 @@ class Session: public ost::TCPSession, public PdServ::Session {
         void run();
 
         // Reimplemented from PdServ::Session
-        void newSignalList(const PdServ::Task *task,
-                const PdServ::Signal * const *, size_t n);
-        void newSignalData(const PdServ::SessionTaskData*);
+        void newSignal(const PdServ::Task *task, const PdServ::Signal *);
+        void newSignalData(const PdServ::SessionTaskData*,
+                const struct timespec *);
 
         // Management variables
         bool writeAccess;
@@ -135,6 +135,9 @@ class Session: public ost::TCPSession, public PdServ::Session {
 
         // Input and output buffering
         XmlParser inbuf;
+
+        // Reset all channel buffer pointers
+        void resync();
 
         // Here are all the commands the MSR protocol supports
         void broadcast();

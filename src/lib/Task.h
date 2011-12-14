@@ -31,8 +31,9 @@
 #include <cc++/thread.h>
 
 #include "../Variable.h"
-#include "ShmemDataStructures.h"
 #include "../Task.h"
+#include "../TaskStatistics.h"
+//#include "ShmemDataStructures.h"
 
 namespace PdServ {
     struct TaskStatistics;
@@ -49,18 +50,22 @@ class Task: public PdServ::Task {
 
         Main * const main;
 
+        typedef std::vector<const Signal*> SignalVector;
+        const SignalVector& getSignals() const;
         Signal* addSignal( unsigned int decimation,
                 const char *path, PdServ::Variable::Datatype datatype,
-                const void *addr, size_t n, const unsigned int *dim);
+                const void *addr, size_t n, const size_t *dim);
 
         size_t getShmemSpace(double t) const;
+
+        SessionTaskData* newSession(PdServ::Session *session);
 
         void prepare(void *start, void *end);
         void rt_init();
         void nrt_init();
-        void update(const struct timespec *,
-                double exec_time, double cycle_time);
-        bool rxPdo(struct Pdo **, SessionTaskData *);
+        void updateStatistics(
+                double exec_time, double cycle_time, unsigned int overrun);
+        void update(const struct timespec *);
 
         void subscribe(const Signal* s, bool insert);
 
@@ -69,17 +74,16 @@ class Task: public PdServ::Task {
                 void * const *pollDest, struct timespec *t) const;
 
         size_t signalCount() const;
-        void getSignalList(const Signal **s, size_t *n,
+        void getSignalList(const Signal ** s, size_t *n,
                 unsigned int *signalListId) const;
-        void initSession(unsigned int signalListId, struct Pdo **) const;
 
-        static const PdServ::TaskStatistics* getTaskStatistics(
-                const struct Pdo *);
     private:
         mutable ost::Semaphore mutex;
 
         size_t signalTypeCount[4];
         size_t signalMemSize;
+
+        PdServ::TaskStatistics taskStatistics;
 
         // Cache of the currently transferred signals
         const Signal **signalCopyList[4];
@@ -88,6 +92,8 @@ class Task: public PdServ::Task {
         // to enter this array
         // Only allocated for non-realtime task
         unsigned int *signalPosition;
+
+        SignalVector signalVector;
 
         unsigned int seqNo;
         unsigned int signalListId;

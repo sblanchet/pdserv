@@ -41,8 +41,7 @@ Signal::Signal( const Task *task, const SignalInfo& si):
 //////////////////////////////////////////////////////////////////////
 void Signal::subscribe(PdServ::Session *session) const
 {
-    const PdServ::Signal *signal = this;
-    session->newSignalList(task, &signal, 1);
+    session->newSignal(task, this);
 }
 
 //////////////////////////////////////////////////////////////////////

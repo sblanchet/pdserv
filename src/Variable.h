@@ -47,8 +47,8 @@ class Variable {
 
         Variable( const std::string& path,
                 Datatype dtype,
-                unsigned int ndims = 1,
-                const unsigned int dim[] = 0);
+                size_t ndims = 1,
+                const size_t dim[] = 0);
 
         virtual ~Variable();
 
@@ -75,7 +75,7 @@ class Variable {
     private:
         size_t * const dim;
 
-        static size_t getNElem( unsigned int dims, const unsigned int dim[]);
+        static size_t getNElem( size_t dims, const size_t dim[]);
 };
 
 }

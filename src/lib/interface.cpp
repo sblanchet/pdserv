@@ -65,12 +65,20 @@ void pdserv_get_parameters(struct pdserv* pdserv, struct pdtask *task,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdserv_update(struct pdtask* task, const struct timespec *t,
-        double exec_time, double cycle_time)
+void pdserv_update_statistics(struct pdtask* task,
+        double exec_time, double cycle_time, unsigned int overrun)
 {
-    reinterpret_cast<Task*>(task)->update(t, exec_time, cycle_time);
+    reinterpret_cast<Task*>(task)->updateStatistics(
+            exec_time, cycle_time, overrun);
 }
 
+/////////////////////////////////////////////////////////////////////////////
+void pdserv_update(struct pdtask* task, const struct timespec *t)
+{
+    reinterpret_cast<Task*>(task)->update(t);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 static PdServ::Variable::Datatype getDataType(enum pdserv_datatype_t dt)
 {
     switch (dt) {
@@ -97,7 +105,7 @@ struct pdvariable *pdserv_signal(
         enum pdserv_datatype_t datatype,
         const void *addr,
         size_t n,
-        const unsigned int dim[]
+        const size_t dim[]
         )
 {
     Task *task = reinterpret_cast<Task*>(pdtask);
@@ -116,7 +124,7 @@ struct pdvariable *pdserv_parameter(
         enum pdserv_datatype_t datatype,
         void *addr,
         size_t n,
-        const unsigned int dim[],
+        const size_t dim[],
         paramtrigger_t trigger = 0,
         void *priv_data = 0
         )

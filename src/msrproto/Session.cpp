@@ -160,6 +160,7 @@ void Session::run()
             XmlElement error("error", this);
             XmlElement::Attribute(error, "text")
                 << "process synchronization lost";
+            resync();
         }
 
         ost::SemaphoreLock lock(mutex);
@@ -176,29 +177,33 @@ void Session::run()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalList(const PdServ::Task *task,
-        const PdServ::Signal * const *s, size_t n)
+void Session::newSignal(const PdServ::Task *task, const PdServ::Signal *s)
 {
-    if (!subscriptionManager[task]->newSignalList(s, n))
+    if (!subscriptionManager[task]->newSignal(s))
         return;
 
+    resync();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::resync()
+{
     for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
             it != subscriptionManager.end(); ++it)
         it->second->sync();
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::newSignalData(const PdServ::SessionTaskData *std)
+void Session::newSignalData(const PdServ::SessionTaskData *std,
+        const struct timespec *time)
 {
     PrintQ printQueue;
     subscriptionManager[std->task]->newSignalData(printQueue, std);
 
     if (!printQueue.empty() and !quiet) {
-        const PdServ::TaskStatistics *stat =
-            std->session->getTaskStatistics(std->task);
         XmlElement dataTag("data", this);
         XmlElement::Attribute(dataTag, "level") << 0;
-        XmlElement::Attribute(dataTag, "time") << stat->time;
+        XmlElement::Attribute(dataTag, "time") << *time;
 
         while (!printQueue.empty()) {
             printQueue.front()->print(dataTag);
@@ -576,10 +581,7 @@ void Session::xsad()
 
     if (!inbuf.getUnsignedList("channels", indexList)) {
         if (sync)
-            for (SubscriptionManagerMap::iterator it =
-                    subscriptionManager.begin();
-                    it != subscriptionManager.end(); ++it)
-                it->second->sync();
+            resync();
         return;
     }
 

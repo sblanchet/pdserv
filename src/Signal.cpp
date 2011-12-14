@@ -31,8 +31,8 @@ Signal::Signal(
         const std::string& path,
         double ts,
         Datatype dtype,
-        unsigned int ndims,
-        const unsigned int *dim):
+        size_t ndims,
+        const size_t *dim):
     Variable(path, dtype, ndims, dim),
     sampleTime(ts)
 {

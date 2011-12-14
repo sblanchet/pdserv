@@ -30,8 +30,6 @@
 namespace PdServ {
 
 struct TaskStatistics {
-    unsigned int seqNo;
-    struct timespec time;
     double exec_time;
     double cycle_time;
     unsigned int overrun;

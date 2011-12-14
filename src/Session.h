@@ -46,11 +46,12 @@ class Session {
 
         void getSessionStatistics(std::list<SessionStatistics>& ) const;
         const TaskStatistics *getTaskStatistics(const Task *task) const;
+        const struct timespec *getTaskTime(const Task *) const;
 
         // These methods are called from within the context of rxPdo
-        virtual void newSignalList(const Task *,
-                const Signal * const *, size_t n) = 0;
-        virtual void newSignalData(const SessionTaskData* ) = 0;
+        virtual void newSignal(const Task *, const Signal *) = 0;
+        virtual void newSignalData(const SessionTaskData*,
+                const struct timespec *) = 0;
 
         const Main * const main;
 

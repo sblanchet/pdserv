@@ -52,7 +52,7 @@ class SubscriptionManager {
         void subscribe(const Channel *s,
                 bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
-        bool newSignalList( const PdServ::Signal * const *, size_t n);
+        bool newSignal( const PdServ::Signal *);
         void newSignalData( PrintQ &printQ,
                 const PdServ::SessionTaskData *);
 

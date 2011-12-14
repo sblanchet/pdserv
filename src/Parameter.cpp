@@ -33,8 +33,8 @@ Parameter::Parameter(
         const std::string& path,
         unsigned int mode,
         Datatype dtype,
-        unsigned int ndims,
-        const unsigned int *dim):
+        size_t ndims,
+        const size_t *dim):
     Variable(path, dtype, ndims, dim), mode(mode)
 {
 }
