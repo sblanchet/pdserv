@@ -23,9 +23,9 @@
 #############################################################################
 
 INCLUDE_DIRECTORIES(
+        ${PROJECT_BINARY_DIR}       # for config.h
         ${RTLAB_SOURCE_DIR}
         ${LIBCCEXT2_INCLUDE_DIRS}
-        ${PROJECT_BINARY_DIR}       # for config.h
         )
 
 SET (msrproto_src
