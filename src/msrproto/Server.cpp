@@ -46,7 +46,6 @@ Server::Server(const PdServ::Main *main): main(main), mutex(1)
     root = new VariableDirectory;
 
     const PdServ::Task *primaryTask;
-    TimeSignal *primaryTaskTimeSignal = 0;
     for (unsigned int i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
 
@@ -66,12 +65,8 @@ Server::Server(const PdServ::Main *main): main(main), mutex(1)
             primaryTask = task;
 
         path = prefix.str() + "TaskTime";
-        if (!root->findChannel(path)) {
-            TimeSignal *t = new TimeSignal(task, path);
-            root->insert(t);
-            if (task == primaryTask)
-                primaryTaskTimeSignal = t;
-        }
+        if (!root->findChannel(path))
+            root->insert(new TimeSignal(task, path));
 
         path = prefix.str() + "ExecTime";
         if (!root->findChannel(path))

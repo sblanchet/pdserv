@@ -25,6 +25,8 @@
 #ifndef LIBSESSIONTASKDATA_H
 #define LIBSESSIONTASKDATA_H
 
+#include <cstddef>
+
 #include <vector>
 
 #include "../SessionTaskData.h"

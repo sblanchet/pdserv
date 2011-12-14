@@ -545,19 +545,19 @@ void Session::writeParameter()
     if (inbuf.isTrue("aic"))
         server->setAic(p);
 
-    int errno;
+    int errnum;
     const char *s;
     size_t count;
     if (inbuf.find("hexvalue", s)) {
-        errno = p->setHexValue(this, s, startindex, count);
+        errnum = p->setHexValue(this, s, startindex, count);
     }
     else if (inbuf.find("value", s)) {
-        errno = p->setDoubleValue(this, s, startindex, count);
+        errnum = p->setDoubleValue(this, s, startindex, count);
     }
     else
         return;
 
-    if (errno) {
+    if (errnum) {
         // If an error occurred, tell this client to reread the value
         parameterChanged(p->mainParam, startindex, count);
     }
