@@ -72,11 +72,6 @@ class Server: public ost::Thread {
 
         VariableDirectory *root;
 
-        TimeSignal *time;
-
-//        typedef std::map<const PdServ::Parameter*, size_t> ParameterMap;
-//        ParameterMap parameterIndexMap;
-
         mutable ost::Semaphore mutex;
 
         void run();
