@@ -57,9 +57,9 @@ void SubscriptionManager::subscribe(const Channel *c,
     if (!subscription) {
         subscription = new Subscription(c);
         signalSubscriptionMap[c->signal][c] = subscription;
-        c->signal->subscribe(session);
     }
     subscription->set(event, sync, decimation, blocksize, base64, precision);
+    c->signal->subscribe(session);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -98,7 +98,6 @@ bool SubscriptionManager::newSignal( const PdServ::Signal *s)
             or activeSignalSet.find(s) != activeSignalSet.end())
         return false;
 
-    debug() << s->path;
     activeSignalSet.insert(s);
 
     return sit->second.sync();
@@ -123,7 +122,6 @@ void SubscriptionManager::sync()
     for (ActiveSignalSet::const_iterator sit = activeSignalSet.begin();
             sit != activeSignalSet.end(); sit++) {
         signalSubscriptionMap[*sit].sync();
-        debug() << (*sit)->path;
     }
 }
 

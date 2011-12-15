@@ -564,7 +564,7 @@ void Session::writeParameter()
 /////////////////////////////////////////////////////////////////////////////
 void Session::xsad()
 {
-    unsigned int reduction, blocksize, precision = 16;
+    unsigned int reduction, blocksize, precision;
     bool base64 = inbuf.isEqual("coding", "Base64");
     bool event = inbuf.isTrue("event");
     bool sync = inbuf.isTrue("sync");
@@ -608,9 +608,8 @@ void Session::xsad()
         foundBlocksize = true;
     }
 
-    if (!inbuf.getUnsigned("precision", precision)) {
-        precision = 10;
-    }
+    if (!inbuf.getUnsigned("precision", precision))
+        precision = 16;
 
     for (std::list<unsigned int>::const_iterator it = indexList.begin();
             it != indexList.end(); it++) {
