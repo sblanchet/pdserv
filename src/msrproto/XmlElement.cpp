@@ -77,10 +77,10 @@ std::ostream& XmlElement::prefix()
 /////////////////////////////////////////////////////////////////////////////
 void XmlElement::setAttributes(const Parameter *p, const char *buf,
         struct timespec const& ts, bool shortReply, bool hex,
-        bool writeAccess, size_t precision, const std::string& id)
+        size_t precision, const std::string& id)
 {
     p->setXmlAttributes(
-            *this, buf, ts, shortReply, hex, writeAccess, precision, id);
+            *this, buf, ts, shortReply, hex, precision, id);
 }
 
 /////////////////////////////////////////////////////////////////////////////

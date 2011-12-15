@@ -58,7 +58,7 @@ class XmlElement {
 
         void setAttributes(const Parameter *p,
                 const char *buf, struct timespec const&,
-                bool shortReply, bool hex, bool writeAccess,
+                bool shortReply, bool hex,
                 size_t precision, const std::string& id = std::string());
         void setAttributes(const Channel *c, const char *buf,
                 bool shortReply, size_t precision);

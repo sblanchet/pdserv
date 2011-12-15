@@ -107,10 +107,9 @@ void Parameter::addChild(const Parameter *p)
 /////////////////////////////////////////////////////////////////////////////
 void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
         struct timespec const& mtime, bool shortReply, bool hex,
-        bool writeAccess, size_t precision, const std::string& id) const
+        size_t precision, const std::string& id) const
 {
-    unsigned int flags = writeAccess
-        ? MSR_R | MSR_W | MSR_WOP : MSR_R;
+    unsigned int flags = MSR_R | MSR_W | MSR_WOP;
 
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>

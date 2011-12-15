@@ -409,7 +409,7 @@ void Session::readParameter()
         std::string id;
         inbuf.getString("id", id);
         XmlElement ("parameter", this)
-            .setAttributes(p, buf, ts, shortReply, hex, writeAccess, 16, id);
+            .setAttributes(p, buf, ts, shortReply, hex, 16, id);
 
         return;
     }
@@ -428,7 +428,7 @@ void Session::readParameter()
 
         while (it != parameters.end() and mainParam == (*it)->mainParam)
             XmlElement ("parameter",  parametersElement).setAttributes(
-                    *it++, buf, ts, shortReply, hex, writeAccess, 16);
+                    *it++, buf, ts, shortReply, hex, 16);
     }
 }
 
