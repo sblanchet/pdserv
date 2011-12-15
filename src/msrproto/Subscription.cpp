@@ -30,6 +30,7 @@
 #include "Subscription.h"
 #include "Session.h"
 
+#include <algorithm>
 #include <cstdio> // snprintf
 
 using namespace MsrProto;
@@ -59,7 +60,7 @@ void Subscription::set( bool event, bool sync, unsigned int decimation,
     this->base64 = base64;
 
     this->decimation = std::max(1U, decimation);
-    this->blocksize = event ? 1 : std::max(1U, blocksize);
+    this->blocksize = event ? 1 : std::max(static_cast<size_t>(1), blocksize);
 
     this->trigger %= this->decimation;
 
