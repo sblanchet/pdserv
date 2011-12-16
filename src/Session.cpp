@@ -33,29 +33,12 @@ using namespace PdServ;
 Session::Session(const Main *m): main(m), shadow(main->newSession(this))
 {
     main->gettime(&connectedTime);
-
-    inBytes = 0;
-    outBytes = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
     delete shadow;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Session::getSessionStatistics(std::list<SessionStatistics> &stats) const
-{
-    SessionStatistics s;
-
-    s.remote = remoteHost;
-    s.client = client;
-    s.countIn = inBytes;
-    s.countOut = outBytes;
-    s.connectedTime = connectedTime;
-
-    stats.push_back(s);
 }
 
 /////////////////////////////////////////////////////////////////////////////

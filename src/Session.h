@@ -44,7 +44,6 @@ class Session {
         Session(const Main *main);
         virtual ~Session();
 
-        void getSessionStatistics(std::list<SessionStatistics>& ) const;
         const TaskStatistics *getTaskStatistics(const Task *task) const;
         const struct timespec *getTaskTime(const Task *) const;
 
@@ -58,15 +57,10 @@ class Session {
     protected:
         SessionShadow * const shadow;
 
-        size_t inBytes;
-        size_t outBytes;
-        std::string remoteHost;
-        std::string client;
-
         bool rxPdo();
 
-    private:
         struct timespec connectedTime;
+    private:
 };
 
 }

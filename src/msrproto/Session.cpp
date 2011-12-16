@@ -22,6 +22,7 @@
  *
  *****************************************************************************/
 
+#include <streambuf>
 #include <cerrno>       // ENAMETOOLONG
 #include <climits>      // HOST_NAME_MAX
 #include <unistd.h>     // gethostname
@@ -34,6 +35,7 @@
 #include "../Parameter.h"
 #include "../SessionShadow.h"
 #include "../SessionTaskData.h"
+#include "../SessionStatistics.h"
 #include "../TaskStatistics.h"
 
 #include "Session.h"
@@ -49,8 +51,8 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Session::Session( Server *server, ost::TCPSocket &socket):
-    TCPSession(socket), PdServ::Session(server->main),
-    server(server), mutex(1)
+    PdServ::Session(server->main),
+    server(server), tcp(socket), ostream(&tcp), mutex(1)
 {
     for (unsigned int i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
@@ -64,6 +66,8 @@ Session::Session( Server *server, ost::TCPSocket &socket):
     quiet = false;
     sync = false;
     aicDelay = 0;
+
+    ostream.imbue(std::locale::classic());
 
     // Get the hostname
     char hostname[HOST_NAME_MAX+1];
@@ -80,7 +84,7 @@ Session::Session( Server *server, ost::TCPSocket &socket):
     }
 
     // Greet the new client
-    XmlElement greeting("connected", this);
+    XmlElement greeting("connected", ostream);
     XmlElement::Attribute(greeting, "name")
         << main->getName() << ' ' << main->getVersion();
     XmlElement::Attribute(greeting, "host")
@@ -103,9 +107,24 @@ Session::~Session()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::getSessionStatistics(PdServ::SessionStatistics &stats) const
+{
+    std::ostringstream os;
+    os << tcp.peer << ':' << tcp.port;
+    if (peer.empty()) 
+        stats.remote = os.str();
+    else
+        stats.remote = peer + " (" + os.str() +')';
+    stats.client = client;
+    stats.countIn = tcp.inBytes;
+    stats.countOut = tcp.outBytes;
+    stats.connectedTime = connectedTime;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::broadcast(Session *s, const std::string &message)
 {
-    *this << message << std::flush;
+    ostream << message << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -126,7 +145,7 @@ void Session::parameterChanged(const PdServ::Parameter *p,
 
     ost::SemaphoreLock lock(mutex);
     if (aic.find(p) == aic.end())
-        param->valueChanged(this, startIndex, nelem);
+        param->valueChanged(ostream, startIndex, nelem);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -134,47 +153,50 @@ void Session::run()
 {
     ssize_t n;
 
-    while (true) {
-        n = readData(inbuf.bufptr(), inbuf.free(), 0, 100);
+    try {
+        while (true) {
+            n = tcp.read(inbuf.bufptr(), inbuf.free(), 100);
+            if (!n)
+                break;
+            else if (n > 0) {
+                inbuf.newData(n);
 
-        if (n < 0) {
-            switch (getErrorNumber()) {
-                case ost::Socket::errTimeout:
-                    break;
-
-                default:
-                    return;
-            }
-        }
-        else if (n) {
-            inBytes += n;
-            inbuf.newData(n);
-            while (inbuf.next())
-                processCommand();
-        }
-        else {
-            return;
-        }
-
-        if (rxPdo()) {
-            // Unknown command warning
-            XmlElement error("error", this);
-            XmlElement::Attribute(error, "text")
-                << "process synchronization lost";
-
-            sync = true;
-        }
-
-        ost::SemaphoreLock lock(mutex);
-        if (aicDelay and !--aicDelay) {
-            for ( AicSet::iterator it = aic.begin(); it != aic.end(); ++it) {
-                const Parameter *param = server->getRoot().getParameter(*it);
-                param->valueChanged(this, 0, param->nelem);
+                while (inbuf.next())
+                    processCommand();
             }
 
-            aic.clear();
+            if (rxPdo()) {
+                // Unknown command warning
+                XmlElement error("error", ostream);
+                XmlElement::Attribute(error, "text")
+                    << "process synchronization lost";
+
+                sync = true;
+            }
+
+            ost::SemaphoreLock lock(mutex);
+            if (aicDelay and !--aicDelay) {
+                for ( AicSet::iterator it = aic.begin();
+                        it != aic.end(); ++it) {
+                    const Parameter *param =
+                        server->getRoot().getParameter(*it);
+                    param->valueChanged(ostream, 0, param->nelem);
+                }
+
+                aic.clear();
+            }
         }
     }
+    catch (ost::Socket *s) {
+        debug() << "socket errror" << s->getErrorNumber();
+    }
+    catch (std::exception& e) {
+        debug() << "exception" << e.what();
+    }
+    catch (...) {
+        debug() << "unknown error";
+    }
+    debug() << "fin";
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -195,11 +217,11 @@ void Session::newSignalData(const PdServ::SessionTaskData *std,
             it->second->sync();
     }
     
-    PrintQ printQueue;
+    SubscriptionManager::PrintQ printQueue;
     subscriptionManager[std->task]->newSignalData(printQueue, std);
 
     if (!printQueue.empty() and !quiet) {
-        XmlElement dataTag("data", this);
+        XmlElement dataTag("data", ostream);
         XmlElement::Attribute(dataTag, "level") << 0;
         XmlElement::Attribute(dataTag, "time") << *time;
 
@@ -257,7 +279,7 @@ void Session::processCommand()
             // If "ack" attribute was set, send it back
             std::string id;
             if (inbuf.getString("id", id)) {
-                XmlElement ack("ack", this);
+                XmlElement ack("ack", ostream);
                 XmlElement::Attribute(ack,"id").setEscaped(id.c_str());
             }
 
@@ -267,7 +289,7 @@ void Session::processCommand()
     }
 
     // Unknown command warning
-    XmlElement warn("warn", this);
+    XmlElement warn("warn", ostream);
     XmlElement::Attribute(warn, "num") << 1000;
     XmlElement::Attribute(warn, "text") << "unknown command";
     XmlElement::Attribute(warn, "command").setEscaped(command);
@@ -278,7 +300,7 @@ void Session::broadcast()
 {
     std::ostringstream os;
     {
-        XmlElement broadcast("broadcast", &os);
+        XmlElement broadcast("broadcast", os);
         struct timespec ts;
         std::string s;
 
@@ -304,7 +326,7 @@ void Session::echo()
 /////////////////////////////////////////////////////////////////////////////
 void Session::ping()
 {
-    XmlElement ping("ping", this);
+    XmlElement ping("ping", ostream);
     std::string id;
 
     if (inbuf.getString("id",id))
@@ -332,7 +354,7 @@ void Session::readChannel()
 
         c->signal->getValue(this, buf);
 
-        XmlElement channel("channel", this);
+        XmlElement channel("channel", ostream);
         c->setXmlAttributes(channel, shortReply, buf, 16);
 
         return;
@@ -377,7 +399,7 @@ void Session::readChannel()
     char buf[buflen];
     main->poll(this, signalList, bufOffset.size(), buf, 0);
 
-    XmlElement channels("channels", this);
+    XmlElement channels("channels", ostream);
     for (VariableDirectory::Channels::const_iterator it = chanList.begin();
             it != chanList.end(); it++)
         XmlElement("channel", channels).setAttributes(*it,
@@ -408,13 +430,13 @@ void Session::readParameter()
 
         std::string id;
         inbuf.getString("id", id);
-        XmlElement ("parameter", this)
+        XmlElement ("parameter", ostream)
             .setAttributes(p, buf, ts, shortReply, hex, 16, id);
 
         return;
     }
 
-    XmlElement parametersElement("parameters", this);
+    XmlElement parametersElement("parameters", ostream);
 
     const VariableDirectory::Parameters& parameters =
         server->getRoot().getParameters();
@@ -435,7 +457,7 @@ void Session::readParameter()
 /////////////////////////////////////////////////////////////////////////////
 void Session::readParamValues()
 {
-    XmlElement param_values("param_values", this);
+    XmlElement param_values("param_values", ostream);
     XmlElement::Attribute values(param_values, "value");
 
     const VariableDirectory::Parameters& parameters =
@@ -471,7 +493,7 @@ void Session::readStatistics()
     StatList stats;
     main->getSessionStatistics(stats);
 
-    XmlElement clients("clients", this);
+    XmlElement clients("clients", ostream);
     for (StatList::const_iterator it = stats.begin();
             it != stats.end(); it++) {
         XmlElement client("client", clients);
@@ -488,7 +510,7 @@ void Session::readStatistics()
 /////////////////////////////////////////////////////////////////////////////
 void Session::remoteHost()
 {
-    inbuf.getString("name", PdServ::Session::remoteHost);
+    inbuf.getString("name", peer);
 
     inbuf.getString("applicationname", client);
 
@@ -496,14 +518,15 @@ void Session::remoteHost()
 
     if (writeAccess and inbuf.isTrue("isadmin")) {
         struct timespec ts;
-        std::ostringstream os, message;
+        std::ostringstream os;
+        std::ostringstream message;
         main->gettime(&ts);
 
-        os << "Adminmode filp: " << so; // 'so' is the fd and comes from
-                                        // ost::Socket
+        os << "Adminmode filp: " << tcp.getSocket();
         {
-            XmlElement info("info", &message);
+            XmlElement info("info", message);
             XmlElement::Attribute(info, "time") << ts;
+            XmlElement::Attribute(info, "text") << "Adminmode";
             XmlElement::Attribute(info, "text") << os.str();
         }
 
@@ -515,7 +538,7 @@ void Session::remoteHost()
 void Session::writeParameter()
 {
     if (!writeAccess) {
-        XmlElement warn("warn", this);
+        XmlElement warn("warn", ostream);
         XmlElement::Attribute(warn, "text") << "No write access";
         return;
     }
@@ -584,7 +607,7 @@ void Session::xsad()
 
     if (inbuf.getUnsigned("reduction", reduction)) {
         if (!reduction) {
-            XmlElement warn("warn", this);
+            XmlElement warn("warn", ostream);
             XmlElement::Attribute(warn, "command") << "xsad";
             XmlElement::Attribute(warn, "text")
                 << "specified reduction=0, choosing reduction=1";
@@ -597,7 +620,7 @@ void Session::xsad()
 
     if (inbuf.getUnsigned("blocksize", blocksize)) {
         if (!blocksize) {
-            XmlElement warn("warn", this);
+            XmlElement warn("warn", ostream);
             XmlElement::Attribute(warn, "command") << "xsad";
             XmlElement::Attribute(warn, "text")
                 << "specified blocksize=0, choosing blocksize=1";
@@ -663,4 +686,82 @@ void Session::xsod()
         for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
                 it != subscriptionManager.end(); ++it)
             it->second->clear();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+Session::TCPStream::TCPStream( ost::TCPSocket &server):
+    Socket(::accept(server.getSocket(), NULL, NULL))
+{
+    peer = getPeer(&port);
+
+    if (!server.onAccept(peer, port)) {
+        error(errConnectRejected);
+        return;
+    }
+
+    file = ::fdopen(so, "w");
+    if (!file) {
+        error(errOutput, 0, errno);
+        return;
+    }
+
+    Socket::state = CONNECTED;
+    inBytes = 0;
+    outBytes = 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Session::TCPStream::getSocket() const
+{
+    return so;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Session::TCPStream::read(char *buf, size_t count, timeout_t timeout)
+{
+    ssize_t n;
+    try {
+        n = readData(buf, count, 0, timeout);
+    }
+    catch (Socket *s) {
+        if (s->getErrorNumber() != errTimeout)
+            throw(s);
+        setError(true);
+        return -1;
+    }
+
+    inBytes += n;
+
+    return n;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Session::TCPStream::overflow ( int c )
+{
+    if (::fputc(c, file) == EOF)
+        error(errOutput);
+
+    ++outBytes;
+
+    error(errTimeout);
+    return c;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::streamsize Session::TCPStream::xsputn (
+        const char * s, std::streamsize count)
+{
+    if (::fwrite(s, count, 1, file) != 1)
+        error(errOutput);
+
+    outBytes += count;
+
+    return count;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Session::TCPStream::sync ()
+{
+    return ::fflush(file);
 }

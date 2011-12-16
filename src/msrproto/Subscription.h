@@ -40,7 +40,7 @@ class Subscription {
 
         bool reset();
 
-        void newValue(PrintQ &, const void *buf);
+        void newValue(SubscriptionManager::PrintQ &, const void *buf);
         void print(XmlElement &parent) const;
 
         void set(bool event, bool sync, unsigned int decimation,

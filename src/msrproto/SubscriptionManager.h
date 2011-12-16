@@ -27,6 +27,7 @@
 
 #include <set>
 #include <map>
+#include <queue>
 
 namespace PdServ {
     class Channel;
@@ -39,7 +40,6 @@ namespace MsrProto {
 class Channel;
 class Subscription;
 class Session;
-class PrintQ;
 class XmlElement;
 
 class SubscriptionManager {
@@ -53,6 +53,8 @@ class SubscriptionManager {
                 bool event, bool sync, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
         bool newSignal( const PdServ::Signal *);
+
+        typedef std::queue<const Subscription*> PrintQ;
         void newSignalData( PrintQ &printQ,
                 const PdServ::SessionTaskData *);
 

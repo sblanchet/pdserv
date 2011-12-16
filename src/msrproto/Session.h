@@ -58,7 +58,7 @@
 #include <cc++/socketport.h> 
 #include <map>
 #include <set>
-#include <queue>
+#include <cstdio>
 
 namespace PdServ {
     class Parameter;
@@ -76,10 +76,7 @@ class Server;
 class XmlElement;
 class Subscription;
 
-class PrintQ: public std::queue<const Subscription*> {
-};
-
-class Session: public ost::TCPSession, public PdServ::Session {
+class Session: public ost::Thread, public PdServ::Session {
     public:
         Session( Server *s,
                 ost::TCPSocket &socket);
@@ -89,6 +86,7 @@ class Session: public ost::TCPSession, public PdServ::Session {
         void parameterChanged(const PdServ::Parameter*,
                 size_t startIndex, size_t nelem);
         void setAIC(const Parameter* p);
+        void getSessionStatistics(PdServ::SessionStatistics &stats) const;
 
         void processCommand();
 
@@ -105,6 +103,29 @@ class Session: public ost::TCPSession, public PdServ::Session {
     private:
         Server * const server;
 
+        struct TCPStream: public ost::Socket, public std::streambuf {
+            TCPStream(ost::TCPSocket& socket);
+
+            int read(char *buf, size_t n, timeout_t timeout);
+            int getSocket() const;
+
+            // Reimplemented from std::streambuf
+            int overflow ( int c );
+            std::streamsize xsputn ( const char * s, std::streamsize n );
+            int sync();
+
+            size_t inBytes;
+            size_t outBytes;
+
+            ost::IPV4Host peer;
+            ost::tpport_t port;
+
+            FILE *file;
+        };
+        TCPStream tcp;
+
+        std::ostream ostream;
+
         ost::Semaphore mutex;
         size_t aicDelay;
         typedef std::set<const PdServ::Parameter*> AicSet;
@@ -120,7 +141,7 @@ class Session: public ost::TCPSession, public PdServ::Session {
             double dbl;
         } mutable tmp;
 
-        // Reimplemented from TCPSession
+        // Reimplemented from ost::Thread
         void run();
 
         // Reimplemented from PdServ::Session
@@ -133,6 +154,8 @@ class Session: public ost::TCPSession, public PdServ::Session {
         bool quiet;
         bool echoOn;
         bool sync;
+        std::string peer;
+        std::string client;
 
         // Input and output buffering
         XmlParser inbuf;

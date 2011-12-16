@@ -56,7 +56,7 @@ class Parameter: public Variable {
         int setDoubleValue(const Session *,
                 const char *, size_t startindex, size_t &count) const;
 
-       void valueChanged(std::ostream *os, size_t start, size_t nelem) const;
+       void valueChanged(std::ostream &os, size_t start, size_t nelem) const;
 
        const PdServ::Parameter * const mainParam;
 

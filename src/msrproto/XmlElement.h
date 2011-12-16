@@ -47,7 +47,7 @@ class Channel;
 class XmlElement {
     public:
         //XmlElement(const char *name);
-        XmlElement(const char *name, std::ostream *os);
+        XmlElement(const char *name, std::ostream &os);
         XmlElement(const char *name, XmlElement &parent);
 
         /** Destructor.

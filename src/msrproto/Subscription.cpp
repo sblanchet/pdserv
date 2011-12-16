@@ -76,7 +76,8 @@ void Subscription::set( bool event, bool sync, unsigned int decimation,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Subscription::newValue( PrintQ &printQ, const void *dataBuf)
+void Subscription::newValue(
+        SubscriptionManager::PrintQ &printQ, const void *dataBuf)
 {
     const char *buf = reinterpret_cast<const char *>(dataBuf) + bufferOffset;
     if (trigger and --trigger)

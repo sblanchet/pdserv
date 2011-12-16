@@ -106,6 +106,7 @@ Server::Server(const PdServ::Main *main): main(main), mutex(1)
 /////////////////////////////////////////////////////////////////////////////
 Server::~Server()
 {
+    debug();
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
         delete *it;
@@ -138,10 +139,15 @@ void Server::run()
     ost::TCPSocket server(ost::IPV4Address("0.0.0.0"), 2345);
 
     while (server.isPendingConnection()) {
-        Session *s = new Session(this, server);
-
-        ost::SemaphoreLock lock(mutex);
-        sessions.insert(s);
+        try {
+            Session *s = new Session(this, server);
+            sessions.insert(s);
+            s->start();
+        }
+        catch (ost::Socket *s) {
+            // FIXME Log this
+            debug() << s->getErrorNumber() << s->getSystemError();
+        }
     }
 }
 
@@ -167,8 +173,11 @@ void Server::getSessionStatistics(
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
-            it != sessions.end(); it++)
-        (*it)->getSessionStatistics(stats);
+            it != sessions.end(); it++) {
+        PdServ::SessionStatistics s;
+        (*it)->getSessionStatistics(s);
+        stats.push_back(s);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
