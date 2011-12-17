@@ -526,7 +526,6 @@ void Session::remoteHost()
         {
             XmlElement info("info", message);
             XmlElement::Attribute(info, "time") << ts;
-            XmlElement::Attribute(info, "text") << "Adminmode";
             XmlElement::Attribute(info, "text") << os.str();
         }
 

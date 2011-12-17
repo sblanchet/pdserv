@@ -315,8 +315,11 @@ bool XmlParser::next()
                 
             case GetQuotedAttribute:
                 // Skip Escape char
-                if (c == '\\')
+                if (c == '\\') {
+                    escapeState = GetQuotedAttribute;
+                    parseState = SkipEscapeChar;
                     break;
+                }
 
                 if (c == quote) {
                     c = '\0';
@@ -353,6 +356,10 @@ bool XmlParser::next()
                 else
                     parseState = GetUnquotedAttribute;
                 break;
+
+            case SkipEscapeChar:
+                parseState = escapeState;
+                break;
         }
 
         if (finished) {
@@ -366,10 +373,22 @@ bool XmlParser::next()
     else if (inputEnd == bufLen) {
         if (commandPos > 1) {
             size_t s = commandPos - 1;
+
             std::copy(buf + s, buf + inputEnd, buf);
+
+            parsePos -= s;
             inputEnd -= s;
-            parsePos = 0;
-            parseState = FindStart;     // Start all over again
+            commandPos = 1;
+            attrNamePos -= s;
+            for (AttributeMap::iterator it = attribute.begin();
+                    it != attribute.end(); ++it) {
+                AttributePos::iterator i, it2 = it->second.begin();
+                while (it2 != it->second.end()) {
+                    (it->second)[it2->first - s] = it2->second - s;
+                    i = it2++;
+                    it->second.erase(i);
+                }
+            }
         }
         else {
             bufLen += bufIncrement;

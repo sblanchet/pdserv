@@ -75,9 +75,10 @@ class XmlParser {
 
         enum ParseState {
             FindStart, ExpectToken, SkipSpace, FindTokenEnd, GetAttribute,
-            GetQuotedAttribute, GetUnquotedAttribute,  ExpectGT, MaybeGT
+            GetQuotedAttribute, GetUnquotedAttribute,  ExpectGT, MaybeGT,
+            SkipEscapeChar
         };
-        ParseState parseState;
+        ParseState parseState, escapeState;
 };
 
 }
