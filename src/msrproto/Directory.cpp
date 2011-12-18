@@ -257,7 +257,6 @@ DirectoryNode *DirectoryNode::find(const char *path) const
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode *DirectoryNode::push(std::string &name)
 {
-    DirectoryNode *dir = new DirectoryNode;
 
     if (hypernode) {
         std::ostringstream os;
@@ -266,6 +265,8 @@ DirectoryNode *DirectoryNode::push(std::string &name)
     }
     else {
         this->hypernode = true;
+
+        DirectoryNode *dir = new DirectoryNode;
 
         // Move all children into new directory
         for (Children::const_iterator it = children.begin();
@@ -281,8 +282,6 @@ DirectoryNode *DirectoryNode::push(std::string &name)
         dir = new DirectoryNode;
         name = "1";
     }
-
-    this->insert(dir, name);
 
     return this;
 }
