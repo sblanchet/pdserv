@@ -71,6 +71,7 @@ void Channel::setXmlAttributes( XmlElement &element,
     XmlElement::Attribute(element, "bufsize") << bufsize;
     XmlElement::Attribute(element, "HZ") << freq;
 
-    XmlElement::Attribute(element, "value")
-        .csv( this, data + elementIndex * signal->width, 1, precision);
+    if (data)
+        XmlElement::Attribute(element, "value")
+            .csv( this, data + elementIndex * signal->width, 1, precision);
 }

@@ -65,19 +65,19 @@ Server::Server(const PdServ::Main *main): main(main), mutex(1)
             primaryTask = task;
 
         path = prefix.str() + "TaskTime";
-        if (!root->findChannel(path))
+        if (!root->find<Channel>(path))
             root->insert(new TimeSignal(task, path));
 
         path = prefix.str() + "ExecTime";
-        if (!root->findChannel(path))
+        if (!root->find<Channel>(path))
             root->insert( new StatSignal(task, path, StatSignal::ExecTime));
 
         path = prefix.str() + "Period";
-        if (!root->findChannel(path))
+        if (!root->find<Channel>(path))
             root->insert( new StatSignal(task, path, StatSignal::Period));
 
         path = prefix.str() + "Overrun";
-        if (!root->findChannel(path)) {
+        if (!root->find<Channel>(path)) {
             debug() << "insert" << path;
             root->insert( new StatSignal(task, path, StatSignal::Overrun));
         }

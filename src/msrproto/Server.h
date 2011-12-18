@@ -44,8 +44,8 @@ class Session;
 class Channel;
 class TimeSignal;
 class Parameter;
-class VariableDirectory;
 class XmlElement;
+class VariableDirectory;
 
 class Server: public ost::Thread {
     public:

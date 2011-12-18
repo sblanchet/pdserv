@@ -75,6 +75,7 @@ class SessionStatistics;
 class Server;
 class XmlElement;
 class Subscription;
+class VariableDirectory;
 
 class Session: public ost::Thread, public PdServ::Session {
     public:
@@ -102,6 +103,7 @@ class Session: public ost::Thread, public PdServ::Session {
 
     private:
         Server * const server;
+        const VariableDirectory &root;
 
         struct TCPStream: public ost::Socket, public std::streambuf {
             TCPStream(ost::TCPSocket& socket);
@@ -165,6 +167,7 @@ class Session: public ost::Thread, public PdServ::Session {
         void echo();
         void ping();
         void readChannel();
+        void listDirectory();
         void readParameter();
         void readParamValues();
         void readStatistics();

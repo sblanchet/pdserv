@@ -33,6 +33,7 @@ namespace PdServ {
     class Variable;
     class Signal;
     class Parameter;
+    class Session;
 }
 
 namespace MsrProto {
@@ -40,66 +41,49 @@ namespace MsrProto {
 class Variable;
 class Channel;
 class Parameter;
+class XmlElement;
 
-/////////////////////////////////////////////////////////////////////////////
 class DirectoryNode {
     public:
-        DirectoryNode(DirectoryNode *parent,
-                const std::string& name);
-//        ~DirectoryNode();
-
-        std::string path() const;
-
-        DirectoryNode * const parent;
-        const std::string name;
-
-        const Channel *findChannel(const std::string &path) const;
-        const Parameter *findParameter(const std::string &path) const;
-
-        void insert(const Variable *v);
-        DirectoryNode *create(size_t index, size_t nelem,
-                size_t ndims, const size_t *dim);
-
-    protected:
-        DirectoryNode *getRoot();
-
-        const Variable* getVariable() const;
-
-
         DirectoryNode();
+        virtual ~DirectoryNode();
 
-        const Variable *variable;
-        size_t count;
+        void list(PdServ::Session *,
+                XmlElement& parent, const char *path) const;
+        std::string path() const;
+        bool hasChildren() const;
 
-        class Path {
-            public:
-                Path(const std::string& s);
+        DirectoryNode *find(const char *path) const;
 
-                DirectoryNode* create(DirectoryNode *, char& hide);
+        DirectoryNode *mkdir(const char *path, char &hide, std::string &name);
 
-                const Parameter *findParameter(const DirectoryNode *);
-                const Channel *findChannel(const DirectoryNode *);
+        DirectoryNode *push(std::string &name);
+        DirectoryNode *insert(DirectoryNode* node, const std::string &name);
+        void insert(Variable *var, size_t index,
+                size_t nelem, size_t ndims, const size_t *dim);
 
-            private:
-                const std::string &path;
-                size_t offset;
+        DirectoryNode *parent;
+        const std::string *name;
 
-                bool getDir(std::string&);
-                bool getDir(std::string&, char &hide);
-
-                const Variable *findVariable(const DirectoryNode *);
-        };
+        void dump() const;
 
     private:
-        typedef std::map<std::string, DirectoryNode*> Entry;
-        Entry entry;
+        static std::string split(const char *&path, char &hide);
+
+        typedef std::map<std::string, DirectoryNode*> Children;
+        Children children;
+
+        bool hypernode;
 };
 
 /////////////////////////////////////////////////////////////////////////////
-class VariableDirectory: public DirectoryNode {
+class VariableDirectory: private DirectoryNode {
     public:
         VariableDirectory();
         ~VariableDirectory();
+
+        void list(PdServ::Session *,
+                XmlElement& parent, const char *path) const;
 
         bool insert(const PdServ::Signal *s);
         bool insert(const PdServ::Parameter *p);
@@ -108,11 +92,14 @@ class VariableDirectory: public DirectoryNode {
        typedef std::vector<const Parameter*> Parameters;
 
        const Channels& getChannels() const;
-       const Channel * getChannel(unsigned int) const;
+       const Channel * getChannel(size_t) const;
 
        const Parameters& getParameters() const;
-       const Parameter * getParameter(unsigned int) const;
-       const Parameter * getParameter(const PdServ::Parameter *p) const;
+       const Parameter * getParameter(size_t) const;
+       const Parameter * find(const PdServ::Parameter *p) const;
+
+       template <typename T>
+           const T * find(const std::string& path) const;
 
     private:
        Channels channels;
@@ -122,6 +109,14 @@ class VariableDirectory: public DirectoryNode {
            ParameterMap;
        ParameterMap parameterMap;
 };
+
+/////////////////////////////////////////////////////////////////////////////
+template <typename T>
+const T *VariableDirectory::find(const std::string &p) const
+{
+    DirectoryNode *node = DirectoryNode::find(p.c_str());
+    return node ? dynamic_cast<const T*>(node) : 0;
+}
 
 }
 

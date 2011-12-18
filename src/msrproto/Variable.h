@@ -28,6 +28,7 @@
 #include <string>
 #include <ostream>
 #include "../Variable.h"
+#include "Directory.h"
 
 namespace PdServ {
     class Variable;
@@ -40,18 +41,16 @@ namespace MsrProto {
 class DirectoryNode;
 class XmlElement;
 
-class Variable {
+class Variable: public DirectoryNode {
     public:
         Variable( const PdServ::Variable *v,
                 unsigned int variableIndex,
                 unsigned int elementIndex);
-        ~Variable();
+        virtual ~Variable();
 
-        std::string path() const;
         const PdServ::Signal* signal() const;
         const PdServ::Parameter* parameter() const;
 
-        mutable const DirectoryNode *directory;
         const unsigned int elementIndex;
         const PdServ::Variable * const variable;
 

@@ -52,7 +52,8 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 Session::Session( Server *server, ost::TCPSocket &socket):
     PdServ::Session(server->main),
-    server(server), tcp(socket), ostream(&tcp), mutex(1)
+    server(server), root(server->getRoot()),
+    tcp(socket), ostream(&tcp), mutex(1)
 {
     for (unsigned int i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
@@ -141,7 +142,7 @@ void Session::setAIC(const Parameter *p)
 void Session::parameterChanged(const PdServ::Parameter *p,
         size_t startIndex, size_t nelem)
 {
-    const Parameter *param = server->getRoot().getParameter(p);
+    const Parameter *param = root.find(p);
 
     ost::SemaphoreLock lock(mutex);
     if (aic.find(p) == aic.end())
@@ -178,8 +179,7 @@ void Session::run()
             if (aicDelay and !--aicDelay) {
                 for ( AicSet::iterator it = aic.begin();
                         it != aic.end(); ++it) {
-                    const Parameter *param =
-                        server->getRoot().getParameter(*it);
+                    const Parameter *param = root.find(*it);
                     param->valueChanged(ostream, 0, param->nelem);
                 }
 
@@ -256,6 +256,7 @@ void Session::processCommand()
         { 2, "rc",                      &Session::readChannel           },
         { 2, "rk",                      &Session::readChannel           },
         { 3, "rpv",                     &Session::readParamValues       },
+        { 4, "list",                    &Session::listDirectory         },
         { 9, "broadcast",               &Session::broadcast             },
         {11, "remote_host",             &Session::remoteHost            },
         {12, "read_kanaele",            &Session::readChannel           },
@@ -342,10 +343,10 @@ void Session::readChannel()
     unsigned int index;
 
     if (inbuf.getString("name", path)) {
-        c = server->getRoot().findChannel(path.c_str());
+        c = root.find<Channel>(path);
     }
     else if (inbuf.getUnsigned("index", index)) {
-        c = server->getRoot().getChannel(index);
+        c = root.getChannel(index);
     }
 
     // A single signal was requested
@@ -364,8 +365,7 @@ void Session::readChannel()
     const PdServ::Signal *mainSignal = 0;
     std::map<const PdServ::Signal*, size_t> bufOffset;
 
-    const VariableDirectory::Channels& chanList =
-        server->getRoot().getChannels();
+    const VariableDirectory::Channels& chanList = root.getChannels();
 
     typedef std::list<const PdServ::Signal*> SignalList;
     SignalList orderedSignals[PdServ::Variable::maxWidth + 1];
@@ -407,6 +407,18 @@ void Session::readChannel()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::listDirectory()
+{
+    const char *path;
+
+    if (!inbuf.find("path", path))
+        return;
+
+    XmlElement element("listing", ostream);
+    root.list(this, element, path);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::readParameter()
 {
     bool shortReply = inbuf.isTrue("short");
@@ -416,10 +428,10 @@ void Session::readParameter()
 
     const Parameter *p = 0;
     if (inbuf.getString("name", name)) {
-        p = server->getRoot().findParameter(name.c_str());
+        p = root.find<Parameter>(name.c_str());
     }
     else if (inbuf.getUnsigned("index", index)) {
-        p = server->getRoot().getParameter(index);
+        p = root.getParameter(index);
     }
 
     if (p) {
@@ -438,8 +450,7 @@ void Session::readParameter()
 
     XmlElement parametersElement("parameters", ostream);
 
-    const VariableDirectory::Parameters& parameters =
-        server->getRoot().getParameters();
+    const VariableDirectory::Parameters& parameters = root.getParameters();
     VariableDirectory::Parameters::const_iterator it = parameters.begin();
     while ( it != parameters.end()) {
         const PdServ::Parameter* mainParam = (*it)->mainParam;
@@ -460,8 +471,7 @@ void Session::readParamValues()
     XmlElement param_values("param_values", ostream);
     XmlElement::Attribute values(param_values, "value");
 
-    const VariableDirectory::Parameters& parameters =
-        server->getRoot().getParameters();
+    const VariableDirectory::Parameters& parameters = root.getParameters();
     VariableDirectory::Parameters::const_iterator it = parameters.begin();
     while ( it != parameters.end()) {
         const PdServ::Parameter* mainParam = (*it)->mainParam;
@@ -547,10 +557,10 @@ void Session::writeParameter()
     unsigned int index;
     std::string name;
     if (inbuf.getString("name", name)) {
-        p = server->getRoot().findParameter(name.c_str());
+        p = root.find<Parameter>(name.c_str());
     }
     else if (inbuf.getUnsigned("index", index)) {
-        p = server->getRoot().getParameter(index);
+        p = root.getParameter(index);
     }
 
     if (!p)
@@ -592,8 +602,7 @@ void Session::xsad()
     bool sync = inbuf.isTrue("sync");
     bool foundReduction = false, foundBlocksize = false;
     std::list<unsigned int> indexList;
-    const VariableDirectory::Channels& channel =
-        server->getRoot().getChannels();
+    const VariableDirectory::Channels& channel = root.getChannels();
 
     // Quiet will stop all transmission of <data> tags until
     // sync is called
@@ -670,8 +679,7 @@ void Session::xsod()
     //cout << __LINE__ << "xsod: " << endl;
 
     if (inbuf.getUnsignedList("channels", intList)) {
-        const VariableDirectory::Channels& channel =
-            server->getRoot().getChannels();
+        const VariableDirectory::Channels& channel = root.getChannels();
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
             if (*it < channel.size()) {

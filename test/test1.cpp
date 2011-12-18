@@ -52,6 +52,10 @@ int main(int argc, const char *argv[])
 
     assert(pdserv_signal(task[0], 1, "/path/to/var2",
             uint16_T, var1, 3, var1_dims));
+//    assert(pdserv_signal(task[0], 1, "/path/to/var2",
+//            uint16_T, var1, 1, 0));
+//    assert(pdserv_signal(task[0], 1, "/path/to/var2",
+//            uint16_T, var1, 3, var1_dims));
 
     struct pdvariable *p3 = pdserv_parameter(pdserv, "/path/to/mdimparam",
             0666, uint16_T, var1, 3, var1_dims, copy_param, (void*) 10);

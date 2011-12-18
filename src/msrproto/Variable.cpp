@@ -117,12 +117,6 @@ Variable::~Variable()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string Variable::path() const
-{
-    return directory->path();
-}
-
-/////////////////////////////////////////////////////////////////////////////
 const PdServ::Signal* Variable::signal() const
 {
     return dynamic_cast<const PdServ::Signal*>(variable);
