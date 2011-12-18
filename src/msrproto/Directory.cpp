@@ -38,7 +38,6 @@
 #include <locale>
 #include <sstream>
 #include <stack>
-#include <assert.h>
 
 #ifdef TRADITIONAL
     static const bool traditional = 1;
