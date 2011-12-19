@@ -79,12 +79,15 @@ bool VariableDirectory::insert( const PdServ::Parameter *p)
 
     std::string name;
     char hide = 0;
+    //debug() << "parameter" << p->path;
     DirectoryNode *dir = mkdir(path, hide, name);
     if (!dir)
         return true;
 
-    if (traditional and (hide == 1 or hide == 'p'))
+    if (traditional and (hide == 1 or hide == 'p')) {
+        //debug() << "hide paameter" << p->path;
         return false;
+    }
 
     Parameter *mainParam = new Parameter(parameters.size(), p);
     dir->insert(mainParam, name);
@@ -117,12 +120,15 @@ bool VariableDirectory::insert(const PdServ::Signal *s)
 
     std::string name;
     char hide = 0;
+    //debug() << "signal" << s->path;
     DirectoryNode *dir = mkdir(path, hide, name);
     if (!dir)
         return true;
 
-    if (traditional and (hide == 1 or hide == 's'))
+    if (traditional and (hide == 1 or hide == 'k')) {
+        //debug() << "hide sign" << s->path;
         return false;
+    }
 
     if (traditional and s->nelem > 1) {
         channels.reserve(channels.size() + s->nelem);
@@ -262,10 +268,12 @@ DirectoryNode *DirectoryNode::push(std::string &name)
         std::ostringstream os;
         os << children.size();
         name = os.str();
+        //debug() << "new dir" << path() << name;
     }
     else {
         this->hypernode = true;
 
+        // Create another directory
         DirectoryNode *dir = new DirectoryNode;
 
         // Move all children into new directory
@@ -278,9 +286,8 @@ DirectoryNode *DirectoryNode::push(std::string &name)
 
         this->insert(dir, "0");
 
-        // Create another directory
-        dir = new DirectoryNode;
         name = "1";
+        //debug() << "new dir" << path() << name;
     }
 
     return this;
@@ -317,7 +324,11 @@ DirectoryNode *DirectoryNode::mkdir(
 
     // Check whether the node exists
     if (node and traditional) {
-        debug() << "double for" << this->path() << name;
+        //debug() << "pushing" << node->path() << name;
+        //const Variable *v = dynamic_cast<const Variable*>(node);
+        //if (v) {
+            //debug() << "double for" << v->variable->path << v->elementIndex;
+        //}
         // Let the node choose a new name
         return node->push(name);
     }
@@ -372,21 +383,23 @@ std::string DirectoryNode::split(const char *&path, char &hide)
 
     const char *nameEnd = slash;
     if (traditional) {
-        nameEnd = ::strchr(path, '<');
+        nameEnd = path;
+        while (nameEnd < slash and *nameEnd != '<')
+            nameEnd++;
 
-        if (nameEnd == NULL)
-            nameEnd = slash;
-        else {
-            XmlParser p(nameEnd, slash - nameEnd);
+        if (nameEnd != slash) {
+            XmlParser p(nameEnd, slash);
 
-            const char *value;
-            if (p.isTrue("hide"))
-                hide = 1;
-            else if (p.find("hide", value))
-                hide = *value;
+            if (p.next()) {
+                const char *value;
+                if (p.isTrue("hide"))
+                    hide = 1;
+                else if (p.find("hide", value))
+                    hide = *value;
 
-            if (p.isTrue("unhide"))
-                hide = 0;
+                if (p.isTrue("unhide"))
+                    hide = 0;
+            }
         }
     }
 
