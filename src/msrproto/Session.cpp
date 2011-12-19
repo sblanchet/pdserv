@@ -50,7 +50,7 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Session( Server *server, ost::TCPSocket &socket):
+Session::Session( Server *server, ost::TCPSocket *socket):
     PdServ::Session(server->main),
     server(server), root(server->getRoot()),
     tcp(socket), ostream(&tcp), mutex(1)
@@ -705,12 +705,12 @@ void Session::xsod()
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-Session::TCPStream::TCPStream( ost::TCPSocket &server):
-    Socket(::accept(server.getSocket(), NULL, NULL))
+Session::TCPStream::TCPStream( ost::TCPSocket *server):
+    Socket(::accept(server->getSocket(), NULL, NULL))
 {
     peer = getPeer(&port);
 
-    if (!server.onAccept(peer, port)) {
+    if (!server->onAccept(peer, port)) {
         error(errConnectRejected);
         return;
     }

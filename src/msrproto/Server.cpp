@@ -112,33 +112,22 @@ Server::~Server()
         delete *it;
 }
 
-// class TSession: public ost::TCPSession {
-//     public:
-//         TSession(Server *server, ost::TCPSocket &socket):
-//             TCPSession(socket) {
-//                 detach();
-//             }
-//         ~TSession() {
-//             debug();
-//         }
-// 
-//     private:
-//         void run() {
-//             *this << "hallo\r\n" << std::flush;
-//         }
-// 
-//         void _final() {
-//             disconnect();
-// //            delete this;
-//         }
-// };
-
 /////////////////////////////////////////////////////////////////////////////
 void Server::run()
 {
-    ost::TCPSocket server(ost::IPV4Address("0.0.0.0"), 2345);
+    ost::TCPSocket *server = 0;
+    ost::tpport_t port = 2345;
+    
+    do {
+        try {
+            server = new ost::TCPSocket(ost::IPV4Address("0.0.0.0"), port);
+        }
+        catch (ost::Socket *s) {
+            port++;
+        }
+    } while (!server);
 
-    while (server.isPendingConnection()) {
+    while (server->isPendingConnection()) {
         try {
             Session *s = new Session(this, server);
             sessions.insert(s);

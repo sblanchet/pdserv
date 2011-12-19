@@ -80,7 +80,7 @@ class VariableDirectory;
 class Session: public ost::Thread, public PdServ::Session {
     public:
         Session( Server *s,
-                ost::TCPSocket &socket);
+                ost::TCPSocket *socket);
         ~Session();
 
         void broadcast(Session *s, const std::string &element);
@@ -106,7 +106,7 @@ class Session: public ost::Thread, public PdServ::Session {
         const VariableDirectory &root;
 
         struct TCPStream: public ost::Socket, public std::streambuf {
-            TCPStream(ost::TCPSocket& socket);
+            TCPStream(ost::TCPSocket *socket);
 
             int read(char *buf, size_t n, timeout_t timeout);
             int getSocket() const;
