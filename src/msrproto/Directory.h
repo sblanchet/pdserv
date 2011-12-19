@@ -114,7 +114,10 @@ class VariableDirectory: private DirectoryNode {
 template <typename T>
 const T *VariableDirectory::find(const std::string &p) const
 {
-    DirectoryNode *node = DirectoryNode::find(p.c_str());
+    if (p.empty() or p[0] != '/')
+        return 0;
+
+    DirectoryNode *node = DirectoryNode::find(p.c_str() + 1);
     return node ? dynamic_cast<const T*>(node) : 0;
 }
 

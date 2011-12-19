@@ -257,7 +257,7 @@ DirectoryNode *DirectoryNode::find(const char *path) const
     if (name.empty() or it == children.end())
         return 0;
 
-    return *path ? find(path) : it->second;
+    return *path ? it->second->find(path) : it->second;
 }
 
 /////////////////////////////////////////////////////////////////////////////
