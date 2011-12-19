@@ -341,15 +341,16 @@ void Session::readChannel()
     bool shortReply = inbuf.isTrue("short");
     std::string path;
     unsigned int index;
-    bool all = true;
 
     if (inbuf.getString("name", path)) {
         c = root.find<Channel>(path);
-        all = false;
+        if (!c)
+            return;
     }
     else if (inbuf.getUnsigned("index", index)) {
         c = root.getChannel(index);
-        all = false;
+        if (!c)
+            return;
     }
 
     // A single signal was requested
@@ -363,8 +364,6 @@ void Session::readChannel()
 
         return;
     }
-    else if (!all)
-        return;
 
     size_t buflen = 0;
     const PdServ::Signal *mainSignal = 0;
@@ -434,9 +433,13 @@ void Session::readParameter()
     const Parameter *p = 0;
     if (inbuf.getString("name", name)) {
         p = root.find<Parameter>(name.c_str());
+        if (!p)
+            return;
     }
     else if (inbuf.getUnsigned("index", index)) {
         p = root.getParameter(index);
+        if (!p)
+            return;
     }
 
     if (p) {

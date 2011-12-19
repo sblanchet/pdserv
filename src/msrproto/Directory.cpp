@@ -184,9 +184,9 @@ const Parameter* VariableDirectory::getParameter(unsigned int idx) const
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-DirectoryNode::DirectoryNode()
+DirectoryNode::DirectoryNode(bool hypernode)
 {
-    hypernode = false;
+    this->hypernode = hypernode;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -212,7 +212,7 @@ void DirectoryNode::list(
     for (it = children.begin(); it != children.end(); ++it) {
 
         if (it->second->hasChildren()) {
-            XmlElement el("directory", parent);
+            XmlElement el("dir", parent);
             XmlElement::Attribute(el, "path")
                 << (this->path() + '/' + it->first);
         }
@@ -263,34 +263,21 @@ DirectoryNode *DirectoryNode::find(const char *path) const
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode *DirectoryNode::push(std::string &name)
 {
-
     if (hypernode) {
         std::ostringstream os;
         os << children.size();
         name = os.str();
-        //debug() << "new dir" << path() << name;
+        return this;
     }
     else {
-        this->hypernode = true;
-
-        // Create another directory
-        DirectoryNode *dir = new DirectoryNode;
-
-        // Move all children into new directory
-        for (Children::const_iterator it = children.begin();
-                it != children.end(); ++it) {
-            dir->insert(it->second, it->first);
-        }
-
-        children.clear();
-
-        this->insert(dir, "0");
+        // Create another directory and move this node into the new dir
+        DirectoryNode *dir = new DirectoryNode(true);
+        parent->insert(dir, *this->name);
+        dir->insert(this, "0");
 
         name = "1";
-        //debug() << "new dir" << path() << name;
+        return dir;
     }
-
-    return this;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -323,15 +310,8 @@ DirectoryNode *DirectoryNode::mkdir(
     }
 
     // Check whether the node exists
-    if (node and traditional) {
-        //debug() << "pushing" << node->path() << name;
-        //const Variable *v = dynamic_cast<const Variable*>(node);
-        //if (v) {
-            //debug() << "double for" << v->variable->path << v->elementIndex;
-        //}
-        // Let the node choose a new name
-        return node->push(name);
-    }
+    if (node)
+        return traditional ? node->push(name) : 0;
 
     return this;
 }

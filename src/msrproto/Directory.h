@@ -45,7 +45,7 @@ class XmlElement;
 
 class DirectoryNode {
     public:
-        DirectoryNode();
+        DirectoryNode(bool hypernode = false);
         virtual ~DirectoryNode();
 
         void list(PdServ::Session *,
