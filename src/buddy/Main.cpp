@@ -181,9 +181,16 @@ void Main::processPoll(size_t delay_ms,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::gettime(struct timespec *) const
+int Main::gettime(struct timespec *ts) const
 {
-    return -1;
+    struct timeval tv;
+    if (gettimeofday(&tv, 0))
+        return -1;
+
+    ts->tv_sec = tv.tv_sec;
+    ts->tv_nsec = tv.tv_usec * 1000;
+
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -204,6 +211,7 @@ int Main::setParameter(const Parameter *p, size_t startIndex,
     delta.pos = data - parameterBuf + startIndex * p->width;
     delta.len = count * p->width;                                                        
     delta.count = 0;
+    gettime(mtime);
 
     return ioctl(fd, CHANGE_PARAM, &delta);
 }
