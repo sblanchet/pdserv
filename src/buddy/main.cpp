@@ -25,42 +25,172 @@
 #include "config.h"
 #include "../Debug.h"
 
+#include <daemon.h>
 #include <sstream>
+#include <iostream>
 #include <cerrno>
+#include <cstring>
+#include <sys/types.h>          // wait()
+#include <sys/wait.h>           // wait()
 #include <sys/ioctl.h>          // ioctl()
 #include <fcntl.h>              // open()
-//#include <cc++/cmdoptns.h>
+#include <unistd.h>             // getopt()
+#include <signal.h>             // getopt()
+#include <cstdlib>              // atoi()
 
 #include "Main.h"
 
+int debug = 3;
+
 const char *device_node = "/dev/etl";
 
-//ost::CommandOptionNoArg traditional(
-//        "traditional", "t", "Traditional MSR", false);
+/////////////////////////////////////////////////////////////////////////////
+void cleanup(int,void*)
+{
+    ::daemon_pid_file_remove();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void sighandler(int signal)
+{
+    int status;
+    switch (signal) {
+        case SIGCHLD:
+            ::wait(&status);
+            debug() << "Child killed" << status;
+            break;
+
+        case SIGUSR1:
+            debug++;
+            break;
+
+        case SIGUSR2:
+            if (debug)
+                debug--;
+            break;
+
+        default:
+            ::kill(0, SIGTERM);
+            ::exit(EXIT_FAILURE);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void printhelp(const char *exe)
+{
+    std::cerr << "Usage: " << exe << std::endl
+        << "\t-h \t\tHelp" << std::endl
+        << "\t-f \t\tStay in foreground (do not fork)" << std::endl
+        << "\t-k \t\tKill running daemon and exit" << std::endl
+        << "\t-d[level] \tDebug Level (implies foreground)" << std::endl
+        << "\t-c <file.conf> \tConfig file (default: "
+        << QUOTE(SYSCONFDIR) << '/' << exe << ".conf)"
+        << std::endl;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int new_process(int id)
+{
+    pid_t pid = fork();
+    if (pid < 0)
+        return pid;
+    else if (pid)
+        return pid;
+
+    return ::close(0);
+}
 
 /////////////////////////////////////////////////////////////////////////////
 int main(int argc, char **argv)
 {
-    const char *args[argc];
+    pid_t pid;
+    int opt;
+    bool fg = 0;
+
+    daemon_pid_file_ident = daemon_ident_from_argv0(argv[0]);
+
+    // Parse command line options
+    while ((opt = ::getopt(argc, argv, "d::fkc:h")) != -1) {
+        switch (opt) {
+            case 'd':
+                // debug
+                fg = 1;
+                debug = optarg ? ::atoi(optarg) : debug+1;
+                break;
+
+            case 'k':
+                // Kill daemon
+                if (daemon_pid_file_kill(SIGTERM)) {
+                    std::cerr << "ERROR: No running process" << std::endl;
+                    ::exit(EXIT_FAILURE);
+                }
+                else
+                    ::exit(EXIT_SUCCESS);
+                break;
+
+            case 'f':
+                // Foreground
+                fg = 1;
+                break;
+
+            case 'c':
+                debug() << "cofig file" << optarg;
+                //configfile.push(optarg);
+                break;
+
+            default:
+                printhelp(daemon_pid_file_ident);
+                exit (opt == 'h' ? EXIT_SUCCESS : EXIT_FAILURE);
+                break;
+        }
+    }
+
+    // Make sure no other instance is running
+    if ((pid = daemon_pid_file_is_running()) > 0) {
+        std::cerr
+            << "ERROR: Process already running with pid " << pid << std::endl;
+        ::exit(EBUSY);
+    }
+
+    // Foreground or daemon
+    if (!fg) {
+        pid = daemon_fork();
+
+        if (pid) {
+            ::exit(EXIT_SUCCESS);
+        }
+    }
+
+    // Install some signal handlers
+    if (::signal(SIGUSR1, sighandler) == SIG_ERR
+            or ::signal(SIGUSR2, sighandler) == SIG_ERR
+            or ::signal(SIGTERM, sighandler) == SIG_ERR
+            or ::signal(SIGHUP,  sighandler) == SIG_ERR
+            or ::signal(SIGINT,  sighandler) == SIG_ERR
+            or ::signal(SIGCHLD, sighandler) == SIG_ERR) {
+        std::cerr << "Could not set signal handler: "
+            << strerror(errno) << std::endl;
+    }
+
+    // Cleanup on normal exit
+    ::on_exit(cleanup, 0);
+
+    // Remove and create new pid files
+    daemon_pid_file_remove();
+    daemon_pid_file_create();
+
     Main *app[MAX_APPS];
-    std::string path;
-    
-    std::copy(argv, argv+argc, args);
     std::fill_n(app, MAX_APPS, reinterpret_cast<Main*>(0));
 
+    std::string path;
     path = device_node;
     path.append("0");
-
     int etl_main = ::open(path.c_str(), O_NONBLOCK | O_RDWR);
     if (etl_main < 0) {
         debug() << "could not open" << path;
         return errno;
     }
     debug() << "opened" << path << '=' << etl_main;
-
-    // Ignore child signals
-    if (SIG_ERR == signal(SIGCHLD, SIG_IGN))
-        return errno;
 
     do {
         uint32_t apps;

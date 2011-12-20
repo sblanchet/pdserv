@@ -91,6 +91,8 @@ IF (ETL_DATA AND BUDDY_IOCTL AND NOT DISABLE_BUDDY)
 
     #MESSAGE("TIME=${TIMESPEC} ${TS}")
 
+    FIND_PACKAGE (LibDaemon REQUIRED)
+
     ADD_EXECUTABLE (etherlab_buddy2
         buddy/SignalInfo.cpp buddy/SignalInfo.h
         buddy/Signal.cpp buddy/Signal.h
@@ -107,7 +109,9 @@ IF (ETL_DATA AND BUDDY_IOCTL AND NOT DISABLE_BUDDY)
         ${main_src}
         )
 
-    TARGET_LINK_LIBRARIES(etherlab_buddy2 ${LIBCCEXT2_LIBRARIES})
+    SET (BUDDY_LIBS ${LIBCCEXT2_LIBRARIES} ${LIBDAEMON_LIBRARIES})
+    INCLUDE_DIRECTORIES(${LIBDAEMON_INCLUDE_DIRS})
+    TARGET_LINK_LIBRARIES(etherlab_buddy2 ${BUDDY_LIBS})
     INSTALL (TARGETS etherlab_buddy2 DESTINATION "${ABS_EXECDIR}" RUNTIME)
 
 ENDIF ()

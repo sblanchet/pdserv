@@ -285,7 +285,7 @@ int Main::daemonize()
     // Go to root
 #ifndef DEBUG
     ::chdir("/");
-    ::umask(000);
+    ::umask(0777);
 #endif
 
     // Reset signal handlers
