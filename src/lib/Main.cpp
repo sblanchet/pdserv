@@ -47,6 +47,7 @@
 #include "Parameter.h"
 #include "Pointer.h"
 #include "SessionShadow.h"
+#include "../ServerConfig.h"
 #include "pdserv/pdserv.h"
 
 /////////////////////////////////////////////////////////////////////////////
@@ -323,7 +324,7 @@ int Main::daemonize()
     for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
         static_cast<Task*>(*it)->nrt_init();
 
-    PdServ::Main::startServers();
+    PdServ::Main::startServers(PdServ::ServerConfig());
 
     // Hang here forever
     while (true) {

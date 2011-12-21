@@ -43,42 +43,26 @@ class Parameter;
 class Signal;
 class Task;
 class SessionShadow;
+class BuddyConfigRef;
 
 class Main: public PdServ::Main {
     public:
-        Main(const std::string& device);
-        ~Main();
+        Main();
 
-        int configFile(const std::string& name);
-
-//        int run();
-//        void getParameters(Task *, const struct timespec *) const;
-//
-//        Task* addTask(double sampleTime, const char *name);
-//        Task* getTask(size_t index) const;
-//
-//        Parameter* addParameter( const char *path,
-//                unsigned int mode, enum si_datatype_t datatype,
-//                void *addr, size_t n, const unsigned int *dim);
-//
-//        Signal* addSignal( Task *task, unsigned int decimation,
-//                const char *path, enum si_datatype_t datatype,
-//                const void *addr, size_t n, const unsigned int *dim);
+        void serve(const BuddyConfigRef& config, int fd,
+                struct app_properties const * app_properties);
         int setParameter(const Parameter *p, size_t startIndex,
                 size_t nelem, const char *data,
                 struct timespec *) const;
-//
-//        static const double bufferTime;
 
     private:
-        //mutable ost::Semaphore mutex;
         mutable ost::Semaphore paramMutex;
 
         int fd;
         int pid;
 
         Task *mainTask;
-        struct app_properties app_properties;
+        struct app_properties const * app_properties;
 
         bool getVariable(int type, size_t index, struct signal_info &si);
 
@@ -88,7 +72,6 @@ class Main: public PdServ::Main {
         int readPointer;
         unsigned int *photoReady;
         unsigned int photoCount;
-//        int (* const rttime)(struct timespec*);
 
         size_t *readyList;
 

@@ -39,8 +39,10 @@
 #include <cstdlib>              // atoi()
 
 #include "Main.h"
+#include "BuddyConfig.h"
 
 int debug = 3;
+pid_t app[MAX_APPS];
 
 const char *device_node = "/dev/etl";
 
@@ -54,9 +56,16 @@ void cleanup(int,void*)
 void sighandler(int signal)
 {
     int status;
+    pid_t pid;
     switch (signal) {
         case SIGCHLD:
-            ::wait(&status);
+            pid = ::wait(&status);
+            if (pid > 0) {
+                for (size_t i = 0; i < MAX_APPS; ++i) {
+                    if (app[i] == pid)
+                        app[i] = 0;
+                }
+            }
             debug() << "Child killed" << status;
             break;
 
@@ -76,7 +85,7 @@ void sighandler(int signal)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void printhelp(const char *exe)
+void printhelp(const char *exe, const std::string &default_config)
 {
     std::cerr << "Usage: " << exe << std::endl
         << "\t-h \t\tHelp" << std::endl
@@ -84,30 +93,15 @@ void printhelp(const char *exe)
         << "\t-k \t\tKill running daemon and exit" << std::endl
         << "\t-d[level] \tDebug Level (implies foreground)" << std::endl
         << "\t-c <file.conf> \tConfig file (default: "
-        << QUOTE(SYSCONFDIR) << '/' << exe << ".conf)"
-        << std::endl;
+        << default_config << ')' << std::endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int new_process(int id)
+void parse_command_line (int argc, char **argv,
+        bool &fg, std::string &configFile)
 {
-    pid_t pid = fork();
-    if (pid < 0)
-        return pid;
-    else if (pid)
-        return pid;
-
-    return ::close(0);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int main(int argc, char **argv)
-{
-    pid_t pid;
+    std::string default_config = configFile;
     int opt;
-    bool fg = 0;
-
-    daemon_pid_file_ident = daemon_ident_from_argv0(argv[0]);
 
     // Parse command line options
     while ((opt = ::getopt(argc, argv, "d::fkc:h")) != -1) {
@@ -134,17 +128,48 @@ int main(int argc, char **argv)
                 break;
 
             case 'c':
-                debug() << "cofig file" << optarg;
-                //configfile.push(optarg);
+                if (::access(optarg, R_OK)) {
+                    int rv = errno;
+                    std::cerr << "Error: Cannot read configuration " << optarg
+                        << ": " << strerror(rv) << std::endl;
+                    ::exit(rv);
+                }
+                configFile = optarg;
                 break;
 
             default:
-                printhelp(daemon_pid_file_ident);
-                exit (opt == 'h' ? EXIT_SUCCESS : EXIT_FAILURE);
+                printhelp(daemon_pid_file_ident, default_config);
+                ::exit (opt == 'h' ? EXIT_SUCCESS : EXIT_FAILURE);
                 break;
         }
     }
+}
 
+/////////////////////////////////////////////////////////////////////////////
+int main(int argc, char **argv)
+{
+    std::string configFile;
+    BuddyConfig config;
+    pid_t pid;
+    bool fg = 0;
+
+    daemon_pid_file_ident = daemon_ident_from_argv0(argv[0]);
+
+    // Set default configuration file
+    configFile
+        .append(QUOTE(SYSCONFDIR))
+        .append(1, '/')
+        .append(daemon_pid_file_ident)
+        .append(".conf");
+
+    parse_command_line(argc, argv, fg, configFile);
+
+    if (!::access(configFile.c_str(), R_OK)) {
+        if (config.load(configFile))
+            exit(EXIT_FAILURE);
+        debug() << "load config" << configFile;
+    }
+    
     // Make sure no other instance is running
     if ((pid = daemon_pid_file_is_running()) > 0) {
         std::cerr
@@ -177,10 +202,9 @@ int main(int argc, char **argv)
 
     // Remove and create new pid files
     daemon_pid_file_remove();
-    daemon_pid_file_create();
-
-    Main *app[MAX_APPS];
-    std::fill_n(app, MAX_APPS, reinterpret_cast<Main*>(0));
+    if (daemon_pid_file_create() and !fg) {
+        // FIXME log this
+    }
 
     std::string path;
     path = device_node;
@@ -196,21 +220,52 @@ int main(int argc, char **argv)
         uint32_t apps;
 
         ioctl(etl_main, RTAC_GET_ACTIVE_APPS, &apps);
-        for (unsigned i = 0; apps; i++, apps >>= 1) {
-            if ((apps & 0x1) and !app[i]) {
+        for (unsigned i = 0; i < MAX_APPS; ++i, apps >>= 1) {
+            pid_t pid = app[i];
+            if ((apps & 0x01) and !pid) {
+                // A new application started
                 debug() << "new Application" << i;
-                std::ostringstream os;
-                os << device_node << (i+1);
-                app[i] = new Main(os.str());
+
+                struct app_properties app_properties;
+                int fd;
+
+                {
+                    std::ostringstream file;
+                    file << device_node << (i+1);
+
+                    // Open the application's file handle
+                    fd = ::open(file.str().c_str(), O_NONBLOCK | O_RDONLY);
+                }
+
+                if (fd > 0) {
+                    // Get the properties
+                    if (!::ioctl(fd, GET_APP_PROPERTIES, &app_properties)) {
+                        app[i] = fork();
+                        if (!app[i]) {
+                            ::close(etl_main);
+
+                            // Swap the file descriptors fd and etl_main
+                            if (::dup2(fd, etl_main) != -1) {
+                                ::close(fd);
+                                fd = etl_main;
+                            }
+
+                            Main().serve(config.select(app_properties.name),
+                                    fd, &app_properties);
+                        }
+                    }
+                    ::close(fd);
+                }
             }
-            else if (!(apps & 0x1) and app[i]) {
+            else if (!(apps & 0x01) and pid) {
                 debug() << "finished Application" << i;
-                delete app[i];
+                ::kill(pid, SIGTERM);
                 app[i] = 0;
             }
             sleep(1);
         }
 
+        // Wait until the status of a child or that of the main changes
         int n;
         do {
             fd_set fds;
@@ -220,17 +275,14 @@ int main(int argc, char **argv)
 
             n = ::select(etl_main + 1, &fds, 0, 0, 0);
             debug() << "select()" << n;
-            if (n < 0) {
+            if (n < 0 and errno != EINTR) {
                 // Some error occurred in select()
                 n = errno;
+
+                // Kill all the children
                 ::kill(0, SIGKILL);
                 return n;
             }
-            else if (!n) {
-                // Signal was caught, check whether the children are still there
-                //::kill(pid, 0);     // Test existence of pid
-                debug() << "caught signal";
-            }
-        } while (!n);
+        } while (n <= 0);
     } while (true);
 }

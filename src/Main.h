@@ -46,6 +46,7 @@ class Variable;
 class Task;
 class Session;
 class SessionShadow;
+class ServerConfig;
 class SessionStatistics;
 
 class Main {
@@ -87,7 +88,7 @@ class Main {
         TaskList task;
         Parameters parameters;
 
-        void startServers();
+        void startServers(const ServerConfig &);
 
         static int localtime(struct timespec *);
 

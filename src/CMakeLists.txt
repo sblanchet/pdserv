@@ -56,6 +56,7 @@ SET (main_src
                         SessionShadow.h
     Debug.cpp           Debug.h
     SessionTaskData.cpp SessionTaskData.h
+    ServerConfig.cpp    ServerConfig.h
     )
 
 # # Search for files required by buddy.
@@ -93,7 +94,14 @@ IF (ETL_DATA AND BUDDY_IOCTL AND NOT DISABLE_BUDDY)
 
     FIND_PACKAGE (LibDaemon REQUIRED)
 
+    FIND_PATH (YAML_INCLUDE yaml.h)
+    FIND_LIBRARY (YAML_LIBS yaml)
+    IF (NOT YAML_LIBS OR NOT YAML_INCLUDE)
+        MESSAGE (FATAL_ERROR "Cannot find yaml development libraries")
+    ENDIF ()
+
     ADD_EXECUTABLE (etherlab_buddy2
+        buddy/BuddyConfig.cpp buddy/BuddyConfig.h
         buddy/SignalInfo.cpp buddy/SignalInfo.h
         buddy/Signal.cpp buddy/Signal.h
         buddy/main.cpp
@@ -109,8 +117,13 @@ IF (ETL_DATA AND BUDDY_IOCTL AND NOT DISABLE_BUDDY)
         ${main_src}
         )
 
-    SET (BUDDY_LIBS ${LIBCCEXT2_LIBRARIES} ${LIBDAEMON_LIBRARIES})
-    INCLUDE_DIRECTORIES(${LIBDAEMON_INCLUDE_DIRS})
+    SET (BUDDY_LIBS
+        ${LIBCCEXT2_LIBRARIES}
+        ${LIBDAEMON_LIBRARIES}
+        ${YAML_LIBS}
+        )
+
+    INCLUDE_DIRECTORIES(${LIBDAEMON_INCLUDE_DIRS} ${YAML_INCLUDE})
     TARGET_LINK_LIBRARIES(etherlab_buddy2 ${BUDDY_LIBS})
     INSTALL (TARGETS etherlab_buddy2 DESTINATION "${ABS_EXECDIR}" RUNTIME)
 

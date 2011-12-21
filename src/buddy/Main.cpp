@@ -30,7 +30,6 @@
 #include <cstdlib>              // exit()
 #include <sys/ioctl.h>          // ioctl()
 #include <unistd.h>             // fork()
-// #include <sys/types.h>          // kill()
 #include <sys/mman.h>
 #include <sys/select.h>
 #include <sys/wait.h>           // waitpid()
@@ -41,72 +40,60 @@
 #include "../Session.h"
 #include "Task.h"
 #include "Parameter.h"
-
-//ost::CommandOptionNoArg traditional(
-//        "traditional", "t", "Traditional MSR", false);
+#include "BuddyConfig.h"
 
 /////////////////////////////////////////////////////////////////////////////
-Main::Main(const std::string& device):
-    paramMutex(1), parameterBuf(0)
+Main::Main(): paramMutex(1), parameterBuf(0)
 {
-    pid = fork();
-    if (pid < 0) {
-        throw pid;
-    }
-    else if (pid) {
-        return;
-    }
-    debug() << "fork()" << pid;
+}
 
-    fd = open(device.c_str(), O_NONBLOCK | O_RDONLY);
-    if (fd < 0)
-        goto out;
-    debug() << "opened" << device << '=' << fd;
+/////////////////////////////////////////////////////////////////////////////
+void Main::serve(const BuddyConfigRef& config, int fd,
+        const struct app_properties *app_properties)
+{
+    this->app_properties = app_properties;
 
-    if (ioctl(fd, GET_APP_PROPERTIES, &app_properties))
-        goto out;
-
-    name = app_properties.name;
-    version = app_properties.version;
+    name = app_properties->name;
+    version = app_properties->version;
 
     // Get a copy of the parameters
-    parameterBuf = new char[app_properties.rtP_size];
+    parameterBuf = new char[app_properties->rtP_size];
     if (ioctl(fd, GET_PARAM, parameterBuf))
         goto out;
 
-    char path[app_properties.variable_path_len+1];
+    char path[app_properties->variable_path_len+1];
     struct signal_info si;
     si.path = path;
-    si.path_buf_len = app_properties.variable_path_len + 1;
-    for (size_t i = 0; i < app_properties.param_count; i++) {
+    si.path_buf_len = app_properties->variable_path_len + 1;
+    for (size_t i = 0; i < app_properties->param_count; i++) {
 
         si.index = i;
         if (ioctl(fd, GET_PARAM_INFO, &si) or !si.dim[0])
             continue;
 
         Parameter *p = new Parameter( this, parameterBuf + si.offset,
-                SignalInfo(app_properties.name, &si));
+                SignalInfo(app_properties->name, &si));
         parameters.push_back(p);
         variableMap[p->path] = p;
     }
-    debug() << app_properties.param_count << "parameters";
+    debug() << app_properties->param_count << "parameters";
 
-    mainTask = new Task(this, 1.0e-6 * app_properties.sample_period);
+    mainTask = new Task(this, 1.0e-6 * app_properties->sample_period);
     task.push_back(mainTask);
-    for (size_t i = 0; i < app_properties.signal_count; i++) {
+    for (size_t i = 0; i < app_properties->signal_count; i++) {
 
         si.index = i;
         if (ioctl(fd, GET_SIGNAL_INFO, &si) or !si.dim[0])
             continue;
 
-        //debug() << app_properties.name << '|' << si.path << '|' << si.name;
+        //debug() << app_properties->name << '|' << si.path << '|' << si.name;
         const PdServ::Signal *s = mainTask->addSignal(
-                SignalInfo(app_properties.name, &si));
+                SignalInfo(app_properties->name, &si));
         variableMap[s->path] = s;
     }
-    debug() << app_properties.signal_count << "sginals";
+    debug() << app_properties->signal_count << "sginals";
 
-    shmem = ::mmap(0, app_properties.rtB_size * app_properties.rtB_count,
+    shmem = ::mmap(0, app_properties->rtB_size * app_properties->rtB_count,
             PROT_READ, MAP_PRIVATE, fd, 0);
     if (shmem == MAP_FAILED)
         goto out;
@@ -115,12 +102,10 @@ Main::Main(const std::string& device):
 
     readPointer = ioctl(fd, RESET_BLOCKIO_RP);
 
-    photoReady = new unsigned int[app_properties.rtB_count];
-    std::fill_n(photoReady, app_properties.rtB_count, 0);
+    photoReady = new unsigned int[app_properties->rtB_count];
+    std::fill_n(photoReady, app_properties->rtB_count, 0);
 
-    debug() << app_properties.name << app_properties.version;
-    startServers();
-    debug() << "Servers started";
+    startServers(config);
 
     do {
         fd_set fds;
@@ -160,18 +145,11 @@ out:
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Main::~Main()
-{
-    ::kill(pid, SIGTERM);
-    ::waitpid(pid, 0, 0);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Main::processPoll(size_t delay_ms,
         const PdServ::Signal * const *s, size_t nelem,
         void * const * pollDest, struct timespec *t) const
 {
-    const char *data = photoAlbum + readPointer * app_properties.rtB_size;
+    const char *data = photoAlbum + readPointer * app_properties->rtB_size;
 
     for (size_t i = 0; i < nelem; ++i) {
         const Signal *signal = dynamic_cast<const Signal *>(s[i]);
@@ -197,7 +175,7 @@ int Main::gettime(struct timespec *ts) const
 PdServ::SessionShadow *Main::newSession(PdServ::Session *session) const
 {
     return new SessionShadow(session, mainTask, readPointer, photoReady,
-            photoAlbum, &app_properties);
+            photoAlbum, app_properties);
 }
 
 /////////////////////////////////////////////////////////////////////////////

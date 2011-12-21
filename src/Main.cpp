@@ -119,7 +119,7 @@ const Main::Parameters& Main::getParameters() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::startServers()
+void Main::startServers(const ServerConfig& config)
 {
     msrproto = new MsrProto::Server(this);
 
