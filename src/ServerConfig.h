@@ -32,7 +32,8 @@ namespace PdServ {
 class ServerConfig {
     public:
         virtual ServerConfig select(const std::string *name);
-        virtual bool get(const std::string *name, std::string &value);
+        virtual bool get(const char *module,
+                const char *name, std::string &value) const;
 
     private:
 

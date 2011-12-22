@@ -33,7 +33,7 @@ ServerConfig ServerConfig::select(const std::string *name)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool ServerConfig::get(const std::string *, std::string &)
+bool ServerConfig::get(const char *, const char *, std::string &) const
 {
     return false;
 }

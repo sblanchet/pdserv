@@ -49,7 +49,7 @@ class VariableDirectory;
 
 class Server: public ost::Thread {
     public:
-        Server(const PdServ::Main *main);
+        Server(const PdServ::Main *main, int port);
         ~Server();
 
         void broadcast(Session *s, const std::string&);
@@ -69,6 +69,7 @@ class Server: public ost::Thread {
 
     private:
         std::set<Session*> sessions;
+        int port;
 
         VariableDirectory *root;
 

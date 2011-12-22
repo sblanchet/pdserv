@@ -233,6 +233,9 @@ int main(int argc, char **argv)
                     std::ostringstream file;
                     file << device_node << (i+1);
 
+                    while (::access(file.str().c_str(), F_OK))
+                        sleep(1);
+
                     // Open the application's file handle
                     fd = ::open(file.str().c_str(), O_NONBLOCK | O_RDONLY);
                 }
@@ -262,7 +265,6 @@ int main(int argc, char **argv)
                 ::kill(pid, SIGTERM);
                 app[i] = 0;
             }
-            sleep(1);
         }
 
         // Wait until the status of a child or that of the main changes

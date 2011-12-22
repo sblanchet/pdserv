@@ -33,7 +33,8 @@ class BuddyConfigRef: public PdServ::ServerConfig {
     public:
         BuddyConfigRef(yaml_document_t * = 0, yaml_node_t * = 0);
 
-        bool get(const std::string *name, std::string &value);
+        bool get(const char *module, const char *name,
+                std::string &value) const;
 
     private:
         yaml_node_t * const node;

@@ -41,7 +41,8 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Server::Server(const PdServ::Main *main): main(main), mutex(1)
+Server::Server(const PdServ::Main *main, int port):
+    main(main), port(port), mutex(1)
 {
     root = new VariableDirectory;
 
@@ -59,7 +60,6 @@ Server::Server(const PdServ::Main *main): main(main), mutex(1)
         std::ostringstream prefix;
         prefix << "/Taskinfo/" << i << '/';
         std::string path;
-        debug() << prefix;
 
         if (!i or primaryTask->sampleTime > task->sampleTime)
             primaryTask = task;
@@ -106,7 +106,6 @@ Server::Server(const PdServ::Main *main): main(main), mutex(1)
 /////////////////////////////////////////////////////////////////////////////
 Server::~Server()
 {
-    debug();
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
         delete *it;
@@ -116,13 +115,16 @@ Server::~Server()
 void Server::run()
 {
     ost::TCPSocket *server = 0;
-    ost::tpport_t port = 2345;
+
+    ost::tpport_t port = this->port ? this->port : 2345;
     
     do {
         try {
             server = new ost::TCPSocket(ost::IPV4Address("0.0.0.0"), port);
         }
         catch (ost::Socket *s) {
+            if (this->port)
+                throw(s);
             port++;
         }
     } while (!server);

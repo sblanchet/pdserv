@@ -37,8 +37,42 @@ BuddyConfigRef::BuddyConfigRef(yaml_document_t *doc, yaml_node_t *node):
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool BuddyConfigRef::get(const std::string *name, std::string &value)
+bool BuddyConfigRef::get(const char *module,
+        const char *key, std::string &value) const
 {
+    if (!node or node->type != YAML_MAPPING_NODE)
+        return false;
+
+    for (yaml_node_pair_t *pair = node->data.mapping.pairs.start;
+            pair != node->data.mapping.pairs.top; ++pair) {
+        yaml_node_t *n = yaml_document_get_node(document, pair->key);
+        if (n->type == YAML_SCALAR_NODE
+                and strlen(module) == n->data.scalar.length
+                and !strncmp((char*)n->data.scalar.value,
+                    module, n->data.scalar.length)) {
+            n = yaml_document_get_node(document, pair->value);
+            if (n->type != YAML_MAPPING_NODE)
+                continue;
+
+            for (yaml_node_pair_t *pair = n->data.mapping.pairs.start;
+                    pair != n->data.mapping.pairs.top; ++pair) {
+                yaml_node_t *n1 = yaml_document_get_node(document, pair->key);
+                if (n1->type == YAML_SCALAR_NODE
+                        and strlen(key) == n1->data.scalar.length
+                        and !strncmp((char*)n1->data.scalar.value,
+                            key, n1->data.scalar.length)) {
+                    yaml_node_t *n2 =
+                        yaml_document_get_node(document, pair->value);
+                    if (n2->type == YAML_SCALAR_NODE) {
+                        value.assign((char*)n2->data.scalar.value,
+                                n2->data.scalar.length);
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
     return false;
 }
 
@@ -107,9 +141,11 @@ BuddyConfigRef BuddyConfig::select(const char *module)
             pair != root->data.mapping.pairs.top; ++pair) {
         node = yaml_document_get_node(document, pair->key);
         if (node->type == YAML_SCALAR_NODE
+                and strlen(module) == node->data.scalar.length
                 and !strncmp((char*)node->data.scalar.value,
                     module, node->data.scalar.length)) {
-            return BuddyConfigRef(document, node);
+            return BuddyConfigRef(document,
+                    yaml_document_get_node(document, pair->value));
         }
     }
 
