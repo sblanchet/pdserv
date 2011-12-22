@@ -47,6 +47,7 @@ bool BuddyConfigRef::get(const std::string *name, std::string &value)
 BuddyConfig::BuddyConfig()
 {
     document = 0;
+    root = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
