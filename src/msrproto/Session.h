@@ -51,7 +51,6 @@
 
 #include "../Session.h"
 #include "XmlParser.h"
-#include "Outbuf.h"
 #include "XmlElement.h"
 
 #include <cc++/thread.h> 
