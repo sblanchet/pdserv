@@ -155,7 +155,7 @@ void Session::run()
     ssize_t n;
 
     try {
-        while (true) {
+        while (ostream.good()) {
             n = tcp.read(inbuf.bufptr(), inbuf.free(), 100);
             if (!n)
                 break;
@@ -755,11 +755,10 @@ int Session::TCPStream::read(char *buf, size_t count, timeout_t timeout)
 int Session::TCPStream::overflow ( int c )
 {
     if (::fputc(c, file) == EOF)
-        error(errOutput);
+        return EOF;
 
     ++outBytes;
 
-    error(errTimeout);
     return c;
 }
 
@@ -767,8 +766,8 @@ int Session::TCPStream::overflow ( int c )
 std::streamsize Session::TCPStream::xsputn (
         const char * s, std::streamsize count)
 {
-    if (::fwrite(s, count, 1, file) != 1)
-        error(errOutput);
+    if (count and ::fwrite(s, 1, count, file) != static_cast<size_t>(count))
+        return 0;
 
     outBytes += count;
 

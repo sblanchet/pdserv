@@ -139,7 +139,7 @@ void XmlElement::Attribute::setEscaped( const char *v, size_t n)
     const char *p;
 
     while ((p = std::find_first_of(v, v_end, escape, escape_end)) != v_end) {
-        os << std::string(v, p - v);
+        os << std::string(v, p);
         switch (*p) {
             case '<':
                 os << "&lt;";
