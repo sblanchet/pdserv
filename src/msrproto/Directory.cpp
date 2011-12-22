@@ -177,7 +177,7 @@ const VariableDirectory::Parameters& VariableDirectory::getParameters() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const Parameter* VariableDirectory::getParameter(unsigned int idx) const
+const Parameter* VariableDirectory::getParameter(size_t idx) const
 {
     return idx < parameters.size() ? parameters[idx] : 0;
 }

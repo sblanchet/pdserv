@@ -17,13 +17,15 @@ int main(int argc, const char *argv[])
     char *buf;
 
     // Perfectly legal statement
-    s = "<rp>";
+    s = "<rp index=\"134\" value=13>";
     buf = inbuf.bufptr();
     assert( buf);                // Buffer may not be null
     assert( inbuf.free());       // and have some space
     strcpy( inbuf.bufptr(), s);
-    inbuf.newData(strlen(s));  // Must report a true here
-    assert(inbuf.next());
+    inbuf.newData(14);
+    assert(!inbuf.next());
+    inbuf.newData(11);
+    assert( inbuf.next());
     assert( inbuf.getCommand());         // There is a command
     assert(!strcmp(inbuf.getCommand(), "rp"));  // which is "rp"
     assert(!inbuf.next());              // and no next command
