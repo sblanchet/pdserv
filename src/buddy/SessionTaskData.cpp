@@ -63,7 +63,7 @@ void SessionTaskData::updateStatistics()
     const struct task_stats *task_stats =
         reinterpret_cast<const struct task_stats*>(photo + statsOffset);
 
-#ifdef TIMESPEC
+#ifdef HAVE_TIMESPEC
     time = task_stats[0].time;
 #else
     time.tv_sec = task_stats[0].time.tv_sec;

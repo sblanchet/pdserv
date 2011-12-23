@@ -25,6 +25,7 @@
 #include "../Debug.h"
 
 #include <cerrno>
+#include <iostream>
 #include <cstring>
 
 #include "BuddyConfig.h"

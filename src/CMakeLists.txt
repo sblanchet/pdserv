@@ -73,24 +73,27 @@ FIND_FILE (BUDDY_IOCTL "fio_ioctl.h")
 
 IF (ETL_DATA AND BUDDY_IOCTL AND NOT DISABLE_BUDDY)
 
-    SET (TESTFILE "${CMAKE_CURRENT_BINARY_DIR}/test_taskstat.c")
-    FILE (WRITE "${TESTFILE}"
-        "#include <app_taskstats.h>
-        main() {
-        struct task_stats ts;
-        struct timespec tv = ts.time;
-        }
-        ")
+    SET (TESTFILE "${CMAKE_CURRENT_SOURCE_DIR}/test_headers.c")
 
-    TRY_COMPILE (TIMESPEC "${CMAKE_CURRENT_BINARY_DIR}" "${TESTFILE}"
-        CMAKE_FLAGS "-DINCLUDE_DIRECTORIES=${ABS_INCLUDEDIR}")
+    TRY_COMPILE (HAVE_TIMESPEC "${CMAKE_BINARY_DIR}" "${TESTFILE}"
+            CMAKE_FLAGS "-DINCLUDE_DIRECTORIES=${ABS_INCLUDEDIR}"
+            COMPILE_DEFINITIONS "-DHAVE_TIMESPEC")
 
-    IF (TIMESPEC)
+    TRY_COMPILE (HAVE_SIMULINK_PORT "${CMAKE_BINARY_DIR}" "${TESTFILE}"
+            CMAKE_FLAGS "-DINCLUDE_DIRECTORIES=${ABS_INCLUDEDIR}"
+            COMPILE_DEFINITIONS "-DHAVE_PORT")
+
+    IF (HAVE_TIMESPEC)
         set_source_files_properties (buddy/SessionTaskData.cpp
-            PROPERTIES COMPILE_DEFINITIONS TIMESPEC)
+            PROPERTIES COMPILE_DEFINITIONS HAVE_TIMESPEC)
     ENDIF()
 
-    #MESSAGE("TIME=${TIMESPEC} ${TS}")
+    IF (HAVE_SIMULINK_PORT)
+        set_source_files_properties (buddy/SignalInfo.cpp
+            PROPERTIES COMPILE_DEFINITIONS HAVE_SIMULINK_PORT)
+    ENDIF ()
+
+    #MESSAGE("TIME=${HAVE_TIMESPEC} ${HAVE_SIMULINK_PORT}")
 
     FIND_PACKAGE (LibDaemon REQUIRED)
 

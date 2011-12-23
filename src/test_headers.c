@@ -22,23 +22,16 @@
  *
  *****************************************************************************/
 
-#include "ServerConfig.h"
+#include <rt_app.h> 
 
-using namespace PdServ;
+main() {
 
-/////////////////////////////////////////////////////////////////////////////
-ServerConfig::~ServerConfig()
-{
-}
+#ifdef HAVE_TIMESPEC
+struct task_stats ts;
+struct timespec tv = ts.time;
+#endif
 
-/////////////////////////////////////////////////////////////////////////////
-ServerConfig ServerConfig::select(const std::string *name)
-{
-    return ServerConfig();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-bool ServerConfig::get(const char *, const char *, std::string &) const
-{
-    return false;
+#ifdef HAVE_PORT
+int port = ((struct rt_app*)(0))->port;
+#endif
 }

@@ -138,6 +138,7 @@ std::string SignalInfo::path() const
 
     p << '/' << si->path << '/' << si->name;
 
+#ifdef HAVE_SIMULINK_PORT
     if (!traditional and si->port) {
         p << '/';
         if (*si->alias)
@@ -145,6 +146,7 @@ std::string SignalInfo::path() const
         else
             p << si->port-1;
     }
+#endif
 
     return p.str();
 }
