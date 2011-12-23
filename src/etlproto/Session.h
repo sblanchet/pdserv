@@ -43,7 +43,7 @@ class Session: public ost::SocketPort, private std::streambuf {
         // Map a signal to a set of subscription decimations
         std::vector<std::map<size_t, std::set<PdServ::Signal*> > > subscribed;
         std::vector<std::map<size_t, bool> > dirty;
-        std::map<PdServ::Signal*, std::set<size_t> > signalDecimation;
+        std::map<PdServ::Signal*, std::set<unsigned int> > signalDecimation;
         std::map<PdServ::Variable*, bool> sent;
         std::vector<size_t> dataOffset;
         typedef std::map<unsigned int, unsigned int,

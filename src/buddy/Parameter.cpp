@@ -32,11 +32,9 @@
 //////////////////////////////////////////////////////////////////////
 Parameter::Parameter( const Main *main, char *parameterData,
         const SignalInfo &si):
-    PdServ::Parameter(si.path(), 0x666, si.dataType(), si.ndim(), si.dim()),
-    main(main), valueBuf(parameterData /*+ si.si->offset*/), si(si), mutex(1)
+    PdServ::Parameter(si.path(), 0x666, si.dataType(), si.ndim(), si.getDim()),
+    main(main), valueBuf(parameterData), si(si), mutex(1)
 {
-//    trigger = copy;
-
     mtime.tv_sec = 0;
     mtime.tv_nsec = 0;
 }

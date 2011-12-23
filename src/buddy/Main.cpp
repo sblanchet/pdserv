@@ -146,7 +146,7 @@ out:
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::processPoll(size_t delay_ms,
+void Main::processPoll(unsigned int delay_ms,
         const PdServ::Signal * const *s, size_t nelem,
         void * const * pollDest, struct timespec *t) const
 {

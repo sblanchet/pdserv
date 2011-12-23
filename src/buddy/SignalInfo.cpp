@@ -79,11 +79,11 @@ SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
     readFunc = 0;
 
     if (si->dim[0] == 1 or si->dim[1] == 1) {
-        _dim[0] = nelem;
-        _dim[1] = 0;
+        dim[0] = nelem;
+        dim[1] = 0;
     }
     else {
-        std::copy(si->dim, si->dim + 2, _dim);
+        std::copy(si->dim, si->dim + 2, dim);
         if (si->orientation == si_matrix_col_major) {
             switch (PdServ::Variable::dataTypeWidth[dataType()]) {
                 case 1:
@@ -152,15 +152,15 @@ std::string SignalInfo::path() const
 }
 
 //////////////////////////////////////////////////////////////////////
-const size_t *SignalInfo::dim() const
+const size_t *SignalInfo::getDim() const
 {
-    return _dim;
+    return dim;
 }
 
 //////////////////////////////////////////////////////////////////////
 size_t SignalInfo::ndim() const
 {
-    return (_dim[0] > 0) + (_dim[1] > 0);
+    return (dim[0] > 0) + (dim[1] > 0);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -183,13 +183,13 @@ PdServ::Variable::Datatype SignalInfo::dataType() const
 //////////////////////////////////////////////////////////////////////
 void SignalInfo::read( void *dst, const void *src) const
 {
-    readFunc(dst, src, 0, nelem, nelem, _dim[1]);
+    readFunc(dst, src, 0, nelem, nelem, dim[1]);
 }
 
 //////////////////////////////////////////////////////////////////////
 void SignalInfo::write( void *dst, const void *src,
         size_t start, size_t count) const
 {
-    writeFunc(dst, src, start, count, nelem, _dim[1]);
+    writeFunc(dst, src, start, count, nelem, dim[1]);
 }
 

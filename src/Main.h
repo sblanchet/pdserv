@@ -92,7 +92,8 @@ class Main {
 
         static int localtime(struct timespec *);
 
-        virtual void processPoll(size_t delay_ms, const Signal * const *s,
+        virtual void processPoll(
+                unsigned int delay_ms, const Signal * const *s,
                 size_t nelem, void * const * pollDest,
                 struct timespec *t) const = 0;
 

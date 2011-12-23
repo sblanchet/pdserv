@@ -34,7 +34,7 @@ class SignalInfo {
 
         std::string path() const;
         size_t ndim() const;
-        const size_t *dim() const;
+        const size_t *getDim() const;
         PdServ::Variable::Datatype dataType() const;
 
         void read( void *dst, const void *src) const;
@@ -46,7 +46,7 @@ class SignalInfo {
     private:
         const char * const model;
 
-        size_t _dim[2];
+        size_t dim[2];
         size_t nelem;
         size_t rows;
 
