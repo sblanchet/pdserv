@@ -47,6 +47,7 @@ SET (msrproto_src
 
 SET (main_src
                         SessionStatistics.h
+    Config.cpp          Config.h
     Session.cpp         Session.h
     Task.cpp            Task.h
     Main.cpp            Main.h
@@ -64,6 +65,13 @@ SET (main_src
 # INCLUDE( CheckIncludeFile )
 # CHECK_INCLUDE_FILE(etl_data_info.h ETL_DATA)
 # CHECK_INCLUDE_FILE(fio_ioctl.h BUDDY_IOCTL)
+
+FIND_PATH (YAML_INCLUDE yaml.h)
+FIND_LIBRARY (YAML_LIBS yaml)
+IF (NOT YAML_LIBS OR NOT YAML_INCLUDE)
+    MESSAGE (FATAL_ERROR "Cannot find yaml development libraries")
+ENDIF ()
+INCLUDE_DIRECTORIES (${YAML_INCLUDE})
 
 # Search for files required by buddy.
 FIND_FILE (ETL_DATA "etl_data_info.h")
@@ -97,12 +105,6 @@ IF (ETL_DATA AND BUDDY_IOCTL AND NOT DISABLE_BUDDY)
 
     FIND_PACKAGE (LibDaemon REQUIRED)
 
-    FIND_PATH (YAML_INCLUDE yaml.h)
-    FIND_LIBRARY (YAML_LIBS yaml)
-    IF (NOT YAML_LIBS OR NOT YAML_INCLUDE)
-        MESSAGE (FATAL_ERROR "Cannot find yaml development libraries")
-    ENDIF ()
-
     ADD_EXECUTABLE (etherlab_buddy2
         buddy/BuddyConfig.cpp buddy/BuddyConfig.h
         buddy/SignalInfo.cpp buddy/SignalInfo.h
@@ -126,8 +128,8 @@ IF (ETL_DATA AND BUDDY_IOCTL AND NOT DISABLE_BUDDY)
         ${YAML_LIBS}
         )
 
-    INCLUDE_DIRECTORIES(${LIBDAEMON_INCLUDE_DIRS} ${YAML_INCLUDE})
-    TARGET_LINK_LIBRARIES(etherlab_buddy2 ${BUDDY_LIBS})
+    INCLUDE_DIRECTORIES (${LIBDAEMON_INCLUDE_DIRS})
+    TARGET_LINK_LIBRARIES (etherlab_buddy2 ${BUDDY_LIBS})
     INSTALL (TARGETS etherlab_buddy2 DESTINATION "${ABS_EXECDIR}" RUNTIME)
 
 ENDIF ()
@@ -150,8 +152,8 @@ SET_TARGET_PROPERTIES ( ${PROJECT_NAME} PROPERTIES
     VERSION ${VERSION}
     CLEAN_DIRECT_OUTPUT 1)
 
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBCCEXT2_LIBRARIES})
-INSTALL(TARGETS ${PROJECT_NAME} DESTINATION "${ABS_LIBDIR}" LIBRARY)
+TARGET_LINK_LIBRARIES (${PROJECT_NAME} ${LIBCCEXT2_LIBRARIES} ${YAML_LIBS})
+INSTALL (TARGETS ${PROJECT_NAME} DESTINATION "${ABS_LIBDIR}" LIBRARY)
 
 # pkgconfig files
 CONFIGURE_FILE (

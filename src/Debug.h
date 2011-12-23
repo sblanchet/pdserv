@@ -58,7 +58,7 @@ struct Debug {
 };
 
 #define debug() Debug(__BASE_FILE__, __func__, __LINE__)
-}
+};
 
 #else
 
@@ -72,7 +72,7 @@ struct Debug {
 };
 
 #define debug() Debug()
-}
+};
 
 #endif
 
