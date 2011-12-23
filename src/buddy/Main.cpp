@@ -52,6 +52,7 @@ void Main::serve(const BuddyConfigRef& config, int fd,
         const struct app_properties *app_properties)
 {
     this->app_properties = app_properties;
+    this->fd = fd;
 
     name = app_properties->name;
     version = app_properties->version;
