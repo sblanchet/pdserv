@@ -212,7 +212,7 @@ void Task::subscribe(const Signal* s, bool insert)
         wp = signalList;
 
     while (wp == *signalListRp)
-        ost::Thread::sleep(sampleTime * 1000 / 2 + 1);
+        ost::Thread::sleep(static_cast<unsigned>(sampleTime * 1000 / 2 + 1));
 
 //    debug() << insert << s->path;
     size_t w = s->dataTypeIndex[s->width];

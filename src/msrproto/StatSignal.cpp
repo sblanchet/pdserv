@@ -63,11 +63,11 @@ uint32_t StatSignal::getValue(
 
     switch (type) {
         case ExecTime:
-            return stats->exec_time * 1.0e9;
+            return static_cast<uint32_t>(stats->exec_time * 1.0e9);
             break;
 
         case Period:
-            return stats->cycle_time * 1.0e9;
+            return static_cast<uint32_t>(stats->cycle_time * 1.0e9);
             break;
 
         case Overrun:

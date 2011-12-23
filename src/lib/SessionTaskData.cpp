@@ -49,7 +49,8 @@ void SessionTaskData::init()
 
     do {
         while (!pdo->next)
-            ost::Thread::sleep(task->sampleTime * 1000 / 2 + 1);
+            ost::Thread::sleep( static_cast<unsigned>(
+				    task->sampleTime * 1000 / 2 + 1));
 
         seqNo = pdo->seqNo;
         pdo = pdo->next;

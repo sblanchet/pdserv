@@ -157,6 +157,7 @@ void Main::poll( Session *session, const Signal * const *s,
         dest += s[i]->memSize;
     }
 
-    processPoll(delay * 1000 + 0.5, s, nelem, pollDest, t);
+    processPoll(static_cast<size_t>(delay * 1000 + 0.5),
+		    s, nelem, pollDest, t);
 }
 
