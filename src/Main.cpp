@@ -32,7 +32,7 @@
 #include "Task.h"
 #include "Signal.h"
 #include "Parameter.h"
-#include "ServerConfig.h"
+#include "Config.h"
 //#include "etlproto/Server.h"
 #include "msrproto/Server.h"
 
@@ -122,13 +122,10 @@ const Main::Parameters& Main::getParameters() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::startServers(const ServerConfig& config)
+void Main::startServers(const Config& config)
 {
     std::string port;
-    int msrport = 0;
-    if (config.get("msr", "port", port))
-        msrport = atoi(port.c_str());
-    msrproto = new MsrProto::Server(this, msrport);
+    msrproto = new MsrProto::Server(this, config["msr"]["port"]);
 
 //    EtlProto::Server etlproto(this);
 

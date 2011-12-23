@@ -88,7 +88,7 @@ const char * Config::load(const char *file)
 
     /* START new code */
     if (!yaml_parser_load(&parser, document)) {
-        snprintf(error, sizeof(error), "YAML parser failure at line %lu: %s",
+        snprintf(error, sizeof(error), "YAML parser failure at line %zu: %s",
             parser.problem_mark.line, parser.problem);
         return error;
     }
@@ -102,6 +102,12 @@ const char * Config::load(const char *file)
 Config Config::operator[](const char *key) const
 {
     return this->operator[](std::string(key));
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Config::operator!() const
+{
+    return node == 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////

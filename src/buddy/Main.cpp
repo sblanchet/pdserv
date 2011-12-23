@@ -40,7 +40,7 @@
 #include "../Session.h"
 #include "Task.h"
 #include "Parameter.h"
-#include "BuddyConfig.h"
+#include "../Config.h"
 
 /////////////////////////////////////////////////////////////////////////////
 Main::Main(): paramMutex(1), parameterBuf(0)
@@ -48,7 +48,7 @@ Main::Main(): paramMutex(1), parameterBuf(0)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::serve(const BuddyConfigRef& config, int fd,
+void Main::serve(const PdServ::Config& config, int fd,
         const struct app_properties *app_properties)
 {
     this->app_properties = app_properties;

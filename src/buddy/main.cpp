@@ -39,7 +39,7 @@
 #include <cstdlib>              // atoi()
 
 #include "Main.h"
-#include "BuddyConfig.h"
+#include "../Config.h"
 
 int debug = 3;
 pid_t app[MAX_APPS];
@@ -149,7 +149,7 @@ void parse_command_line (int argc, char **argv,
 int main(int argc, char **argv)
 {
     std::string configFile;
-    BuddyConfig config;
+    PdServ::Config config;
     pid_t pid;
     bool fg = 0;
 
@@ -165,8 +165,11 @@ int main(int argc, char **argv)
     parse_command_line(argc, argv, fg, configFile);
 
     if (!::access(configFile.c_str(), R_OK)) {
-        if (config.load(configFile))
+        const char *err = config.load(configFile.c_str());
+        if (err) {
+            std::cerr << err << std::endl;
             exit(EXIT_FAILURE);
+        }
         debug() << "load config" << configFile;
     }
     
@@ -253,7 +256,7 @@ int main(int argc, char **argv)
                                 fd = etl_main;
                             }
 
-                            Main().serve(config.select(app_properties.name),
+                            Main().serve(config[app_properties.name],
                                     fd, &app_properties);
                         }
                     }

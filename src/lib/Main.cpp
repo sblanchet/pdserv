@@ -40,14 +40,13 @@
 #include <fcntl.h>              // open()
 #include <limits.h>             // _POSIX_OPEN_MAX
 
-#include "config.h"
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
 #include "Parameter.h"
 #include "Pointer.h"
 #include "SessionShadow.h"
-#include "../ServerConfig.h"
+#include "../Config.h"
 #include "pdserv/pdserv.h"
 
 /////////////////////////////////////////////////////////////////////////////
@@ -324,7 +323,7 @@ int Main::daemonize()
     for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
         static_cast<Task*>(*it)->nrt_init();
 
-    PdServ::Main::startServers(PdServ::ServerConfig());
+    PdServ::Main::startServers(PdServ::Config());
 
     // Hang here forever
     while (true) {

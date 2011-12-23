@@ -16,7 +16,8 @@ int main(int argc, char **argv)
     }
 
     PdServ::Config c(conf["lan"]);
-    cout << (int)conf["ln"]["msr"]["port"] << endl;
+    cout << (int)conf["lan"] << endl;
+    cout << (int)conf["lan"]["msr"]["port"] << endl;
 
 
     return 0;

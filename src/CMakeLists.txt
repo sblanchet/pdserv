@@ -57,7 +57,6 @@ SET (main_src
                         SessionShadow.h
     Debug.cpp           Debug.h
     SessionTaskData.cpp SessionTaskData.h
-    ServerConfig.cpp    ServerConfig.h
     )
 
 # # Search for files required by buddy.
@@ -106,7 +105,6 @@ IF (ETL_DATA AND BUDDY_IOCTL AND NOT DISABLE_BUDDY)
     FIND_PACKAGE (LibDaemon REQUIRED)
 
     ADD_EXECUTABLE (etherlab_buddy2
-        buddy/BuddyConfig.cpp buddy/BuddyConfig.h
         buddy/SignalInfo.cpp buddy/SignalInfo.h
         buddy/Signal.cpp buddy/Signal.h
         buddy/main.cpp

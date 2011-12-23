@@ -27,6 +27,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <yaml.h>
 
 namespace PdServ {
 
@@ -49,7 +50,10 @@ class Config {
 
         Config operator[](const std::string&) const;
         Config operator[](const char *) const;
+        Config operator[](char *) const;
         Config operator[](size_t) const;
+
+        bool operator!() const;
 
         operator int() const;
         operator unsigned int() const;
@@ -65,6 +69,10 @@ class Config {
         yaml_document_t *document;
         yaml_node_t *node;
 };
+
+inline Config Config::operator[](char *key) const {
+    return operator[](static_cast<const char *>(key));
+}
 
 };
 #endif // CONFIGFILE_H

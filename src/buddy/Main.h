@@ -37,19 +37,19 @@ namespace PdServ {
     class Session;
     class Signal;
     class SessionShadow;
+    class Config;
 }
 
 class Parameter;
 class Signal;
 class Task;
 class SessionShadow;
-class BuddyConfigRef;
 
 class Main: public PdServ::Main {
     public:
         Main();
 
-        void serve(const BuddyConfigRef& config, int fd,
+        void serve(const PdServ::Config& config, int fd,
                 struct app_properties const * app_properties);
         int setParameter(const Parameter *p, size_t startIndex,
                 size_t nelem, const char *data,
