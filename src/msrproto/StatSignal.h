@@ -50,7 +50,7 @@ class StatSignal: public PdServ::Signal {
     private:
         const Type type;
 
-        uint32_t getValue( const PdServ::Session *session,
+        double getValue( const PdServ::Session *session,
                 struct timespec *t) const;
 
         // Reimplemented from PdServ::Signal

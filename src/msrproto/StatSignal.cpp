@@ -35,7 +35,7 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 StatSignal::StatSignal(const PdServ::Task *t,
         const std::string& path, Type type):
-    PdServ::Signal(path, t->sampleTime, uint32_T, 1, 0),
+    PdServ::Signal(path, t->sampleTime, double_T, 1, 0),
     task(t), type(type)
 {
 }
@@ -53,7 +53,7 @@ void StatSignal::unsubscribe(PdServ::Session *) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-uint32_t StatSignal::getValue(
+double StatSignal::getValue(
         const PdServ::Session *session, struct timespec *t) const
 {
     const PdServ::TaskStatistics* stats = session->getTaskStatistics(task);
@@ -63,11 +63,11 @@ uint32_t StatSignal::getValue(
 
     switch (type) {
         case ExecTime:
-            return static_cast<uint32_t>(stats->exec_time * 1.0e9);
+            return stats->exec_time;
             break;
 
         case Period:
-            return static_cast<uint32_t>(stats->cycle_time * 1.0e9);
+            return stats->cycle_time;
             break;
 
         case Overrun:
@@ -81,7 +81,7 @@ uint32_t StatSignal::getValue(
 double StatSignal::poll(const PdServ::Session *session,
         void *buf, struct timespec *t) const
 {
-    *reinterpret_cast<uint32_t*>(buf) = getValue(session, t);
+    *reinterpret_cast<double*>(buf) = getValue(session, t);
 
     return 0;
 }
@@ -90,8 +90,8 @@ double StatSignal::poll(const PdServ::Session *session,
 const void *StatSignal::getValue(const PdServ::SessionTaskData* std) const
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
-    uint32_t* value =
-        static_cast<const Session*>(std->session)->getUInt32();
+    double* value =
+        static_cast<const Session*>(std->session)->getDouble();
     *value = getValue(std->session, 0);
     return value;
 }
