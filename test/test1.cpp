@@ -82,6 +82,8 @@ int main(int argc, const char *argv[])
 
         pdserv_get_parameters(pdserv, task[0], &time);
         var1[1][0][0] = i++;
+        if (!(i%30))
+            var1[1][0][0]++;
         dbl[0] += param[0];
         dbl[2] += param[2];
         var1[5][0][0] += param[1];
