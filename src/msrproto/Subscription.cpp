@@ -109,7 +109,7 @@ void Subscription::newValue(
 /////////////////////////////////////////////////////////////////////////////
 void Subscription::print(XmlElement &parent) const
 {
-    XmlElement datum("F", parent);
+    XmlElement datum(event ? "E" : "F", parent);
     XmlElement::Attribute(datum, "c") << channel->variableIndex;
 
     XmlElement::Attribute value(datum, "d");
