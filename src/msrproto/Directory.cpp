@@ -211,7 +211,9 @@ void DirectoryNode::list(
 
     for (it = children.begin(); it != children.end(); ++it) {
 
-        if (it->second->hasChildren()) {
+        // Must check whether second exists, in case hidden variables were not
+        // written to this node
+        if (it->second and it->second->hasChildren()) {
             XmlElement el("dir", parent);
             XmlElement::Attribute(el, "path")
                 << (this->path() + '/' + it->first);
