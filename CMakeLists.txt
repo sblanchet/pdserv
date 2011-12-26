@@ -167,6 +167,7 @@ INSTALL (DIRECTORY include/
     FILES_MATCHING PATTERN "*.h")
 
 OPTION ( DEBUG "Debugging output" OFF )
+SET  (PDS_DEBUG ${DEBUG})
 
 if (DEBUG)
     string(LENGTH "${PROJECT_SOURCE_DIR}/src/" SRC_PATH_LENGTH)

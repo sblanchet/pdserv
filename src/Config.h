@@ -53,6 +53,10 @@ class Config {
         Config operator[](char *) const;
         Config operator[](size_t) const;
 
+        template <typename T>
+            bool get(T& value) const;
+
+        bool isTrue() const;
         bool operator!() const;
 
         operator int() const;

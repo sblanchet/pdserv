@@ -236,7 +236,7 @@ int Main::run()
     sdo     = ptr_align<struct SDOStruct>(shmem);
     sdoData = ptr_align<char>(ptr_align<double>(sdo + parameters.size() + 1));
 
-    debug() << "shmemlen=" << shmem_len
+    cerr_debug() << "shmemlen=" << shmem_len
         << " shmem=" << shmem
         << " sdo=" << sdo
 //        << " sdoTaskTime=" << sdoTaskTime

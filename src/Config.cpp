@@ -111,6 +111,12 @@ bool Config::operator!() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+bool Config::isTrue() const
+{
+    return node != 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 Config Config::operator[](const std::string& key) const
 {
     if (!node or node->type != YAML_MAPPING_NODE)
@@ -154,6 +160,21 @@ Config::operator std::string() const
         return std::string();
 
     return std::string((char*)node->data.scalar.value, node->data.scalar.length);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+namespace PdServ {
+    template <typename T>
+        bool Config::get(T &value) const
+        {
+            if (!*this)
+                return false;
+
+            value = *this;
+            return true;
+        }
+
+    template bool Config::get(int& value) const;
 }
 
 /////////////////////////////////////////////////////////////////////////////

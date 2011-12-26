@@ -78,11 +78,11 @@ Server::Server(const PdServ::Main *main, int port):
 
         path = prefix.str() + "Overrun";
         if (!root->find<Channel>(path)) {
-            debug() << "insert" << path;
+            cerr_debug() << "insert" << path;
             root->insert( new StatSignal(task, path, StatSignal::Overrun));
         }
         else {
-            debug() << "cant find" << path;
+            cerr_debug() << "cant find" << path;
         }
 
     }
@@ -137,7 +137,7 @@ void Server::run()
         }
         catch (ost::Socket *s) {
             // FIXME Log this
-            debug() << s->getErrorNumber() << s->getSystemError();
+            cerr_debug() << s->getErrorNumber() << s->getSystemError();
         }
     }
 }

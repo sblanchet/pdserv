@@ -285,7 +285,7 @@ DirectoryNode *DirectoryNode::push(std::string &name)
 /////////////////////////////////////////////////////////////////////////////
 void DirectoryNode::dump() const
 {
-    debug() << path();
+    cerr_debug() << path();
     for (Children::const_iterator it = children.begin();
             it != children.end(); ++it) {
         it->second->dump();

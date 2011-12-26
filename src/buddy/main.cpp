@@ -66,7 +66,7 @@ void sighandler(int signal)
                         app[i] = 0;
                 }
             }
-            debug() << "Child killed" << status;
+            cerr_debug() << "Child killed" << status;
             break;
 
         case SIGUSR1:
@@ -170,7 +170,7 @@ int main(int argc, char **argv)
             std::cerr << err << std::endl;
             exit(EXIT_FAILURE);
         }
-        debug() << "load config" << configFile;
+        cerr_debug() << "load config" << configFile;
     }
     
     // Make sure no other instance is running
@@ -214,10 +214,10 @@ int main(int argc, char **argv)
     path.append("0");
     int etl_main = ::open(path.c_str(), O_NONBLOCK | O_RDWR);
     if (etl_main < 0) {
-        debug() << "could not open" << path;
+        cerr_debug() << "could not open" << path;
         return errno;
     }
-    debug() << "opened" << path << '=' << etl_main;
+    cerr_debug() << "opened" << path << '=' << etl_main;
 
     do {
         uint32_t apps;
@@ -227,7 +227,7 @@ int main(int argc, char **argv)
             pid_t pid = app[i];
             if ((apps & 0x01) and !pid) {
                 // A new application started
-                debug() << "new Application" << i;
+                cerr_debug() << "new Application" << i;
 
                 struct app_properties app_properties;
                 int fd;
@@ -264,7 +264,7 @@ int main(int argc, char **argv)
                 }
             }
             else if (!(apps & 0x01) and pid) {
-                debug() << "finished Application" << i;
+                cerr_debug() << "finished Application" << i;
                 ::kill(pid, SIGTERM);
                 app[i] = 0;
             }
@@ -279,7 +279,7 @@ int main(int argc, char **argv)
             FD_SET(etl_main, &fds);
 
             n = ::select(etl_main + 1, &fds, 0, 0, 0);
-            debug() << "select()" << n;
+            cerr_debug() << "select()" << n;
             if (n < 0 and errno != EINTR) {
                 // Some error occurred in select()
                 n = errno;

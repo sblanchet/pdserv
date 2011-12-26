@@ -188,15 +188,15 @@ void Session::run()
         }
     }
     catch (ost::Socket *s) {
-        debug() << "socket errror" << s->getErrorNumber();
+        cerr_debug() << "socket errror" << s->getErrorNumber();
     }
     catch (std::exception& e) {
-        debug() << "exception" << e.what();
+        cerr_debug() << "exception" << e.what();
     }
     catch (...) {
-        debug() << "unknown error";
+        cerr_debug() << "unknown error";
     }
-    debug() << "fin";
+    cerr_debug() << "fin";
 }
 
 /////////////////////////////////////////////////////////////////////////////

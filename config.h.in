@@ -43,7 +43,7 @@
 #define QUOTE(x) STR(x)
 
 #cmakedefine SRC_PATH_LENGTH @SRC_PATH_LENGTH@
-#cmakedefine DEBUG
+#cmakedefine PDS_DEBUG
 #cmakedefine TRADITIONAL
 
 #endif //CONFIG_H

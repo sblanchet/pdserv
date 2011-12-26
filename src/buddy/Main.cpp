@@ -34,28 +34,43 @@
 #include <sys/select.h>
 #include <sys/wait.h>           // waitpid()
 
-#include "Main.h"
-#include "Signal.h"
-#include "SessionShadow.h"
-#include "../Session.h"
-#include "Task.h"
-#include "Parameter.h"
-#include "../Config.h"
+#include <log4cpp/OstreamAppender.hh>
+#include <log4cpp/SimpleLayout.hh>
+#include <log4cpp/Category.hh>
 
+#include "Main.h"
+#include "Log.h"
+#include "Task.h"
+#include "Signal.h"
+#include "Parameter.h"
+#include "SessionShadow.h"
+#include "../Config.h"
+#include "../Session.h"
+
+/////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 Main::Main(): paramMutex(1), parameterBuf(0)
 {
+    pid = ::getpid();
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::serve(const PdServ::Config& config, int fd,
         const struct app_properties *app_properties)
 {
+    log4cpp::Category& log =
+        log4cpp::Category::getInstance(app_properties->name);
+
     this->app_properties = app_properties;
     this->fd = fd;
 
     name = app_properties->name;
     version = app_properties->version;
+
+    log.setPriority(log4cpp::Priority::NOTSET);
+    setupLogging(log, config["log"]);
+
+    log.noticeStream() << "starting with pid " << pid;
 
     // Get a copy of the parameters
     parameterBuf = new char[app_properties->rtP_size];
@@ -77,7 +92,10 @@ void Main::serve(const PdServ::Config& config, int fd,
         parameters.push_back(p);
         variableMap[p->path] = p;
     }
-    debug() << app_properties->param_count << "parameters";
+    
+    log.infoStream()
+        << "loaded " << app_properties->param_count << " parameters";
+
 
     mainTask = new Task(this, 1.0e-6 * app_properties->sample_period);
     task.push_back(mainTask);
@@ -92,7 +110,8 @@ void Main::serve(const PdServ::Config& config, int fd,
                 SignalInfo(app_properties->name, &si));
         variableMap[s->path] = s;
     }
-    debug() << app_properties->signal_count << "sginals";
+    log.infoStream()
+        << "loaded " << app_properties->signal_count << " signals";
 
     shmem = ::mmap(0, app_properties->rtB_size * app_properties->rtB_count,
             PROT_READ, MAP_PRIVATE, fd, 0);
@@ -123,7 +142,7 @@ void Main::serve(const PdServ::Config& config, int fd,
         else if (!n) {
             // Signal was caught, check whether the children are still there
             //::kill(pid, 0);     // Test existence of pid
-            debug() << "caught signal";
+            //debug() << "caught signal";
         }
         else {
             struct data_p data_p;
@@ -141,8 +160,100 @@ void Main::serve(const PdServ::Config& config, int fd,
     } while (true);
     
 out:
-    debug() << errno << strerror(errno);
+    log.fatalStream() << "Failed: " << strerror(errno) << " (" << errno << ')';
     ::exit(errno);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::setupLogging(log4cpp::Category& log, 
+        PdServ::Config const& config)
+{
+    if (!config)
+        return;
+
+    setupTTYLog(log);
+    setupSyslog(log, config["syslog"]);
+    setupFileLog(log, config["file"]);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::setupTTYLog(log4cpp::Category& log)
+{
+    if (!::isatty(STDERR_FILENO))
+        return;
+
+    log4cpp::Appender *appender =
+        new log4cpp::OstreamAppender( "cerr", &std::cerr);
+    appender->setLayout(new log4cpp::SimpleLayout());
+
+    log.addAppender(appender);
+    log.setPriority(log4cpp::Priority::DEBUG);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::setupSyslog(log4cpp::Category& log, 
+        PdServ::Config const& config)
+{
+    if (!config)
+        return;
+
+    struct {
+        const char *name;
+        int value;
+    } facility[] = {
+        {"LOG_AUTH",        LOG_AUTHPRIV},
+        {"LOG_AUTHPRIV",    LOG_AUTHPRIV},
+        {"LOG_CRON",        LOG_CRON},
+        {"LOG_DAEMON",      LOG_DAEMON},
+        {"LOG_FTP",         LOG_FTP},
+        {"LOG_KERN",        LOG_KERN},
+        {"LOG_LOCAL0",      LOG_LOCAL0},
+        {"LOG_LOCAL1",      LOG_LOCAL1},
+        {"LOG_LOCAL2",      LOG_LOCAL2},
+        {"LOG_LOCAL3",      LOG_LOCAL3},
+        {"LOG_LOCAL4",      LOG_LOCAL4},
+        {"LOG_LOCAL5",      LOG_LOCAL5},
+        {"LOG_LOCAL6",      LOG_LOCAL6},
+        {"LOG_LOCAL7",      LOG_LOCAL7},
+        {"LOG_LPR",         LOG_LPR},
+        {"LOG_MAIL",        LOG_MAIL},
+        {"LOG_NEWS",        LOG_NEWS},
+        {"LOG_SYSLOG",      LOG_SYSLOG},
+        {"LOG_USER",        LOG_USER},
+        {"LOG_UUCP",        LOG_UUCP},
+        {0,                 LOG_LOCAL0},
+    };
+
+    std::string s(config["facility"]);
+    size_t i = 0;
+    while (facility[i].name and strcasecmp(facility[i].name, s.c_str()))
+        ++i;
+
+    SyslogAppender *appender = new SyslogAppender(
+            "Syslog", name.c_str(), facility[i].value);
+    appender->setPriority(config["priority"], log4cpp::Priority::NOTICE);
+
+    log.addAppender(appender);
+    if (log.getPriority() == log4cpp::Priority::NOTSET
+            or log.getPriority() < appender->getPriority())
+        log.setPriority(appender->getPriority());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::setupFileLog(log4cpp::Category& log, 
+        PdServ::Config const& config)
+{
+    if (!config)
+        return;
+
+    std::string path = config["path"];
+    FileAppender *appender = new FileAppender( "File", path.c_str());
+    appender->setPriority(config["priority"], log4cpp::Priority::INFO);
+
+    log.addAppender(appender);
+    if (log.getPriority() == log4cpp::Priority::NOTSET
+            or log.getPriority() < appender->getPriority())
+        log.setPriority(appender->getPriority());
 }
 
 /////////////////////////////////////////////////////////////////////////////
