@@ -113,12 +113,12 @@ Parameter* Main::addParameter( const char *path,
         unsigned int mode, PdServ::Variable::Datatype datatype,
         void *addr, size_t n, const size_t *dim)
 {
-    if (variableMap.find(path) != variableMap.end())
+    if (variableSet.find(path) != variableSet.end())
         return 0;
 
     Parameter *p = new Parameter(this, path, mode, datatype, addr, n, dim);
 
-    variableMap[path] = p;
+    variableSet.insert(path);
     parameters.push_back(p);
 
     return p;
@@ -129,12 +129,12 @@ Signal* Main::addSignal( Task *task, unsigned int decimation,
         const char *path, PdServ::Variable::Datatype datatype,
         const void *addr, size_t n, const size_t *dim)
 {
-    if (variableMap.find(path) != variableMap.end())
+    if (variableSet.find(path) != variableSet.end())
         return 0;
 
     Signal *s = task->addSignal(decimation, path, datatype, addr, n, dim);
 
-    variableMap[path] = s;
+    variableSet.insert(path);
 
     return s;
 }
@@ -199,6 +199,9 @@ int Main::run()
         3 /*0*/, 3 /*1*/, 2 /*2*/, 3 /*3*/,
         1 /*4*/, 3 /*5*/, 3 /*6*/, 3 /*7*/, 0 /*8*/
     };
+
+    // don't need variableSet any more
+    variableSet.clear();
 
     size_t parameterOffset[5];
     std::fill_n(parameterOffset, 5, 0);

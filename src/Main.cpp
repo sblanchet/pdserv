@@ -47,17 +47,9 @@ Main::Main(): mutex(1)
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
-    for (VariableMap::const_iterator it = variableMap.begin();
-            it != variableMap.end(); it++)
-        delete it->second;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Variable *Main::findVariable(const std::string& path) const
-{
-    VariableMap::const_iterator it = variableMap.find(path);
-
-    return it == variableMap.end() ? 0 : it->second;
+    for (Parameters::iterator it = parameters.begin();
+            it != parameters.end(); ++it)
+        delete *it;
 }
 
 /////////////////////////////////////////////////////////////////////////////

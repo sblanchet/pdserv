@@ -29,7 +29,6 @@
 
 #include <list>
 #include <vector>
-#include <map>
 #include <string>
 
 struct timespec;
@@ -96,9 +95,6 @@ class Main {
                 unsigned int delay_ms, const Signal * const *s,
                 size_t nelem, void * const * pollDest,
                 struct timespec *t) const = 0;
-
-        typedef std::map<std::string, const Variable*> VariableMap;
-        VariableMap variableMap;
 
     private:
         mutable ost::Semaphore mutex;

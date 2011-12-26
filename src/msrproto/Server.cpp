@@ -87,7 +87,7 @@ Server::Server(const PdServ::Main *main, int port):
 
     }
 
-    if (!main->findVariable("/Time"))
+    if (!root->find<Channel>("/Time"))
         root->insert(new TimeSignal(primaryTask, "/Time"));
 
     const PdServ::Main::Parameters& mainParameters = main->getParameters();
@@ -97,7 +97,7 @@ Server::Server(const PdServ::Main *main, int port):
         root->insert(*it);
     }
 
-    if (!main->findVariable("/Taskinfo/Abtastfrequenz")) {
+    if (!root->find<Parameter>("/Taskinfo/Abtastfrequenz")) {
     }
 
     start();

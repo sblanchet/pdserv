@@ -25,7 +25,7 @@
 #ifndef LIB_MAIN_H
 #define LIB_MAIN_H
 
-#include <map>
+#include <set>
 
 #include "../Main.h"
 #include "../Variable.h"
@@ -83,6 +83,9 @@ class Main: public PdServ::Main {
         char *sdoData;
 
         int (* const rttime)(struct timespec*);
+
+        typedef std::set<std::string> VariableSet;
+        VariableSet variableSet;
 
         int daemonize();
 

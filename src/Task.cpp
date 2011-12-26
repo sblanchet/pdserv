@@ -23,6 +23,7 @@
  *****************************************************************************/
 
 #include "Task.h"
+#include "Signal.h"
 
 using namespace PdServ;
 
@@ -35,6 +36,9 @@ Task::Task(double sampleTime):
 /////////////////////////////////////////////////////////////////////////////
 Task::~Task()
 {
+    for (Signals::iterator it = signals.begin();
+            it != signals.end(); ++it)
+        delete *it;
 }
 
 /////////////////////////////////////////////////////////////////////////////

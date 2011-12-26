@@ -90,7 +90,6 @@ void Main::serve(const PdServ::Config& config, int fd,
         Parameter *p = new Parameter( this, parameterBuf + si.offset,
                 SignalInfo(app_properties->name, &si));
         parameters.push_back(p);
-        variableMap[p->path] = p;
     }
     
     log.infoStream()
@@ -105,10 +104,7 @@ void Main::serve(const PdServ::Config& config, int fd,
         if (ioctl(fd, GET_SIGNAL_INFO, &si) or !si.dim[0])
             continue;
 
-        //debug() << app_properties->name << '|' << si.path << '|' << si.name;
-        const PdServ::Signal *s = mainTask->addSignal(
-                SignalInfo(app_properties->name, &si));
-        variableMap[s->path] = s;
+        mainTask->addSignal( SignalInfo(app_properties->name, &si));
     }
     log.infoStream()
         << "loaded " << app_properties->signal_count << " signals";
