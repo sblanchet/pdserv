@@ -39,10 +39,12 @@ class AppenderPriority {
     protected:
         AppenderPriority();
 
-        bool accept(const log4cpp::LoggingEvent &event);
+        void accept(const log4cpp::LoggingEvent &event);
+        virtual void log(const log4cpp::LoggingEvent &event) = 0;
 
     private:
         log4cpp::Priority::Value priority;
+        log4cpp::threading::Mutex mutex;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -50,6 +52,7 @@ class AppenderPriority {
 struct FileAppender: public log4cpp::FileAppender, public AppenderPriority {
     FileAppender (const std::string &name, const std::string &fileName);
     void _append (const log4cpp::LoggingEvent &event);
+    void log (const log4cpp::LoggingEvent &event);
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -59,6 +62,7 @@ struct SyslogAppender:
         SyslogAppender (const std::string &name,
                 const std::string &syslogName, int facility);
         void _append (const log4cpp::LoggingEvent &event);
+        void log (const log4cpp::LoggingEvent &event);
 };
 
 #endif // LOGGER_H

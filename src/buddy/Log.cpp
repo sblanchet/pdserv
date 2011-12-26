@@ -53,9 +53,12 @@ void AppenderPriority::setPriority( const std::string& prioString,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool AppenderPriority::accept(const log4cpp::LoggingEvent &event)
+void AppenderPriority::accept(const log4cpp::LoggingEvent &event)
 {
-    return event.priority <= priority;
+    if (event.priority <= priority) {
+        log4cpp::threading::ScopedLock lock(mutex);
+        log(event);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -73,8 +76,13 @@ FileAppender::FileAppender ( const std::string &name,
 /////////////////////////////////////////////////////////////////////////////
 void FileAppender::_append (const log4cpp::LoggingEvent &event)
 {
-    if (accept(event))
-        log4cpp::FileAppender::_append(event);
+    accept(event);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void FileAppender::log (const log4cpp::LoggingEvent &event)
+{
+    log4cpp::FileAppender::_append(event);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -89,6 +97,11 @@ SyslogAppender::SyslogAppender(
 /////////////////////////////////////////////////////////////////////////////
 void SyslogAppender::_append (const log4cpp::LoggingEvent &event)
 {
-    if (accept(event))
-        log4cpp::SyslogAppender::_append(event);
+    accept(event);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void SyslogAppender::log (const log4cpp::LoggingEvent &event)
+{
+    log4cpp::SyslogAppender::_append(event);
 }
