@@ -9,6 +9,7 @@ CPackSourceConfig.cmake
 CTestTestfile.cmake
 Makefile
 TAGS
+_CPack_Packages
 build*
 cmake_install.cmake
 config.h
