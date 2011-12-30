@@ -128,7 +128,20 @@ SET (CPACK_GENERATOR "TGZ")
 SET (CPACK_GENERATOR "DEB")
 SET (CPACK_DEBIAN_PACKAGE_MAINTAINER "Richard Hacker") #required
 SET (CPACK_SOURCE_IGNORE_FILES
-      "/.hg;~$;.sw.$;${CPACK_SOURCE_IGNORE_FILES}")
+    "/CMakeCache.txt"
+    "/CMakeFiles/"
+    "/Makefile$"
+    "/\\\\.hg"
+    "/config.h$"
+    "/pdserv-.*\\\\.tar\\\\."
+    "/test/config$"
+    "/test/parser$"
+    "/test/test1$"
+    "\\\\.so"
+    "\\\\.sw.$"
+    "~$"
+    "${CPACK_SOURCE_IGNORE_FILES}"
+    )
 
 INCLUDE (CPack)
 ADD_CUSTOM_TARGET (dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
