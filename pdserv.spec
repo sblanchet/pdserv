@@ -64,8 +64,7 @@ make install DESTDIR=$RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,755)
-%{_libdir}/libpdserv.so.0.99.0
-%{_libdir}/libpdserv.so
+%{_libdir}/libpdserv.so*
 
 %files -n pdserv-devel
 %defattr(-,root,root,755)
