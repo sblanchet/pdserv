@@ -23,5 +23,6 @@ test/CMakeFiles
 test/CTestTestfile.cmake
 test/Makefile
 test/cmake_install.cmake
+test/config
 test/parser
 test/test1
