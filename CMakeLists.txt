@@ -135,8 +135,10 @@ ADD_CUSTOM_TARGET (dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
 
 # Search for mercurial, used to add ID information to the library
 SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
-FIND_PACKAGE (Mercurial REQUIRED)
+FIND_PACKAGE (Mercurial)
+IF (MERCURIAL_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.hg")
 MERCURIAL_HG_INFO (${PROJECT_SOURCE_DIR} Package)
+ENDIF ()
 
 # Require CommonC++
 FIND_PACKAGE (PkgConfig REQUIRED)
