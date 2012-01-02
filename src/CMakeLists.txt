@@ -59,11 +59,8 @@ SET (main_src
     SessionTaskData.cpp SessionTaskData.h
     )
 
-# # Search for files required by buddy.
-# SET (CMAKE_REQUIRED_INCLUDES ${ABS_INCLUDEDIR})
-# INCLUDE( CheckIncludeFile )
-# CHECK_INCLUDE_FILE(etl_data_info.h ETL_DATA)
-# CHECK_INCLUDE_FILE(fio_ioctl.h BUDDY_IOCTL)
+FIND_PACKAGE (Log4Cpp REQUIRED)
+FIND_PACKAGE (Yaml REQUIRED)
 
 # Search for files required by buddy.
 FIND_FILE (RT_APP "rt_app.h")
@@ -99,8 +96,6 @@ IF (RT_APP AND NOT DISABLE_BUDDY)
     #MESSAGE("TIME=${HAVE_TIMESPEC} ${HAVE_SIMULINK_PORT}")
 
     FIND_PACKAGE (LibDaemon REQUIRED)
-    FIND_PACKAGE (Log4Cpp REQUIRED)
-    FIND_PACKAGE (Yaml REQUIRED)
 
     ADD_EXECUTABLE (etherlab_buddy2
         buddy/Log.cpp buddy/Log.h
@@ -151,7 +146,7 @@ SET_TARGET_PROPERTIES ( ${PROJECT_NAME} PROPERTIES
     CLEAN_DIRECT_OUTPUT 1)
 
 TARGET_LINK_LIBRARIES (${PROJECT_NAME} ${LIBCCEXT2_LIBRARIES}
-    ${YAML_LIBS} ${LOG4CPP_LIBS})
+    ${YAML_LIBRARIES} ${LOG4CPP_LIBRARIES})
 INSTALL (TARGETS ${PROJECT_NAME} DESTINATION "${ABS_LIBDIR}" LIBRARY)
 
 # pkgconfig files
