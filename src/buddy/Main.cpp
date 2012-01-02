@@ -49,77 +49,92 @@
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-Main::Main(): paramMutex(1), parameterBuf(0)
+Main::Main(const struct app_properties& p):
+    app_properties(p),
+    log(log4cpp::Category::getInstance(p.name)),
+    parameterLog(
+            log4cpp::Category::getInstance(
+                std::string(p.name).append(".parameter"))),
+    paramMutex(1), parameterBuf(0)
 {
     pid = ::getpid();
+    name = app_properties.name;
+    version = app_properties.version;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::serve(const PdServ::Config& config, int fd,
-        const struct app_properties *app_properties)
+void Main::serve(const PdServ::Config& config, int fd)
 {
-    log4cpp::Category& log =
-        log4cpp::Category::getInstance(app_properties->name);
+    size_t shmem_len;
 
-    this->app_properties = app_properties;
     this->fd = fd;
 
-    name = app_properties->name;
-    version = app_properties->version;
-
-    log.setPriority(log4cpp::Priority::NOTSET);
-    setupLogging(log, config["log"]);
-
-    log.noticeStream() << "starting with pid " << pid;
+    log.notice("Started new application server (%i)", pid);
+    log.info("   Block count: %zu", app_properties.rtB_count);
+    log.info("   Block size: %zu", app_properties.rtB_size);
+    log.info("   Parameter size: %zu", app_properties.rtP_size);
+    log.info("   Number of sample times: %zu", app_properties.num_st);
+    log.info("   Number of tasks: %zu", app_properties.num_tasks);
+    log.info("   Sample period: %luus", app_properties.sample_period);
+    log.info("   Number of parameters: %zu", app_properties.param_count);
+    log.info("   Number of signals: %zu", app_properties.signal_count);
 
     // Get a copy of the parameters
-    parameterBuf = new char[app_properties->rtP_size];
+    parameterBuf = new char[app_properties.rtP_size];
     if (ioctl(fd, GET_PARAM, parameterBuf))
         goto out;
 
-    char path[app_properties->variable_path_len+1];
+    char path[app_properties.variable_path_len+1];
     struct signal_info si;
     si.path = path;
-    si.path_buf_len = app_properties->variable_path_len + 1;
-    for (size_t i = 0; i < app_properties->param_count; i++) {
+    si.path_buf_len = app_properties.variable_path_len + 1;
+    log.debug("Adding parameters:");
+    for (size_t i = 0; i < app_properties.param_count; i++) {
 
         si.index = i;
-        if (ioctl(fd, GET_PARAM_INFO, &si) or !si.dim[0])
+        if (ioctl(fd, GET_PARAM_INFO, &si) or !si.dim[0]) {
+            log.warn("Getting parameter properties for %i failed.", i);
             continue;
+        }
 
         Parameter *p = new Parameter( this, parameterBuf + si.offset,
-                SignalInfo(app_properties->name, &si));
+                SignalInfo(app_properties.name, &si));
         parameters.push_back(p);
+        log.debug("   %zu %s", i, p->path.c_str());
     }
     
-    log.infoStream()
-        << "loaded " << app_properties->param_count << " parameters";
-
-
-    mainTask = new Task(this, 1.0e-6 * app_properties->sample_period);
+    mainTask = new Task(this, 1.0e-6 * app_properties.sample_period);
     task.push_back(mainTask);
-    for (size_t i = 0; i < app_properties->signal_count; i++) {
+    log.debug("Added Task with sample time %f", mainTask->sampleTime);
+
+    log.debug("Adding signals:");
+    for (size_t i = 0; i < app_properties.signal_count; i++) {
 
         si.index = i;
-        if (ioctl(fd, GET_SIGNAL_INFO, &si) or !si.dim[0])
+        if (ioctl(fd, GET_SIGNAL_INFO, &si) or !si.dim[0]) {
+            log.warn("Getting signals properties for %i failed.", i);
             continue;
+        }
 
-        mainTask->addSignal( SignalInfo(app_properties->name, &si));
+        const PdServ::Signal *s =
+            mainTask->addSignal( SignalInfo(app_properties.name, &si));
+
+        log.debug("   %zu %s", i, s->path.c_str());
     }
-    log.infoStream()
-        << "loaded " << app_properties->signal_count << " signals";
 
-    shmem = ::mmap(0, app_properties->rtB_size * app_properties->rtB_count,
-            PROT_READ, MAP_PRIVATE, fd, 0);
+    shmem_len = app_properties.rtB_size * app_properties.rtB_count;
+    shmem = ::mmap(0, shmem_len, PROT_READ, MAP_PRIVATE, fd, 0);
     if (shmem == MAP_FAILED)
         goto out;
+    log.info("Mapped shared memory segment with %zu bytes and %zu snapshots",
+            shmem_len, app_properties.rtB_count);
 
     photoAlbum = reinterpret_cast<const char *>(shmem);
 
     readPointer = ioctl(fd, RESET_BLOCKIO_RP);
 
-    photoReady = new unsigned int[app_properties->rtB_count];
-    std::fill_n(photoReady, app_properties->rtB_count, 0);
+    photoReady = new unsigned int[app_properties.rtB_count];
+    std::fill_n(photoReady, app_properties.rtB_count, 0);
 
     startServers(config);
 
@@ -133,12 +148,12 @@ void Main::serve(const PdServ::Config& config, int fd,
         n = ::select(fd + 1, &fds, 0, 0, 0);
         if (n < 0) {
             // Some error occurred in select()
+            log.crit("Received fatal error in select() = %i", -errno);
             goto out;
         }
         else if (!n) {
             // Signal was caught, check whether the children are still there
-            //::kill(pid, 0);     // Test existence of pid
-            //debug() << "caught signal";
+            log.warn("Received misterious interrupt during select()");
         }
         else {
             struct data_p data_p;
@@ -156,100 +171,8 @@ void Main::serve(const PdServ::Config& config, int fd,
     } while (true);
     
 out:
-    log.fatalStream() << "Failed: " << strerror(errno) << " (" << errno << ')';
+    log.crit("Failed: %s (%i)", strerror(errno), errno);
     ::exit(errno);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::setupLogging(log4cpp::Category& log, 
-        PdServ::Config const& config)
-{
-    if (!config)
-        return;
-
-    setupTTYLog(log);
-    setupSyslog(log, config["syslog"]);
-    setupFileLog(log, config["file"]);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::setupTTYLog(log4cpp::Category& log)
-{
-    if (!::isatty(STDERR_FILENO))
-        return;
-
-    log4cpp::Appender *appender =
-        new log4cpp::OstreamAppender( "cerr", &std::cerr);
-    appender->setLayout(new log4cpp::SimpleLayout());
-
-    log.addAppender(appender);
-    log.setPriority(log4cpp::Priority::DEBUG);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::setupSyslog(log4cpp::Category& log, 
-        PdServ::Config const& config)
-{
-    if (!config)
-        return;
-
-    struct {
-        const char *name;
-        int value;
-    } facility[] = {
-        {"LOG_AUTH",        LOG_AUTHPRIV},
-        {"LOG_AUTHPRIV",    LOG_AUTHPRIV},
-        {"LOG_CRON",        LOG_CRON},
-        {"LOG_DAEMON",      LOG_DAEMON},
-        {"LOG_FTP",         LOG_FTP},
-        {"LOG_KERN",        LOG_KERN},
-        {"LOG_LOCAL0",      LOG_LOCAL0},
-        {"LOG_LOCAL1",      LOG_LOCAL1},
-        {"LOG_LOCAL2",      LOG_LOCAL2},
-        {"LOG_LOCAL3",      LOG_LOCAL3},
-        {"LOG_LOCAL4",      LOG_LOCAL4},
-        {"LOG_LOCAL5",      LOG_LOCAL5},
-        {"LOG_LOCAL6",      LOG_LOCAL6},
-        {"LOG_LOCAL7",      LOG_LOCAL7},
-        {"LOG_LPR",         LOG_LPR},
-        {"LOG_MAIL",        LOG_MAIL},
-        {"LOG_NEWS",        LOG_NEWS},
-        {"LOG_SYSLOG",      LOG_SYSLOG},
-        {"LOG_USER",        LOG_USER},
-        {"LOG_UUCP",        LOG_UUCP},
-        {0,                 LOG_LOCAL0},
-    };
-
-    std::string s(config["facility"]);
-    size_t i = 0;
-    while (facility[i].name and strcasecmp(facility[i].name, s.c_str()))
-        ++i;
-
-    SyslogAppender *appender = new SyslogAppender(
-            "Syslog", name.c_str(), facility[i].value);
-    appender->setPriority(config["priority"], log4cpp::Priority::NOTICE);
-
-    log.addAppender(appender);
-    if (log.getPriority() == log4cpp::Priority::NOTSET
-            or log.getPriority() < appender->getPriority())
-        log.setPriority(appender->getPriority());
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::setupFileLog(log4cpp::Category& log, 
-        PdServ::Config const& config)
-{
-    if (!config)
-        return;
-
-    std::string path = config["path"];
-    FileAppender *appender = new FileAppender( "File", path.c_str());
-    appender->setPriority(config["priority"], log4cpp::Priority::INFO);
-
-    log.addAppender(appender);
-    if (log.getPriority() == log4cpp::Priority::NOTSET
-            or log.getPriority() < appender->getPriority())
-        log.setPriority(appender->getPriority());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -257,7 +180,7 @@ void Main::processPoll(unsigned int delay_ms,
         const PdServ::Signal * const *s, size_t nelem,
         void * const * pollDest, struct timespec *t) const
 {
-    const char *data = photoAlbum + readPointer * app_properties->rtB_size;
+    const char *data = photoAlbum + readPointer * app_properties.rtB_size;
 
     for (size_t i = 0; i < nelem; ++i) {
         const Signal *signal = dynamic_cast<const Signal *>(s[i]);
@@ -283,11 +206,11 @@ int Main::gettime(struct timespec *ts) const
 PdServ::SessionShadow *Main::newSession(PdServ::Session *session) const
 {
     return new SessionShadow(session, mainTask, readPointer, photoReady,
-            photoAlbum, app_properties);
+            photoAlbum, &app_properties);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(const Parameter *p, size_t startIndex,
+int Main::setParameter( const Parameter *p, size_t startIndex,
         size_t count, const char *data, struct timespec *mtime) const
 {
     ost::SemaphoreLock lock(paramMutex);
@@ -299,5 +222,12 @@ int Main::setParameter(const Parameter *p, size_t startIndex,
     delta.count = 0;
     gettime(mtime);
 
-    return ioctl(fd, CHANGE_PARAM, &delta);
+    if (ioctl(fd, CHANGE_PARAM, &delta)) {
+        parameterLog.notice("Parameter change %s failed (%s)",
+                p->path.c_str(), strerror(errno));
+        return errno;
+    }
+
+    parameterLog.info("%s", p->path.c_str());
+    return 0;
 }

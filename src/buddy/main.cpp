@@ -38,6 +38,13 @@
 #include <signal.h>             // getopt()
 #include <cstdlib>              // atoi()
 
+#include <log4cpp/PropertyConfigurator.hh>
+#include <log4cpp/Category.hh>
+#include <log4cpp/SyslogAppender.hh>
+#include <log4cpp/BasicLayout.hh>
+#include <log4cpp/OstreamAppender.hh>
+#include <log4cpp/OstreamAppender.hh>
+
 #include "Main.h"
 #include "../Config.h"
 
@@ -66,7 +73,7 @@ void sighandler(int signal)
                         app[i] = 0;
                 }
             }
-            cerr_debug() << "Child killed" << status;
+            log_debug("Child killed %i", status);
             break;
 
         case SIGUSR1:
@@ -79,6 +86,10 @@ void sighandler(int signal)
             break;
 
         default:
+            log4cpp::Category::getRoot().notice(
+                    "%i Received signal %i; Exiting",
+                    getpid(), signal);
+
             ::kill(0, SIGTERM);
             ::exit(EXIT_FAILURE);
     }
@@ -146,6 +157,50 @@ void parse_command_line (int argc, char **argv,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void console_logging(bool fg)
+{
+    if (!fg)
+        return;
+
+    log4cpp::Appender *cerr =
+        new log4cpp::OstreamAppender("console", &std::cerr);
+    cerr->setLayout(new log4cpp::BasicLayout());
+
+    log4cpp::Category::getRoot().addAppender(cerr);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void configure_logging(bool fg, const PdServ::Config& config)
+{
+    if (!config) {
+        log4cpp::Category& root = log4cpp::Category::getRoot();
+
+        log4cpp::Appender *appender =
+            new log4cpp::SyslogAppender("syslog", "etherlab_buddy", LOG_LOCAL0);
+        appender->setLayout(new log4cpp::BasicLayout());
+
+        root.addAppender(appender);
+        root.setPriority(log4cpp::Priority::NOTICE);
+
+        return;
+    }
+
+    std::string text = config;
+
+    char filename[100];
+    strcpy(filename, "/tmp/buddylog.conf-XXXXXX");
+    int fd = mkstemp(filename);
+    log_debug(filename);
+
+    ::write(fd, text.c_str(), text.size());
+    ::close(fd);
+
+    log4cpp::PropertyConfigurator::configure(filename);
+
+    ::unlink(filename);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 int main(int argc, char **argv)
 {
     std::string configFile;
@@ -164,19 +219,31 @@ int main(int argc, char **argv)
 
     parse_command_line(argc, argv, fg, configFile);
 
-    if (!::access(configFile.c_str(), R_OK)) {
+    bool configAccess = !::access(configFile.c_str(), R_OK);
+    if (configAccess) {
         const char *err = config.load(configFile.c_str());
         if (err) {
             std::cerr << err << std::endl;
             exit(EXIT_FAILURE);
         }
-        cerr_debug() << "load config" << configFile;
+        log_debug("Loaded configuration file %s", configFile.c_str());
+    }
+    else if (!::access(configFile.c_str(), F_OK)) {
+        fprintf(stderr, "Configuration file %s is not readable",
+                configFile.c_str());
     }
     
+    // Get the logging configutation
+    configure_logging(fg, config["logging"]);
+    log4cpp::Category& log = log4cpp::Category::getRoot();
+    console_logging(fg);
+
+    if (configAccess)
+        log.notice("Configuration file %s", configFile.c_str());
+
     // Make sure no other instance is running
     if ((pid = daemon_pid_file_is_running()) > 0) {
-        std::cerr
-            << "ERROR: Process already running with pid " << pid << std::endl;
+        log.crit("ERROR: Process already running with pid %i", pid);
         ::exit(EBUSY);
     }
 
@@ -185,19 +252,18 @@ int main(int argc, char **argv)
         pid = daemon_fork();
 
         if (pid) {
+            log.notice("Daemon started with pid %i", pid);
             ::exit(EXIT_SUCCESS);
         }
     }
 
     // Install some signal handlers
-    if (::signal(SIGUSR1, sighandler) == SIG_ERR
-            or ::signal(SIGUSR2, sighandler) == SIG_ERR
-            or ::signal(SIGTERM, sighandler) == SIG_ERR
+    if (::signal(SIGTERM, sighandler) == SIG_ERR
             or ::signal(SIGHUP,  sighandler) == SIG_ERR
             or ::signal(SIGINT,  sighandler) == SIG_ERR
             or ::signal(SIGCHLD, sighandler) == SIG_ERR) {
-        std::cerr << "Could not set signal handler: "
-            << strerror(errno) << std::endl;
+        log.warn("Could not set signal handler: %s (%i)",
+                strerror(errno), errno);
     }
 
     // Cleanup on normal exit
@@ -206,66 +272,77 @@ int main(int argc, char **argv)
     // Remove and create new pid files
     daemon_pid_file_remove();
     if (daemon_pid_file_create() and !fg) {
-        // FIXME log this
+        log.warn("Could not create log file %s",
+                daemon_pid_file_proc_default());
     }
 
     std::string path;
     path = device_node;
-    path.append("0");
+    path.append(1, '0');
     int etl_main = ::open(path.c_str(), O_NONBLOCK | O_RDWR);
     if (etl_main < 0) {
-        cerr_debug() << "could not open" << path;
+        log.crit("Could not open main device %s", path.c_str());
         return errno;
     }
-    cerr_debug() << "opened" << path << '=' << etl_main;
+    log_debug("open(%s) = %i", path.c_str(), etl_main); 
 
     do {
         uint32_t apps;
 
         ioctl(etl_main, RTAC_GET_ACTIVE_APPS, &apps);
         for (unsigned i = 0; i < MAX_APPS; ++i, apps >>= 1) {
-            pid_t pid = app[i];
-            if ((apps & 0x01) and !pid) {
+            if ((apps & 0x01) and !app[i]) {
                 // A new application started
-                cerr_debug() << "new Application" << i;
+                log_debug("New application instance %i", i);
 
                 struct app_properties app_properties;
+                std::string file;
                 int fd;
 
                 {
-                    std::ostringstream file;
-                    file << device_node << (i+1);
-
-                    while (::access(file.str().c_str(), F_OK))
-                        sleep(1);
-
-                    // Open the application's file handle
-                    fd = ::open(file.str().c_str(), O_NONBLOCK | O_RDONLY);
+                    std::ostringstream os;
+                    os << device_node << (i+1);
+                    file = os.str();
                 }
 
-                if (fd > 0) {
-                    // Get the properties
-                    if (!::ioctl(fd, GET_APP_PROPERTIES, &app_properties)) {
-                        app[i] = fork();
-                        if (!app[i]) {
-                            ::close(etl_main);
+                // Wait until the file is available
+                while (::access(file.c_str(), F_OK)) {
+                    log.info("Could not access device file %s; waiting...",
+                            file.c_str());
+                    sleep(1);
+                }
 
-                            // Swap the file descriptors fd and etl_main
-                            if (::dup2(fd, etl_main) != -1) {
-                                ::close(fd);
-                                fd = etl_main;
-                            }
+                // Open the application's file handle
+                fd = ::open(file.c_str(), O_NONBLOCK | O_RDONLY);
 
-                            Main().serve(config[app_properties.name],
-                                    fd, &app_properties);
+                if (fd == -1) {
+                    log.error("Could not open device %s", file.c_str());
+                    continue;
+                }
+                log_debug("open(%s) = %i", file.c_str(), fd);
+
+                // Get the properties
+                if (!::ioctl(fd, GET_APP_PROPERTIES, &app_properties)) {
+                    app[i] = fork();
+                    if (!app[i]) {
+                        // Swap the file descriptors fd and etl_main
+                        if (::dup2(fd, etl_main) != -1) {
+                            ::close(fd);
+                            fd = etl_main;
                         }
+
+                        Main(app_properties).serve(
+                                config[app_properties.name], fd);
                     }
-                    ::close(fd);
                 }
+                else
+                    log.error("Could not get process information for %s",
+                            file.c_str());
+                ::close(fd);
             }
-            else if (!(apps & 0x01) and pid) {
-                cerr_debug() << "finished Application" << i;
-                ::kill(pid, SIGTERM);
+            else if (!(apps & 0x01) and app[i]) {
+                log.notice("Finished serving application pid %i", app[i]);
+                ::kill(app[i], SIGTERM);
                 app[i] = 0;
             }
         }
@@ -279,7 +356,7 @@ int main(int argc, char **argv)
             FD_SET(etl_main, &fds);
 
             n = ::select(etl_main + 1, &fds, 0, 0, 0);
-            cerr_debug() << "select()" << n;
+            log_debug("select(etl_main) = %i", n);
             if (n < 0 and errno != EINTR) {
                 // Some error occurred in select()
                 n = errno;

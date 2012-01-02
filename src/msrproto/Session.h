@@ -58,6 +58,7 @@
 #include <map>
 #include <set>
 #include <cstdio>
+#include <log4cpp/NDC.hh>
 
 namespace PdServ {
     class Parameter;
@@ -78,8 +79,7 @@ class VariableDirectory;
 
 class Session: public ost::Thread, public PdServ::Session {
     public:
-        Session( Server *s,
-                ost::TCPSocket *socket);
+        Session( Server *s, ost::TCPSocket *socket, log4cpp::NDC::ContextStack*);
         ~Session();
 
         void broadcast(Session *s, const std::string &element);
@@ -118,8 +118,7 @@ class Session: public ost::Thread, public PdServ::Session {
             size_t inBytes;
             size_t outBytes;
 
-            ost::IPV4Host peer;
-            ost::tpport_t port;
+            std::string peer;
 
             FILE *file;
         };
@@ -128,6 +127,7 @@ class Session: public ost::Thread, public PdServ::Session {
         std::ostream ostream;
 
         ost::Semaphore mutex;
+        log4cpp::NDC::ContextStack *ctxt;
         size_t aicDelay;
         typedef std::set<const PdServ::Parameter*> AicSet;
         AicSet aic;
@@ -143,7 +143,9 @@ class Session: public ost::Thread, public PdServ::Session {
         } mutable tmp;
 
         // Reimplemented from ost::Thread
+        void initial();
         void run();
+        void final();
 
         // Reimplemented from PdServ::Session
         void newSignal(const PdServ::Task *task, const PdServ::Signal *);

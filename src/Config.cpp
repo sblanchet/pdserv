@@ -26,7 +26,6 @@
 #include <cstdio>
 #include <cerrno>
 
-#include "Debug.h"
 #include "Config.h"
 
 #include <yaml.h>
@@ -92,6 +91,9 @@ const char * Config::load(const char *file)
             parser.problem_mark.line, parser.problem);
         return error;
     }
+
+    // Now finished with the file
+    ::fclose(fh);
 
     node = yaml_document_get_root_node(document);
 

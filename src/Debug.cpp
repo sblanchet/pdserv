@@ -23,5 +23,19 @@
  *****************************************************************************/
 
 #include "Debug.h"
+#include <stdarg.h>
+#include <cstdio>
 
-ost::Semaphore debugLock = ost::Semaphore(1);
+void Debug::Debug(const char *file, const char *func,
+        int line, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+
+    fprintf(stderr, "%s:%s(%i): ", file + SRC_PATH_LENGTH, func, line);
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
+
+    va_end(ap);
+}
+

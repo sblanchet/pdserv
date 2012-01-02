@@ -119,9 +119,9 @@ void Task::prepare(void *shmem, void *shmem_end)
 
     txMemBegin = ptr_align<struct Pdo>(poll->data + n);
     txMemEnd = shmem_end;
-    cerr_debug() << "signallen=" << signalMemSize << " txpdosize=" 
-        << sizeof(*txPdo) << " space="
-        << ((const char*)txMemEnd - (const char *)txMemBegin);
+//    cerr_debug() << "signallen=" << signalMemSize << " txpdosize=" 
+//        << sizeof(*txPdo) << " space="
+//        << ((const char*)txMemEnd - (const char *)txMemBegin);
 
     txPdo = txMemBegin;
     nextTxPdo = ptr_align<struct Pdo*>(shmem_end) - 2;

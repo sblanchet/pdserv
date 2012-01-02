@@ -239,11 +239,11 @@ int Main::run()
     sdo     = ptr_align<struct SDOStruct>(shmem);
     sdoData = ptr_align<char>(ptr_align<double>(sdo + parameters.size() + 1));
 
-    cerr_debug() << "shmemlen=" << shmem_len
-        << " shmem=" << shmem
-        << " sdo=" << sdo
-//        << " sdoTaskTime=" << sdoTaskTime
-        << " sdoData=" << (void*)sdoData;
+//     cerr_debug() << "shmemlen=" << shmem_len
+//         << " shmem=" << shmem
+//         << " sdo=" << sdo
+// //        << " sdoTaskTime=" << sdoTaskTime
+//         << " sdoData=" << (void*)sdoData;
 
     for (PdServ::Main::Parameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {

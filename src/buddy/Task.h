@@ -28,13 +28,14 @@
 #include "../Task.h"
 
 class Main;
+class Signal;
 class SignalInfo;
 
 class Task: public PdServ::Task {
     public:
         Task(Main *main, double sampleTime);
 
-        const PdServ::Signal *addSignal(const SignalInfo& si);
+        const Signal *addSignal(const SignalInfo& si);
 
         const Main * const main;
 };

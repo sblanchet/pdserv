@@ -27,6 +27,7 @@
 
 #include <map>
 #include <set>
+#include <log4cpp/Category.hh>
 
 #include "../Main.h"
 #include "fio_ioctl.h"
@@ -51,22 +52,24 @@ class SessionShadow;
 
 class Main: public PdServ::Main {
     public:
-        Main();
+        Main(const struct app_properties&);
 
-        void serve(const PdServ::Config& config, int fd,
-                struct app_properties const * app_properties);
-        int setParameter(const Parameter *p, size_t startIndex,
+        void serve(const PdServ::Config& config, int fd);
+        int setParameter( const Parameter *p, size_t startIndex,
                 size_t nelem, const char *data,
                 struct timespec *) const;
 
     private:
+        const struct app_properties &app_properties;
+        log4cpp::Category &log;
+        log4cpp::Category &parameterLog;
+
         mutable ost::Semaphore paramMutex;
 
         int fd;
         int pid;
 
         Task *mainTask;
-        struct app_properties const * app_properties;
 
         bool getVariable(int type, size_t index, struct signal_info &si);
 

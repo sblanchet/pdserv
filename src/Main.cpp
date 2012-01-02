@@ -117,7 +117,7 @@ const Main::Parameters& Main::getParameters() const
 void Main::startServers(const Config& config)
 {
     std::string port;
-    msrproto = new MsrProto::Server(this, config["msr"]["port"]);
+    msrproto = new MsrProto::Server(this, config["msr"]);
 
 //    EtlProto::Server etlproto(this);
 

@@ -45,7 +45,7 @@ Parameter::~Parameter()
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::setValue(const PdServ::Session *, const char* src,
+int Parameter::setValue(const PdServ::Session *session, const char* src,
                 size_t startIndex, size_t nelem) const
 {
     if (startIndex + nelem > this->nelem)

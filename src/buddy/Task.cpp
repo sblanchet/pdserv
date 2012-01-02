@@ -32,7 +32,7 @@ Task::Task( Main *main, double sampleTime):
 }
 
 //////////////////////////////////////////////////////////////////////
-const PdServ::Signal *Task::addSignal(const SignalInfo& si)
+const Signal *Task::addSignal(const SignalInfo& si)
 {
     Signal *s = new Signal(this, si);
     signals.push_back(s);

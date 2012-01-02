@@ -33,6 +33,10 @@
 
 #include "../SessionStatistics.h"
 
+namespace log4cpp {
+    class Category;
+}
+
 namespace PdServ {
     class Main;
     class Parameter;
@@ -66,6 +70,7 @@ class Server: public ost::Thread {
                 std::list<PdServ::SessionStatistics>& stats) const;
 
         const PdServ::Main * const main;
+        log4cpp::Category &log;
 
     private:
         std::set<Session*> sessions;
@@ -75,8 +80,10 @@ class Server: public ost::Thread {
 
         mutable ost::Semaphore mutex;
 
+        // Reimplemented from ost::Thread
+        void initial();
         void run();
-
+        void final();
 };
 
 }

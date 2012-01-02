@@ -37,13 +37,18 @@
 
 #include <cc++/socketport.h>
 #include <algorithm>
+#include <log4cpp/Category.hh>
+#include <log4cpp/NDC.hh>
 
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Server::Server(const PdServ::Main *main, int port):
-    main(main), port(port), mutex(1)
+    main(main),
+    log(log4cpp::Category::getInstance(main->getName())),
+    port(port), mutex(1)
 {
+
     root = new VariableDirectory;
 
     const PdServ::Task *primaryTask;
@@ -78,13 +83,9 @@ Server::Server(const PdServ::Main *main, int port):
 
         path = prefix.str() + "Overrun";
         if (!root->find<Channel>(path)) {
-            cerr_debug() << "insert" << path;
+            //cerr_debug() << "insert" << path;
             root->insert( new StatSignal(task, path, StatSignal::Overrun));
         }
-        else {
-            cerr_debug() << "cant find" << path;
-        }
-
     }
 
     if (!root->find<Channel>("/Time"))
@@ -112,6 +113,18 @@ Server::~Server()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Server::initial()
+{
+    log4cpp::NDC::push("msr");
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Server::final()
+{
+    log4cpp::NDC::pop();
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Server::run()
 {
     ost::TCPSocket *server = 0;
@@ -123,23 +136,30 @@ void Server::run()
             server = new ost::TCPSocket(ost::IPV4Address("0.0.0.0"), port);
         }
         catch (ost::Socket *s) {
-            if (this->port)
+            if (this->port) {
+                log.crit("Could not start on port %i", port);
                 throw(s);
+            }
+            log.notice("Port %i is busy", port);
             port++;
         }
     } while (!server);
 
+    log.notice("Server started on port %i", port);
     while (server->isPendingConnection()) {
+        log4cpp::NDC::ContextStack *ndc;
         try {
-            Session *s = new Session(this, server);
+            ndc = log4cpp::NDC::cloneStack();
+            Session *s = new Session(this, server, ndc);
             sessions.insert(s);
             s->start();
         }
         catch (ost::Socket *s) {
-            // FIXME Log this
-            cerr_debug() << s->getErrorNumber() << s->getSystemError();
+            log.crit("Socket failure: %s", ::strerror(s->getSystemError()));
+            delete ndc;
         }
     }
+
 }
 
 /////////////////////////////////////////////////////////////////////////////

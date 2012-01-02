@@ -25,55 +25,20 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-#include <cc++/thread.h>
-
 #include "config.h"
 
 #ifdef PDS_DEBUG
 
-#include <iostream>
+namespace Debug {
+    void Debug(const char *file, const char *func, int line,
+            const char *fmt, ...) __attribute__((format(printf, 4, 5)));
+}
+#define log_debug(fmt...) Debug::Debug(__BASE_FILE__, __func__, __LINE__, fmt)
 
-extern ost::Semaphore debugLock;
+#else   // PDS_DEBUG
 
-namespace {
+#define log_debug(...)
 
-struct Debug {
-    Debug(const std::string& file, const std::string& func, int line) {
-        //debugLock.wait();
-
-        std::cerr << std::string(file,SRC_PATH_LENGTH)
-            << ':' << func << '(' << line << "):";
-    }
-
-    ~Debug() {
-        std::cerr << std::endl;
-        //debugLock.post();
-    }
-
-    template <class T>
-        const Debug& operator<<(const T& o) const {
-            std::cerr << ' ' << o;
-            return *this;
-        }
-};
-
-#define cerr_debug() Debug(__BASE_FILE__, __func__, __LINE__)
-};
-
-#else
-
-namespace {
-
-struct Debug {
-    template <class T>
-        const Debug& operator<<(const T&) const {
-            return *this;
-        }
-};
-
-#define cerr_debug() Debug()
-};
-
-#endif
+#endif  // PDS_DEBUG
 
 #endif // DEBUG_H

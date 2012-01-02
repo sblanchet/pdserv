@@ -27,6 +27,9 @@
 #include <climits>      // HOST_NAME_MAX
 #include <unistd.h>     // gethostname
 
+#include <log4cpp/Category.hh>
+#include <log4cpp/NDC.hh>
+
 #include "../Debug.h"
 
 #include "../Main.h"
@@ -50,10 +53,11 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Session( Server *server, ost::TCPSocket *socket):
+Session::Session( Server *server, ost::TCPSocket *socket,
+        log4cpp::NDC::ContextStack* ctxt):
     PdServ::Session(server->main),
     server(server), root(server->getRoot()),
-    tcp(socket), ostream(&tcp), mutex(1)
+    tcp(socket), ostream(&tcp), mutex(1), ctxt(ctxt)
 {
     for (unsigned int i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
@@ -69,30 +73,6 @@ Session::Session( Server *server, ost::TCPSocket *socket):
     aicDelay = 0;
 
     ostream.imbue(std::locale::classic());
-
-    // Get the hostname
-    char hostname[HOST_NAME_MAX+1];
-    switch (gethostname(hostname, HOST_NAME_MAX)) {
-        case ENAMETOOLONG:
-            hostname[HOST_NAME_MAX] = '\0';
-            // no break
-        case 0:
-            break;
-
-        default:
-            strcpy(hostname,"unknown");
-            break;
-    }
-
-    // Greet the new client
-    XmlElement greeting("connected", ostream);
-    XmlElement::Attribute(greeting, "name")
-        << main->getName() << ' ' << main->getVersion();
-    XmlElement::Attribute(greeting, "host")
-        << reinterpret_cast<const char*>(hostname);
-    XmlElement::Attribute(greeting, "version") << MSR_VERSION;
-    XmlElement::Attribute(greeting, "features") << MSR_FEATURES;
-    XmlElement::Attribute(greeting, "recievebufsize") << 100000000;
 
     detach();
 }
@@ -111,11 +91,10 @@ Session::~Session()
 void Session::getSessionStatistics(PdServ::SessionStatistics &stats) const
 {
     std::ostringstream os;
-    os << tcp.peer << ':' << tcp.port;
     if (peer.empty()) 
-        stats.remote = os.str();
+        stats.remote = tcp.peer;
     else
-        stats.remote = peer + " (" + os.str() +')';
+        stats.remote = peer + " (" + tcp.peer +')';
     stats.client = client;
     stats.countIn = tcp.inBytes;
     stats.countOut = tcp.outBytes;
@@ -150,6 +129,47 @@ void Session::parameterChanged(const PdServ::Parameter *p,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::initial()
+{
+    log4cpp::NDC::inherit(ctxt);
+    log4cpp::NDC::push(tcp.peer.c_str());
+
+    server->log.notice("New session");
+
+    // Get the hostname
+    char hostname[HOST_NAME_MAX+1];
+    switch (gethostname(hostname, HOST_NAME_MAX)) {
+        case ENAMETOOLONG:
+            hostname[HOST_NAME_MAX] = '\0';
+            // no break
+        case 0:
+            break;
+
+        default:
+            strcpy(hostname,"unknown");
+            break;
+    }
+
+    // Greet the new client
+    XmlElement greeting("connected", ostream);
+    XmlElement::Attribute(greeting, "name")
+        << main->getName() << ' ' << main->getVersion();
+    XmlElement::Attribute(greeting, "host")
+        << reinterpret_cast<const char*>(hostname);
+    XmlElement::Attribute(greeting, "version") << MSR_VERSION;
+    XmlElement::Attribute(greeting, "features") << MSR_FEATURES;
+    XmlElement::Attribute(greeting, "recievebufsize") << 100000000;
+
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::final()
+{
+    server->log.notice("Finished session");
+    log4cpp::NDC::pop();
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::run()
 {
     ssize_t n;
@@ -157,6 +177,7 @@ void Session::run()
     try {
         while (ostream.good()) {
             n = tcp.read(inbuf.bufptr(), inbuf.free(), 100);
+            server->log.debug("Received %i bytes", n);
             if (!n)
                 break;
             else if (n > 0) {
@@ -188,15 +209,14 @@ void Session::run()
         }
     }
     catch (ost::Socket *s) {
-        cerr_debug() << "socket errror" << s->getErrorNumber();
+        server->log.crit("Socket error %i", s->getErrorNumber());
     }
     catch (std::exception& e) {
-        cerr_debug() << "exception" << e.what();
+        server->log.crit("Exception occurred: %s", e.what());
     }
     catch (...) {
-        cerr_debug() << "unknown error";
+        server->log.crit("Aborting on unknown exception");
     }
-    cerr_debug() << "fin";
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -273,6 +293,8 @@ void Session::processCommand()
         // Check whether the lengths fit and the string matches
         if (commandLen == cmds[idx].len
                 and !strcmp(cmds[idx].name, command)) {
+
+            server->log.debug(cmds[idx].name);
 
             // Call the method
             (this->*cmds[idx].func)();
@@ -614,6 +636,7 @@ void Session::xsad()
 
     // Quiet will stop all transmission of <data> tags until
     // sync is called
+    // FIXME: sync is not yet implemented correctly
     quiet = !sync and inbuf.isTrue("quiet");
 
     if (!inbuf.getUnsignedList("channels", indexList)) {
@@ -710,7 +733,12 @@ void Session::xsod()
 Session::TCPStream::TCPStream( ost::TCPSocket *server):
     Socket(::accept(server->getSocket(), NULL, NULL))
 {
-    peer = getPeer(&port);
+    ost::tpport_t port;
+    ost::IPV4Host peer = getPeer(&port);
+
+    std::ostringstream os;
+    os << peer << ':' << port;
+    this->peer = os.str();
 
     if (!server->onAccept(peer, port)) {
         error(errConnectRejected);

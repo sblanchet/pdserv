@@ -33,6 +33,10 @@
 
 struct timespec;
 
+namespace log4cpp {
+    class Category;
+}
+
 namespace MsrProto {
     class Server;
 }
