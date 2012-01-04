@@ -6,7 +6,12 @@
 #  YAML_DEFINITIONS - Compiler switches required for using yaml
 
 find_package(PkgConfig)
-pkg_check_modules(PC_YAML QUIET yaml)
+
+if (NOT ${CMAKE_VERSION} VERSION_LESS 2.8)
+    set (QUIET QUIET)
+endif ()
+pkg_check_modules(PC_YAML ${QUIET} yaml)
+
 set(YAML_DEFINITIONS ${PC_YAML_CFLAGS_OTHER})
 
 find_path(YAML_INCLUDE_DIR yaml.h
