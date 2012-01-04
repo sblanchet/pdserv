@@ -39,7 +39,6 @@
 #include <log4cpp/Category.hh>
 
 #include "Main.h"
-#include "Log.h"
 #include "Task.h"
 #include "Signal.h"
 #include "Parameter.h"
