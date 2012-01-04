@@ -26,6 +26,8 @@
 #include <stdarg.h>
 #include <cstdio>
 
+#ifdef PDS_DEBUG
+
 void Debug::Debug(const char *file, const char *func,
         int line, const char *fmt, ...)
 {
@@ -39,3 +41,4 @@ void Debug::Debug(const char *file, const char *func,
     va_end(ap);
 }
 
+#endif //PDS_DEBUG
