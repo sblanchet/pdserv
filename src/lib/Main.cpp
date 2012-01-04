@@ -64,12 +64,10 @@ const double Main::bufferTime = 2.0;
 /////////////////////////////////////////////////////////////////////////////
 Main::Main( const char *name, const char *version,
         int (*gettime)(struct timespec*)):
+    PdServ::Main(name, version),
     mutex(1), sdoMutex(1),
     rttime(gettime ? gettime : &PdServ::Main::localtime)
 {
-    this->name = name;
-    this->version = version;
-
     shmem_len = 0;
     shmem = 0;
 }
@@ -148,11 +146,11 @@ int Main::setParameter(const Parameter *p, size_t startIndex,
     size_t delay = 100; // ms FIXME
 
     // Write the parameters into the shared memory sorted from widest
-    // to narrowest data type width. This ensures that the data is
+    // to narrowest data type size. This ensures that the data is
     // allways aligned correctly.
     sdo->parameter = p;
-    sdo->offset = p->width * startIndex;
-    size_t n = p->width * count;
+    sdo->offset = p->elemSize * startIndex;
+    size_t n = p->elemSize * count;
     std::copy(data, data + n, p->valueBuf + sdo->offset);
 
     // Now write the length to trigger the action
@@ -207,10 +205,10 @@ int Main::run()
     std::fill_n(parameterOffset, 5, 0);
 
     size_t parameterSize = 0;
-    for (PdServ::Main::Parameters::iterator it = parameters.begin();
+    for (PdServ::Main::ProcessParameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {
-        const Parameter *p = dynamic_cast<const Parameter*>(*it);
-        parameterOffset[dataTypeIndex[p->width] + 1] += p->memSize;
+        const Parameter *p = static_cast<const Parameter*>(*it);
+        parameterOffset[dataTypeIndex[p->elemSize] + 1] += p->memSize;
         parameterSize += p->memSize;
     }
 
@@ -245,11 +243,11 @@ int Main::run()
 // //        << " sdoTaskTime=" << sdoTaskTime
 //         << " sdoData=" << (void*)sdoData;
 
-    for (PdServ::Main::Parameters::iterator it = parameters.begin();
+    for (PdServ::Main::ProcessParameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {
-        const Parameter *p = dynamic_cast<const Parameter*>(*it);
-        p->valueBuf = sdoData + parameterOffset[dataTypeIndex[p->width]];
-        parameterOffset[dataTypeIndex[p->width]] += p->memSize;
+        const Parameter *p = static_cast<const Parameter*>(*it);
+        p->valueBuf = sdoData + parameterOffset[dataTypeIndex[p->elemSize]];
+        parameterOffset[dataTypeIndex[p->elemSize]] += p->memSize;
 
         std::copy(p->addr, p->addr + p->memSize, p->valueBuf);
     }

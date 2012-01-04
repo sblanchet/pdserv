@@ -28,6 +28,8 @@ INCLUDE_DIRECTORIES(
         ${LIBCCEXT2_INCLUDE_DIRS}
         )
 
+SET (CMAKE_CXX_FLAGS "-Wunused")
+
 SET (msrproto_src
     msrproto/StatSignal.cpp             msrproto/StatSignal.h
     msrproto/TimeSignal.cpp             msrproto/TimeSignal.h
@@ -54,6 +56,7 @@ SET (main_src
     Variable.cpp        Variable.h
     Signal.cpp          Signal.h
     Parameter.cpp       Parameter.h
+    ProcessParameter.cpp ProcessParameter.h
                         SessionShadow.h
     Debug.cpp           Debug.h
     SessionTaskData.cpp SessionTaskData.h
@@ -98,7 +101,6 @@ IF (RT_APP AND NOT DISABLE_BUDDY)
     FIND_PACKAGE (LibDaemon REQUIRED)
 
     ADD_EXECUTABLE (etherlab_buddy2
-        buddy/Log.cpp buddy/Log.h
         buddy/SignalInfo.cpp buddy/SignalInfo.h
         buddy/Signal.cpp buddy/Signal.h
         buddy/main.cpp

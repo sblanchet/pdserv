@@ -45,13 +45,12 @@ void Signal::subscribe(PdServ::Session *session) const
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::unsubscribe(PdServ::Session *s) const
+void Signal::unsubscribe(PdServ::Session *) const
 {
 }
 
 //////////////////////////////////////////////////////////////////////
-double Signal::poll(const PdServ::Session *,
-        void *dest, struct timespec *) const
+double Signal::poll(const PdServ::Session *, void *, struct timespec *) const
 {
     return 0;
 }

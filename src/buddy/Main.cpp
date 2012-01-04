@@ -50,16 +50,12 @@
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 Main::Main(const struct app_properties& p):
+    PdServ::Main(p.name, p.version),
     app_properties(p),
     log(log4cpp::Category::getInstance(p.name)),
-    parameterLog(
-            log4cpp::Category::getInstance(
-                std::string(p.name).append(".parameter"))),
     paramMutex(1), parameterBuf(0)
 {
     pid = ::getpid();
-    name = app_properties.name;
-    version = app_properties.version;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -176,9 +172,9 @@ out:
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::processPoll(unsigned int delay_ms,
+void Main::processPoll(unsigned int /*delay_ms*/,
         const PdServ::Signal * const *s, size_t nelem,
-        void * const * pollDest, struct timespec *t) const
+        void * const * pollDest, struct timespec *) const
 {
     const char *data = photoAlbum + readPointer * app_properties.rtB_size;
 
@@ -210,24 +206,21 @@ PdServ::SessionShadow *Main::newSession(PdServ::Session *session) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter( const Parameter *p, size_t startIndex,
+int Main::setParameter( const Parameter *param, size_t startIndex,
         size_t count, const char *data, struct timespec *mtime) const
 {
     ost::SemaphoreLock lock(paramMutex);
     struct param_change delta;
 
     delta.rtP = parameterBuf;
-    delta.pos = data - parameterBuf + startIndex * p->width;
-    delta.len = count * p->width;                                                        
+    delta.pos = data - parameterBuf + startIndex * param->elemSize;
+    delta.len = count * param->elemSize;                                                        
     delta.count = 0;
     gettime(mtime);
 
     if (ioctl(fd, CHANGE_PARAM, &delta)) {
-        parameterLog.notice("Parameter change %s failed (%s)",
-                p->path.c_str(), strerror(errno));
         return errno;
     }
 
-    parameterLog.info("%s", p->path.c_str());
     return 0;
 }

@@ -38,7 +38,7 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 Subscription::Subscription(const Channel* channel):
     channel(channel),
-    bufferOffset(channel->elementIndex * channel->signal->width)
+    bufferOffset(channel->elementIndex * channel->signal->elemSize)
 {
     data_bptr = 0;
     trigger = 0;

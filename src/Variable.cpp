@@ -29,13 +29,13 @@
 using namespace PdServ;
 
 //////////////////////////////////////////////////////////////////////
-const size_t Variable::dataTypeWidth[11] = {
+const size_t Variable::dataTypeSize[11] = {
     sizeof(uint8_t),
-    sizeof(uint8_t), sizeof(int8_t),
+    sizeof(uint8_t ), sizeof(int8_t),
     sizeof(uint16_t), sizeof(int16_t),
     sizeof(uint32_t), sizeof(int32_t),
     sizeof(uint64_t), sizeof(int64_t),
-    sizeof(double), sizeof(float)
+    sizeof(double  ), sizeof(float)
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -44,29 +44,23 @@ Variable::Variable(
                 Datatype dtype,
                 size_t ndims,
                 const size_t *dim):
-    path(path), dtype(dtype),
-    ndims(dim ? ndims : 1),
-    width(dataTypeWidth[dtype]),
+    path(path),
+
+    dtype(dtype),
+    elemSize(dataTypeSize[dtype]),
+
     nelem(getNElem(ndims, dim)),
-    memSize(nelem * width),
-    dim(new size_t[ndims])
+    memSize(nelem * elemSize),
+
+    ndims(dim ? ndims : 1),
+    dim(makeDimVector(this->ndims, dim))
 {
-    if (dim)
-        std::copy(dim, dim+ndims, this->dim);
-    else
-        *this->dim = ndims;
 }
 
 //////////////////////////////////////////////////////////////////////
 Variable::~Variable()
 {
     delete[] dim;
-}
-
-//////////////////////////////////////////////////////////////////////
-const size_t *Variable::getDim() const
-{
-    return dim;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -83,4 +77,17 @@ size_t Variable::getNElem( size_t ndims, const size_t dim[])
     else {
         return ndims;
     }
+}
+
+//////////////////////////////////////////////////////////////////////
+const size_t *Variable::makeDimVector( size_t ndims, const size_t _dim[])
+{
+    size_t *dim = new size_t[ndims];
+
+    if (_dim)
+        std::copy(_dim, _dim+ndims, dim);
+    else
+        *dim = ndims;
+
+    return dim;
 }

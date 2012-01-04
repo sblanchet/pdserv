@@ -41,8 +41,9 @@ namespace log4cpp {
 namespace PdServ {
     class Session;
     class Signal;
-    class SessionShadow;
     class Config;
+    class ProcessParameter;
+    class SessionShadow;
 }
 
 class Parameter;
@@ -55,14 +56,13 @@ class Main: public PdServ::Main {
         Main(const struct app_properties&);
 
         void serve(const PdServ::Config& config, int fd);
+
         int setParameter( const Parameter *p, size_t startIndex,
-                size_t nelem, const char *data,
-                struct timespec *) const;
+                size_t nelem, const char *data, struct timespec *) const;
 
     private:
         const struct app_properties &app_properties;
         log4cpp::Category &log;
-        log4cpp::Category &parameterLog;
 
         mutable ost::Semaphore paramMutex;
 

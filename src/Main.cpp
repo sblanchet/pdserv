@@ -27,11 +27,12 @@
 
 #include <cerrno>
 #include <cstdlib>
+#include <log4cpp/Category.hh>
 
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
-#include "Parameter.h"
+#include "ProcessParameter.h"
 #include "Config.h"
 //#include "etlproto/Server.h"
 #include "msrproto/Server.h"
@@ -39,7 +40,10 @@
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
-Main::Main(): mutex(1)
+Main::Main(const std::string& name, const std::string& version):
+    name(name), version(version), mutex(1),
+    parameterLog(log4cpp::Category::getInstance(
+                std::string(name).append(".parameter").c_str()))
 {
     msrproto = 0;
 }
@@ -47,21 +51,9 @@ Main::Main(): mutex(1)
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
-    for (Parameters::iterator it = parameters.begin();
+    for (ProcessParameters::iterator it = parameters.begin();
             it != parameters.end(); ++it)
         delete *it;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const std::string& Main::getName() const
-{
-    return name;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const std::string& Main::getVersion() const
-{
-    return version;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -108,7 +100,7 @@ const Task* Main::getTask(double sampleTime) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const Main::Parameters& Main::getParameters() const
+const Main::ProcessParameters& Main::getParameters() const
 {
     return parameters;
 }
@@ -116,7 +108,6 @@ const Main::Parameters& Main::getParameters() const
 /////////////////////////////////////////////////////////////////////////////
 void Main::startServers(const Config& config)
 {
-    std::string port;
     msrproto = new MsrProto::Server(this, config["msr"]);
 
 //    EtlProto::Server etlproto(this);
@@ -124,10 +115,20 @@ void Main::startServers(const Config& config)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::parameterChanged(const Parameter *p, size_t startIndex,
-                size_t nelem) const
+int Main::setParameter(const Session *, const ProcessParameter *param,
+        size_t startIndex, size_t nelem, const char *data) const
 {
-    msrproto->parameterChanged(p, startIndex, nelem);
+    int rv = param->setValue(data, startIndex, nelem);
+
+    if (!rv) {
+        parameterLog.notice("Set parameter %s", param->path.c_str());
+        msrproto->parameterChanged(param, startIndex, nelem);
+    }
+    else
+        parameterLog.notice("Parameter change %s failed (%s)",
+                param->path.c_str(), strerror(errno));
+
+    return rv;
 }
 
 /////////////////////////////////////////////////////////////////////////////

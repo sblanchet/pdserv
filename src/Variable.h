@@ -54,28 +54,36 @@ class Variable {
 
         const std::string path;         /**< Variable path */
         const Datatype dtype;           /**< Data type */
-        const size_t ndims;             /**< Number of dimensions */
-        const size_t width;             /**< Width of a single element */
+        const size_t elemSize;          /**< Bytes for a single element */
+
         const size_t nelem;             /**< Number of elements */
         const size_t memSize;           /**< Total memory size */
+
+        const size_t ndims;             /**< Number of dimensions */
+        size_t const* const dim;        /**< The dimension vector */
 
         std::string alias;              /**< Optional alias */
         std::string unit;               /**< Optional unit */
         std::string comment;            /**< Optional comment */
 
-        const size_t *getDim() const;   /**< Get dimension vector */
 
         static const size_t maxWidth = 8; /**< Maximum supported data type
-                                            width in bytes */
+                                            size in bytes */
 
-        virtual void getValue(const Session*, void *buf,
-                struct timespec * = 0) const = 0;
+        // This method directly copies the variable's value into buf. This
+        // method has to be used when a variable's value is valid only within
+        // the method's calling context
+        virtual void getValue(
+                const Session*,         /**< Calling session */
+                void *buf,              /**< Buffer where data is copied to */
+                struct timespec * = 0   /**< Optional timespec stamp */
+                ) const = 0;
 
-        static const size_t dataTypeWidth[11];
+        static const size_t dataTypeSize[11];
     private:
-        size_t * const dim;
 
         static size_t getNElem( size_t dims, const size_t dim[]);
+        static const size_t *makeDimVector( size_t len, const size_t dim[]);
 };
 
 }

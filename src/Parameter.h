@@ -23,8 +23,8 @@
  *****************************************************************************/
 
 
-#ifndef PARAMETER
-#define PARAMETER
+#ifndef PARAMETER_H
+#define PARAMETER_H
 
 #include "Variable.h"
 
@@ -46,12 +46,11 @@ class Parameter: public Variable {
 
         const unsigned int mode;
 
+        // Set the value of the Parameter
         virtual int setValue(const Session *, const char *buf,
                 size_t startIndex, size_t nelem) const = 0;
-
-    protected:
 };
 
 }
 
-#endif //PARAMETER
+#endif //PARAMETER_H

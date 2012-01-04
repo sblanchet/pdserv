@@ -32,7 +32,7 @@
 #include "../Main.h"
 #include "../Task.h"
 #include "../Signal.h"
-#include "../Parameter.h"
+#include "../ProcessParameter.h"
 #include "../Debug.h"
 
 #include <cc++/socketport.h>
@@ -45,7 +45,7 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 Server::Server(const PdServ::Main *main, int port):
     main(main),
-    log(log4cpp::Category::getInstance(main->getName())),
+    log(log4cpp::Category::getInstance(main->name)),
     port(port), mutex(1)
 {
 
@@ -91,11 +91,11 @@ Server::Server(const PdServ::Main *main, int port):
     if (!root->find<Channel>("/Time"))
         root->insert(new TimeSignal(primaryTask, "/Time"));
 
-    const PdServ::Main::Parameters& mainParameters = main->getParameters();
-    for (PdServ::Main::Parameters::const_iterator it = mainParameters.begin();
-            it != mainParameters.end(); it++) {
-
-        root->insert(*it);
+    const PdServ::Main::ProcessParameters& parameters = main->getParameters();
+    PdServ::Main::ProcessParameters::const_iterator it;
+    for (it = parameters.begin(); it != parameters.end(); ++it) {
+        const PdServ::Parameter *p = *it;
+        root->insert(p);
     }
 
     if (!root->find<Parameter>("/Taskinfo/Abtastfrequenz")) {

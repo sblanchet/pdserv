@@ -170,7 +170,7 @@ void console_logging(bool fg)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void configure_logging(bool fg, const PdServ::Config& config)
+void configure_logging(const PdServ::Config& config)
 {
     if (!config) {
         log4cpp::Category& root = log4cpp::Category::getRoot();
@@ -190,7 +190,7 @@ void configure_logging(bool fg, const PdServ::Config& config)
     char filename[100];
     strcpy(filename, "/tmp/buddylog.conf-XXXXXX");
     int fd = mkstemp(filename);
-    log_debug(filename);
+    log_debug("%s", filename);
 
     ::write(fd, text.c_str(), text.size());
     ::close(fd);
@@ -234,7 +234,7 @@ int main(int argc, char **argv)
     }
     
     // Get the logging configutation
-    configure_logging(fg, config["logging"]);
+    configure_logging(config["logging"]);
     log4cpp::Category& log = log4cpp::Category::getRoot();
     console_logging(fg);
 

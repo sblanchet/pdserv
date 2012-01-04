@@ -73,5 +73,5 @@ void Channel::setXmlAttributes( XmlElement &element,
 
     if (data)
         XmlElement::Attribute(element, "value")
-            .csv( this, data + elementIndex * signal->width, 1, precision);
+            .csv( this, data + elementIndex * signal->elemSize, 1, precision);
 }

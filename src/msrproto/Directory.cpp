@@ -100,7 +100,7 @@ bool VariableDirectory::insert( const PdServ::Parameter *p)
 
         for (size_t i = 0; i < p->nelem; ++i) {
             Parameter *parameter = new Parameter(parameters.size(), p, i);
-            mainParam->insert(parameter, i, p->nelem, p->ndims, p->getDim());
+            mainParam->insert(parameter, i, p->nelem, p->ndims, p->dim);
 
             parameters.push_back(parameter);
             mainParam->addChild(parameter);
@@ -137,7 +137,7 @@ bool VariableDirectory::insert(const PdServ::Signal *s)
 
         for (size_t i = 0; i < s->nelem; ++i) {
             Channel *channel = new Channel(s, channels.size(), i);
-            dir->insert(channel, i, s->nelem, s->ndims, s->getDim());
+            dir->insert(channel, i, s->nelem, s->ndims, s->dim);
 
             channels.push_back(channel);
         }

@@ -66,7 +66,7 @@ struct PollData {
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-Task::Task(Main *main, double ts, const char *name):
+Task::Task(Main *main, double ts, const char * /*name*/):
     PdServ::Task(ts), main(main), mutex(1)
 {
     seqNo = 0;
@@ -171,7 +171,7 @@ Signal* Task::addSignal( unsigned int decimation,
             decimation, path, datatype, addr, n, dim);
 
     signals.push_back(s);
-    signalTypeCount[s->dataTypeIndex[s->width]]++;
+    signalTypeCount[s->dataTypeIndex[s->elemSize]]++;
     signalMemSize += s->memSize;
 
     return s;
@@ -215,7 +215,7 @@ void Task::subscribe(const Signal* s, bool insert)
         ost::Thread::sleep(static_cast<unsigned>(sampleTime * 1000 / 2 + 1));
 
 //    debug() << insert << s->path;
-    size_t w = s->dataTypeIndex[s->width];
+    size_t w = s->dataTypeIndex[s->elemSize];
     if (insert) {
         size_t i = signalTypeCount[w]++;
 
@@ -264,7 +264,7 @@ void Task::pollPrepare( const Signal *signal, void *dest) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Task::pollFinished( const PdServ::Signal * const *s, size_t nelem,
+bool Task::pollFinished( const PdServ::Signal * const *, size_t /*nelem*/,
         void * const *, struct timespec *t) const
 {
     if (!poll->count)
@@ -350,7 +350,7 @@ void Task::update(const struct timespec *t)
 
         signalListId = sp->signalListId;
         const Signal *signal = sp->signal;
-        size_t type = signal->dataTypeIndex[signal->width];
+        size_t type = signal->dataTypeIndex[signal->elemSize];
         struct CopyList *cl = &copyList[type][sp->signalPosition];
 //        cout << "Signal " << signal->index << " pos=" << sp->signalPosition;
 

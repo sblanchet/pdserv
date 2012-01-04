@@ -27,14 +27,14 @@
 
 #include <ctime>
 #include <cc++/thread.h>
-#include "../Parameter.h"
+#include "../ProcessParameter.h"
 #include "pdserv/pdserv.h"
 
 class Main;
 
-class Parameter: public PdServ::Parameter {
+class Parameter: public PdServ::ProcessParameter {
     public:
-        Parameter ( Main *main,
+        Parameter ( Main const* main,
                 const char *path,
                 unsigned int mode,
                 Datatype dtype,
@@ -56,8 +56,8 @@ class Parameter: public PdServ::Parameter {
         mutable ost::Semaphore mutex;
         mutable struct timespec mtime;
 
-        // Reimplemented from PdServ::Parameter
-        int setValue(const PdServ::Session *,
+        // Reimplemented from PdServ::ProcessParameter
+        int setValue(
                 const char *buf, size_t startIndex, size_t nelem) const;
 
         // Reimplemented from PdServ::Variable

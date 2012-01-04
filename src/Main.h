@@ -45,6 +45,7 @@ namespace PdServ {
 
 class Signal;
 class Parameter;
+class ProcessParameter;
 class Variable;
 class Task;
 class Session;
@@ -54,11 +55,11 @@ class SessionStatistics;
 
 class Main {
     public:
-        Main();
+        Main(const std::string& name, const std::string& version);
         virtual ~Main();
 
-        const std::string& getName() const;
-        const std::string& getVersion() const;
+        const std::string name;
+        const std::string version;
 
         virtual int gettime(struct timespec *) const = 0;
 
@@ -66,30 +67,24 @@ class Main {
         const Task *getTask(unsigned int n) const;
         const Task *getTask(double sampleTime) const;
 
-        //typedef std::list<const Signal*> Signals;
-        //const Signals& getSignals() const;
-
-        typedef std::list<const Parameter*> Parameters;
-        const Parameters& getParameters() const;
-        void parameterChanged(const Parameter *p, size_t startElement,
-                size_t nelem) const;
+        typedef std::list<const ProcessParameter*> ProcessParameters;
+        const ProcessParameters& getParameters() const;
+        int setParameter(const Session *, const ProcessParameter *p,
+                size_t startIndex, size_t nelem, const char *data) const;
 
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 
         void poll( Session *session, const Signal * const *s,
                 size_t nelem, void *buf, struct timespec *t) const;
 
-        const Variable *findVariable(const std::string& path) const;
-
         virtual SessionShadow *newSession(Session *) const = 0;
 
     protected:
-        std::string name;
-        std::string version;
 
         typedef std::vector<Task*> TaskList;
         TaskList task;
-        Parameters parameters;
+
+        ProcessParameters parameters;
 
         void startServers(const Config &);
 
@@ -102,6 +97,8 @@ class Main {
 
     private:
         mutable ost::Semaphore mutex;
+
+        log4cpp::Category &parameterLog;
 
         MsrProto::Server *msrproto;
 //        EtlProto::Server etlproto(this);

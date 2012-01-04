@@ -22,40 +22,37 @@
  *
  *****************************************************************************/
 
-#ifndef BUDDY_PARAMETER
-#define BUDDY_PARAMETER
 
-#include <ctime>
-#include <cc++/thread.h>
-#include "../ProcessParameter.h"
-#include "SignalInfo.h"
+#ifndef PROCESS_PARAMETER_H
+#define PROCESS_PARAMETER_H
 
+#include "Parameter.h"
+
+namespace PdServ {
+
+class Session;
 class Main;
 
-class Parameter: public PdServ::ProcessParameter {
+class ProcessParameter: public Parameter {
     public:
-        Parameter ( const Main *main, char *parameterData,
-                const SignalInfo& si);
+        ProcessParameter ( Main const* main,
+                std::string const& path,
+                unsigned int mode,
+                Datatype dtype,
+                size_t ndims = 1,
+                const size_t *dim = 0);
 
-        ~Parameter();
-
-        const Main * const main;
+        virtual int setValue(const char *buf,
+                size_t startIndex, size_t nelem) const = 0;
 
     private:
-        char * const valueBuf;      // Pointer to the real address
+        Main const * const main;
 
-        const SignalInfo si;
-
-        mutable ost::Semaphore mutex;
-        mutable struct timespec mtime;
-
-        // Reimplemented from PdServ::ProcessParameter
-        int setValue(const char *buf,
+        // Reimplemented from PdServ::Parameter
+        int setValue(const Session *, const char *buf,
                 size_t startIndex, size_t nelem) const;
-
-        // Reimplemented from PdServ::Variable
-        void getValue(const PdServ::Session *, void *buf,
-                struct timespec* t = 0) const;
 };
 
-#endif //BUDDY_PARAMETER
+}
+
+#endif //PROCESS_PARAMETER_H

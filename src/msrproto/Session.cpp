@@ -102,7 +102,7 @@ void Session::getSessionStatistics(PdServ::SessionStatistics &stats) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::broadcast(Session *s, const std::string &message)
+void Session::broadcast(Session *, const std::string &message)
 {
     ostream << message << std::flush;
 }
@@ -153,7 +153,7 @@ void Session::initial()
     // Greet the new client
     XmlElement greeting("connected", ostream);
     XmlElement::Attribute(greeting, "name")
-        << main->getName() << ' ' << main->getVersion();
+        << main->name << " Version " << main->version;
     XmlElement::Attribute(greeting, "host")
         << reinterpret_cast<const char*>(hostname);
     XmlElement::Attribute(greeting, "version") << MSR_VERSION;
@@ -403,7 +403,7 @@ void Session::readChannel()
             continue;
 
         bufOffset[mainSignal] = 0;
-        orderedSignals[mainSignal->width].push_back(mainSignal);
+        orderedSignals[mainSignal->elemSize].push_back(mainSignal);
     }
 
     const PdServ::Signal *signalList[bufOffset.size()];

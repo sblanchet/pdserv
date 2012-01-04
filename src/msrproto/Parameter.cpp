@@ -130,10 +130,10 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
 
     if (hex)
         XmlElement::Attribute(element, "hexvalue")
-            .hexDec( valueBuf + elementIndex * mainParam->width, memSize);
+            .hexDec( valueBuf + elementIndex * mainParam->elemSize, memSize);
     else
-        XmlElement::Attribute(element, "value").csv(
-                this, valueBuf + elementIndex * mainParam->width, 1, precision);
+        XmlElement::Attribute(element, "value").csv( this,
+                valueBuf + elementIndex * mainParam->elemSize, 1, precision);
 
     if (!id.empty())
         XmlElement::Attribute(element, "id").setEscaped(id.c_str());
@@ -165,7 +165,7 @@ int Parameter::setHexValue(const Session *session,
     // FIXME: actually the setting operation must also check for
     // endianness!
 
-    count = (c - valueBuf) / mainParam->width;
+    count = (c - valueBuf) / mainParam->elemSize;
     return mainParam->setValue(
             session, valueBuf, elementIndex + startindex, count);
 }

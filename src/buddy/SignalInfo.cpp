@@ -85,7 +85,7 @@ SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
     else {
         std::copy(si->dim, si->dim + 2, dim);
         if (si->orientation == si_matrix_col_major) {
-            switch (PdServ::Variable::dataTypeWidth[dataType()]) {
+            switch (PdServ::Variable::dataTypeSize[dataType()]) {
                 case 1:
                     readFunc  = transpose<uint8_t,'R'>;
                     writeFunc = transpose<uint8_t,'W'>;
@@ -107,7 +107,7 @@ SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
     }
 
     if (!readFunc) {
-        switch (PdServ::Variable::dataTypeWidth[dataType()]) {
+        switch (PdServ::Variable::dataTypeSize[dataType()]) {
             case 1:
                 readFunc  = copy<uint8_t,'R'>;
                 writeFunc = copy<uint8_t,'W'>;

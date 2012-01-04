@@ -93,7 +93,7 @@ Variable::Variable( const PdServ::Variable *v, unsigned int variableIndex,
     elementIndex(elementIndex != ~0U ? elementIndex : 0),
     variable(v),
     variableIndex(variableIndex),
-    nelem(elementIndex == ~0U ? v->nelem : 1), memSize(nelem * v->width)
+    nelem(elementIndex == ~0U ? v->nelem : 1), memSize(nelem * v->elemSize)
 //    bufferOffset(elementIndex == ~0U ? 0 : elementIndex * v->width)
 {
     switch (v->dtype) {
@@ -151,7 +151,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
         XmlElement::Attribute(element, "comment") << variable->comment;
  
     // datasize=
-    XmlElement::Attribute(element, "datasize") << variable->width;
+    XmlElement::Attribute(element, "datasize") << variable->elemSize;
  
     // typ=
     const char *dtype = 0;
@@ -193,8 +193,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
             orientation = "VECTOR";
         }
         else {
-            const size_t *dim = variable->getDim();
-            cnum = dim[variable->ndims - 1];
+            cnum = variable->dim[variable->ndims - 1];
             rnum = variable->nelem / cnum;
             orientation = "MATRIX_ROW_MAJOR";
         }

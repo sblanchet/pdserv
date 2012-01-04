@@ -30,14 +30,14 @@
 
 //////////////////////////////////////////////////////////////////////
 Parameter::Parameter(
-        Main *main,
+        Main const* main,
         const char *path,
         unsigned int mode,
         Datatype dtype,
         void *addr,
         size_t ndims,
         const size_t *dim):
-    PdServ::Parameter(path, mode, dtype, ndims, dim),
+    PdServ::ProcessParameter(main, path, mode, dtype, ndims, dim),
     addr(reinterpret_cast<char*>(addr)), main(main), mutex(1)
 {
     trigger = copy;
@@ -52,20 +52,11 @@ Parameter::~Parameter()
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::setValue(const PdServ::Session *, const char* src,
-                size_t startIndex, size_t nelem) const
+int Parameter::setValue(const char* src, size_t startIndex, size_t nelem) const
 {
-    if (startIndex + nelem > this->nelem)
-        return -EINVAL;
-
     ost::SemaphoreLock lock(mutex);
 
-    int rv = main->setParameter(this, startIndex, nelem, src, &mtime);
-
-    if (!rv)
-        main->parameterChanged(this, startIndex, nelem);
-
-    return rv;
+    return main->setParameter(this, startIndex, nelem, src, &mtime);
 }
 
 //////////////////////////////////////////////////////////////////////

@@ -22,44 +22,24 @@
  *
  *****************************************************************************/
 
-#include <algorithm>
 #include <cerrno>
 
+#include "ProcessParameter.h"
 #include "Main.h"
-#include "../Debug.h"
-#include "Parameter.h"
+
+using namespace PdServ;
 
 //////////////////////////////////////////////////////////////////////
-Parameter::Parameter( const Main *main, char *parameterData,
-        const SignalInfo &si):
-    PdServ::ProcessParameter(main, si.path(),
-            0x666, si.dataType(), si.ndim(), si.getDim()),
-    main(main), valueBuf(parameterData), si(si), mutex(1)
-{
-    mtime.tv_sec = 0;
-    mtime.tv_nsec = 0;
-}
-
-//////////////////////////////////////////////////////////////////////
-Parameter::~Parameter()
+ProcessParameter::ProcessParameter ( Main const* main, const std::string& path,
+        unsigned int mode, Datatype dtype, size_t ndims, const size_t *dim):
+    Parameter(path, mode, dtype, ndims, dim),
+    main(main)
 {
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::setValue(const char* src, size_t startIndex, size_t nelem) const
+int ProcessParameter::setValue(const PdServ::Session *session, const char* src,
+                size_t startIndex, size_t nelem) const
 {
-    ost::SemaphoreLock lock(mutex);
-
-    si.write(valueBuf, src, startIndex, nelem);
-    return main->setParameter(this, 0, this->nelem, valueBuf, &mtime);
-}
-
-//////////////////////////////////////////////////////////////////////
-void Parameter::getValue(const PdServ::Session *, void* dst,
-        struct timespec *time) const
-{
-    ost::SemaphoreLock lock(mutex);
-    si.read(dst, valueBuf);
-    if (time)
-        *time = mtime;
+    return main->setParameter(session, this, startIndex, nelem, src);
 }
