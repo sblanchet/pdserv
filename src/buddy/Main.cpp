@@ -130,6 +130,7 @@ void Main::serve(const PdServ::Config& config, int fd)
 
     photoReady = new unsigned int[app_properties.rtB_count];
     std::fill_n(photoReady, app_properties.rtB_count, 0);
+    photoCount = 0;
 
     startServers(config);
 
