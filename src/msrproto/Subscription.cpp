@@ -41,6 +41,7 @@ Subscription::Subscription(const Channel* channel):
     bufferOffset(channel->elementIndex * channel->signal->elemSize)
 {
     data_bptr = 0;
+    data_eptr = 0;
     trigger = 0;
 }
 
