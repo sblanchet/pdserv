@@ -120,15 +120,36 @@ int Main::setParameter(const Session *, const ProcessParameter *param,
 {
     int rv = param->setValue(data, startIndex, nelem);
 
-    if (!rv) {
-        parameterLog.notice("Set parameter %s", param->path.c_str());
-        msrproto->parameterChanged(param, startIndex, nelem);
-    }
-    else
+    if (rv) {
         parameterLog.notice("Parameter change %s failed (%s)",
                 param->path.c_str(), strerror(errno));
+        return rv;
+    }
+    msrproto->parameterChanged(param, startIndex, nelem);
 
-    return rv;
+    std::ostringstream os;
+    os << param->path;
+
+    if (nelem < param->nelem) {
+        os << '[' << startIndex;
+        if (nelem > 1)
+            os << ".." << (startIndex + nelem - 1);
+        os << ']';
+    }
+
+    os << " = ";
+
+    if (nelem > 1)
+        os << '[';
+
+    param->print(os, data, nelem, ' ');
+
+    if (nelem > 1)
+        os << ']';
+
+    parameterLog.notice(os.str());
+
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////

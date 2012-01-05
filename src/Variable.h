@@ -52,6 +52,9 @@ class Variable {
 
         virtual ~Variable();
 
+        void print(std::ostream& os,
+                const void *data, size_t nelem = 0, char delim = ',') const;
+
         const std::string path;         /**< Variable path */
         const Datatype dtype;           /**< Data type */
         const size_t elemSize;          /**< Bytes for a single element */
@@ -65,7 +68,6 @@ class Variable {
         std::string alias;              /**< Optional alias */
         std::string unit;               /**< Optional unit */
         std::string comment;            /**< Optional comment */
-
 
         static const size_t maxWidth = 8; /**< Maximum supported data type
                                             size in bytes */
@@ -81,6 +83,14 @@ class Variable {
 
         static const size_t dataTypeSize[11];
     private:
+
+        typedef void (*PrintFunc)(std::ostream&,
+                const void *, size_t);
+        PrintFunc printFunc;
+
+        template <class T>
+            static void print(std::ostream& os,
+                    const void *data, size_t n);
 
         static size_t getNElem( size_t dims, const size_t dim[]);
         static const size_t *makeDimVector( size_t len, const size_t dim[]);
