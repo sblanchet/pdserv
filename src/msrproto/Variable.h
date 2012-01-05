@@ -65,13 +65,6 @@ class Variable: public DirectoryNode {
                 const void *buf, size_t nblocks, size_t precision) const;
 
     private:
-        typedef void (*PrintFunc)(std::ostream&,
-                const void *, size_t, unsigned int);
-        PrintFunc printFunc;
-
-        template <class T>
-            static void print(std::ostream& os,
-                    const void *data, size_t n, unsigned int precision);
 };
 
 }

@@ -34,59 +34,6 @@
 
 using namespace MsrProto;
 
-namespace MsrProto {
-
-    /////////////////////////////////////////////////////////////////////////
-    template <class T>
-        void Variable::print(std::ostream &os,
-                const void* data, size_t n, unsigned int)
-        {
-            os << reinterpret_cast<const T*>(data)[n];
-        }
-
-    /////////////////////////////////////////////////////////////////////////
-    template<>
-        void Variable::print<int8_t>(std::ostream& os,
-                const void *data, size_t n, unsigned int)
-        {
-            os << (int)reinterpret_cast<const int8_t*>(data)[n];
-        }
-
-    /////////////////////////////////////////////////////////////////////////
-    template<>
-        void Variable::print<uint8_t>(std::ostream& os,
-                const void *data, size_t n, unsigned int)
-        {
-            os << (unsigned int)reinterpret_cast<const uint8_t*>(data)[n];
-        }
-
-    /////////////////////////////////////////////////////////////////////////
-    template<>
-        void Variable::print<double>(std::ostream& os,
-                const void *data, size_t n, unsigned int precision)
-        {
-            char buf[precision + 10];
-
-            snprintf(buf, sizeof(buf), "%.*g", precision,
-                    reinterpret_cast<const double*>(data)[n]);
-
-            os << buf;
-        }
-
-    /////////////////////////////////////////////////////////////////////////
-    template<>
-        void Variable::print<float>(std::ostream& os,
-                const void *data, size_t n, unsigned int precision)
-        {
-            char buf[precision + 10];
-
-            snprintf(buf, sizeof(buf), "%.*g", precision,
-                    reinterpret_cast<const float*>(data)[n]);
-
-            os << buf;
-        }
-}
-
 /////////////////////////////////////////////////////////////////////////////
 Variable::Variable( const PdServ::Variable *v, unsigned int variableIndex,
         unsigned int elementIndex):
@@ -94,21 +41,7 @@ Variable::Variable( const PdServ::Variable *v, unsigned int variableIndex,
     variable(v),
     variableIndex(variableIndex),
     nelem(elementIndex == ~0U ? v->nelem : 1), memSize(nelem * v->elemSize)
-//    bufferOffset(elementIndex == ~0U ? 0 : elementIndex * v->width)
 {
-    switch (v->dtype) {
-        case PdServ::Variable::boolean_T: printFunc = print<bool>;      break;
-        case PdServ::Variable::uint8_T:   printFunc = print<uint8_t>;   break;
-        case PdServ::Variable::int8_T:    printFunc = print<int8_t>;    break;
-        case PdServ::Variable::uint16_T:  printFunc = print<uint16_t>;  break;
-        case PdServ::Variable::int16_T:   printFunc = print<int16_t>;   break;
-        case PdServ::Variable::uint32_T:  printFunc = print<uint32_t>;  break;
-        case PdServ::Variable::int32_T:   printFunc = print<int32_t>;   break;
-        case PdServ::Variable::uint64_T:  printFunc = print<uint64_t>;  break;
-        case PdServ::Variable::int64_T:   printFunc = print<int64_t>;   break;
-        case PdServ::Variable::double_T:  printFunc = print<double>;    break;
-        case PdServ::Variable::single_T:  printFunc = print<float>;     break;
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -219,12 +152,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
 void Variable::toCSV(std::ostream& os,
         const void *data, size_t nblocks, size_t precision) const
 {
-    size_t idx = 0;
-    for (size_t n = 0; n < nblocks; ++n) {
-        for (size_t i = 0; i < nelem; ++i) {
-            if (idx)
-                os << ',';
-            printFunc(os, data, idx++, precision);
-        }
-    }
+    precision = os.precision(precision);
+    variable->print(os, data, nblocks * nelem, ',');
+    os.precision(precision);
 }
