@@ -2,6 +2,7 @@
 #define PDSERV_H
 
 #include <stddef.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,12 +14,12 @@ extern "C" {
  * detected.
  */
 enum pdserv_datatype_t {
-    double_T = 1, single_T,
-    uint8_T,  sint8_T,
-    uint16_T, sint16_T,
-    uint32_T, sint32_T,
-    uint64_T, sint64_T,
-    boolean_T
+    pd_double_T = 1, pd_single_T,
+    pd_uint8_T,      pd_sint8_T,
+    pd_uint16_T,     pd_sint16_T,
+    pd_uint32_T,     pd_sint32_T,
+    pd_uint64_T,     pd_sint64_T,
+    pd_boolean_T
 };
 
 /** Structure declaration */
@@ -181,12 +182,6 @@ void pdserv_set_comment(
         const char *comment     /**< Variable's comment */
         );
 
-///** Make the parameter or signal persistent */
-//void pdserv_set_persistent(
-//        struct pdvariable *variable, /**< Parameter or Signal address */
-//        unsigned int value
-//        );
-
 /** Finish initialisation
  *
  * This function is called after registering all variables and parameters,
@@ -242,6 +237,6 @@ void pdserv_exit(
 
 #ifdef __cplusplus
 }
-#endif // __cplusplus
+#endif /* __cplusplus */
 
-#endif // PDSERV_H
+#endif /* PDSERV_H */

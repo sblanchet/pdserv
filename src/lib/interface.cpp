@@ -82,17 +82,17 @@ void pdserv_update(struct pdtask* task, const struct timespec *t)
 static PdServ::Variable::Datatype getDataType(enum pdserv_datatype_t dt)
 {
     switch (dt) {
-        case boolean_T: return PdServ::Variable::boolean_T;
-        case uint8_T:   return PdServ::Variable::uint8_T;
-        case uint16_T:  return PdServ::Variable::uint16_T;
-        case uint32_T:  return PdServ::Variable::uint32_T;
-        case uint64_T:  return PdServ::Variable::uint64_T;
-        case sint8_T:   return PdServ::Variable::int8_T;
-        case sint16_T:  return PdServ::Variable::int16_T;
-        case sint32_T:  return PdServ::Variable::int32_T;
-        case sint64_T:  return PdServ::Variable::int64_T;
-        case double_T:  return PdServ::Variable::double_T;
-        case single_T:  return PdServ::Variable::single_T;
+        case pd_boolean_T: return PdServ::Variable::boolean_T;
+        case pd_uint8_T:   return PdServ::Variable::uint8_T;
+        case pd_uint16_T:  return PdServ::Variable::uint16_T;
+        case pd_uint32_T:  return PdServ::Variable::uint32_T;
+        case pd_uint64_T:  return PdServ::Variable::uint64_T;
+        case pd_sint8_T:   return PdServ::Variable::int8_T;
+        case pd_sint16_T:  return PdServ::Variable::int16_T;
+        case pd_sint32_T:  return PdServ::Variable::int32_T;
+        case pd_sint64_T:  return PdServ::Variable::int64_T;
+        case pd_double_T:  return PdServ::Variable::double_T;
+        case pd_single_T:  return PdServ::Variable::single_T;
     }
     return PdServ::Variable::boolean_T;
 }

@@ -45,28 +45,28 @@ int main(int argc, const char *argv[])
 //            si_uint16_T, 3, var1_dims, var1));
 
     assert(pdserv_signal(task[0], 1, "/path/to/double",
-            double_T, dbl, 3, NULL));
+            pd_double_T, dbl, 3, NULL));
 
     assert(pdserv_signal(task[0], 1, "/Tme",
-            double_T, &dbltime, 1, NULL));
+            pd_double_T, &dbltime, 1, NULL));
 
     assert(pdserv_signal(task[0], 1, "/path/to/var2",
-            uint16_T, var1, 3, var1_dims));
+            pd_uint16_T, var1, 3, var1_dims));
 //    assert(pdserv_signal(task[0], 1, "/path/to/var2",
-//            uint16_T, var1, 1, 0));
+//            pd_uint16_T, var1, 1, 0));
 //    assert(pdserv_signal(task[0], 1, "/path/to/var2",
-//            uint16_T, var1, 3, var1_dims));
+//            pd_uint16_T, var1, 3, var1_dims));
 
     struct pdvariable *p3 = pdserv_parameter(pdserv, "/path/to/mdimparam",
-            0666, uint16_T, var1, 3, var1_dims, copy_param, (void*) 10);
+            0666, pd_uint16_T, var1, 3, var1_dims, copy_param, (void*) 10);
     assert(p3);
 
     struct pdvariable *p1 = pdserv_parameter(pdserv,
-            "/Taskinfo/Abtastfrequenz", 0666, double_T, &tick, 1, 0, 0, 0);
+            "/Taskinfo/Abtastfrequenz", 0666, pd_double_T, &tick, 1, 0, 0, 0);
     assert(p1);
 
     struct pdvariable *p = pdserv_parameter(pdserv, "/path/to/param", 0666,
-            uint32_T, param, 4, 0, copy_param, (void*)10);
+            pd_uint32_T, param, 4, 0, copy_param, (void*)10);
     assert(p);
 
     assert(!pdserv_prepare(pdserv));
