@@ -94,7 +94,6 @@ size_t Task::getShmemSpace(double T) const
         + sizeof(*poll) + n*sizeof(*poll->data)
         + 2 * n * sizeof(*signalList)
         + (sizeof(*txPdo) + signalMemSize) * (size_t)(T / sampleTime + 0.5);
-
 }
 
 /////////////////////////////////////////////////////////////////////////////

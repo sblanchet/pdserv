@@ -217,6 +217,7 @@ int Main::run()
             it != task.end(); ++it) {
         taskMemSize[i] = ptr_align(
                 static_cast<const Task*>(*it)->getShmemSpace(bufferTime));
+        //log_debug("Task %i %f shmlen=%zu", i, bufferTime, taskMemSize[i]);
         shmem_len += taskMemSize[i++];
     }
 
@@ -257,7 +258,7 @@ int Main::run()
     for (TaskList::iterator it = task.begin();
             it != task.end(); ++it) {
         static_cast<Task*>(*it)->prepare(buf, buf + taskMemSize[i]);
-        buf += taskMemSize[i];
+        buf += taskMemSize[i++];
     }
 
     return daemonize();
