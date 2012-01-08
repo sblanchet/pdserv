@@ -54,7 +54,7 @@ void Channel::setXmlAttributes( XmlElement &element,
 {
     // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
     //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
-    double freq = 1.0 / signal->sampleTime;
+    double freq = 1.0 / signal->sampleTime / signal->decimation;
 
     // The MSR protocoll wants a bufsize, the maximum number of
     // values that can be retraced. This artificial limitation does

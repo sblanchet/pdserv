@@ -30,11 +30,12 @@ using namespace PdServ;
 Signal::Signal(
         const std::string& path,
         double ts,
+        unsigned int decimation,
         Datatype dtype,
         size_t ndims,
         const size_t *dim):
     Variable(path, dtype, ndims, dim),
-    sampleTime(ts)
+    sampleTime(ts), decimation(decimation)
 {
 }
 

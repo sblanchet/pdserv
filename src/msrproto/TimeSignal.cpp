@@ -34,7 +34,7 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 TimeSignal::TimeSignal(const PdServ::Task *t, const std::string& path):
-    PdServ::Signal(path, t->sampleTime, double_T, 1, 0),
+    PdServ::Signal(path, t->sampleTime, 1, double_T, 1, 0),
     task(t)
 {
 }

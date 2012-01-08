@@ -36,6 +36,7 @@ class Signal: public Variable {
     public:
         Signal( const std::string& path,
                 double sampleTime,
+                unsigned int decimation,
                 Datatype dtype,
                 size_t ndims = 1,
                 const size_t *dim = 0);
@@ -43,6 +44,7 @@ class Signal: public Variable {
         virtual ~Signal();
 
         const double sampleTime;
+        const unsigned int decimation;
 
         virtual void subscribe(Session *) const = 0;
         virtual void unsubscribe(Session *) const = 0;

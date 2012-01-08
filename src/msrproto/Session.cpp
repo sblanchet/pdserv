@@ -685,7 +685,8 @@ void Session::xsad()
                 // If user did not supply a reduction, limit to a 
                 // max of 10Hz automatically
                 reduction = static_cast<unsigned>(
-				0.1 / mainSignal->sampleTime + 0.5);
+				0.1 / mainSignal->sampleTime
+                                / mainSignal->decimation + 0.5);
         }
         else if (!foundReduction or !foundBlocksize) {
             // Quite possibly user input; choose reduction for 1Hz
@@ -695,12 +696,15 @@ void Session::xsad()
 
             if (!foundReduction)
                 reduction = static_cast<unsigned>(
-				1.0 / mainSignal->sampleTime / blocksize + 0.5);
+				1.0 / mainSignal->sampleTime
+                                / mainSignal->decimation
+                                / blocksize + 0.5);
         }
 
         double ts = mainSignal->sampleTime;
         subscriptionManager[main->getTask(ts)]->subscribe( channel[*it], event,
-                    sync, reduction, blocksize, base64, precision);
+                    sync, reduction * mainSignal->decimation,
+                    blocksize, base64, precision);
     }
 }
 
