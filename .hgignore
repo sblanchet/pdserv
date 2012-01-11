@@ -13,6 +13,7 @@ _CPack_Packages
 build*
 cmake_install.cmake
 config.h
+pdserv.spec
 src/CMakeFiles
 src/CTestTestfile.cmake
 src/Makefile

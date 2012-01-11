@@ -21,7 +21,7 @@
 #
 
 Name: 			pdserv
-Version:		0.99.1
+Version:		@VERSION@
 Release:		1
 
 Summary:		Process-data server library

@@ -193,3 +193,7 @@ CONFIGURE_FILE (
     "${PROJECT_BINARY_DIR}/config.h"
     )
 
+CONFIGURE_FILE (
+    "${PROJECT_SOURCE_DIR}/pdserv.spec.in"
+    "${PROJECT_BINARY_DIR}/pdserv.spec"
+    )
