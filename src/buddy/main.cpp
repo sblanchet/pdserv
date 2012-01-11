@@ -213,9 +213,7 @@ int main(int argc, char **argv)
     // Set default configuration file
     configFile
         .append(QUOTE(SYSCONFDIR))
-        .append(1, '/')
-        .append(daemon_pid_file_ident)
-        .append(".conf");
+        .append("/pdserv.conf");
 
     parse_command_line(argc, argv, fg, configFile);
 

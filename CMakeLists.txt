@@ -197,3 +197,6 @@ CONFIGURE_FILE (
     "${PROJECT_SOURCE_DIR}/pdserv.spec.in"
     "${PROJECT_BINARY_DIR}/pdserv.spec"
     )
+
+INSTALL (FILES "${CMAKE_CURRENT_SOURCE_DIR}/pdserv.conf"
+    DESTINATION "${ABS_SYSCONFDIR}")
