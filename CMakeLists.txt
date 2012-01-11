@@ -42,7 +42,6 @@ CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
 PROJECT (pdserv)
 SET (CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE)
 
-# Project version -- dont forget .spec file when changing!
 SET (MAJOR_VERSION 0)
 SET (MINOR_VERSION 99)
 SET (PATCH_LEVEL 1)
@@ -132,6 +131,7 @@ SET (CPACK_SOURCE_IGNORE_FILES
     "/CMakeFiles/"
     "/Makefile$"
     "/\\\\.hg"
+    "/build.*"
     "/config.h$"
     "/pdserv-.*\\\\.tar\\\\."
     "/test/config$"
