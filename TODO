@@ -3,8 +3,6 @@ $Id$
 
 - Build buddy test only if buddy enabled
 - Move yaml library search to CMakeLists.txt in root dir.
-- Supply spec file with version number from cmake.
 - Export hg information in dist tarball.
 - Improve FindMercurial macros (use hg parent).
-- Move incluse/pdserv/pdserv.h to include/pdserv.h.
 - Include AUTHORS, README, NEWS, etc. in dist tarball, installation and RPM.

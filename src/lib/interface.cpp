@@ -26,7 +26,7 @@
 #include "Task.h"
 #include "Signal.h"
 #include "Parameter.h"
-#include "pdserv/pdserv.h"
+#include "pdserv.h"
 
 /////////////////////////////////////////////////////////////////////////////
 struct pdserv* pdserv_create( const char *name, const char *version,

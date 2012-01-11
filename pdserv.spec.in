@@ -68,7 +68,7 @@ make install DESTDIR=$RPM_BUILD_ROOT
 
 %files -n pdserv-devel
 %defattr(-,root,root,755)
-%{_includedir}/pdserv/pdserv.h
+%{_includedir}/pdserv.h
 %{_libdir}/pkgconfig/libpdserv.pc
 
 %changelog

@@ -47,7 +47,7 @@
 #include "Pointer.h"
 #include "SessionShadow.h"
 #include "../Config.h"
-#include "pdserv/pdserv.h"
+#include "pdserv.h"
 
 /////////////////////////////////////////////////////////////////////////////
 struct SDOStruct {

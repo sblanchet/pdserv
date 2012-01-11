@@ -28,7 +28,7 @@
 #include <ctime>
 #include <cc++/thread.h>
 #include "../ProcessParameter.h"
-#include "pdserv/pdserv.h"
+#include "pdserv.h"
 
 class Main;
 
