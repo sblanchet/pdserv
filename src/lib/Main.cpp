@@ -193,36 +193,57 @@ int Main::run()
     size_t numTasks = task.size();
     size_t taskMemSize[numTasks];
     size_t i;
+
+    // The following two variables are used to organize parameters according
+    // to the size of their elements so that their data type alignment is
+    // correct.
+    //
+    // dataTypeIndex[] maps the data type to the index in parameterDataOffset,
+    // e.g. a parameter with data type double (sizeof() = 8) will then go into
+    // container parameterDataOffset[dataTypeIndex[8]]
+    //
+    // parameterDataOffset[] holds the start index of a data types with
+    // 8, 4, 2 and 1 bytes alignment
     const size_t dataTypeIndex[PdServ::Variable::maxWidth+1] = {
         3 /*0*/, 3 /*1*/, 2 /*2*/, 3 /*3*/,
         1 /*4*/, 3 /*5*/, 3 /*6*/, 3 /*7*/, 0 /*8*/
     };
+    size_t parameterDataOffset[5] = {0, 0, 0, 0, 0};
 
     // don't need variableSet any more
     variableSet.clear();
 
-    size_t parameterOffset[5];
-    std::fill_n(parameterOffset, 5, 0);
-
-    size_t parameterSize = 0;
     for (PdServ::Main::ProcessParameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {
         const Parameter *p = static_cast<const Parameter*>(*it);
-        parameterOffset[dataTypeIndex[p->elemSize] + 1] += p->memSize;
-        parameterSize += p->memSize;
+
+        // Push the next smaller data type forward by the parameter's
+        // memory requirement
+        parameterDataOffset[dataTypeIndex[p->elemSize] + 1] += p->memSize;
     }
 
+    // Accumulate the offsets so that they follow each other in the shared
+    // data space. This also has the effect, that the value of
+    // parameterDataOffset[4] is the total memory requirement of all
+    // parameters
+    for (i = 1; i < 5; ++i)                                                     
+        parameterDataOffset[i] += parameterDataOffset[i-1];
+
+    // Extend shared memory size with the parameter memory requirement
+    // and as many sdo's for every parameter.
+    shmem_len += sizeof(*sdo) * (parameters.size() + 1)
+        + parameterDataOffset[4];
+
+    // Find out the memory requirement for the tasks to pipe their variables
+    // out of the real time environment
     i = 0;
     for (TaskList::const_iterator it = task.begin();
             it != task.end(); ++it) {
         taskMemSize[i] = ptr_align(
                 static_cast<const Task*>(*it)->getShmemSpace(bufferTime));
+        //log_debug("Task %i %f shmlen=%zu", i, bufferTime, taskMemSize[i]);
         shmem_len += taskMemSize[i++];
     }
-
-    shmem_len += sizeof(*sdo) * (parameters.size() + 1)
-//        + sizeof(*sdoTaskTime) * numTasks
-        + parameterSize;
 
     shmem = ::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
             MAP_SHARED | MAP_ANON, -1, 0);
@@ -246,18 +267,17 @@ int Main::run()
     for (PdServ::Main::ProcessParameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {
         const Parameter *p = static_cast<const Parameter*>(*it);
-        p->valueBuf = sdoData + parameterOffset[dataTypeIndex[p->elemSize]];
-        parameterOffset[dataTypeIndex[p->elemSize]] += p->memSize;
+        p->valueBuf = sdoData + parameterDataOffset[dataTypeIndex[p->elemSize]];
+        parameterDataOffset[dataTypeIndex[p->elemSize]] += p->memSize;
 
         std::copy(p->addr, p->addr + p->memSize, p->valueBuf);
     }
 
-    char* buf = ptr_align<char>(sdoData + parameterSize);
+    char* buf = ptr_align<char>(sdoData + parameterDataOffset[4]);
     i = 0;
-    for (TaskList::iterator it = task.begin();
-            it != task.end(); ++it) {
+    for (TaskList::iterator it = task.begin(); it != task.end(); ++it) {
         static_cast<Task*>(*it)->prepare(buf, buf + taskMemSize[i]);
-        buf += taskMemSize[i];
+        buf += taskMemSize[i++];
     }
 
     return daemonize();
@@ -284,7 +304,7 @@ int Main::daemonize()
     pid = getpid();
 
     // Go to root
-#ifndef DEBUG
+#ifndef PDS_DEBUG
     ::chdir("/");
     ::umask(0777);
 #endif
@@ -306,7 +326,7 @@ int Main::daemonize()
 
     // Reopen STDIN, STDOUT and STDERR
     int fd = -1;
-#ifdef DEBUG
+#ifdef PDS_DEBUG
     fd = ::open("/dev/tty", O_RDWR);
 #endif
     if (fd < 0)
