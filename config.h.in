@@ -22,8 +22,8 @@
  *
  *****************************************************************************/
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef PD_CONFIG_H
+#define PD_CONFIG_H
 
 // Repository Version
 #define PKGID @Package_HG_ID@
@@ -46,4 +46,4 @@
 #cmakedefine PDS_DEBUG
 #cmakedefine TRADITIONAL
 
-#endif //CONFIG_H
+#endif //PD_CONFIG_H
