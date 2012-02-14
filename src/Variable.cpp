@@ -84,7 +84,7 @@ Variable::Variable(
     memSize(nelem * elemSize),
 
     ndims(dim ? ndims : 1),
-    dim(makeDimVector(this->ndims, dim))
+    dim(makeDimVector(ndims, dim))
 {
     switch (dtype) {
         case boolean_T: printFunc = print<bool>;      break;
@@ -139,10 +139,10 @@ size_t Variable::getNElem( size_t ndims, const size_t dim[])
 //////////////////////////////////////////////////////////////////////
 const size_t *Variable::makeDimVector( size_t ndims, const size_t _dim[])
 {
-    size_t *dim = new size_t[ndims];
+    size_t *dim = new size_t[_dim ? ndims : 1];
 
     if (_dim)
-        std::copy(_dim, _dim+ndims, dim);
+        std::copy(_dim, _dim + ndims, dim);
     else
         *dim = ndims;
 
