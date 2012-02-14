@@ -56,7 +56,7 @@ using namespace MsrProto;
 Session::Session( Server *server, ost::TCPSocket *socket,
         log4cpp::NDC::ContextStack* ctxt):
     PdServ::Session(server->main),
-    server(server), root(server->getRoot()),
+    server(server), root(server->getRoot()), streamlock(1),
     tcp(socket), ostream(&tcp), mutex(1), ctxt(ctxt)
 {
     for (unsigned int i = 0; i < main->numTasks(); ++i) {
@@ -125,7 +125,7 @@ void Session::parameterChanged(const PdServ::Parameter *p,
 
     ost::SemaphoreLock lock(mutex);
     if (aic.find(p) == aic.end())
-        param->valueChanged(ostream, startIndex, nelem);
+        param->valueChanged(ostream, streamlock, startIndex, nelem);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -151,7 +151,7 @@ void Session::initial()
     }
 
     // Greet the new client
-    XmlElement greeting("connected", ostream);
+    XmlElement greeting("connected", ostream, streamlock);
     XmlElement::Attribute(greeting, "name")
         << main->name << " Version " << main->version;
     XmlElement::Attribute(greeting, "host")
@@ -189,7 +189,7 @@ void Session::run()
 
             if (rxPdo()) {
                 // Unknown command warning
-                XmlElement error("error", ostream);
+                XmlElement error("error", ostream, streamlock);
                 XmlElement::Attribute(error, "text")
                     << "process synchronization lost";
 
@@ -201,7 +201,7 @@ void Session::run()
                 for ( AicSet::iterator it = aic.begin();
                         it != aic.end(); ++it) {
                     const Parameter *param = root.find(*it);
-                    param->valueChanged(ostream, 0, param->nelem);
+                    param->valueChanged(ostream, streamlock, 0, param->nelem);
                 }
 
                 aic.clear();
@@ -241,7 +241,7 @@ void Session::newSignalData(const PdServ::SessionTaskData *std,
     subscriptionManager[std->task]->newSignalData(printQueue, std);
 
     if (!printQueue.empty() and !quiet) {
-        XmlElement dataTag("data", ostream);
+        XmlElement dataTag("data", ostream, streamlock);
         XmlElement::Attribute(dataTag, "level") << 0;
         XmlElement::Attribute(dataTag, "time") << *time;
 
@@ -302,7 +302,7 @@ void Session::processCommand()
             // If "ack" attribute was set, send it back
             std::string id;
             if (inbuf.getString("id", id)) {
-                XmlElement ack("ack", ostream);
+                XmlElement ack("ack", ostream, streamlock);
                 XmlElement::Attribute(ack,"id").setEscaped(id.c_str());
             }
 
@@ -312,7 +312,7 @@ void Session::processCommand()
     }
 
     // Unknown command warning
-    XmlElement warn("warn", ostream);
+    XmlElement warn("warn", ostream, streamlock);
     XmlElement::Attribute(warn, "num") << 1000;
     XmlElement::Attribute(warn, "text") << "unknown command";
     XmlElement::Attribute(warn, "command").setEscaped(command);
@@ -323,7 +323,7 @@ void Session::broadcast()
 {
     std::ostringstream os;
     {
-        XmlElement broadcast("broadcast", os);
+        XmlElement broadcast("broadcast", os, streamlock);
         struct timespec ts;
         std::string s;
 
@@ -349,7 +349,7 @@ void Session::echo()
 /////////////////////////////////////////////////////////////////////////////
 void Session::ping()
 {
-    XmlElement ping("ping", ostream);
+    XmlElement ping("ping", ostream, streamlock);
     std::string id;
 
     if (inbuf.getString("id",id))
@@ -381,7 +381,7 @@ void Session::readChannel()
 
         c->signal->getValue(this, buf);
 
-        XmlElement channel("channel", ostream);
+        XmlElement channel("channel", ostream, streamlock);
         c->setXmlAttributes(channel, shortReply, buf, 16);
 
         return;
@@ -425,7 +425,7 @@ void Session::readChannel()
     char buf[buflen];
     main->poll(this, signalList, bufOffset.size(), buf, 0);
 
-    XmlElement channels("channels", ostream);
+    XmlElement channels("channels", ostream, streamlock);
     for (VariableDirectory::Channels::const_iterator it = chanList.begin();
             it != chanList.end(); it++)
         XmlElement("channel", channels).setAttributes(*it,
@@ -440,7 +440,7 @@ void Session::listDirectory()
     if (!inbuf.find("path", path))
         return;
 
-    XmlElement element("listing", ostream);
+    XmlElement element("listing", ostream, streamlock);
     root.list(this, element, path);
 }
 
@@ -472,13 +472,13 @@ void Session::readParameter()
 
         std::string id;
         inbuf.getString("id", id);
-        XmlElement ("parameter", ostream)
+        XmlElement ("parameter", ostream, streamlock)
             .setAttributes(p, buf, ts, shortReply, hex, 16, id);
 
         return;
     }
 
-    XmlElement parametersElement("parameters", ostream);
+    XmlElement parametersElement("parameters", ostream, streamlock);
 
     const VariableDirectory::Parameters& parameters = root.getParameters();
     VariableDirectory::Parameters::const_iterator it = parameters.begin();
@@ -498,7 +498,7 @@ void Session::readParameter()
 /////////////////////////////////////////////////////////////////////////////
 void Session::readParamValues()
 {
-    XmlElement param_values("param_values", ostream);
+    XmlElement param_values("param_values", ostream, streamlock);
     XmlElement::Attribute values(param_values, "value");
 
     const VariableDirectory::Parameters& parameters = root.getParameters();
@@ -533,7 +533,7 @@ void Session::readStatistics()
     StatList stats;
     main->getSessionStatistics(stats);
 
-    XmlElement clients("clients", ostream);
+    XmlElement clients("clients", ostream, streamlock);
     for (StatList::const_iterator it = stats.begin();
             it != stats.end(); it++) {
         XmlElement client("client", clients);
@@ -564,7 +564,7 @@ void Session::remoteHost()
 
         os << "Adminmode filp: " << tcp.getSocket();
         {
-            XmlElement info("info", message);
+            XmlElement info("info", message, streamlock);
             XmlElement::Attribute(info, "time") << ts;
             XmlElement::Attribute(info, "text") << os.str();
         }
@@ -577,7 +577,7 @@ void Session::remoteHost()
 void Session::writeParameter()
 {
     if (!writeAccess) {
-        XmlElement warn("warn", ostream);
+        XmlElement warn("warn", ostream, streamlock);
         XmlElement::Attribute(warn, "text") << "No write access";
         return;
     }
@@ -646,7 +646,7 @@ void Session::xsad()
 
     if (inbuf.getUnsigned("reduction", reduction)) {
         if (!reduction) {
-            XmlElement warn("warn", ostream);
+            XmlElement warn("warn", ostream, streamlock);
             XmlElement::Attribute(warn, "command") << "xsad";
             XmlElement::Attribute(warn, "text")
                 << "specified reduction=0, choosing reduction=1";
@@ -659,7 +659,7 @@ void Session::xsad()
 
     if (inbuf.getUnsigned("blocksize", blocksize)) {
         if (!blocksize) {
-            XmlElement warn("warn", ostream);
+            XmlElement warn("warn", ostream, streamlock);
             XmlElement::Attribute(warn, "command") << "xsad";
             XmlElement::Attribute(warn, "text")
                 << "specified blocksize=0, choosing blocksize=1";

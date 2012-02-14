@@ -201,16 +201,16 @@ int Parameter::setDoubleValue(const Session *session,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Parameter::valueChanged(
-        std::ostream &os, size_t start, size_t nelem) const
+void Parameter::valueChanged( std::ostream &os, ost::Semaphore &mutex,
+        size_t start, size_t nelem) const
 {
     {
-        XmlElement pu("pu", os);
+        XmlElement pu("pu", os, mutex);
         XmlElement::Attribute(pu, "index") << variableIndex;
     }
 
     while (!children.empty() and nelem--) {
-        XmlElement pu("pu", os);
+        XmlElement pu("pu", os, mutex);
         XmlElement::Attribute(pu, "index") << children[start++]->variableIndex;
     }
 }

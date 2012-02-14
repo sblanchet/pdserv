@@ -104,6 +104,8 @@ class Session: public ost::Thread, public PdServ::Session {
         Server * const server;
         const VariableDirectory &root;
 
+        ost::Semaphore streamlock;
+
         struct TCPStream: public ost::Socket, public std::streambuf {
             TCPStream(ost::TCPSocket *socket);
 
