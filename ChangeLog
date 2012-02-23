@@ -1,8 +1,12 @@
 2012-02-23  Florian Pose  <fp@igh-essen.com>
 
+	* CMakeLists.txt, ChangeLog, NEWS:
+	Version 0.99.3.
+	[36981ea3481b] [tip]
+
 	* NEWS:
 	Added NEWS.
-	[f462c07596fb] [tip]
+	[f462c07596fb]
 
 	* CMakeLists.txt, INSTALL, include/pdserv.h, src/etlproto/Server.cpp,
 	src/etlproto/Server.h, src/etlproto/Session.cpp,
