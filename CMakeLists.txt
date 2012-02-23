@@ -40,9 +40,18 @@ CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
 PROJECT (pdserv)
 SET (CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE)
 
+#
+# Release Instructions
+#
+# - Update version numbers below
+# - Update SOVERSION below
+# - Update ChangeLog (hg log --style=changelog > ChangeLog)
+# - Update NEWS file
+# - make dist
+#
 SET (MAJOR_VERSION 0)
 SET (MINOR_VERSION 99)
-SET (PATCH_LEVEL 2)
+SET (PATCH_LEVEL 3)
 SET (VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL})
 
 # library version
