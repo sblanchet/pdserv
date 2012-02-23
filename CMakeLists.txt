@@ -1,8 +1,23 @@
-#############################################################################
+##############################################################################
 #
 #  $Id$
 #
 #  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
+#
+#  This file is part of the pdserv library.
+#
+#  The pdserv library is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or (at your
+#  option) any later version.
+#
+#  The pdserv library is distributed in the hope that it will be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+#  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+#  License for more details.
+#
+#  You should have received a copy of the GNU Lesser General Public License
+#  along with the pdserv library. If not, see <http://www.gnu.org/licenses/>.
 #
 #  This is the main cmake file for building process data communications server
 #
@@ -19,32 +34,24 @@
 #       -DCMAKE_BUILD_TYPE=Debug|Release|RelWithDebInfo|MinSizeRel
 #  option
 #
-#  This file is part of the pdserv package.
-#
-#  pdserv is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  pdserv is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with pdserv. See COPYING. If not, see
-#  <http://www.gnu.org/licenses/>.
-#
-#############################################################################
-
+##############################################################################
 
 CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
 PROJECT (pdserv)
 SET (CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE)
 
+#
+# Release Instructions
+#
+# - Update version numbers below
+# - Update SOVERSION below
+# - Update ChangeLog (hg log --style=changelog > ChangeLog)
+# - Update NEWS file
+# - make dist
+#
 SET (MAJOR_VERSION 0)
 SET (MINOR_VERSION 99)
-SET (PATCH_LEVEL 2)
+SET (PATCH_LEVEL 3)
 SET (VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL})
 
 # library version
