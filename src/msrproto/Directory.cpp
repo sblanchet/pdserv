@@ -112,7 +112,6 @@ bool VariableDirectory::insert( const PdServ::Parameter *p, const std::string &a
             mainParam->addChild(parameter);
         }
     }
-    std::cerr << mainParam->path() << std::endl;
 
     return false;
 }
