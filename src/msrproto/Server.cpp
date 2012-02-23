@@ -59,7 +59,7 @@ Server::Server(const PdServ::Main *main, int port):
         for (PdServ::Task::Signals::const_iterator it = signals.begin();
                 it != signals.end(); it++) {
 
-            root->insert(*it);
+            root->insert(*it, main->name);
         }
 
         std::ostringstream prefix;
@@ -94,8 +94,7 @@ Server::Server(const PdServ::Main *main, int port):
     const PdServ::Main::ProcessParameters& parameters = main->getParameters();
     PdServ::Main::ProcessParameters::const_iterator it;
     for (it = parameters.begin(); it != parameters.end(); ++it) {
-        const PdServ::Parameter *p = *it;
-        root->insert(p);
+        root->insert(*it, main->name);
     }
 
     if (!root->find<Parameter>("/Taskinfo/Abtastfrequenz")) {

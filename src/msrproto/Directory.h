@@ -85,8 +85,8 @@ class VariableDirectory: private DirectoryNode {
         void list(PdServ::Session *,
                 XmlElement& parent, const char *path) const;
 
-        bool insert(const PdServ::Signal *s);
-        bool insert(const PdServ::Parameter *p);
+        bool insert(const PdServ::Signal *s, const std::string &name = std::string());
+        bool insert(const PdServ::Parameter *p, const std::string &name = std::string());
 
        typedef std::vector<const Channel*> Channels;
        typedef std::vector<const Parameter*> Parameters;

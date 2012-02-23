@@ -36,6 +36,7 @@ SessionTaskData::SessionTaskData( PdServ::Session* s, Task* t,
     task(t), session(s), txMemBegin(txMemBegin), txMemEnd(txMemEnd)
 {
     signalListId = 0;
+    pdoSize = 0;
 
     signalPosition.resize(task->signalCount());
 
@@ -50,7 +51,7 @@ void SessionTaskData::init()
     do {
         while (!pdo->next)
             ost::Thread::sleep( static_cast<unsigned>(
-				    task->sampleTime * 1000 / 2 + 1));
+                        task->sampleTime * 1000 / 2 + 1));
 
         seqNo = pdo->seqNo;
         pdo = pdo->next;
@@ -91,13 +92,17 @@ bool SessionTaskData::rxPdo()
                     const Task::SignalVector& signals = task->getSignals();
                     const Signal *sp[signals.size()];
 
-                    if (pdo->signal + n > txMemEnd)
+                    if (pdo->signal + n > txMemEnd) {
+                        log_debug("%i\n", __LINE__);
                         goto out;
+                    }
 
                     for (size_t i = 0; i < n; ++i) {
                         size_t idx = pdo->signal[i];
-                        if (idx >= signals.size())
+                        if (idx >= signals.size()) {
+                            log_debug("%i\n", __LINE__);
                             goto out;
+                        }
                         sp[i] = static_cast<const Signal*>(signals[idx]);
                     }
                     loadSignalList(sp, n, pdo->signalListId);
@@ -111,8 +116,17 @@ bool SessionTaskData::rxPdo()
             case Pdo::Data:
                 if (pdo->data + pdoSize >= txMemEnd
                         or pdo->signalListId != signalListId
-                        or pdo->seqNo - seqNo != 1)
+                        or pdo->seqNo - seqNo != 1) {
+                    log_debug("%p + %zu >= %p; %u != %u; %i != 1; %u %u %u",
+                            (void*)pdo->data, pdoSize, (void*)txMemEnd,
+                            pdo->signalListId, signalListId,
+                            pdo->seqNo - seqNo,
+                            pdo->data + pdoSize >= txMemEnd,
+                            pdo->signalListId != signalListId,
+                            pdo->seqNo - seqNo != 1
+                            );
                     goto out;
+                }
 
                 seqNo = pdo->seqNo;
                 signalBuffer = pdo->data;
@@ -121,13 +135,17 @@ bool SessionTaskData::rxPdo()
                 break;
 
             default:
+                log_debug("%i\n", __LINE__);
                 goto out;
         }
 
         pdo = pdo->next;
 
-        if (pdo < txMemBegin or &pdo->data > txMemEnd)
+        if (pdo < txMemBegin or &pdo->data > txMemEnd) {
+            log_debug("%i\n", __LINE__);
             goto out;
+        }
+
     }
 
     return false;
@@ -141,16 +159,17 @@ out:
 void SessionTaskData::loadSignalList(const Signal * const* sp, size_t n,
         unsigned int id)
 {
-//    cout << __func__ << " n=" << n << " id=" << id;
+    //    cout << __func__ << " n=" << n << " id=" << id;
     std::fill(signalPosition.begin(),  signalPosition.end(), ~0U);
     signalListId = id;
     pdoSize = 0;
     for (size_t i = 0; i < n; ++i) {
         signalPosition[sp[i]->index] = pdoSize;
         pdoSize += sp[i]->memSize;
-//        cout << ' ' << sp[i]->index << '(' << pdoSize << ')';
+        //        cout << ' ' << sp[i]->index << '(' << pdoSize << ')';
     }
-//    cout << endl;
+    log_debug("pdosize=%zu", pdoSize);
+    //    cout << endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////

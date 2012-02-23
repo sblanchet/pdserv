@@ -37,6 +37,7 @@
 #include <cerrno>
 #include <locale>
 #include <sstream>
+#include <iostream>
 #include <stack>
 
 #ifdef TRADITIONAL
@@ -70,9 +71,14 @@ void VariableDirectory::list(
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool VariableDirectory::insert( const PdServ::Parameter *p)
+bool VariableDirectory::insert( const PdServ::Parameter *p, const std::string &appName)
 {
-    const char *path = p->path.c_str();
+    std::string pathstr;
+    if (traditional and appName.size())
+        pathstr.append(1,'/').append(appName);
+    pathstr.append(p->path);
+
+    const char *path = pathstr.c_str();
 
     if (*path++ != '/')
         return true;
@@ -106,14 +112,20 @@ bool VariableDirectory::insert( const PdServ::Parameter *p)
             mainParam->addChild(parameter);
         }
     }
+    std::cerr << mainParam->path() << std::endl;
 
     return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool VariableDirectory::insert(const PdServ::Signal *s)
+bool VariableDirectory::insert(const PdServ::Signal *s, const std::string &appName)
 {
-    const char *path = s->path.c_str();
+    std::string pathstr;
+    if (traditional and appName.size())
+        pathstr.append(1,'/').append(appName);
+    pathstr.append(s->path);
+
+    const char *path = pathstr.c_str();
 
     if (*path++ != '/')
         return true;
