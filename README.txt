@@ -3,21 +3,22 @@
 
   Copyright 2010 Richard Hacker (lerichi at gmx dot net)
 
-  This file is part of the pdserv package.
+  This file is part of the pdserv library.
 
-  pdserv is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  The pdserv library is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
-  pdserv is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  The pdserv library is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+  License for more details.
 
-  You should have received a copy of the GNU General Public License
-  along with pdserv. See COPYING. If not, see
-  <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU Lesser General Public License
+  along with the pdserv library. If not, see <http://www.gnu.org/licenses/>.
+
+  vim: spelllang=en spell
 
 =============================================================================
 
@@ -30,7 +31,7 @@ Motivation:
     parameters that you would like to change from time to time.
 
     These types of programs typically run in real time. A real time process is
-    severly limited in the system resources it is allowed to use. Practically
+    severely limited in the system resources it is allowed to use. Practically
     all system calls involve memory transfers of some sort. New memory space
     has to be allocated, which means that the calling process will be blocked
     for a short while.
@@ -45,18 +46,18 @@ Motivation:
 Description:
 -----------
     This library allows you to do just that without using system calls in the
-    context of your application! Of coarse it uses system calls, otherwise it
+    context of your application! Of course it uses system calls, otherwise it
     would be rather introverted. These system calls are done in a separate
     communications process that is forked off during initialization. Any
-    blocking calls to system fuctions will thus not influence you original
+    blocking calls to system functions will thus not influence you original
     application.
     
-    The two processes, i.e. your application and the communications process,
+    The two processes, i. e. your application and the communications process,
     communicate with each other exclusively via shared memory that was
     obtained by using anonymous mmap (see the manpage) during initialisation.
     
     So what prevents this shared memory from being swapped out, thereby
-    blocking your process once again? YOU, if you choose!  A real time
+    blocking your process once again? YOU, if you choose! A real time
     application usually calls mlock() somewhere during initialization to tell
     the kernel not to swap out memory to disk. The library does NOT do this
     automatically. First of all, only root is allowed to call mlock().
@@ -81,8 +82,8 @@ Concepts:
         time a task completes an execution, the library's update() must be
         called, allowing the communications process to copy the newly
         calculated signals to the communications task.  For example, you may
-        have a slow running task at 10Hz, but for a particular loop you have
-        another running at 1kHz.
+        have a slow running task at 10 Hz, but for a particular loop you have
+        another running at 1 kHz.
 
         A task usually implemented as a separate thread running in a
         while(true) loop paced by a timer. Therefore, tasks have a sample time

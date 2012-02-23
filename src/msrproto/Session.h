@@ -4,28 +4,27 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
- *  This file is part of the pdserv package.
+ *  This file is part of the pdserv library.
  *
- *  pdserv is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
+ *  The pdserv library is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Lesser General Public License as published
+ *  by the Free Software Foundation, either version 3 of the License, or (at
+ *  your option) any later version.
  *
- *  pdserv is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
+ *  The pdserv library is distributed in the hope that it will be useful, but
+ *  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ *  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+ *  License for more details.
  *
- *  You should have received a copy of the GNU General Public License
- *  along with pdserv. See COPYING. If not, see
- *  <http://www.gnu.org/licenses/>.
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with the pdserv library. If not, see <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
 
 #ifndef MSRSESSION_H
 #define MSRSESSION_H
 
-// Version der MSR_LIBRARIES 
+// Version der MSR_LIBRARIES
 #define _VERSION  6
 #define _PATCHLEVEL 0
 #define _SUBLEVEL  10
