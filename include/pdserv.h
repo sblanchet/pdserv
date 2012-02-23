@@ -1,3 +1,26 @@
+/*****************************************************************************
+ *
+ *  $Id$
+ *
+ *  Copyright 2010 - 2011  Richard Hacker (lerichi at gmx dot net)
+ *
+ *  This file is part of the pdserv library.
+ *
+ *  The pdserv library is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Lesser General Public License as published
+ *  by the Free Software Foundation, either version 3 of the License, or (at
+ *  your option) any later version.
+ *
+ *  The pdserv library is distributed in the hope that it will be useful, but
+ *  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ *  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+ *  License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with the pdserv library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ *****************************************************************************/
+
 #ifndef PDSERV_H
 #define PDSERV_H
 
@@ -22,12 +45,13 @@ enum pdserv_datatype_t {
     pd_boolean_T
 };
 
-/** Structure declaration */
+/** Structure declarations.
+ */
 struct pdserv;
 struct pdtask;
 struct pdvariable;
 
-/** Initialise pdserv library
+/** Initialise pdserv library.
  *
  * This is the first call that initialises the library. It should be called
  * before any other library calls.
@@ -44,11 +68,11 @@ struct pdserv* pdserv_create(
                                             * Essentially, this function
                                             * should call clock_gettime().
                                             * If NULL, gettimeofday() is
-                                            * used */
+                                            * used. */
         );
 
 int pdserv_config_file(
-        struct pdserv* pdserv,  /**< Pointer to pdserv struct */
+        struct pdserv* pdserv, /**< Pointer to pdserv struct */
         const char *file
         );
 
