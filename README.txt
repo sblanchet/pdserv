@@ -1,7 +1,7 @@
 
-  PROCESS DATA COMMUNICATIONS SERVER package
+  Process-Data Communications Server Library (pdserv)
 
-  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
+  Copyright 2010 - 2012  Richard Hacker (lerichi at gmx dot net)
 
   This file is part of the pdserv library.
 
@@ -23,8 +23,8 @@
 =============================================================================
 
 
-Motivation:
-----------
+Motivation
+
     Suppose that you have written a funky process control program. You have
     lots of input signals, either as a result of sampling field signals or due
     to calculation. Furthermore, these calculations are influenced by
@@ -43,8 +43,8 @@ Motivation:
     can you see what your signals are doing without using some sort of network
     communication?
 
-Description:
------------
+Description
+
     This library allows you to do just that without using system calls in the
     context of your application! Of course it uses system calls, otherwise it
     would be rather introverted. These system calls are done in a separate
@@ -54,34 +54,38 @@ Description:
     
     The two processes, i. e. your application and the communications process,
     communicate with each other exclusively via shared memory that was
-    obtained by using anonymous mmap (see the manpage) during initialisation.
+    obtained by using anonymous mmap() (see the manpage) during
+    initialisation.
     
     So what prevents this shared memory from being swapped out, thereby
     blocking your process once again? YOU, if you choose! A real time
     application usually calls mlock() somewhere during initialization to tell
     the kernel not to swap out memory to disk. The library does NOT do this
     automatically. First of all, only root is allowed to call mlock().
-    Secondly, mlock is practically called by every real time process
+    Secondly, mlock() is practically called by every real time process
     somewhere anyway. If this is not required, the library will not force you!
     
     This library is not limited to real time processes (in which case you
     would not use mlock() - see above). The only requirement is that an
     update() function is called every time a calculation result is completed.
 
-Concepts:
----------
-    The library assumes various concepts that need explanation:
-    *) Application
-        The whole program is a single application, i.e. one and only one
-        process in the system's process table. An application consists of one
-        or more tasks
+Concepts
 
-    *) Tasks
+    The library assumes various concepts that need explanation:
+
+    *) Application
+
+        The whole program is a single application, i. e. one and only one
+        process in the system's process table. An application consists of one
+        or more tasks.
+
+    *) Task
+
         A task represents a single thread of execution and consists of one or
         more signals that are calculated every time the task executes.  Every
         time a task completes an execution, the library's update() must be
         called, allowing the communications process to copy the newly
-        calculated signals to the communications task.  For example, you may
+        calculated signals to the communications task. For example, you may
         have a slow running task at 10 Hz, but for a particular loop you have
         another running at 1 kHz.
 
@@ -92,10 +96,11 @@ Concepts:
         timing requirements.  However, the library does not rely on exact
         timing.
 
-    *) Signals
+    *) Signal
+
         A signal belongs to a single task.  Signals can have any of the basic
-        data types up to 64bit (8 bytes) and have any dimension.  Complex data
-        types, such as structures or complex numbers, are not allowed.  Its
+        data types up to 64 bit (8 bytes) and have any dimension. Complex data
+        types, such as structures or complex numbers, are not allowed. Its
         value is updated during every run of the task.
 
         Signals are registered with the library during initialization and
@@ -106,7 +111,8 @@ Concepts:
         communications process. By using parameters to change the thread of
         execution, signals may be influenced indirectly.
 
-    *) Parameters
+    *) Parameter
+
         Parameters are similar to signals, but are a property of the
         application rather than that of tasks. The same properties and
         restrictions apply as far as the data type and dimensions are
@@ -125,23 +131,23 @@ Concepts:
         is changed by the library. This enables the application to check the
         value before being copied.
 
-Using the library:
------------------
+Using the Library
 
-Installing the library will present you with a dynamic loadable module and a
-header file to include.
+    Installing the library will present you a dynamically loadable module and
+    a header file to include.
 
-See the documentation in the pdserv.h as well as the example for
-information to use the library.
+    See the documentation in the pdserv.h as well as the example for
+    information to use the library.
 
-Switches that you need for compiling and linking to the library are available
-using pkg-config command, which reads libpdserv.pc.
-# pkg-config --cflags libpdserv
-# pkg-config --libs libpdserv
+    Switches that you need for compiling and linking to the library are
+    available using pkg-config command, which reads libpdserv.pc.
 
-Using the default installation paths (/opt/etherlab), pkg-config will not find
-its specification file using its default values. To help it, call:
-# export PKG_CONFIG_PATH=/opt/etherlab/lib/pkgconfig
-before calling pkg-config
+        # pkg-config --cflags libpdserv
+        # pkg-config --libs libpdserv
 
+    Using the default installation paths (/opt/etherlab), pkg-config will not
+    find its specification file using its default values. To help it, call:
 
+        # export PKG_CONFIG_PATH=/opt/etherlab/lib/pkgconfig
+
+    before calling pkg-config.
