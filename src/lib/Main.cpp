@@ -25,6 +25,7 @@
 
 #include "../Debug.h"
 
+#include <iostream>
 #include <cerrno>
 #include <cstring>
 #include <cstdlib>
@@ -82,6 +83,12 @@ Main::~Main()
 /////////////////////////////////////////////////////////////////////////////
 int Main::configFile(const std::string& file)
 {
+    const char *err = config.load(file.c_str());
+    if (err) {
+        std::cerr << err << std::endl;
+        return -1;
+    }
+
     return 0;
 }
 
@@ -343,7 +350,7 @@ int Main::daemonize()
     for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
         static_cast<Task*>(*it)->nrt_init();
 
-    PdServ::Main::startServers(PdServ::Config());
+    PdServ::Main::startServers(config);
 
     // Hang here forever
     while (true) {

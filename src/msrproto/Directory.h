@@ -37,6 +37,7 @@ namespace PdServ {
 
 namespace MsrProto {
 
+class Server;
 class Variable;
 class Channel;
 class Parameter;
@@ -44,7 +45,7 @@ class XmlElement;
 
 class DirectoryNode {
     public:
-        DirectoryNode(bool hypernode = false);
+        DirectoryNode(const Server *, bool hypernode = false);
         virtual ~DirectoryNode();
 
         void list(PdServ::Session *,
@@ -66,8 +67,11 @@ class DirectoryNode {
 
         void dump() const;
 
+    protected:
+        const Server * const server;
+
     private:
-        static std::string split(const char *&path, char &hide);
+        std::string split(const char *&path, char &hide) const;
 
         typedef std::map<std::string, DirectoryNode*> Children;
         Children children;
@@ -78,7 +82,7 @@ class DirectoryNode {
 /////////////////////////////////////////////////////////////////////////////
 class VariableDirectory: private DirectoryNode {
     public:
-        VariableDirectory();
+        VariableDirectory(const Server *);
         ~VariableDirectory();
 
         void list(PdServ::Session *,
@@ -107,6 +111,8 @@ class VariableDirectory: private DirectoryNode {
        typedef std::map<const PdServ::Parameter *, const Parameter *>
            ParameterMap;
        ParameterMap parameterMap;
+
+       VariableDirectory();
 };
 
 /////////////////////////////////////////////////////////////////////////////

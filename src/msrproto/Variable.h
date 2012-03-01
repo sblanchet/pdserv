@@ -42,7 +42,8 @@ class XmlElement;
 
 class Variable: public DirectoryNode {
     public:
-        Variable( const PdServ::Variable *v,
+        Variable(const Server *,
+                const PdServ::Variable *v,
                 unsigned int variableIndex,
                 unsigned int elementIndex);
         virtual ~Variable();

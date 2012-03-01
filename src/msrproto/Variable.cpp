@@ -34,8 +34,9 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Variable::Variable( const PdServ::Variable *v, unsigned int variableIndex,
-        unsigned int elementIndex):
+Variable::Variable(const Server *server, const PdServ::Variable *v,
+        unsigned int variableIndex, unsigned int elementIndex):
+    DirectoryNode(server),
     elementIndex(elementIndex != ~0U ? elementIndex : 0),
     variable(v),
     variableIndex(variableIndex),

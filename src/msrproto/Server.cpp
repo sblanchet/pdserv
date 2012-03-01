@@ -42,13 +42,17 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Server::Server(const PdServ::Main *main, int port):
+Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     main(main),
     log(log4cpp::Category::getInstance(main->name)),
-    port(port), mutex(1)
+    port(config["port"]),
+    traditional(config["traditional"].isTrue()),
+    mutex(1)
 {
+    log_debug("traditional=%u", traditional);
+    log_debug("port=%u", port);
 
-    root = new VariableDirectory;
+    root = new VariableDirectory(this);
 
     const PdServ::Task *primaryTask;
     for (unsigned int i = 0; i < main->numTasks(); ++i) {

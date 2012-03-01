@@ -31,6 +31,7 @@
 #include <cc++/thread.h>
 
 #include "../SessionStatistics.h"
+#include "../Config.h"
 
 namespace log4cpp {
     class Category;
@@ -52,7 +53,7 @@ class VariableDirectory;
 
 class Server: public ost::Thread {
     public:
-        Server(const PdServ::Main *main, int port);
+        Server(const PdServ::Main *main, const PdServ::Config &);
         ~Server();
 
         void broadcast(Session *s, const std::string&);
@@ -71,9 +72,12 @@ class Server: public ost::Thread {
         const PdServ::Main * const main;
         log4cpp::Category &log;
 
+        bool traditionalMode() const { return traditional; }
+
     private:
         std::set<Session*> sessions;
         int port;
+        bool traditional;
 
         VariableDirectory *root;
 

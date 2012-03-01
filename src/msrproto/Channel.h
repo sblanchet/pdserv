@@ -38,7 +38,7 @@ class XmlElement;
 
 class Channel: public Variable {
     public:
-        Channel( const PdServ::Signal *s,
+        Channel(const Server *, const PdServ::Signal *s,
                 unsigned int channelIndex,
                 unsigned int index = ~0U);
         ~Channel();

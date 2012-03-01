@@ -60,9 +60,9 @@ void Parameter::setTo(char *&dst, double src) {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Parameter::Parameter( unsigned int variableIndex, const PdServ::Parameter *p,
-        unsigned int elementIndex):
-    Variable(p, variableIndex, elementIndex),
+Parameter::Parameter(const Server *server, unsigned int variableIndex,
+        const PdServ::Parameter *p, unsigned int elementIndex):
+    Variable(server, p, variableIndex, elementIndex),
     mainParam(p),
     dependent(dependent),
     persistent(false)

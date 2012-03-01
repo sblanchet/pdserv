@@ -28,6 +28,7 @@
 
 #include "../Main.h"
 #include "../Variable.h"
+#include "../Config.h"
 
 #include <cc++/thread.h>
 
@@ -71,6 +72,7 @@ class Main: public PdServ::Main {
 
     private:
         mutable ost::Semaphore mutex;
+        PdServ::Config config;
 
         int pid;
 

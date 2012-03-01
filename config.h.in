@@ -43,6 +43,5 @@
 
 #cmakedefine SRC_PATH_LENGTH @SRC_PATH_LENGTH@
 #cmakedefine PDS_DEBUG
-#cmakedefine TRADITIONAL
 
 #endif //PD_CONFIG_H

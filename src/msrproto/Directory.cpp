@@ -23,6 +23,7 @@
 
 #include "config.h"
 
+#include "Server.h"
 #include "Directory.h"
 #include "Channel.h"
 #include "Parameter.h"
@@ -39,17 +40,12 @@
 #include <iostream>
 #include <stack>
 
-#ifdef TRADITIONAL
-    static const bool traditional = 1;
-#else
-    static const bool traditional = 0;
-#endif
-
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-VariableDirectory::VariableDirectory()
+VariableDirectory::VariableDirectory(const Server *server):
+    DirectoryNode(server)
 {
     parent = this;
 }
@@ -73,7 +69,7 @@ void VariableDirectory::list(
 bool VariableDirectory::insert( const PdServ::Parameter *p, const std::string &appName)
 {
     std::string pathstr;
-    if (traditional and appName.size())
+    if (server->traditionalMode() and appName.size())
         pathstr.append(1,'/').append(appName);
     pathstr.append(p->path);
 
@@ -89,22 +85,23 @@ bool VariableDirectory::insert( const PdServ::Parameter *p, const std::string &a
     if (!dir)
         return true;
 
-    if (traditional and (hide == 1 or hide == 'p')) {
+    if (server->traditionalMode() and (hide == 1 or hide == 'p')) {
         //debug() << "hide paameter" << p->path;
         return false;
     }
 
-    Parameter *mainParam = new Parameter(parameters.size(), p);
+    Parameter *mainParam = new Parameter(server, parameters.size(), p);
     dir->insert(mainParam, name);
 
     parameterMap[p] = mainParam;
     parameters.push_back(mainParam);
 
-    if (traditional and p->nelem > 1) {
+    if (server->traditionalMode() and p->nelem > 1) {
         parameters.reserve(parameters.size() + p->nelem);
 
         for (size_t i = 0; i < p->nelem; ++i) {
-            Parameter *parameter = new Parameter(parameters.size(), p, i);
+            Parameter *parameter = new Parameter(server, parameters.size(),
+                    p, i);
             mainParam->insert(parameter, i, p->nelem, p->ndims, p->dim);
 
             parameters.push_back(parameter);
@@ -119,7 +116,7 @@ bool VariableDirectory::insert( const PdServ::Parameter *p, const std::string &a
 bool VariableDirectory::insert(const PdServ::Signal *s, const std::string &appName)
 {
     std::string pathstr;
-    if (traditional and appName.size())
+    if (server->traditionalMode() and appName.size())
         pathstr.append(1,'/').append(appName);
     pathstr.append(s->path);
 
@@ -135,25 +132,25 @@ bool VariableDirectory::insert(const PdServ::Signal *s, const std::string &appNa
     if (!dir)
         return true;
 
-    if (traditional and (hide == 1 or hide == 'k')) {
+    if (server->traditionalMode() and (hide == 1 or hide == 'k')) {
         //debug() << "hide sign" << s->path;
         return false;
     }
 
-    if (traditional and s->nelem > 1) {
+    if (server->traditionalMode() and s->nelem > 1) {
         channels.reserve(channels.size() + s->nelem);
 
-        dir = dir->DirectoryNode::insert(new DirectoryNode, name);
+        dir = dir->DirectoryNode::insert(new DirectoryNode(server), name);
 
         for (size_t i = 0; i < s->nelem; ++i) {
-            Channel *channel = new Channel(s, channels.size(), i);
+            Channel *channel = new Channel(server, s, channels.size(), i);
             dir->insert(channel, i, s->nelem, s->ndims, s->dim);
 
             channels.push_back(channel);
         }
     }
     else {
-        Channel *channel = new Channel(s, channels.size());
+        Channel *channel = new Channel(server, s, channels.size());
         dir->insert(channel, name);
 
         channels.push_back(channel);
@@ -194,9 +191,10 @@ const Parameter* VariableDirectory::getParameter(size_t idx) const
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-DirectoryNode::DirectoryNode(bool hypernode)
+DirectoryNode::DirectoryNode(const Server *server, bool hypernode):
+    server(server),
+    hypernode(hypernode)
 {
-    this->hypernode = hypernode;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -283,7 +281,7 @@ DirectoryNode *DirectoryNode::push(std::string &name)
     }
     else {
         // Create another directory and move this node into the new dir
-        DirectoryNode *dir = new DirectoryNode(true);
+        DirectoryNode *dir = new DirectoryNode(server, true);
         parent->insert(dir, *this->name);
         dir->insert(this, "0");
 
@@ -316,14 +314,14 @@ DirectoryNode *DirectoryNode::mkdir(
     if (*path) {
         // We're not at the end of the path yet
         if (!node)
-            node = insert(new DirectoryNode, name);
+            node = insert(new DirectoryNode(server), name);
 
         return node->mkdir(path, hide, name);
     }
 
     // Check whether the node exists
     if (node)
-        return traditional ? node->push(name) : 0;
+        return server->traditionalMode() ? node->push(name) : 0;
 
     return this;
 }
@@ -355,13 +353,13 @@ void DirectoryNode::insert(Variable *var, size_t index,
     else {
         DirectoryNode *dir = children[name];
         if (!dir)
-            dir = insert(new DirectoryNode, name);
+            dir = insert(new DirectoryNode(server), name);
         dir->insert( var, index - x*nelem , nelem, ndims - 1, dim);
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string DirectoryNode::split(const char *&path, char &hide)
+std::string DirectoryNode::split(const char *&path, char &hide) const
 {
     // Skip whitespace at the beginning of the path
     while (std::isspace(*path, std::locale::classic()))
@@ -374,7 +372,7 @@ std::string DirectoryNode::split(const char *&path, char &hide)
         slash++;
 
     const char *nameEnd = slash;
-    if (traditional) {
+    if (server->traditionalMode()) {
         nameEnd = path;
         while (nameEnd < slash and *nameEnd != '<')
             nameEnd++;

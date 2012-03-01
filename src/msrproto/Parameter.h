@@ -44,7 +44,8 @@ class XmlElement;
 
 class Parameter: public Variable {
     public:
-        Parameter( unsigned int parameterIndex,
+        Parameter(const Server *,
+                unsigned int parameterIndex,
                 const PdServ::Parameter *p,
                 unsigned int elementIndex = ~0U);
         ~Parameter();
