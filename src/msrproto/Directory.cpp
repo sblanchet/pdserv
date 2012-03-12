@@ -113,7 +113,8 @@ bool VariableDirectory::insert( const PdServ::Parameter *p, const std::string &a
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool VariableDirectory::insert(const PdServ::Signal *s, const std::string &appName)
+bool VariableDirectory::insert(const PdServ::Signal *s,
+        const std::string &appName)
 {
     std::string pathstr;
     if (server->traditionalMode() and appName.size())
@@ -137,6 +138,11 @@ bool VariableDirectory::insert(const PdServ::Signal *s, const std::string &appNa
         return false;
     }
 
+    Channel *channel = new Channel(server, s, channels.size());
+    dir->insert(channel, name);
+    channels.push_back(channel);
+
+    /* Traditional mode: Break non-scalar signals into scalar components. */
     if (server->traditionalMode() and s->nelem > 1) {
         channels.reserve(channels.size() + s->nelem);
 
@@ -148,12 +154,6 @@ bool VariableDirectory::insert(const PdServ::Signal *s, const std::string &appNa
 
             channels.push_back(channel);
         }
-    }
-    else {
-        Channel *channel = new Channel(server, s, channels.size());
-        dir->insert(channel, name);
-
-        channels.push_back(channel);
     }
 
     return false;
