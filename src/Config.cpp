@@ -145,7 +145,7 @@ Config Config::operator[](size_t index) const
         return Config();
 
     yaml_node_item_t *n = node->data.sequence.items.start;
-    for (size_t i = 0; i < index; ++i) {
+    for (size_t i = 0; i < index; ++i, ++n) {
         if (n == node->data.sequence.items.top) {
             return Config();
         }
