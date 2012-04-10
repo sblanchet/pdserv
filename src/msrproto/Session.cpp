@@ -151,10 +151,11 @@ void Session::initial()
 
     // Greet the new client
     XmlElement greeting("connected", ostream, streamlock);
-    XmlElement::Attribute(greeting, "name")
-        << main->name << " Version " << main->version;
+    XmlElement::Attribute(greeting, "name") << "MSR";
     XmlElement::Attribute(greeting, "host")
         << reinterpret_cast<const char*>(hostname);
+    XmlElement::Attribute(greeting, "app") << main->name;
+    XmlElement::Attribute(greeting, "appversion") << main->version;
     XmlElement::Attribute(greeting, "version") << MSR_VERSION;
     XmlElement::Attribute(greeting, "features") << MSR_FEATURES;
     XmlElement::Attribute(greeting, "recievebufsize") << 100000000;
