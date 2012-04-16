@@ -32,7 +32,7 @@
 class Signal;
 
 struct Pdo {
-    enum {Empty = 0, SignalList, Data, End} type;
+    enum {Empty = 0, SignalList = 1008051969, Data = 1006101981, End} type;
     unsigned int signalListId;
     size_t count;
     unsigned int seqNo;
