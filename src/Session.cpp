@@ -29,7 +29,9 @@
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Session(const Main *m): main(m), shadow(main->newSession(this))
+Session::Session(const Main *m):
+    main(m),
+    shadow(main->newSession(this))
 {
     main->gettime(&connectedTime);
 }

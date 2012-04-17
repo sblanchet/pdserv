@@ -59,7 +59,6 @@ class Session {
         bool rxPdo();
 
         struct timespec connectedTime;
-    private:
 };
 
 }
