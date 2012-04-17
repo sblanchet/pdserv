@@ -49,9 +49,10 @@ void SessionTaskData::init()
     pdo = txMemBegin;
 
     do {
-        while (!pdo->next)
+        while (!pdo->next) {
             ost::Thread::sleep( static_cast<unsigned>(
                         task->sampleTime * 1000 / 2 + 1));
+        }
 
         seqNo = pdo->seqNo;
         pdo = pdo->next;
@@ -64,8 +65,9 @@ void SessionTaskData::init()
                 or (pdo->type == Pdo::Data
                     and pdo->data + pdo->count >= txMemEnd)
                 or (pdo->type == Pdo::SignalList
-                    and pdo->signal + pdo->count >= txMemEnd))
+                    and pdo->signal + pdo->count >= txMemEnd)) {
             pdo = txMemBegin;
+        }
 
         // Make sure signalListId has not changed
         if (static_cast<int>(pdo->signalListId - signalListId) > 0) {
@@ -78,6 +80,9 @@ void SessionTaskData::init()
 
     } while (!(!pdo->next and pdo->type == Pdo::Data
                 and pdo->signalListId == signalListId));
+
+    log_debug("Session sync'ed: pdo=%p seqNo=%u signalListId=%u",
+            (void *) pdo, seqNo, signalListId);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -107,8 +112,9 @@ bool SessionTaskData::rxPdo()
                     }
                     loadSignalList(sp, n, pdo->signalListId);
 
-                    for (size_t i = 0; i < n; ++i)
+                    for (size_t i = 0; i < n; ++i) {
                         session->newSignal(task, sp[i]);
+                    }
                 }
 
                 break;
@@ -151,6 +157,7 @@ bool SessionTaskData::rxPdo()
     return false;
 
 out:
+    log_debug("Session out of sync.");
     init();
     return true;
 }
