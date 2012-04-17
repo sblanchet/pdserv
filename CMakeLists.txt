@@ -2,7 +2,8 @@
 #
 #  $Id$
 #
-#  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
+#  Copyright 2010 - 2012  Richard Hacker (lerichi at gmx dot net)
+#                         Florian Pose <fp@igh-essen.com>
 #
 #  This file is part of the pdserv library.
 #
@@ -19,18 +20,23 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with the pdserv library. If not, see <http://www.gnu.org/licenses/>.
 #
+##############################################################################
+#
 #  This is the main cmake file for building process data communications server
 #
 #  The following options can be specified on the command line of cmake to
 #  change the installation paths (Defaults are in <>)
+#
 #       -DPREFIX=</opt/etherlab>
 #       -DINCLUDEDIR=<${prefix}/include>
 #       -DEXECDIR=<${prefix}/bin>
 #       -DLIBDIR=<${prefix}/lib>
-#       -DDISABLE_BUDDY=0         # Do not build etherlab_buddy
+#       -DDISABLE_BUDDY=0         # Do not build etherlab_buddy2
 #
 #  For debugging, use the
+
 #       -DCMAKE_BUILD_TYPE=Debug|Release|RelWithDebInfo|MinSizeRel
+
 #  option
 #
 ##############################################################################

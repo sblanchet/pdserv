@@ -32,6 +32,7 @@ namespace Debug {
     void Debug(const char *file, const char *func, int line,
             const char *fmt, ...) __attribute__((format(printf, 4, 5)));
 }
+
 #define log_debug(fmt...) Debug::Debug(__BASE_FILE__, __func__, __LINE__, fmt)
 
 #else   // PDS_DEBUG

@@ -2,7 +2,8 @@
  *
  *  $Id$
  *
- *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
+ *  Copyright 2010 - 2012  Richard Hacker (lerichi at gmx dot net)
+ *                         Florian Pose <fp@igh-essen.com>
  *
  *  This file is part of the pdserv library.
  *
@@ -117,7 +118,7 @@ bool SessionTaskData::rxPdo()
                         or pdo->signalListId != signalListId
                         or pdo->seqNo - seqNo != 1) {
                     log_debug("%p + %zu >= %p; %u != %u; %i != 1; %u %u %u",
-                            (void*)pdo->data, pdoSize, (void*)txMemEnd,
+                            (void *) pdo->data, pdoSize, (void *) txMemEnd,
                             pdo->signalListId, signalListId,
                             pdo->seqNo - seqNo,
                             pdo->data + pdoSize >= txMemEnd,
