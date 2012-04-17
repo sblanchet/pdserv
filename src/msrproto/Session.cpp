@@ -90,7 +90,7 @@ Session::~Session()
 void Session::getSessionStatistics(PdServ::SessionStatistics &stats) const
 {
     std::ostringstream os;
-    if (peer.empty()) 
+    if (peer.empty())
         stats.remote = tcp.peer;
     else
         stats.remote = peer + " (" + tcp.peer +')';
@@ -159,7 +159,6 @@ void Session::initial()
     XmlElement::Attribute(greeting, "version") << MSR_VERSION;
     XmlElement::Attribute(greeting, "features") << MSR_FEATURES;
     XmlElement::Attribute(greeting, "recievebufsize") << 100000000;
-
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -188,6 +187,7 @@ void Session::run()
             }
 
             if (rxPdo()) {
+                server->log.warn("Out of sync.");
                 // Unknown command warning
                 XmlElement error("error", ostream, streamlock);
                 XmlElement::Attribute(error, "text")
