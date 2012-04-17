@@ -40,6 +40,9 @@
 #include <fcntl.h>              // open()
 #include <limits.h>             // _POSIX_OPEN_MAX
 
+#include <log4cpp/Category.hh>
+#include <log4cpp/SyslogAppender.hh>
+
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
@@ -70,6 +73,15 @@ Main::Main( const char *name, const char *version,
 {
     shmem_len = 0;
     shmem = 0;
+
+    log4cpp::Category& root = log4cpp::Category::getRoot();
+
+    log4cpp::Appender *appender =
+        new log4cpp::SyslogAppender("syslog", "pdserv", LOG_LOCAL0);
+    appender->setLayout(new log4cpp::BasicLayout());
+
+    root.addAppender(appender);
+    root.setPriority(log4cpp::Priority::NOTICE);
 }
 
 /////////////////////////////////////////////////////////////////////////////
