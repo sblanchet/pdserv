@@ -60,12 +60,12 @@ void SessionTaskData::init()
         // Check that pdo still points to a valid range
         if (pdo < txMemBegin
                 or &pdo->data >= txMemEnd
-                or !pdo->type
-                or pdo->type >= Pdo::End
+                or (pdo->type != Pdo::Data and pdo->type != Pdo::SignalList)
                 or (pdo->type == Pdo::Data
                     and pdo->data + pdo->count >= txMemEnd)
                 or (pdo->type == Pdo::SignalList
                     and pdo->signal + pdo->count >= txMemEnd)) {
+            log_debug("Invalid PDO found. Restarting.");
             pdo = txMemBegin;
         }
 
@@ -74,8 +74,13 @@ void SessionTaskData::init()
             const Signal *signals[signalPosition.size()];
             size_t nelem;
 
+            log_debug("Found new signal list ID: %u (was: %u)",
+                    pdo->signalListId, signalListId);
+
             task->getSignalList(signals, &nelem, &signalListId);
             loadSignalList(signals, nelem, signalListId);
+
+            log_debug("Loaded signal list with ID %u", signalListId);
         }
 
     } while (!(!pdo->next and pdo->type == Pdo::Data
