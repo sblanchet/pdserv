@@ -54,10 +54,11 @@ void Signal::subscribe(PdServ::Session *s) const
 {
     ost::SemaphoreLock lock(mutex);
 
-    if (sessions.empty())
+    if (sessions.empty()) {
         task->subscribe(this, true);
-    else
+    } else {
         s->newSignal(task, this);
+    }
 
     sessions.insert(s);
 }
