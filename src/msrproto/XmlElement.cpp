@@ -42,9 +42,10 @@ XmlElement::XmlElement(const char *name, std::ostream &os,
         ost::Semaphore &mutex):
     os(os), mutex(&mutex), name(name)
 {
+    this->mutex->wait();
+
     this->os << '<' << name;
     printed = false;
-    this->mutex->wait();
 }
 
 /////////////////////////////////////////////////////////////////////////////

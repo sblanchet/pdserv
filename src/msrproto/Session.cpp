@@ -103,6 +103,8 @@ void Session::getSessionStatistics(PdServ::SessionStatistics &stats) const
 /////////////////////////////////////////////////////////////////////////////
 void Session::broadcast(Session *, const std::string &message)
 {
+    ost::SemaphoreLock lock(mutex);
+
     ostream << message << std::flush;
 }
 
