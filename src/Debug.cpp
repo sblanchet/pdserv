@@ -27,9 +27,15 @@
 
 #ifdef PDS_DEBUG
 
+#include <cc++/thread.h>
+
+ost::Semaphore mutex(1);
+
 void Debug::Debug(const char *file, const char *func,
         int line, const char *fmt, ...)
 {
+    ost::SemaphoreLock l(mutex);
+
     va_list ap;
     va_start(ap, fmt);
 
