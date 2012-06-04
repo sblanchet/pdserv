@@ -89,10 +89,15 @@ Task::~Task()
 size_t Task::getShmemSpace(double T) const
 {
     size_t n = signals.size();
+    size_t minPdoCount = (size_t)(T / sampleTime + 0.5);
+
+    if (minPdoCount < 10)
+        minPdoCount = 10;
+
     return sizeof(*signalListRp) + sizeof(*signalListWp)
         + sizeof(*poll) + n*sizeof(*poll->data)
         + 2 * n * sizeof(*signalList)
-        + (sizeof(*txPdo) + signalMemSize) * (size_t)(T / sampleTime + 0.5);
+        + (sizeof(*txPdo) + signalMemSize) * minPdoCount;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -104,6 +109,7 @@ SessionTaskData* Task::newSession(PdServ::Session *session)
 /////////////////////////////////////////////////////////////////////////////
 void Task::prepare(void *shmem, void *shmem_end)
 {
+    log_debug("S(%p): shmem=%p shmem_end=%p", this, shmem, shmem_end);
     size_t n = signals.size();
 
     signalListRp = ptr_align<struct SignalList*>(shmem);
@@ -117,6 +123,7 @@ void Task::prepare(void *shmem, void *shmem_end)
 
     txMemBegin = ptr_align<struct Pdo>(poll->data + n);
     txMemEnd = shmem_end;
+    log_debug("S(%p): txMemBegin=%p", this, txMemBegin);
 //    cerr_debug() << "signallen=" << signalMemSize << " txpdosize=" 
 //        << sizeof(*txPdo) << " space="
 //        << ((const char*)txMemEnd - (const char *)txMemBegin);
@@ -236,7 +243,8 @@ void Task::subscribe(const Signal* s, bool insert)
 //            << signalPosition[s->index] + 1
 //            << signalTypeCount[w]
 //            << signalPosition[s->index];
-        std::copy( dst + 1, signalCopyList[w] + signalTypeCount[w]-- + 1, dst);
+        std::copy( dst + 1, signalCopyList[w] + signalTypeCount[w] + 1, dst);
+        signalTypeCount[w]--;
 
         for (; *dst; ++dst) {
             --signalPosition[(*dst)->index];
@@ -337,6 +345,7 @@ void Task::update(const struct timespec *t)
         }
 
         poll->reply = poll->request;
+        //log_debug("S(%p): poll", this);
     }
 
     struct SignalList *sp = 0;
@@ -365,10 +374,10 @@ void Task::update(const struct timespec *t)
                 break;
 
             case SignalList::Remove:
-                std::copy(cl+1, copyList[type] + signalTypeCount[type]-- + 1,
-                        cl);
+                std::copy(cl+1, copyList[type] + signalTypeCount[type] + 1, cl);
 
                 signalMemSize -= signal->memSize;
+                signalTypeCount[type]--;
 
 //                cout << " removed" << endl;
                 break;
@@ -382,7 +391,7 @@ void Task::update(const struct timespec *t)
         size_t n = std::accumulate(signalTypeCount, signalTypeCount + 4, 0);
 //        cout << "New signals " << n << ' ' << "signalMemSize=" << signalMemSize;
 
-        if ((txPdo->signal + n) > txMemEnd)
+        if ((txPdo->signal + n) >= txMemEnd)
             txPdo = txMemBegin;
 
         txPdo->next = 0;
@@ -397,6 +406,8 @@ void Task::update(const struct timespec *t)
 //        cout << endl;
 
         *nextTxPdo = txPdo;
+
+        //log_debug("S(%p): TxPdo=%p (signalList)<- %p", this, txPdo, nextTxPdo);
 
         nextTxPdo = &txPdo->next;
         txPdo = ptr_align<Pdo>(sp);
@@ -433,6 +444,7 @@ void Task::update(const struct timespec *t)
     txPdo->count = p - txPdo->data;
     *nextTxPdo = txPdo;
 
+    //log_debug("S(%p): TxPdo=%p<-%p", this, txPdo, nextTxPdo);
     nextTxPdo = &txPdo->next;
     txPdo = ptr_align<Pdo>(p);
 }

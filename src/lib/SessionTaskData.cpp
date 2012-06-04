@@ -86,8 +86,8 @@ void SessionTaskData::init()
     } while (!(!pdo->next and pdo->type == Pdo::Data
                 and pdo->signalListId == signalListId));
 
-    log_debug("Session sync'ed: pdo=%p seqNo=%u signalListId=%u",
-            (void *) pdo, seqNo, signalListId);
+    log_debug("Session %p sync'ed: pdo=%p seqNo=%u signalListId=%u",
+            this, (void *) pdo, seqNo, signalListId);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -95,6 +95,8 @@ bool SessionTaskData::rxPdo()
 {
     while (pdo and pdo->next) {
         size_t n = pdo->count;
+
+        //log_debug("C: pdo=%p type=%i", pdo, pdo->type);
 
         switch (pdo->type) {
             case Pdo::SignalList:
@@ -162,7 +164,7 @@ bool SessionTaskData::rxPdo()
     return false;
 
 out:
-    log_debug("Session out of sync.");
+    log_debug("Session %p out of sync.", this);
     init();
     return true;
 }
