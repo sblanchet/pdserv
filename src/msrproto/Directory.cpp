@@ -138,21 +138,20 @@ bool VariableDirectory::insert(const PdServ::Signal *s,
         return false;
     }
 
-    Channel *channel = new Channel(server, s, channels.size());
-    dir->insert(channel, name);
-    channels.push_back(channel);
+    Channel *mainChannel = new Channel(server, s, channels.size());
+    dir->insert(mainChannel, name);
+
+    channels.push_back(mainChannel);
 
     /* Traditional mode: Break non-scalar signals into scalar components. */
     if (server->traditionalMode() and s->nelem > 1) {
         channels.reserve(channels.size() + s->nelem);
 
-        dir = dir->DirectoryNode::insert(new DirectoryNode(server), name);
-
         for (size_t i = 0; i < s->nelem; ++i) {
-            Channel *channel = new Channel(server, s, channels.size(), i);
-            dir->insert(channel, i, s->nelem, s->ndims, s->dim);
+            Channel *subChannel = new Channel(server, s, channels.size(), i);
+            mainChannel->insert(subChannel, i, s->nelem, s->ndims, s->dim);
 
-            channels.push_back(channel);
+            channels.push_back(subChannel);
         }
     }
 
