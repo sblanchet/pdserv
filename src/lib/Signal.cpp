@@ -68,6 +68,9 @@ void Signal::unsubscribe(PdServ::Session *s) const
 {
     ost::SemaphoreLock lock(mutex);
 
+    if (sessions.empty())
+        return;
+
     sessions.erase(s);
 
     if (sessions.empty())
