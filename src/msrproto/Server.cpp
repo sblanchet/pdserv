@@ -42,11 +42,14 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Server::Server(const PdServ::Main *main, const PdServ::Config &config):
+Server::Server(const PdServ::Main *main, const PdServ::Config& defaultConfig,
+        const PdServ::Config &config):
     main(main),
     log(log4cpp::Category::getInstance(main->name)),
     port(config["port"]),
-    traditional(config["traditional"].isTrue()),
+    traditional( static_cast<unsigned int>( config["traditional"].isTrue()
+                ? config["traditional"]
+                : defaultConfig["traditional"])),
     mutex(1)
 {
     log_debug("traditional=%u", traditional);

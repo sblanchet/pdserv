@@ -362,7 +362,7 @@ int Main::daemonize()
     for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
         static_cast<Task*>(*it)->nrt_init();
 
-    PdServ::Main::startServers(config[name]);
+    PdServ::Main::startServers(config);
 
     // Hang here forever
     while (true) {

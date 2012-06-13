@@ -53,7 +53,8 @@ class VariableDirectory;
 
 class Server: public ost::Thread {
     public:
-        Server(const PdServ::Main *main, const PdServ::Config &);
+        Server(const PdServ::Main *main, const PdServ::Config& defaultConfig,
+                const PdServ::Config &config);
         ~Server();
 
         void broadcast(Session *s, const std::string&);
