@@ -139,16 +139,11 @@ void Session::initial()
 
     // Get the hostname
     char hostname[HOST_NAME_MAX+1];
-    switch (gethostname(hostname, HOST_NAME_MAX)) {
-        case ENAMETOOLONG:
+    if (gethostname(hostname, HOST_NAME_MAX)) {
+        if (errno == ENAMETOOLONG)
             hostname[HOST_NAME_MAX] = '\0';
-            // no break
-        case 0:
-            break;
-
-        default:
+        else
             strcpy(hostname,"unknown");
-            break;
     }
 
     // Greet the new client
