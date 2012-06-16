@@ -229,7 +229,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Configuration file %s is not readable",
                 configFile.c_str());
     }
-    
+
     // Get the logging configutation
     configure_logging(config["logging"]);
     log4cpp::Category& log = log4cpp::Category::getRoot();
@@ -281,7 +281,7 @@ int main(int argc, char **argv)
         log.crit("Could not open main device %s", path.c_str());
         return errno;
     }
-    log_debug("open(%s) = %i", path.c_str(), etl_main); 
+    log_debug("open(%s) = %i", path.c_str(), etl_main);
 
     do {
         uint32_t apps;

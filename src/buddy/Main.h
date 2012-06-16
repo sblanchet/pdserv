@@ -81,12 +81,12 @@ class Main: public PdServ::Main {
 
         size_t *readyList;
 
-        void setupLogging(log4cpp::Category& log, 
+        void setupLogging(log4cpp::Category& log,
                 PdServ::Config const& config);
         void setupTTYLog(log4cpp::Category& log);
-        void setupSyslog(log4cpp::Category& log, 
+        void setupSyslog(log4cpp::Category& log,
                 PdServ::Config const& config);
-        void setupFileLog(log4cpp::Category& log, 
+        void setupFileLog(log4cpp::Category& log,
                 PdServ::Config const& config);
 
         // Reimplemented from PdServ::Main

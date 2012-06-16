@@ -95,7 +95,7 @@ void Main::serve(const PdServ::Config& config, int fd)
         parameters.push_back(p);
         log.debug("   %zu %s", i, p->path.c_str());
     }
-    
+
     mainTask = new Task(this, 1.0e-6 * app_properties.sample_period);
     task.push_back(mainTask);
     log.debug("Added Task with sample time %f", mainTask->sampleTime);
@@ -163,7 +163,7 @@ void Main::serve(const PdServ::Config& config, int fd)
             }
         }
     } while (true);
-    
+
 out:
     log.crit("Failed: %s (%i)", strerror(errno), errno);
     ::exit(errno);
@@ -212,7 +212,7 @@ int Main::setParameter( const Parameter *param, size_t startIndex,
 
     delta.rtP = parameterBuf;
     delta.pos = data - parameterBuf + startIndex * param->elemSize;
-    delta.len = count * param->elemSize;                                                        
+    delta.len = count * param->elemSize;
     delta.count = 0;
     gettime(mtime);
 

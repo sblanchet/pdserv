@@ -135,7 +135,7 @@ void Server::run()
     ost::TCPSocket *server = 0;
 
     ost::tpport_t port = this->port ? this->port : 2345;
-    
+
     do {
         try {
             server = new ost::TCPSocket(ost::IPV4Address("0.0.0.0"), port);
@@ -206,7 +206,7 @@ void Server::setAic(const Parameter *p)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::parameterChanged(const PdServ::Parameter *p, 
+void Server::parameterChanged(const PdServ::Parameter *p,
         size_t startIndex, size_t nelem)
 {
     ost::SemaphoreLock lock(mutex);

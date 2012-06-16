@@ -58,25 +58,25 @@ SessionTaskData::~SessionTaskData ()
 // {
 //     if (pdoSignals.find(s) != pdoSignals.end())
 //         return true;
-// 
+//
 //     pdoSignals.insert(s);
-// 
+//
 //     return false;
 // }
-// 
+//
 // ////////////////////////////////////////////////////////////////////////////
 // bool SessionTaskData::remove (const Signal *s)
 // {
 //     SignalSet::const_iterator it = pdoSignals.find(s);
 //     if (it == pdoSignals.end())
 //         return true;
-// 
+//
 //     pdoSignals.erase(it);
 //     return false;
 // }
 
 ////////////////////////////////////////////////////////////////////////////
-// When this function exits, pdo 
+// When this function exits, pdo
 //      * points to the end of the pdo list,
 //      * is a Data Pdo
 // and its signalListId is valid

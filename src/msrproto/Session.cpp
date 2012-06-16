@@ -273,7 +273,7 @@ void Session::processCommand()
         {0,},
     };
 
-    // Go through the command list 
+    // Go through the command list
     for (size_t idx = 0; cmds[idx].len; idx++) {
         // Check whether the lengths fit and the string matches
         if (commandLen == cmds[idx].len
@@ -580,7 +580,7 @@ void Session::writeParameter()
 
     if (!p)
         return;
-    
+
     unsigned int startindex = 0;
     if (inbuf.getUnsigned("startindex", startindex)) {
         if (startindex >= p->nelem)
@@ -671,7 +671,7 @@ void Session::xsad()
 
         if (event) {
             if (!foundReduction)
-                // If user did not supply a reduction, limit to a 
+                // If user did not supply a reduction, limit to a
                 // max of 10Hz automatically
                 reduction = static_cast<unsigned>(
 				0.1 / mainSignal->sampleTime

@@ -49,7 +49,7 @@ SessionShadow::~SessionShadow()
 //     bool error = false;
 //     for (TaskMap::iterator it = taskMap.begin(); it != taskMap.end(); ++it)
 //         error |= it->second->rxPdo();
-// 
+//
 //     return error;
 // }
 

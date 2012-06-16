@@ -69,7 +69,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
     // index=
     XmlElement::Attribute(element, "index") << variableIndex;
     XmlElement::Attribute(element, "name").setEscaped(path().c_str());
- 
+
     if (shortReply)
         return;
 
@@ -82,10 +82,10 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
         XmlElement::Attribute(element, "unit") << variable->unit;
     if (!variable->comment.empty())
         XmlElement::Attribute(element, "comment") << variable->comment;
- 
+
     // datasize=
     XmlElement::Attribute(element, "datasize") << variable->elemSize;
- 
+
     // typ=
     const char *dtype = 0;
     switch (variable->dtype) {
@@ -108,7 +108,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
             << (variable->ndims == 1 ? "_LIST" : "_MATRIX");
     else
         XmlElement::Attribute(element, "typ") << dtype;
- 
+
     // For vectors:
     // anz=
     // cnum=
@@ -135,7 +135,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
         XmlElement::Attribute(element, "rnum") << rnum;
         XmlElement::Attribute(element, "orientation") << orientation;
     }
- 
+
     // unit=
     if (!variable->unit.empty())
         XmlElement::Attribute(element, "unit") << variable->unit;

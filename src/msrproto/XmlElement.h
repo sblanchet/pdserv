@@ -87,7 +87,7 @@ class XmlElement {
 
             private:
                 std::ostream& os;
-                
+
         };
 
     private:

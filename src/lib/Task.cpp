@@ -128,7 +128,7 @@ void Task::prepare(void *shmem, void *shmem_end)
     txMemBegin = ptr_align<struct Pdo>(poll->data + n);
     txMemEnd = shmem_end;
     log_debug("S(%p): txMemBegin=%p", this, txMemBegin);
-//    cerr_debug() << "signallen=" << signalMemSize << " txpdosize=" 
+//    cerr_debug() << "signallen=" << signalMemSize << " txpdosize="
 //        << sizeof(*txPdo) << " space="
 //        << ((const char*)txMemEnd - (const char *)txMemBegin);
 

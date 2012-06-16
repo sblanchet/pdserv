@@ -311,7 +311,7 @@ bool XmlParser::next()
                 }
 
                 break;
-                
+
             case GetQuotedAttribute:
                 // Skip Escape char
                 if (c == '\\') {

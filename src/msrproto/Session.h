@@ -52,8 +52,8 @@
 #include "XmlParser.h"
 #include "XmlElement.h"
 
-#include <cc++/thread.h> 
-#include <cc++/socketport.h> 
+#include <cc++/thread.h>
+#include <cc++/socketport.h>
 #include <map>
 #include <set>
 #include <cstdio>

@@ -75,7 +75,7 @@ int Parameter::copy(struct pdtask *, const struct pdvariable *,
         void *buf, const void *src, size_t len, void *)
 {
 //    cout << __PRETTY_FUNCTION__ << checkOnly << endl;
-    std::copy( reinterpret_cast<const char*>(src), 
+    std::copy( reinterpret_cast<const char*>(src),
             reinterpret_cast<const char*>(src)+len,
             reinterpret_cast<char*>(buf));
 
