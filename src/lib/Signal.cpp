@@ -21,7 +21,10 @@
  *
  *****************************************************************************/
 
+#include "../Debug.h"
+
 #include "../Session.h"
+#include "../SessionTask.h"
 #include "Signal.h"
 #include "Task.h"
 #include "Main.h"
@@ -50,30 +53,28 @@ Signal::Signal( Task *task,
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::subscribe(PdServ::Session *s) const
+void Signal::subscribe(PdServ::SessionTask *s) const
 {
     ost::SemaphoreLock lock(mutex);
 
     if (sessions.empty()) {
+        log_debug("Request signal from RT task");
         task->subscribe(this, true);
-    } else {
-        s->newSignal(task, this);
+    }
+    else if (s->sessionTaskData->isBusy(this)) {
+        log_debug("Signal already transferred");
+        s->newSignal(this);
     }
 
     sessions.insert(s);
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::unsubscribe(PdServ::Session *s) const
+void Signal::unsubscribe(PdServ::SessionTask *s) const
 {
     ost::SemaphoreLock lock(mutex);
 
-    if (sessions.empty())
-        return;
-
-    sessions.erase(s);
-
-    if (sessions.empty())
+    if (sessions.erase(s) and sessions.empty())
         task->subscribe(this, false);
 }
 
@@ -87,7 +88,7 @@ double Signal::poll(const PdServ::Session *,
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::getValue( const PdServ::Session *, void *dest,
+void Signal::getValue( const PdServ::Session*, void *dest,
         struct timespec *t) const
 {
     const PdServ::Signal *signal = this;
@@ -96,7 +97,7 @@ void Signal::getValue( const PdServ::Session *, void *dest,
 }
 
 //////////////////////////////////////////////////////////////////////
-const void *Signal::getValue(const PdServ::SessionTaskData *std) const
+const char *Signal::getValue(const PdServ::SessionTask* st) const
 {
-    return static_cast<const SessionTaskData*>(std)->getValue(this);
+    return st->sessionTaskData->getValue(this);
 }

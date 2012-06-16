@@ -48,7 +48,6 @@ class ProcessParameter;
 class Variable;
 class Task;
 class Session;
-class SessionShadow;
 class Config;
 class SessionStatistics;
 
@@ -75,8 +74,6 @@ class Main {
 
         void poll( Session *session, const Signal * const *s,
                 size_t nelem, void *buf, struct timespec *t) const;
-
-        virtual SessionShadow *newSession(Session *) const = 0;
 
     protected:
 

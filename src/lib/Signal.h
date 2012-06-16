@@ -31,7 +31,7 @@
 
 namespace PdServ {
     class Session;
-    class SessionTaskData;
+    class SessionTask;
 }
 
 class Task;
@@ -57,17 +57,17 @@ class Signal: public PdServ::Signal {
 
         mutable ost::Semaphore mutex;
 
-        typedef std::set<const PdServ::Session*> SessionSet;
+        typedef std::set<const PdServ::SessionTask*> SessionSet;
         mutable SessionSet sessions;
 
 
         // Reimplemented from PdServ::Signal
-        void subscribe(PdServ::Session *) const;
-        void unsubscribe(PdServ::Session *) const;
+        void subscribe(PdServ::SessionTask *) const;
+        void unsubscribe(PdServ::SessionTask *) const;
         double sampleTime() const;
         double poll(const PdServ::Session *s,
                 void *buf, struct timespec *t) const;
-        const void *getValue(const PdServ::SessionTaskData*) const;
+        const char *getValue(const PdServ::SessionTask*) const;
 
         // Reimplemented from PdServ::Variable
         void getValue(const PdServ::Session*,

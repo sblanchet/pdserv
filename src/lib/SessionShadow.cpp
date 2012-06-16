@@ -43,15 +43,15 @@ SessionShadow::~SessionShadow()
         delete it->second;
 }
 
-////////////////////////////////////////////////////////////////////////////
-bool SessionShadow::rxPdo()
-{
-    bool error = false;
-    for (TaskMap::iterator it = taskMap.begin(); it != taskMap.end(); ++it)
-        error |= it->second->rxPdo();
-
-    return error;
-}
+// ////////////////////////////////////////////////////////////////////////////
+// bool SessionShadow::rxPdo()
+// {
+//     bool error = false;
+//     for (TaskMap::iterator it = taskMap.begin(); it != taskMap.end(); ++it)
+//         error |= it->second->rxPdo();
+// 
+//     return error;
+// }
 
 ////////////////////////////////////////////////////////////////////////////
 const PdServ::TaskStatistics *SessionShadow::getTaskStatistics(

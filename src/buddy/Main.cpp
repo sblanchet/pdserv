@@ -41,7 +41,6 @@
 #include "Task.h"
 #include "Signal.h"
 #include "Parameter.h"
-#include "SessionShadow.h"
 #include "../Config.h"
 #include "../Session.h"
 

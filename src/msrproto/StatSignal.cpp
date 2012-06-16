@@ -24,7 +24,7 @@
 #include "StatSignal.h"
 #include "Session.h"
 #include "TaskStatistics.h"
-#include "../SessionTaskData.h"
+#include "SubscriptionManager.h"
 #include "../TaskStatistics.h"
 #include "../Main.h"
 #include "../Task.h"
@@ -40,22 +40,24 @@ StatSignal::StatSignal(const PdServ::Task *t,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void StatSignal::subscribe(PdServ::Session *session) const
+void StatSignal::subscribe(PdServ::SessionTask *session) const
 {
-    const PdServ::Signal *signal = this;
-    session->newSignal(task, signal);
+    session->newSignal(this);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void StatSignal::unsubscribe(PdServ::Session *) const
+void StatSignal::unsubscribe(PdServ::SessionTask *) const
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-double StatSignal::getValue(
-        const PdServ::Session *session, struct timespec *t) const
+double StatSignal::getValue (
+        const PdServ::Session *s, struct timespec *t) const
 {
+    const Session *session = static_cast<const Session*>(s);
     const PdServ::TaskStatistics* stats = session->getTaskStatistics(task);
+
+    return 0;
 
     if (t)
         *t = *session->getTaskTime(task);
@@ -86,13 +88,15 @@ double StatSignal::poll(const PdServ::Session *session,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const void *StatSignal::getValue(const PdServ::SessionTaskData* std) const
+const char *StatSignal::getValue(const PdServ::SessionTask* std) const
 {
-//    cout << __PRETTY_FUNCTION__ << endl;
-    double* value =
-        static_cast<const Session*>(std->session)->getDouble();
-    *value = getValue(std->session, 0);
-    return value;
+    const SubscriptionManager* sm =
+        static_cast<const SubscriptionManager*>(std);
+    double* value = sm->session->getDouble();
+
+    poll(sm->session, value, 0);
+
+    return reinterpret_cast<const char*>(value);
 }
 
 /////////////////////////////////////////////////////////////////////////////

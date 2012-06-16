@@ -59,7 +59,7 @@ int Parameter::setValue(const char* src, size_t startIndex, size_t nelem) const
 }
 
 //////////////////////////////////////////////////////////////////////
-void Parameter::getValue(const PdServ::Session *,
+void Parameter::getValue(const PdServ::Session*,
         void* valueBuf,  struct timespec *time) const
 {
     ost::SemaphoreLock lock(mutex);

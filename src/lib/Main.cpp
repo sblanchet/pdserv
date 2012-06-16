@@ -48,7 +48,6 @@
 #include "Signal.h"
 #include "Parameter.h"
 #include "Pointer.h"
-#include "SessionShadow.h"
 #include "../Config.h"
 #include "pdserv.h"
 
@@ -384,10 +383,4 @@ void Main::getParameters(Task *task, const struct timespec *t) const
                 p->valueBuf + s->offset, s->count, p->priv_data);
         s->count = 0;
     }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-PdServ::SessionShadow *Main::newSession(PdServ::Session *session) const
-{
-    return new SessionShadow(this, session);
 }

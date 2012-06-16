@@ -29,7 +29,7 @@
 namespace PdServ {
 
 class Session;
-class SessionTaskData;
+class SessionTask;
 
 class Signal: public Variable {
     public:
@@ -45,13 +45,13 @@ class Signal: public Variable {
         const double sampleTime;
         const unsigned int decimation;
 
-        virtual void subscribe(Session *) const = 0;
-        virtual void unsubscribe(Session *) const = 0;
+        virtual void subscribe(SessionTask *) const = 0;
+        virtual void unsubscribe(SessionTask *) const = 0;
 
         virtual double poll(const Session *s,
                 void *buf, struct timespec *t) const = 0;
 
-        virtual const void *getValue(const SessionTaskData*) const = 0;
+        virtual const char *getValue(const SessionTask*) const = 0;
 
         // Reimplemented from PdServ::Variable
         virtual void getValue(const Session*, void *buf,

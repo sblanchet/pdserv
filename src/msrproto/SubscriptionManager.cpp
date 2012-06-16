@@ -24,7 +24,7 @@
 #include "../Debug.h"
 #include "../Main.h"
 #include "../Signal.h"
-#include "../SessionTaskData.h"
+#include "../Task.h"
 #include "SubscriptionManager.h"
 #include "Channel.h"
 #include "Session.h"
@@ -35,39 +35,35 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-SubscriptionManager::SubscriptionManager(Session *s):
-    session(s)
+SubscriptionManager::SubscriptionManager(
+        const Session *s, const PdServ::Task* task):
+    SessionTask(task), session(s)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-SubscriptionManager::~SubscriptionManager()
-{
-    clear();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::subscribe(const Channel *c,
-        bool event, bool sync, unsigned int decimation,
+void SubscriptionManager::subscribe (const Channel *c,
+        bool event, unsigned int decimation,
         size_t blocksize, bool base64, size_t precision)
 {
-//    cout << __func__ << c->path() << endl;
     Subscription *subscription = signalSubscriptionMap[c->signal][c];
     if (!subscription) {
         subscription = new Subscription(c);
         signalSubscriptionMap[c->signal][c] = subscription;
+        log_debug("Subscription not available. Creating...");
     }
-    subscription->set(event, sync, decimation, blocksize, base64, precision);
-    c->signal->subscribe(session);
+    log_debug("Setting subscription event");
+    subscription->set(event, decimation, blocksize, base64, precision);
+    c->signal->subscribe(this);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::clear()
 {
-
-    SignalSubscriptionMap::const_iterator it = signalSubscriptionMap.begin();
-    while (it != signalSubscriptionMap.end())
-        (it++)->first->unsubscribe(session);
+    SignalSubscriptionMap::const_iterator it;
+    for (it = signalSubscriptionMap.begin();
+            it != signalSubscriptionMap.end(); it++)
+        it->first->unsubscribe(this);
 
     signalSubscriptionMap.clear();
     activeSignalSet.clear();
@@ -77,50 +73,83 @@ void SubscriptionManager::clear()
 void SubscriptionManager::unsubscribe(const Channel *c)
 {
 //    cout << __func__ << c->path() << endl;
-    delete signalSubscriptionMap[c->signal][c];
+    SignalSubscriptionMap::iterator it =
+        signalSubscriptionMap.find(c->signal);
 
-    signalSubscriptionMap[c->signal].erase(c);
-    if (signalSubscriptionMap[c->signal].empty()) {
-        signalSubscriptionMap.erase(c->signal);
-        activeSignalSet.erase(c->signal);
-        c->signal->unsubscribe(session);
+    if (it == signalSubscriptionMap.end())
+        return;
+
+    SignalSubscription::iterator it2 = it->second.find(c);
+
+    if (it2 == it->second.end())
+        return;
+
+    delete it2->second;
+
+    it->second.erase(it2);
+
+    if (it->second.empty()) {
+        signalSubscriptionMap.erase(it);
+        activeSignalSet.erase(&it->second);
+        c->signal->unsubscribe(this);
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool SubscriptionManager::newSignal( const PdServ::Signal *s)
+void SubscriptionManager::newSignal( const PdServ::Signal *s)
 {
+    log_debug("%s", s->path.c_str());
     SignalSubscriptionMap::iterator sit = signalSubscriptionMap.find(s);
 
     // Find out whether this signal is used or whether it is active already
-    if (sit == signalSubscriptionMap.end()
-            or activeSignalSet.find(s) != activeSignalSet.end())
-        return false;
-
-    activeSignalSet.insert(s);
-
-    return sit->second.sync();
+    if (sit != signalSubscriptionMap.end())
+        activeSignalSet.insert(&sit->second);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::newSignalData(
-        PrintQ &printQ, const PdServ::SessionTaskData *std)
+void SubscriptionManager::rxPdo(std::ostream& os,
+        ost::Semaphore& streamlock, bool quiet)
 {
-//    cout << __func__ << receiver.seqNo << endl;
-    for (ActiveSignalSet::const_iterator sit = activeSignalSet.begin();
-            sit != activeSignalSet.end(); sit++) {
-        signalSubscriptionMap[*sit].newSignalData(
-                printQ, (*sit)->getValue(std));
+    typedef std::queue<const Subscription*> PrintQ;
+    PrintQ printQ;
+    ActiveSignalSet::const_iterator it;
+    SignalSubscription::const_iterator it2, it2_end;
+
+    while (task->rxPdo(this, &taskTime, &taskStatistics)) {
+
+        for (it = activeSignalSet.begin(); it != activeSignalSet.end(); it++) {
+            it2 = (*it)->begin();
+            it2_end = (*it)->end();
+
+            const PdServ::Signal *s = it2->first->signal;
+            const char *data =
+                reinterpret_cast<const char *>(s->getValue(this));
+
+            do {
+                if (it2->second->newValue(data))
+                    printQ.push(it2->second);
+            } while (++it2 != it2_end);
+        }
+
+        if (!printQ.empty() and !quiet) {
+            XmlElement dataTag("data", os, streamlock);
+            XmlElement::Attribute(dataTag, "level") << 0;
+            XmlElement::Attribute(dataTag, "time") << *taskTime;
+
+            while (!printQ.empty()) {
+                printQ.front()->print(dataTag);
+                printQ.pop();
+            }
+        }
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::sync()
 {
-//    cout << __func__ << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << endl;
     for (ActiveSignalSet::const_iterator sit = activeSignalSet.begin();
             sit != activeSignalSet.end(); sit++) {
-        signalSubscriptionMap[*sit].sync();
+        (*sit)->sync();
     }
 }
 
@@ -134,20 +163,8 @@ SubscriptionManager::SignalSubscription::~SignalSubscription()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::SignalSubscription::newSignalData(
-        PrintQ &printQ, const void *data)
+void SubscriptionManager::SignalSubscription::sync()
 {
-    for (const_iterator it = begin(); data and it != end(); it++) {
-        it->second->newValue(printQ, data);
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-bool SubscriptionManager::SignalSubscription::sync()
-{
-    bool sync = false;
     for (const_iterator it = begin(); it != end(); it++)
-        sync |= it->second->reset();
-
-    return sync;
+        it->second->reset();
 }

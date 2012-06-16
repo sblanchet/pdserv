@@ -28,6 +28,7 @@
 
 #include "ShmemDataStructures.h"
 #include "SessionTaskData.h"
+#include "../SessionTask.h"
 #include "Task.h"
 #include "Main.h"
 #include "Signal.h"
@@ -106,7 +107,7 @@ size_t Task::getShmemSpace(double T) const
 /////////////////////////////////////////////////////////////////////////////
 SessionTaskData* Task::newSession(PdServ::Session *session)
 {
-    return new SessionTaskData(session, this, txMemBegin, txMemEnd);
+    return 0; //new SessionTaskData(session, this, txMemBegin, txMemEnd);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -186,12 +187,6 @@ Signal* Task::addSignal( unsigned int decimation,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const Task::SignalVector& Task::getSignals() const
-{
-    return signalVector;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 size_t Task::signalCount() const
 {
     return signals.size();
@@ -211,7 +206,7 @@ void Task::getSignalList(const Signal **signalList, size_t *nelem,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::subscribe(const Signal* s, bool insert)
+void Task::subscribe(const Signal* s, bool insert) const
 {
     ost::SemaphoreLock lock(mutex);
     struct SignalList *wp = *signalListWp;
@@ -242,6 +237,8 @@ void Task::subscribe(const Signal* s, bool insert)
     }
     else {
         size_t pos = signalPosition[s->index];
+
+        log_debug("erase %s @ %zu", s->path.c_str(), pos);
 
         wp->action = SignalList::Remove;
         wp->signalPosition = pos;
@@ -378,6 +375,9 @@ void Task::update(const struct timespec *t)
 
                 signalMemSize += signal->memSize;
 
+                log_debug("RT insert %s @ %zu", signal->path.c_str(),
+                        signalTypeCount[w]);
+
 //                cout << " added" << endl;
                 break;
 
@@ -388,6 +388,9 @@ void Task::update(const struct timespec *t)
                 cl->src = 0;    // End of copy list indicator
 
                 signalMemSize -= signal->memSize;
+
+                log_debug("RT remove %s @ %zu", signal->path.c_str(),
+                        signalTypeCount[w]);
 
 //                cout << " removed" << endl;
                 break;
@@ -405,14 +408,15 @@ void Task::update(const struct timespec *t)
             txPdo = txMemBegin;
 
         txPdo->next = 0;
+        txPdo->type = Pdo::Empty;
         txPdo->signalListId = signalListId;
         txPdo->count = n;
-        txPdo->type = Pdo::SignalList;
         size_t *sp = txPdo->signal;
-        for (int i = 0; i < 4; i++)
-            for (CopyList *cl = copyList[i]; cl->src; ++cl) {
+        for (int i = 0; i < 4; i++) {
+            for (CopyList *cl = copyList[i]; cl->src; ++cl)
                 *sp++ = cl->signal->index;
-            }
+        }
+        txPdo->type = Pdo::SignalList;
 //        cout << endl;
 
         *nextTxPdo = txPdo;
@@ -429,16 +433,17 @@ void Task::update(const struct timespec *t)
     }
 
     txPdo->next = 0;
-    txPdo->type = Pdo::Data;
+    txPdo->type = Pdo::Empty;
     txPdo->signalListId = signalListId;
     txPdo->seqNo = seqNo++;
 
-    if (t)
+    txPdo->taskStatistics = taskStatistics;
+
+    if (t) {
         txPdo->time = *t;
+    }
     else
         txPdo->time.tv_sec = txPdo->time.tv_nsec = 0;
-
-    txPdo->taskStatistics = taskStatistics;
 
     char *p = txPdo->data;
     for (int i = 0; i < 4; ++i) {
@@ -449,6 +454,7 @@ void Task::update(const struct timespec *t)
 //            cout << cl->signal->index << ' ' << cl->len << ' ';
         }
     }
+    txPdo->type = Pdo::Data;
 //    cout << '=' << p - txPdo->data << endl;
 
     txPdo->count = p - txPdo->data;
@@ -457,4 +463,24 @@ void Task::update(const struct timespec *t)
     //log_debug("S(%p): TxPdo=%p<-%p", this, txPdo, nextTxPdo);
     nextTxPdo = &txPdo->next;
     txPdo = ptr_align<Pdo>(p);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::prepare (PdServ::SessionTask *s) const
+{
+    s->sessionTaskData =
+        new SessionTaskData(s, this, signalVector, txMemBegin, txMemEnd);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::cleanup (const PdServ::SessionTask *s) const
+{
+    delete s->sessionTaskData;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Task::rxPdo (PdServ::SessionTask *s, const struct timespec **time,
+        const PdServ::TaskStatistics **stat) const
+{
+    return s->sessionTaskData->rxPdo(time, stat);
 }

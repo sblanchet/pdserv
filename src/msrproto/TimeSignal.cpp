@@ -23,8 +23,9 @@
 
 #include "TimeSignal.h"
 #include "Session.h"
+#include "SubscriptionManager.h"
 #include "TaskStatistics.h"
-#include "../SessionTaskData.h"
+#include "../SessionTask.h"
 #include "../TaskStatistics.h"
 #include "../Main.h"
 #include "../Task.h"
@@ -39,44 +40,49 @@ TimeSignal::TimeSignal(const PdServ::Task *t, const std::string& path):
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TimeSignal::subscribe(PdServ::Session *session) const
+void TimeSignal::subscribe(PdServ::SessionTask *session) const
 {
-    const PdServ::Signal *signal = this;
-    session->newSignal(task, signal);
+    session->newSignal(this);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TimeSignal::unsubscribe(PdServ::Session *) const
+void TimeSignal::unsubscribe(PdServ::SessionTask *) const
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-double TimeSignal::poll(const PdServ::Session *session,
+double TimeSignal::poll(const PdServ::Session *s,
         void *buf, struct timespec *t) const
 {
+    const Session *session = static_cast<const Session*>(s);
     const struct timespec *time = session->getTaskTime(task);
 
-    *reinterpret_cast<double*>(buf) = 1.0e-9 * time->tv_nsec + time->tv_sec;
+    return 0;
 
-    if (t)
-        *t = *time;
+    if (time) {
+        *reinterpret_cast<double*>(buf) = 1.0e-9 * time->tv_nsec + time->tv_sec;
+
+        if (t)
+            *t = *time;
+    }
 
     return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const void *TimeSignal::getValue(const PdServ::SessionTaskData* std) const
+const char *TimeSignal::getValue(const PdServ::SessionTask* std) const
 {
-    double* value =
-        static_cast<const Session*>(std->session)->getDouble();
+    const SubscriptionManager* sm =
+        static_cast<const SubscriptionManager*>(std);
+    double* value = sm->session->getDouble();
 
-    poll(std->session, value, 0);
+    poll(sm->session, value, 0);
 
-    return value;
+    return reinterpret_cast<const char*>(value);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TimeSignal::getValue(const PdServ::Session *session,
+void TimeSignal::getValue(const PdServ::Session* session,
         void *buf, struct timespec* t) const
 {
     poll(session, buf, t);

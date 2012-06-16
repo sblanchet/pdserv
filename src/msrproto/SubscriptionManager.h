@@ -24,6 +24,9 @@
 #ifndef SUBSCRIPTIONMANAGER_H
 #define SUBSCRIPTIONMANAGER_H
 
+#include "../SessionTask.h"
+
+#include <ostream>
 #include <set>
 #include <map>
 #include <queue>
@@ -31,7 +34,8 @@
 namespace PdServ {
     class Channel;
     class Main;
-    class SessionTaskData;
+    class Task;
+    class TaskStatistics;
 }
 
 namespace MsrProto {
@@ -41,42 +45,45 @@ class Subscription;
 class Session;
 class XmlElement;
 
-class SubscriptionManager {
+class SubscriptionManager: public PdServ::SessionTask {
     public:
-        SubscriptionManager(Session *session);
-        ~SubscriptionManager();
+        SubscriptionManager(const Session *session, const PdServ::Task*);
+
+        const Session * const session;
+
+        void rxPdo(std::ostream& os, ost::Semaphore& streamlock, bool quiet);
 
         void clear();
-        void unsubscribe(const Channel *s = 0);
+        void unsubscribe(const Channel *s);
         void subscribe(const Channel *s,
-                bool event, bool sync, unsigned int decimation,
+                bool event, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
-        bool newSignal( const PdServ::Signal *);
-
-        typedef std::queue<const Subscription*> PrintQ;
-        void newSignalData( PrintQ &printQ,
-                const PdServ::SessionTaskData *);
 
         void sync();
 
-    private:
-        Session * const session;
+        const struct timespec *taskTime;
+        const PdServ::TaskStatistics *taskStatistics;
 
-        struct SignalSubscription:
+    private:
+
+        class SignalSubscription:
             public std::map<const Channel*, Subscription*> {
+                public:
                 ~SignalSubscription();
 
-                void newSignalData( PrintQ &printQ, const void *);
                 void clear();
-                bool sync();
+                void sync();
             };
 
         typedef std::map<const PdServ::Signal*, SignalSubscription>
             SignalSubscriptionMap;
         SignalSubscriptionMap signalSubscriptionMap;
 
-        typedef std::set<const PdServ::Signal*> ActiveSignalSet;
+        typedef std::set<SignalSubscription*> ActiveSignalSet;
         ActiveSignalSet activeSignalSet;
+
+        // Reimplemented from PdServ::SessionTask
+        void newSignal( const PdServ::Signal *);
 };
 
 }

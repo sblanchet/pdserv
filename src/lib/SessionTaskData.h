@@ -27,11 +27,12 @@
 #include <cstddef>
 
 #include <vector>
+#include <set>
 
-#include "../SessionTaskData.h"
+#include "Task.h"
 
 namespace PdServ {
-    class Session;
+    class SessionTask;
     class Signal;
     class TaskStatistics;
 }
@@ -40,19 +41,29 @@ class Task;
 class Signal;
 struct Pdo;
 
-class SessionTaskData: public PdServ::SessionTaskData {
+class SessionTaskData {
     public:
-        SessionTaskData(PdServ::Session* session, Task* t,
+        SessionTaskData(PdServ::SessionTask *session, const Task* t,
+                const Task::SignalVector& signals,
                 struct Pdo *txMemBegin, const void *txMemEnd);
+        ~SessionTaskData();
 
-        bool rxPdo();
+        bool isBusy(const Signal*);
+
+        bool rxPdo(const struct timespec **time,
+                const PdServ::TaskStatistics **stat);
         const char *getValue(const PdServ::Signal *) const;
         const PdServ::TaskStatistics* getTaskStatistics() const;
         const struct timespec *getTaskTime() const;
 
     private:
-        Task * const task;
-        PdServ::Session * const session;
+        const Task * const task;
+        PdServ::SessionTask * const sessionTask;
+
+        typedef std::set<const Signal*> SignalSet;
+        SignalSet pdoSignals;
+
+        const Task::SignalVector& signals;
 
         struct Pdo * const txMemBegin;
         void const * const txMemEnd;

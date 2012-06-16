@@ -89,11 +89,9 @@ class Session: public ost::Thread, public PdServ::Session {
 
         void processCommand();
 
-        void requestSignal(const PdServ::Signal *s, bool state);
-
-        uint32_t *getUInt32() const {
-            return &tmp.uint32;
-        }
+        const struct timespec *getTaskTime(const PdServ::Task *) const;
+        const PdServ::TaskStatistics *getTaskStatistics(
+                const PdServ::Task *) const;
 
         double *getDouble() const {
             return &tmp.dbl;
@@ -136,6 +134,7 @@ class Session: public ost::Thread, public PdServ::Session {
         typedef std::map<const PdServ::Task*, SubscriptionManager*>
             SubscriptionManagerMap;
         SubscriptionManagerMap subscriptionManager;
+        const SubscriptionManager *timeTask;
 
         // Temporary memory space needed to handle statistic channels
         union {
@@ -148,16 +147,15 @@ class Session: public ost::Thread, public PdServ::Session {
         void run();
         void final();
 
-        // Reimplemented from PdServ::Session
-        void newSignal(const PdServ::Task *task, const PdServ::Signal *);
-        void newSignalData(const PdServ::SessionTaskData*,
-                const struct timespec *);
+//        // Reimplemented from PdServ::Session
+//        void newSignal(const PdServ::Task *task, const PdServ::Signal *);
+//        void newSignalData(const PdServ::SessionTaskData*,
+//                const struct timespec *);
 
         // Management variables
         bool writeAccess;
         bool quiet;
         bool echoOn;
-        bool sync;
         std::string peer;
         std::string client;
 

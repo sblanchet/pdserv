@@ -60,7 +60,7 @@ class Parameter: public PdServ::ProcessParameter {
                 const char *buf, size_t startIndex, size_t nelem) const;
 
         // Reimplemented from PdServ::Variable
-        void getValue(const PdServ::Session *,
+        void getValue(const PdServ::Session*,
                 void *buf, struct timespec* t = 0) const;
 
         // A default function used when paramcheck or paramupdate are not

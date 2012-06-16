@@ -22,16 +22,13 @@
  *****************************************************************************/
 
 #include "Session.h"
-#include "SessionShadow.h"
 #include "SessionStatistics.h"
 #include "Main.h"
 
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Session(const Main *m):
-    main(m),
-    shadow(main->newSession(this))
+Session::Session(const Main *m): main(m)
 {
     main->gettime(&connectedTime);
 }
@@ -39,23 +36,4 @@ Session::Session(const Main *m):
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
-    delete shadow;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const struct timespec *Session::getTaskTime(const Task *task) const
-{
-    return shadow->getTaskTime(task);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const TaskStatistics *Session::getTaskStatistics(const Task *task) const
-{
-    return shadow->getTaskStatistics(task);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-bool Session::rxPdo()
-{
-    return shadow->rxPdo();
 }

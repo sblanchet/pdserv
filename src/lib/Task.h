@@ -36,6 +36,7 @@
 
 namespace PdServ {
     struct TaskStatistics;
+    class SessionTask;
 }
 
 class Main;
@@ -45,12 +46,11 @@ class SessionTaskData;
 class Task: public PdServ::Task {
     public:
         Task(Main *main, double sampleTime, const char *name);
-        ~Task();
+        virtual ~Task();
 
         Main * const main;
 
         typedef std::vector<const Signal*> SignalVector;
-        const SignalVector& getSignals() const;
         Signal* addSignal( unsigned int decimation,
                 const char *path, PdServ::Variable::Datatype datatype,
                 const void *addr, size_t n, const size_t *dim);
@@ -66,7 +66,7 @@ class Task: public PdServ::Task {
                 double exec_time, double cycle_time, unsigned int overrun);
         void update(const struct timespec *);
 
-        void subscribe(const Signal* s, bool insert);
+        void subscribe(const Signal* s, bool insert) const;
 
         void pollPrepare( const Signal *, void *buf) const;
         bool pollFinished( const PdServ::Signal * const *s, size_t nelem,
@@ -79,7 +79,7 @@ class Task: public PdServ::Task {
     private:
         mutable ost::Semaphore mutex;
 
-        size_t signalTypeCount[4];
+        mutable size_t signalTypeCount[4];
         size_t signalMemSize;
 
         PdServ::TaskStatistics taskStatistics;
@@ -95,7 +95,7 @@ class Task: public PdServ::Task {
         SignalVector signalVector;
 
         unsigned int seqNo;
-        unsigned int signalListId;
+        mutable unsigned int signalListId;
 
         // Pointer into shared memory used to communicate changes to the signal
         // copy list
@@ -115,6 +115,12 @@ class Task: public PdServ::Task {
 
         // Poll data communication. Points to shared memory.
         struct PollData *poll;
+
+        // Reimplemented from PdServ::Task
+        void prepare(PdServ::SessionTask *) const;
+        void cleanup(const PdServ::SessionTask *) const;
+        bool rxPdo(PdServ::SessionTask *, const struct timespec **tasktime,
+                const PdServ::TaskStatistics **taskStatistics) const;
 };
 
 #endif // LIB_TASK_H

@@ -35,7 +35,6 @@
 #include "../Task.h"
 #include "../Signal.h"
 #include "../Parameter.h"
-#include "../SessionShadow.h"
 #include "../SessionTaskData.h"
 #include "../SessionStatistics.h"
 #include "../TaskStatistics.h"
@@ -58,17 +57,21 @@ Session::Session( Server *server, ost::TCPSocket *socket,
     server(server), root(server->getRoot()), streamlock(1),
     tcp(socket), ostream(&tcp), mutex(1), ctxt(ctxt)
 {
+    timeTask = 0;
+
     for (unsigned int i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
 
-        subscriptionManager[task] = new SubscriptionManager(this);
+        subscriptionManager[task] = new SubscriptionManager(this, task);
+
+        if (!timeTask or timeTask->task->sampleTime > task->sampleTime)
+            timeTask = subscriptionManager[task];
     }
 
     // Setup some internal variables
     writeAccess = false;
-    echoOn = false;
+    echoOn = false;     // FIXME: echoOn is not yet implemented
     quiet = false;
-    sync = false;
     aicDelay = 0;
 
     ostream.imbue(std::locale::classic());
@@ -98,6 +101,19 @@ void Session::getSessionStatistics(PdServ::SessionStatistics &stats) const
     stats.countIn = tcp.inBytes;
     stats.countOut = tcp.outBytes;
     stats.connectedTime = connectedTime;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const struct timespec *Session::getTaskTime (const PdServ::Task *task) const
+{
+    return subscriptionManager.find(task)->second->taskTime;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const PdServ::TaskStatistics *Session::getTaskStatistics (
+        const PdServ::Task *task) const
+{
+    return subscriptionManager.find(task)->second->taskStatistics;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -170,81 +186,53 @@ void Session::run()
 {
     ssize_t n;
 
-    try {
-        while (ostream.good()) {
+    while (ostream.good()) {
+        try {
             n = tcp.read(inbuf.bufptr(), inbuf.free(), 100);
-            server->log.debug("Received %i bytes", n);
-            if (!n)
-                break;
-            else if (n > 0) {
-                inbuf.newData(n);
-
-                while (inbuf.next())
-                    processCommand();
-            }
-
-            if (rxPdo()) {
-                server->log.warn("Out of sync.");
-                // Unknown command warning
-                XmlElement error("error", ostream, streamlock);
-                XmlElement::Attribute(error, "text")
-                    << "process synchronization lost";
-
-                sync = true;
-            }
-
-            ost::SemaphoreLock lock(mutex);
-            if (aicDelay and !--aicDelay) {
-                for ( AicSet::iterator it = aic.begin();
-                        it != aic.end(); ++it) {
-                    const Parameter *param = root.find(*it);
-                    param->valueChanged(ostream, streamlock, 0, param->nelem);
-                }
-
-                aic.clear();
-            }
         }
-    }
-    catch (ost::Socket *s) {
-        server->log.crit("Socket error %i", s->getErrorNumber());
-    }
-    catch (std::exception& e) {
-        server->log.crit("Exception occurred: %s", e.what());
-    }
-    catch (...) {
-        server->log.crit("Aborting on unknown exception");
-    }
-}
+        catch (ost::Socket *s) {
+            server->log.crit("Socket error %i", s->getErrorNumber());
+            break;
+        }
+        catch (std::exception& e) {
+            server->log.crit("Exception occurred: %s", e.what());
+            break;
+        }
+        catch (...) {
+            server->log.crit("Aborting on unknown exception");
+            break;
+        }
 
-/////////////////////////////////////////////////////////////////////////////
-void Session::newSignal(const PdServ::Task *task, const PdServ::Signal *s)
-{
-    sync |= subscriptionManager[task]->newSignal(s);
-}
+        server->log.debug("Received %i bytes", n);
+        if (!n)
+            break;
+        else if (n > 0) {
+            inbuf.newData(n);
 
-/////////////////////////////////////////////////////////////////////////////
-void Session::newSignalData(const PdServ::SessionTaskData *std,
-        const struct timespec *time)
-{
-    if (sync) {
-        sync = false;
+            // FIXME: This is ugly!!!
+            // Should look like:
+            //
+            // XmlCommand command;
+            // while (inbuf.next(command))
+            //     processCommand(command);
+            while (inbuf.next())
+                processCommand();
+        }
 
         for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
-                it != subscriptionManager.end(); ++it)
-            it->second->sync();
-    }
-    
-    SubscriptionManager::PrintQ printQueue;
-    subscriptionManager[std->task]->newSignalData(printQueue, std);
+                it != subscriptionManager.end(); ++it) {
+            it->second->rxPdo(ostream, streamlock, quiet);
+        }
 
-    if (!printQueue.empty() and !quiet) {
-        XmlElement dataTag("data", ostream, streamlock);
-        XmlElement::Attribute(dataTag, "level") << 0;
-        XmlElement::Attribute(dataTag, "time") << *time;
+        ost::SemaphoreLock lock(mutex);
+        if (aicDelay and !--aicDelay) {
+            for ( AicSet::iterator it = aic.begin();
+                    it != aic.end(); ++it) {
+                const Parameter *param = root.find(*it);
+                param->valueChanged(ostream, streamlock, 0, param->nelem);
+            }
 
-        while (!printQueue.empty()) {
-            printQueue.front()->print(dataTag);
-            printQueue.pop();
+            aic.clear();
         }
     }
 }
@@ -626,20 +614,24 @@ void Session::xsad()
     unsigned int reduction, blocksize, precision;
     bool base64 = inbuf.isEqual("coding", "Base64");
     bool event = inbuf.isTrue("event");
-    bool sync = inbuf.isTrue("sync");
     bool foundReduction = false, foundBlocksize = false;
     std::list<unsigned int> indexList;
     const VariableDirectory::Channels& channel = root.getChannels();
 
-    // Quiet will stop all transmission of <data> tags until
-    // sync is called
-    // FIXME: sync is not yet implemented correctly
-    quiet = !sync and inbuf.isTrue("quiet");
-
-    if (!inbuf.getUnsignedList("channels", indexList)) {
-        this->sync = sync;
-        return;
+    if (inbuf.isTrue("sync")) {
+        for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
+                it != subscriptionManager.end(); ++it)
+            it->second->sync();
+        quiet = false;
     }
+    else {
+        // Quiet will stop all transmission of <data> tags until
+        // sync is called
+        quiet = inbuf.isTrue("quiet");
+    }
+
+    if (!inbuf.getUnsignedList("channels", indexList))
+        return;
 
     if (inbuf.getUnsigned("reduction", reduction)) {
         if (!reduction) {
@@ -699,8 +691,10 @@ void Session::xsad()
         }
 
         double ts = mainSignal->sampleTime;
+        log_debug("Subscribe to signal %s %i %f", channel[*it]->path().c_str(),
+                *it, ts);
         subscriptionManager[main->getTask(ts)]->subscribe( channel[*it], event,
-                    sync, reduction * mainSignal->decimation,
+                    reduction * mainSignal->decimation,
                     blocksize, base64, precision);
     }
 }

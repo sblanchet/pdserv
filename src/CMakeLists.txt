@@ -50,13 +50,14 @@ SET (main_src
                         SessionStatistics.h
     Config.cpp          Config.h
     Session.cpp         Session.h
+    SessionTask.cpp     SessionTask.h
     Task.cpp            Task.h
     Main.cpp            Main.h
     Variable.cpp        Variable.h
     Signal.cpp          Signal.h
     Parameter.cpp       Parameter.h
     ProcessParameter.cpp ProcessParameter.h
-                        SessionShadow.h
+    #                        SessionShadow.h
     Debug.cpp           Debug.h
     SessionTaskData.cpp SessionTaskData.h
     )
@@ -107,7 +108,7 @@ IF (RT_APP AND NOT DISABLE_BUDDY)
         buddy/Task.cpp buddy/Task.h
         buddy/Main.cpp buddy/Main.h
         buddy/Parameter.cpp buddy/Parameter.h
-        buddy/SessionShadow.cpp buddy/SessionShadow.h
+        #buddy/SessionShadow.cpp buddy/SessionShadow.h
         buddy/SessionTaskData.cpp buddy/SessionTaskData.h
 
         "${ETL_DATA}" "${BUDDY_IOCTL}"
@@ -137,7 +138,7 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     lib/Main.cpp            lib/Main.h
     lib/Signal.cpp          lib/Signal.h
     lib/Parameter.cpp       lib/Parameter.h
-    lib/SessionShadow.cpp   lib/SessionShadow.h
+    #lib/SessionShadow.cpp   lib/SessionShadow.h
     lib/SessionTaskData.cpp lib/SessionTaskData.h
 
     ${msrproto_src}

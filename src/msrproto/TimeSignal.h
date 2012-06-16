@@ -29,7 +29,7 @@
 namespace PdServ {
     class Session;
     class Task;
-    class SessionTaskData;
+    class SessionTask;
 }
 
 namespace MsrProto {
@@ -44,12 +44,13 @@ class TimeSignal: public PdServ::Signal {
 
     private:
         // Reimplemented from PdServ::Signal
-        void subscribe(PdServ::Session *) const;
-        void unsubscribe(PdServ::Session *) const;
+        void subscribe(PdServ::SessionTask *) const;
+        void unsubscribe(PdServ::SessionTask *) const;
         double poll(const PdServ::Session *s,
                 void *buf, struct timespec *t) const;
-        const void *getValue(const PdServ::SessionTaskData*) const;
-        void getValue(const PdServ::Session*, void*, struct timespec*) const;
+        const char *getValue(const PdServ::SessionTask*) const;
+        void getValue(const PdServ::Session*,
+                void*, struct timespec*) const;
 };
 
 }

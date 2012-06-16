@@ -53,11 +53,11 @@ class StatSignal: public PdServ::Signal {
                 struct timespec *t) const;
 
         // Reimplemented from PdServ::Signal
-        void subscribe(PdServ::Session *) const;
-        void unsubscribe(PdServ::Session *) const;
+        void subscribe(PdServ::SessionTask *) const;
+        void unsubscribe(PdServ::SessionTask *) const;
         double poll(const PdServ::Session *s,
                 void *buf, struct timespec *t) const;
-        const void *getValue(const PdServ::SessionTaskData*) const;
+        const char *getValue(const PdServ::SessionTask*) const;
         void getValue(const PdServ::Session*, void*, struct timespec*) const;
 };
 

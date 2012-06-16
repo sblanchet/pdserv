@@ -24,16 +24,18 @@
 
 #include "../Debug.h"
 #include "../Session.h"
+#include "../SessionTask.h"
 #include "SessionTaskData.h"
 #include "ShmemDataStructures.h"
 #include "Task.h"
 #include "Signal.h"
 
 ////////////////////////////////////////////////////////////////////////////
-SessionTaskData::SessionTaskData( PdServ::Session* s, Task* t,
+SessionTaskData::SessionTaskData (PdServ::SessionTask *st, const Task* t,
+        const Task::SignalVector& signals,
         struct Pdo *txMemBegin, const void *txMemEnd):
-    PdServ::SessionTaskData(s, t),
-    task(t), session(s), txMemBegin(txMemBegin), txMemEnd(txMemEnd)
+    task(t), sessionTask(st), signals(signals),
+    txMemBegin(txMemBegin), txMemEnd(txMemEnd)
 {
     signalListId = 0;
     pdoSize = 0;
@@ -44,84 +46,123 @@ SessionTaskData::SessionTaskData( PdServ::Session* s, Task* t,
 }
 
 ////////////////////////////////////////////////////////////////////////////
+SessionTaskData::~SessionTaskData ()
+{
+    for (SignalSet::const_iterator it = pdoSignals.begin();
+            it != pdoSignals.end(); it++)
+        static_cast<const PdServ::Signal*>(*it) ->unsubscribe(sessionTask);
+}
+
+// ////////////////////////////////////////////////////////////////////////////
+// bool SessionTaskData::insert (const Signal *s)
+// {
+//     if (pdoSignals.find(s) != pdoSignals.end())
+//         return true;
+// 
+//     pdoSignals.insert(s);
+// 
+//     return false;
+// }
+// 
+// ////////////////////////////////////////////////////////////////////////////
+// bool SessionTaskData::remove (const Signal *s)
+// {
+//     SignalSet::const_iterator it = pdoSignals.find(s);
+//     if (it == pdoSignals.end())
+//         return true;
+// 
+//     pdoSignals.erase(it);
+//     return false;
+// }
+
+////////////////////////////////////////////////////////////////////////////
+// When this function exits, pdo 
+//      * points to the end of the pdo list,
+//      * is a Data Pdo
+// and its signalListId is valid
 void SessionTaskData::init()
 {
+    const Signal *signals[signalPosition.size()];
+    size_t nelem;
+
     pdo = txMemBegin;
 
     do {
-        while (!pdo->next) {
-            ost::Thread::sleep( static_cast<unsigned>(
-                        task->sampleTime * 1000 / 2 + 1));
-        }
+        do {
+            while (!pdo->next) {
+                ost::Thread::sleep( static_cast<unsigned>(
+                            task->sampleTime * 1000 / 2 + 1));
+            }
 
+            pdo = pdo->next;
+
+            // Check that the pdo is valid and everyting is accessible
+            if (pdo < txMemBegin
+                    or &pdo->data >= txMemEnd
+                    or (pdo->type != Pdo::Data
+                        and pdo->type != Pdo::SignalList)
+                    or (pdo->type == Pdo::Data
+                        and pdo->data + pdo->count >= txMemEnd)
+                    or (pdo->type == Pdo::SignalList
+                        and pdo->signal + pdo->count >= txMemEnd)) {
+                // Pdo is invalid. Start over
+                pdo = txMemBegin;
+            }
+        } while (pdo->next or pdo->type != Pdo::Data);
+
+        // At this point, we have a valid Data Pdo at the end of the list
         seqNo = pdo->seqNo;
-        pdo = pdo->next;
 
-        // Check that pdo still points to a valid range
-        if (pdo < txMemBegin
-                or &pdo->data >= txMemEnd
-                or (pdo->type != Pdo::Data and pdo->type != Pdo::SignalList)
-                or (pdo->type == Pdo::Data
-                    and pdo->data + pdo->count >= txMemEnd)
-                or (pdo->type == Pdo::SignalList
-                    and pdo->signal + pdo->count >= txMemEnd)) {
-            log_debug("Invalid PDO found. Restarting.");
-            pdo = txMemBegin;
-        }
+        task->getSignalList(signals, &nelem, &signalListId);
+        loadSignalList(signals, nelem, signalListId);
 
-        // Make sure signalListId has not changed
-        if (static_cast<int>(pdo->signalListId - signalListId) > 0) {
-            const Signal *signals[signalPosition.size()];
-            size_t nelem;
+        log_debug("Loaded signal list with ID %u", signalListId);
 
-            log_debug("Found new signal list ID: %u (was: %u)",
-                    pdo->signalListId, signalListId);
-
-            task->getSignalList(signals, &nelem, &signalListId);
-            loadSignalList(signals, nelem, signalListId);
-
-            log_debug("Loaded signal list with ID %u", signalListId);
-        }
-
-    } while (!(!pdo->next and pdo->type == Pdo::Data
-                and pdo->signalListId == signalListId));
+    } while (signalListId != pdo->signalListId);
 
     log_debug("Session %p sync'ed: pdo=%p seqNo=%u signalListId=%u",
             this, (void *) pdo, seqNo, signalListId);
 }
 
 ////////////////////////////////////////////////////////////////////////////
-bool SessionTaskData::rxPdo()
+bool SessionTaskData::isBusy (const Signal *s)
 {
-    while (pdo and pdo->next) {
-        size_t n = pdo->count;
+    return pdoSignals.find(s) != pdoSignals.end();
+}
 
-        //log_debug("C: pdo=%p type=%i", pdo, pdo->type);
+////////////////////////////////////////////////////////////////////////////
+bool SessionTaskData::rxPdo (const struct timespec **time,
+        const PdServ::TaskStatistics **statistics)
+{
+    while (pdo->next) {
+        size_t n;
+
+        pdo = pdo->next;
+        if (pdo < txMemBegin or &pdo->data > txMemEnd) {
+            log_debug("%i\n", __LINE__);
+            goto out;
+        }
+
+        n = pdo->count;
 
         switch (pdo->type) {
             case Pdo::SignalList:
                 {
-                    const Task::SignalVector& signals = task->getSignals();
                     const Signal *sp[signals.size()];
 
                     if (pdo->signal + n > txMemEnd) {
-                        log_debug("%i\n", __LINE__);
                         goto out;
                     }
 
                     for (size_t i = 0; i < n; ++i) {
                         size_t idx = pdo->signal[i];
                         if (idx >= signals.size()) {
-                            log_debug("%i\n", __LINE__);
                             goto out;
                         }
                         sp[i] = static_cast<const Signal*>(signals[idx]);
+                        sessionTask->newSignal(sp[i]);
                     }
                     loadSignalList(sp, n, pdo->signalListId);
-
-                    for (size_t i = 0; i < n; ++i) {
-                        session->newSignal(task, sp[i]);
-                    }
                 }
 
                 break;
@@ -143,22 +184,15 @@ bool SessionTaskData::rxPdo()
 
                 seqNo = pdo->seqNo;
                 signalBuffer = pdo->data;
+                *time = &pdo->time;
+                *statistics = &pdo->taskStatistics;
 
-                session->newSignalData(this, &pdo->time);
-                break;
+                return true;
 
             default:
                 log_debug("%i\n", __LINE__);
                 goto out;
         }
-
-        pdo = pdo->next;
-
-        if (pdo < txMemBegin or &pdo->data > txMemEnd) {
-            log_debug("%i\n", __LINE__);
-            goto out;
-        }
-
     }
 
     return false;
@@ -175,11 +209,14 @@ void SessionTaskData::loadSignalList(const Signal * const* sp, size_t n,
 {
     //    cout << __func__ << " n=" << n << " id=" << id;
     std::fill(signalPosition.begin(),  signalPosition.end(), ~0U);
+    pdoSignals.clear();
+
     signalListId = id;
     pdoSize = 0;
     for (size_t i = 0; i < n; ++i) {
         signalPosition[sp[i]->index] = pdoSize;
         pdoSize += sp[i]->memSize;
+        pdoSignals.insert(signals[i]);
         //        cout << ' ' << sp[i]->index << '(' << pdoSize << ')';
     }
     log_debug("pdosize=%zu", pdoSize);

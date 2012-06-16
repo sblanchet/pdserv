@@ -28,8 +28,6 @@
 
 namespace MsrProto {
 
-class PrintQ;
-
 class Subscription {
     public:
         Subscription(const Channel *);
@@ -37,18 +35,16 @@ class Subscription {
 
         const Channel *channel;
 
-        bool reset();
+        void reset();
 
-        void newValue(SubscriptionManager::PrintQ &, const void *buf);
+        bool newValue(const char *buf);
         void print(XmlElement &parent) const;
 
-        void set(bool event, bool sync, unsigned int decimation,
+        void set(bool event, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
 
     private:
         const size_t bufferOffset;
-
-        bool sync;
 
         bool event;
         unsigned int decimation;

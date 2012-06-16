@@ -50,12 +50,11 @@ Subscription::~Subscription()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Subscription::set( bool event, bool sync, unsigned int decimation,
+void Subscription::set( bool event, unsigned int decimation,
         size_t blocksize, bool base64, size_t precision)
 {
 //    cout << __PRETTY_FUNCTION__ << signal->path << endl;
     this->event = event;
-    this->sync = sync;
     this->precision = precision;
     this->base64 = base64;
 
@@ -76,14 +75,13 @@ void Subscription::set( bool event, bool sync, unsigned int decimation,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Subscription::newValue(
-        SubscriptionManager::PrintQ &printQ, const void *dataBuf)
+bool Subscription::newValue (const char *buf)
 {
-    const char *buf = reinterpret_cast<const char *>(dataBuf) + bufferOffset;
     if (trigger and --trigger)
-        return;
+        return false;
 
     nblocks = 0;
+    buf += bufferOffset;
     if (!event or
             !std::equal(static_cast<const char*>(data_bptr), data_eptr, buf)) {
         trigger = decimation;
@@ -102,8 +100,7 @@ void Subscription::newValue(
         }
     }
 
-    if (nblocks)
-        printQ.push(this);
+    return nblocks;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -120,13 +117,8 @@ void Subscription::print(XmlElement &parent) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Subscription::reset()
+void Subscription::reset()
 {
-    bool sync = this->sync;
-
-    this->sync = false;
     data_pptr = data_bptr;
     trigger = decimation;
-
-    return sync;
 }

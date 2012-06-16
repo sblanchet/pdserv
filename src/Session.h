@@ -33,8 +33,6 @@ namespace PdServ {
 class Task;
 class Signal;
 class Main;
-class SessionTaskData;
-class SessionShadow;
 class SessionStatistics;
 class TaskStatistics;
 
@@ -43,21 +41,9 @@ class Session {
         Session(const Main *main);
         virtual ~Session();
 
-        const TaskStatistics *getTaskStatistics(const Task *task) const;
-        const struct timespec *getTaskTime(const Task *) const;
-
-        // These methods are called from within the context of rxPdo
-        virtual void newSignal(const Task *, const Signal *) = 0;
-        virtual void newSignalData(const SessionTaskData*,
-                const struct timespec *) = 0;
-
         const Main * const main;
 
     protected:
-        SessionShadow * const shadow;
-
-        bool rxPdo();
-
         struct timespec connectedTime;
 };
 
