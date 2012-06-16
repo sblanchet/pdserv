@@ -179,7 +179,7 @@ int Main::setParameter(const Parameter *p, size_t startIndex,
 
     if (!sdo->rv)
         *mtime = sdo->time;
-    
+
     return sdo->rv;
 }
 
@@ -243,7 +243,7 @@ int Main::run()
     // data space. This also has the effect, that the value of
     // parameterDataOffset[4] is the total memory requirement of all
     // parameters
-    for (i = 1; i < 5; ++i)                                                     
+    for (i = 1; i < 5; ++i)
         parameterDataOffset[i] += parameterDataOffset[i-1];
 
     // Extend shared memory size with the parameter memory requirement
