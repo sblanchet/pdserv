@@ -57,22 +57,22 @@ double StatSignal::getValue (
     const Session *session = static_cast<const Session*>(s);
     const PdServ::TaskStatistics* stats = session->getTaskStatistics(task);
 
-    return 0;
-
     if (t)
         *t = *session->getTaskTime(task);
 
-    switch (type) {
-        case ExecTime:
-            return stats->exec_time;
-            break;
+    if (stats) {
+        switch (type) {
+            case ExecTime:
+                return stats->exec_time;
+                break;
 
-        case Period:
-            return stats->cycle_time;
-            break;
+            case Period:
+                return stats->cycle_time;
+                break;
 
-        case Overrun:
-            return stats->overrun;
+            case Overrun:
+                return stats->overrun;
+        }
     }
 
     return 0;

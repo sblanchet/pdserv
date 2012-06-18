@@ -58,7 +58,7 @@ void Signal::subscribe(PdServ::SessionTask *s) const
     ost::SemaphoreLock lock(mutex);
 
     if (sessions.empty()) {
-        log_debug("Request signal from RT task");
+        log_debug("Request signal from RT task %p", s);
         task->subscribe(this, true);
     }
     else if (s->sessionTaskData->isBusy(this)) {

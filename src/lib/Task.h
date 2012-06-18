@@ -117,7 +117,8 @@ class Task: public PdServ::Task {
         struct PollData *poll;
 
         // Reimplemented from PdServ::Task
-        void prepare(PdServ::SessionTask *) const;
+        void prepare(PdServ::SessionTask *, const PdServ::TaskStatistics*&,
+                const struct timespec *&) const;
         void cleanup(const PdServ::SessionTask *) const;
         bool rxPdo(PdServ::SessionTask *, const struct timespec **tasktime,
                 const PdServ::TaskStatistics **taskStatistics) const;

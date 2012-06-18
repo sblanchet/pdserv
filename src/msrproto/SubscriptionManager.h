@@ -65,22 +65,79 @@ class SubscriptionManager: public PdServ::SessionTask {
         const PdServ::TaskStatistics *taskStatistics;
 
     private:
+        class ChannelSubscription: private std::vector<Subscription*> {
+            private:
+                typedef std::vector<Subscription*> SubscriptionVector;
 
-        class SignalSubscription:
-            public std::map<const Channel*, Subscription*> {
-                public:
-                ~SignalSubscription();
+                typedef std::map<const Channel*, size_t> ChannelSubscriptionMap;
+                ChannelSubscriptionMap map;
 
-                void clear();
+            public:
+                typedef SubscriptionVector::iterator iterator;
+                typedef SubscriptionVector::const_iterator const_iterator;
+
+                ~ChannelSubscription();
+
+                iterator begin() {
+                    return SubscriptionVector::begin();
+                }
+
+                const_iterator begin() const {
+                    return SubscriptionVector::begin();
+                }
+
+                const_iterator end() const {
+                    return SubscriptionVector::end();
+                }
+
+                size_t size() const {
+                    return SubscriptionVector::size();
+                }
+
+                bool erase(const Channel*);
+                Subscription* find(const Channel*);
                 void sync();
             };
 
-        typedef std::map<const PdServ::Signal*, SignalSubscription>
+        typedef std::map<const PdServ::Signal*, ChannelSubscription>
             SignalSubscriptionMap;
         SignalSubscriptionMap signalSubscriptionMap;
 
-        typedef std::set<SignalSubscription*> ActiveSignalSet;
-        ActiveSignalSet activeSignalSet;
+        class ActiveSet: private std::vector<ChannelSubscription*> {
+            private:
+                typedef std::vector<ChannelSubscription*>
+                    ChannelSubscriptionVector;
+
+                typedef std::map<const ChannelSubscription*, size_t>
+                    ChannelSubscriptionMap;
+                ChannelSubscriptionMap map;
+
+            public:
+                typedef std::vector<ChannelSubscription*>::iterator iterator;
+                typedef std::vector<ChannelSubscription*>::const_iterator
+                    const_iterator;
+
+                void erase(const ChannelSubscription*);
+                void insert(ChannelSubscription*);
+                void clear();
+
+                size_t size() const {
+                    return ChannelSubscriptionVector::size();
+                }
+
+                iterator begin() {
+                    return ChannelSubscriptionVector::begin();
+                }
+
+                const_iterator begin() const {
+                    return ChannelSubscriptionVector::begin();
+                }
+
+                const_iterator end() const {
+                    return ChannelSubscriptionVector::end();
+                }
+        };
+        ActiveSet activeSignalSet;
 
         // Reimplemented from PdServ::SessionTask
         void newSignal( const PdServ::Signal *);

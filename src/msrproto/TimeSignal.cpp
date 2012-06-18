@@ -57,8 +57,6 @@ double TimeSignal::poll(const PdServ::Session *s,
     const Session *session = static_cast<const Session*>(s);
     const struct timespec *time = session->getTaskTime(task);
 
-    return 0;
-
     if (time) {
         *reinterpret_cast<double*>(buf) = 1.0e-9 * time->tv_nsec + time->tv_sec;
 

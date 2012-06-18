@@ -36,9 +36,8 @@ class Subscription {
         const Channel *channel;
 
         void reset();
-
         bool newValue(const char *buf);
-        void print(XmlElement &parent) const;
+        void print(XmlElement &parent);
 
         void set(bool event, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);

@@ -42,6 +42,7 @@ Subscription::Subscription(const Channel* channel):
     data_bptr = 0;
     data_eptr = 0;
     trigger = 0;
+    nblocks = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -64,7 +65,7 @@ void Subscription::set( bool event, unsigned int decimation,
     this->trigger %= this->decimation;
 
     size_t dataLen = this->blocksize * channel->memSize;
-    if (data_eptr != data_bptr + dataLen) {
+    if (data_eptr < data_bptr + dataLen) {
         delete[] data_bptr;
         data_bptr = new char[dataLen];
         data_eptr = data_bptr + dataLen;
@@ -80,31 +81,24 @@ bool Subscription::newValue (const char *buf)
     if (trigger and --trigger)
         return false;
 
-    nblocks = 0;
+    const size_t n = channel->memSize;
     buf += bufferOffset;
-    if (!event or
-            !std::equal(static_cast<const char*>(data_bptr), data_eptr, buf)) {
+    if (!event or !std::equal(buf, buf + n, data_bptr)) {
         trigger = decimation;
 
-        std::copy(buf, buf + channel->memSize, data_pptr);
+        std::copy(buf, buf + n, data_pptr);
 
-        if (event) {
-            nblocks = 1;
-        }
-        else {
-            data_pptr += channel->memSize;
-            if (data_pptr == data_eptr) {
-                data_pptr = data_bptr;
-                nblocks = blocksize;
-            }
-        }
+        nblocks++;
+        data_pptr += n;
+
+        return nblocks == blocksize;
     }
 
-    return nblocks;
+    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Subscription::print(XmlElement &parent) const
+void Subscription::print(XmlElement &parent)
 {
     XmlElement datum(event ? "E" : "F", parent);
     XmlElement::Attribute(datum, "c") << channel->variableIndex;
@@ -114,11 +108,15 @@ void Subscription::print(XmlElement &parent) const
         value.base64(data_bptr, nblocks * channel->memSize);
     else
         value.csv(channel, data_bptr, nblocks, precision);
+
+    data_pptr = data_bptr;
+    nblocks = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Subscription::reset()
+void Subscription::reset ()
 {
+    trigger = 0;
+    nblocks = 0;
     data_pptr = data_bptr;
-    trigger = decimation;
 }

@@ -33,7 +33,9 @@
 ////////////////////////////////////////////////////////////////////////////
 SessionTaskData::SessionTaskData (PdServ::SessionTask *st, const Task* t,
         const Task::SignalVector& signals,
-        struct Pdo *txMemBegin, const void *txMemEnd):
+        struct Pdo *txMemBegin, const void *txMemEnd,
+        const PdServ::TaskStatistics*& ts,
+        const struct timespec*& time):
     task(t), sessionTask(st), signals(signals),
     txMemBegin(txMemBegin), txMemEnd(txMemEnd)
 {
@@ -43,37 +45,19 @@ SessionTaskData::SessionTaskData (PdServ::SessionTask *st, const Task* t,
     signalPosition.resize(task->signalCount());
 
     init();
+    time = &pdo->time;
+    ts = &pdo->taskStatistics;
 }
 
 ////////////////////////////////////////////////////////////////////////////
 SessionTaskData::~SessionTaskData ()
 {
     for (SignalSet::const_iterator it = pdoSignals.begin();
-            it != pdoSignals.end(); it++)
+            it != pdoSignals.end(); it++) {
+        //log_debug("Auto unsubscribe from %s", (*it)->path.c_str());
         static_cast<const PdServ::Signal*>(*it) ->unsubscribe(sessionTask);
+    }
 }
-
-// ////////////////////////////////////////////////////////////////////////////
-// bool SessionTaskData::insert (const Signal *s)
-// {
-//     if (pdoSignals.find(s) != pdoSignals.end())
-//         return true;
-//
-//     pdoSignals.insert(s);
-//
-//     return false;
-// }
-//
-// ////////////////////////////////////////////////////////////////////////////
-// bool SessionTaskData::remove (const Signal *s)
-// {
-//     SignalSet::const_iterator it = pdoSignals.find(s);
-//     if (it == pdoSignals.end())
-//         return true;
-//
-//     pdoSignals.erase(it);
-//     return false;
-// }
 
 ////////////////////////////////////////////////////////////////////////////
 // When this function exits, pdo
@@ -207,6 +191,7 @@ out:
 void SessionTaskData::loadSignalList(const Signal * const* sp, size_t n,
         unsigned int id)
 {
+    log_debug("Loading %zu signals with id %u", n, id);
     //    cout << __func__ << " n=" << n << " id=" << id;
     std::fill(signalPosition.begin(),  signalPosition.end(), ~0U);
     pdoSignals.clear();
@@ -216,7 +201,7 @@ void SessionTaskData::loadSignalList(const Signal * const* sp, size_t n,
     for (size_t i = 0; i < n; ++i) {
         signalPosition[sp[i]->index] = pdoSize;
         pdoSize += sp[i]->memSize;
-        pdoSignals.insert(signals[i]);
+        pdoSignals.insert(sp[i]);
         //        cout << ' ' << sp[i]->index << '(' << pdoSize << ')';
     }
     log_debug("pdosize=%zu", pdoSize);

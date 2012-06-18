@@ -232,7 +232,7 @@ void Task::subscribe(const Signal* s, bool insert) const
         scl[i] = s;
         signalPosition[s->index] = i;
 
-        log_debug("insert %s @ %zu", s->path.c_str(), i);
+        log_debug("insert %s @ %u[%zu]", s->path.c_str(), w, i);
 //        debug() << "insert" << s->path << w << i << (void*)signalCopyList[w];
     }
     else {
@@ -367,6 +367,9 @@ void Task::update(const struct timespec *t)
         switch (sp->action) {
             case SignalList::Insert:
                 // Insert the signal at list end
+                log_debug("RT insert %s @ %zu", signal->path.c_str(),
+                        signalTypeCount[w]);
+
                 cl = copyList[w] + signalTypeCount[w]++;
 
                 cl->src = signal->addr;
@@ -375,8 +378,6 @@ void Task::update(const struct timespec *t)
 
                 signalMemSize += signal->memSize;
 
-                log_debug("RT insert %s @ %zu", signal->path.c_str(),
-                        signalTypeCount[w]);
 
 //                cout << " added" << endl;
                 break;
@@ -466,10 +467,12 @@ void Task::update(const struct timespec *t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::prepare (PdServ::SessionTask *s) const
+void Task::prepare (PdServ::SessionTask *s, const PdServ::TaskStatistics*& ts,
+        const struct timespec *&time) const
 {
     s->sessionTaskData =
-        new SessionTaskData(s, this, signalVector, txMemBegin, txMemEnd);
+        new SessionTaskData(s, this, signalVector, txMemBegin, txMemEnd,
+                ts, time);
 }
 
 /////////////////////////////////////////////////////////////////////////////
