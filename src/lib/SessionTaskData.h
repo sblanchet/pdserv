@@ -45,9 +45,7 @@ class SessionTaskData {
     public:
         SessionTaskData(PdServ::SessionTask *session, const Task* t,
                 const Task::SignalVector& signals,
-                struct Pdo *txMemBegin, const void *txMemEnd,
-                const PdServ::TaskStatistics*& ts,
-                const struct timespec*& time);
+                struct Pdo *txMemBegin, const void *txMemEnd);
         ~SessionTaskData();
 
         bool isBusy(const Signal*);

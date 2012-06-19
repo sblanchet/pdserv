@@ -467,12 +467,10 @@ void Task::update(const struct timespec *t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::prepare (PdServ::SessionTask *s, const PdServ::TaskStatistics*& ts,
-        const struct timespec *&time) const
+void Task::prepare (PdServ::SessionTask *s) const
 {
     s->sessionTaskData =
-        new SessionTaskData(s, this, signalVector, txMemBegin, txMemEnd,
-                ts, time);
+        new SessionTaskData(s, this, signalVector, txMemBegin, txMemEnd);
 }
 
 /////////////////////////////////////////////////////////////////////////////

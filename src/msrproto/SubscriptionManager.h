@@ -65,79 +65,24 @@ class SubscriptionManager: public PdServ::SessionTask {
         const PdServ::TaskStatistics *taskStatistics;
 
     private:
-        class ChannelSubscription: private std::vector<Subscription*> {
-            private:
-                typedef std::vector<Subscription*> SubscriptionVector;
+        static struct timespec dummyTime;
+        static PdServ::TaskStatistics dummyTaskStatistics;
 
-                typedef std::map<const Channel*, size_t> ChannelSubscriptionMap;
-                ChannelSubscriptionMap map;
+        size_t unsubscribedCount;
+        size_t subscribedCount;
+        bool doSync;
 
-            public:
-                typedef SubscriptionVector::iterator iterator;
-                typedef SubscriptionVector::const_iterator const_iterator;
-
-                ~ChannelSubscription();
-
-                iterator begin() {
-                    return SubscriptionVector::begin();
-                }
-
-                const_iterator begin() const {
-                    return SubscriptionVector::begin();
-                }
-
-                const_iterator end() const {
-                    return SubscriptionVector::end();
-                }
-
-                size_t size() const {
-                    return SubscriptionVector::size();
-                }
-
-                bool erase(const Channel*);
-                Subscription* find(const Channel*);
-                void sync();
-            };
-
-        typedef std::map<const PdServ::Signal*, ChannelSubscription>
+        typedef std::map<const Channel*, Subscription*> ChannelSubscriptionMap;
+        typedef std::map<const PdServ::Signal*, ChannelSubscriptionMap>
             SignalSubscriptionMap;
         SignalSubscriptionMap signalSubscriptionMap;
 
-        class ActiveSet: private std::vector<ChannelSubscription*> {
-            private:
-                typedef std::vector<ChannelSubscription*>
-                    ChannelSubscriptionVector;
+        typedef std::set<Subscription*> SubscriptionSet;
+        typedef std::pair<size_t, SubscriptionSet> DecimationTuple;
+        typedef std::map<size_t, DecimationTuple> DecimationGroup;
+        DecimationGroup activeSignals;
 
-                typedef std::map<const ChannelSubscription*, size_t>
-                    ChannelSubscriptionMap;
-                ChannelSubscriptionMap map;
-
-            public:
-                typedef std::vector<ChannelSubscription*>::iterator iterator;
-                typedef std::vector<ChannelSubscription*>::const_iterator
-                    const_iterator;
-
-                void erase(const ChannelSubscription*);
-                void insert(ChannelSubscription*);
-                void clear();
-
-                size_t size() const {
-                    return ChannelSubscriptionVector::size();
-                }
-
-                iterator begin() {
-                    return ChannelSubscriptionVector::begin();
-                }
-
-                const_iterator begin() const {
-                    return ChannelSubscriptionVector::begin();
-                }
-
-                const_iterator end() const {
-                    return ChannelSubscriptionVector::end();
-                }
-        };
-        ActiveSet activeSignalSet;
+        void remove(Subscription *s);
 
         // Reimplemented from PdServ::SessionTask
         void newSignal( const PdServ::Signal *);

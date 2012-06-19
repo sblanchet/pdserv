@@ -42,8 +42,7 @@ class Task {
         typedef std::list<const Signal*> Signals;
         const Signals& getSignals() const;
 
-        virtual void prepare(SessionTask *, const TaskStatistics*&,
-                const struct timespec*&) const = 0;
+        virtual void prepare(SessionTask *) const = 0;
         virtual void cleanup(const SessionTask *) const = 0;
         virtual bool rxPdo(SessionTask *, const struct timespec **tasktime,
                 const PdServ::TaskStatistics **taskStatistics) const = 0;

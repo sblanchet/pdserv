@@ -25,6 +25,7 @@
 #include "../Main.h"
 #include "../Signal.h"
 #include "../Task.h"
+#include "../TaskStatistics.h"
 #include "SubscriptionManager.h"
 #include "Channel.h"
 #include "Session.h"
@@ -35,10 +36,20 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
+struct timespec SubscriptionManager::dummyTime;
+PdServ::TaskStatistics SubscriptionManager::dummyTaskStatistics;
+
+/////////////////////////////////////////////////////////////////////////////
 SubscriptionManager::SubscriptionManager(
         const Session *s, const PdServ::Task* task):
-    SessionTask(task, taskStatistics, taskTime), session(s)
+    SessionTask(task), session(s)
 {
+    taskTime = &dummyTime;
+    taskStatistics = &dummyTaskStatistics;
+
+    unsubscribedCount = 0;
+    subscribedCount = 0;
+    doSync = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -46,9 +57,18 @@ void SubscriptionManager::subscribe (const Channel *c,
         bool event, unsigned int decimation,
         size_t blocksize, bool base64, size_t precision)
 {
-    Subscription *subscription = signalSubscriptionMap[c->signal].find(c);
     log_debug("Setting subscription event");
+    remove(signalSubscriptionMap[c->signal][c]);
+
+    Subscription *subscription = new Subscription(c);
+    signalSubscriptionMap[c->signal][c] = subscription;
     subscription->set(event, decimation, blocksize, base64, precision);
+
+    DecimationTuple& dt = activeSignals[subscription->decimation];
+    if (!dt.first)
+        dt.first = 1;
+
+    ++unsubscribedCount;
     c->signal->subscribe(this);
 }
 
@@ -57,39 +77,87 @@ void SubscriptionManager::clear()
 {
     SignalSubscriptionMap::const_iterator it;
     for (it = signalSubscriptionMap.begin();
-            it != signalSubscriptionMap.end(); it++)
+            it != signalSubscriptionMap.end(); ++it) {
         it->first->unsubscribe(this);
+        for (ChannelSubscriptionMap::const_iterator it2 = it->second.begin();
+                it2 != it->second.end(); ++it2)
+            delete it2->second;
+    }
 
     signalSubscriptionMap.clear();
-    activeSignalSet.clear();
+    activeSignals.clear();
+
+    subscribedCount = 0;
+    unsubscribedCount = 0;
+    doSync = 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void SubscriptionManager::remove (Subscription *s)
+{
+    if (!s)
+        return;
+
+    DecimationGroup::iterator it = activeSignals.find(s->decimation);
+    if (it != activeSignals.end()) {
+        SubscriptionSet::iterator it2 = it->second.second.find(s);
+        if (it2 != it->second.second.end()) {
+            it->second.second.erase(s);
+            if (it->second.second.empty())
+                activeSignals.erase(it);
+            --subscribedCount;
+        }
+        else
+            --unsubscribedCount;
+    }
+
+    delete s;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::unsubscribe(const Channel *c)
 {
 //    cout << __func__ << c->path() << endl;
-    SignalSubscriptionMap::iterator it =
-        signalSubscriptionMap.find(c->signal);
+    SignalSubscriptionMap::iterator it = signalSubscriptionMap.find(c->signal);
 
     if (it == signalSubscriptionMap.end())
         return;
 
-    if (it->second.erase(c)) {
+    ChannelSubscriptionMap::iterator it2 = it->second.find(c);
+    if (it2 == it->second.end())
+        return;
+
+    remove(it2->second);
+
+    it->second.erase(it2);
+    if (it->second.empty()) {
+        it->first->unsubscribe(this);
         signalSubscriptionMap.erase(it);
-        activeSignalSet.erase(&it->second);
-        c->signal->unsubscribe(this);
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::newSignal( const PdServ::Signal *s)
 {
-    SignalSubscriptionMap::iterator sit = signalSubscriptionMap.find(s);
+    if (!unsubscribedCount)
+        return;
+
+    SignalSubscriptionMap::const_iterator sit = signalSubscriptionMap.find(s);
 
     // Find out whether this signal is used or whether it is active already
-    if (sit != signalSubscriptionMap.end()) {
-        activeSignalSet.insert(&sit->second);
-        log_debug("%s", s->path.c_str());
+    if (sit == signalSubscriptionMap.end())
+        return;
+
+    for (ChannelSubscriptionMap::const_iterator it2 = sit->second.begin();
+            it2 != sit->second.end(); ++it2) {
+        Subscription *s = it2->second;
+        DecimationTuple& dt = activeSignals[s->decimation];
+
+        SubscriptionSet::iterator it2 = dt.second.find(s);
+        if (it2 == dt.second.end()) {
+            dt.second.insert(s);
+            doSync = !--unsubscribedCount;
+        }
     }
 }
 
@@ -99,25 +167,31 @@ void SubscriptionManager::rxPdo(std::ostream& os,
 {
     typedef std::queue<Subscription*> PrintQ;
     PrintQ printQ;
-    ActiveSet::const_iterator it;
-    ActiveSet::const_iterator it_end;
-    ChannelSubscription::const_iterator it2, it2_end;
+    DecimationGroup::iterator it;
+    SubscriptionSet::const_iterator it2, it2_end;
 
     while (task->rxPdo(this, &taskTime, &taskStatistics)) {
-        it_end = activeSignalSet.end();
-        for (it = activeSignalSet.begin(); it != it_end; it++) {
-            it2 = (*it)->begin();
-            it2_end = (*it)->end();
+        if (quiet)
+            continue;
 
-            const char *data = (*it2)->channel->signal->getValue(this);
+        for (it = activeSignals.begin(); it != activeSignals.end(); ++it) {
+            DecimationTuple& dt = it->second;
 
-            do {
-                if ((*it2)->newValue(data))
+            if (--dt.first)
+                continue;
+
+            dt.first = it->first;
+            it2_end = dt.second.end();
+
+            for (it2 = dt.second.begin(); it2 != it2_end; ++it2) {
+                const char *data = (*it2)->channel->signal->getValue(this);
+                if ((*it2)->newValue(data) or doSync)
                     printQ.push(*it2);
-            } while (++it2 != it2_end);
+            }
         }
+        doSync = false;
 
-        if (!printQ.empty() and !quiet) {
+        if (!printQ.empty()) {
             XmlElement dataTag("data", os, streamlock);
             XmlElement::Attribute(dataTag, "level") << 0;
             XmlElement::Attribute(dataTag, "time") << *taskTime;
@@ -133,85 +207,8 @@ void SubscriptionManager::rxPdo(std::ostream& os,
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::sync()
 {
-    for (ActiveSet::iterator it = activeSignalSet.begin();
-            it != activeSignalSet.end(); it++)
-        (*it)->sync();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-SubscriptionManager::ChannelSubscription::~ChannelSubscription()
-{
-    for (const_iterator it = begin(); it != end(); it++) {
-        //cout << __func__ << it->second << endl;
-        delete *it;
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Subscription* SubscriptionManager::ChannelSubscription::find (const Channel* c)
-{
-    ChannelSubscriptionMap::const_iterator it = map.find(c);
-    if (it == map.end()) {
-        Subscription* subscription = new Subscription(c);
-        map[c] = size();
-        push_back(subscription);
-        log_debug("Subscription not available. Creating...");
-        return subscription;
-    }
-    else
-        return operator[](it->second);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-bool SubscriptionManager::ChannelSubscription::erase (const Channel* c)
-{
-    ChannelSubscriptionMap::iterator it = map.find(c);
-    if (it != map.end()) {
-        SubscriptionVector::operator[](it->second) = back();
-        map[back()->channel] = it->second;
-        SubscriptionVector::pop_back();
-        map.erase(it);
-    }
-
-    return empty();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::ChannelSubscription::sync ()
-{
-    for (const_iterator it = begin(); it != end(); it++)
-        (*it)->reset();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::ActiveSet::erase (const ChannelSubscription* s)
-{
-    ChannelSubscriptionMap::iterator it = map.find(s);
-    if (it == map.end())
-        return;
-
-    ChannelSubscriptionVector::operator[](it->second) = back();
-    map[back()] = it->second;
-    ChannelSubscriptionVector::pop_back();
-    map.erase(it);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::ActiveSet::insert (ChannelSubscription* s)
-{
-    ChannelSubscriptionMap::iterator it = map.find(s);
-    if (it != map.end())
-        return;
-
-    map[s] = size();
-    push_back(s);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::ActiveSet::clear ()
-{
-    map.clear();
-    ChannelSubscriptionVector::clear();
+    doSync = !unsubscribedCount;
+    for (DecimationGroup::iterator it = activeSignals.begin();
+            it != activeSignals.end(); ++it)
+        it->second.first = 1;
 }

@@ -55,46 +55,62 @@ void Subscription::set( bool event, unsigned int decimation,
         size_t blocksize, bool base64, size_t precision)
 {
 //    cout << __PRETTY_FUNCTION__ << signal->path << endl;
-    this->event = event;
+    if (!decimation)
+        decimation = 1U;
+
+    if (!blocksize)
+        blocksize = 1U;
+
+    if (event) {
+        this->event = 1;
+        this->decimation = 1;
+        this->trigger_start = decimation;
+        this->trigger = 0;
+        this->blocksize = 1;
+    }
+    else {
+        this->event = 0;
+        this->decimation = decimation;
+        this->blocksize = blocksize;
+    }
     this->precision = precision;
     this->base64 = base64;
 
-    this->decimation = std::max(1U, decimation);
-    this->blocksize = event ? 1 : std::max(static_cast<size_t>(1), blocksize);
-
-    this->trigger %= this->decimation;
-
     size_t dataLen = this->blocksize * channel->memSize;
     if (data_eptr < data_bptr + dataLen) {
-        delete[] data_bptr;
         data_bptr = new char[dataLen];
         data_eptr = data_bptr + dataLen;
 
         data_pptr = data_bptr;
-        this->trigger = 1;
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
 bool Subscription::newValue (const char *buf)
 {
-    if (trigger and --trigger)
-        return false;
-
     const size_t n = channel->memSize;
     buf += bufferOffset;
-    if (!event or !std::equal(buf, buf + n, data_bptr)) {
-        trigger = decimation;
+    if (event) {
+        if (!std::equal(buf, buf + n, data_bptr)) {
+            std::copy(buf, buf + n, data_bptr);
+            nblocks = 1;
+            data_pptr = data_bptr + n;
+        }
 
-        std::copy(buf, buf + n, data_pptr);
-
-        nblocks++;
-        data_pptr += n;
-
-        return nblocks == blocksize;
+        if (!trigger) {
+            if (nblocks)
+                trigger = trigger_start;
+            return nblocks;
+        }
+        --trigger;
+        return false;
     }
 
-    return false;
+    std::copy(buf, buf + n, data_pptr);
+    data_pptr += n;
+    ++nblocks;
+
+    return nblocks == blocksize;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -111,12 +127,4 @@ void Subscription::print(XmlElement &parent)
 
     data_pptr = data_bptr;
     nblocks = 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Subscription::reset ()
-{
-    trigger = 0;
-    nblocks = 0;
-    data_pptr = data_bptr;
 }

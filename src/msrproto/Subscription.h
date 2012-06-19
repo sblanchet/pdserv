@@ -35,19 +35,20 @@ class Subscription {
 
         const Channel *channel;
 
-        void reset();
         bool newValue(const char *buf);
         void print(XmlElement &parent);
 
         void set(bool event, unsigned int decimation,
                 size_t blocksize, bool base64, size_t precision);
 
+        unsigned int decimation;
+
     private:
         const size_t bufferOffset;
 
         bool event;
-        unsigned int decimation;
         unsigned int trigger;
+        unsigned int trigger_start;
         size_t blocksize;
         size_t nblocks;         // number of blocks to print
 

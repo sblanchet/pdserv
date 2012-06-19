@@ -33,9 +33,7 @@
 ////////////////////////////////////////////////////////////////////////////
 SessionTaskData::SessionTaskData (PdServ::SessionTask *st, const Task* t,
         const Task::SignalVector& signals,
-        struct Pdo *txMemBegin, const void *txMemEnd,
-        const PdServ::TaskStatistics*& ts,
-        const struct timespec*& time):
+        struct Pdo *txMemBegin, const void *txMemEnd):
     task(t), sessionTask(st), signals(signals),
     txMemBegin(txMemBegin), txMemEnd(txMemEnd)
 {
@@ -45,8 +43,6 @@ SessionTaskData::SessionTaskData (PdServ::SessionTask *st, const Task* t,
     signalPosition.resize(task->signalCount());
 
     init();
-    time = &pdo->time;
-    ts = &pdo->taskStatistics;
 }
 
 ////////////////////////////////////////////////////////////////////////////
