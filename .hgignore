@@ -1,6 +1,7 @@
 syntax: glob
 
 **.sw?
+**.orig
 **~
 CMakeCache.txt
 CMakeFiles
