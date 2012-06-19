@@ -37,7 +37,6 @@ namespace PdServ {
 
 namespace MsrProto {
 
-class DirectoryNode;
 class XmlElement;
 
 class Variable: public DirectoryNode {

@@ -24,14 +24,11 @@
 #ifndef SUBSCRIPTION_H
 #define SUBSCRIPTION_H
 
-#include <set>
-
 namespace MsrProto {
 
 class Subscription {
     public:
         Subscription(const Channel *);
-        ~Subscription();
 
         const Channel *channel;
 

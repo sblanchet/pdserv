@@ -30,12 +30,9 @@
 namespace PdServ {
     class Session;
     class Task;
-    class SessionTaskData;
 }
 
 namespace MsrProto {
-
-class Server;
 
 class StatSignal: public PdServ::Signal {
     public:

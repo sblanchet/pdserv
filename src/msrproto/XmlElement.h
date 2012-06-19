@@ -29,10 +29,7 @@
 
 #include <sstream>
 #include <string>
-#include <map>
-#include <list>
 #include <cc++/thread.h>
-//#include "pdserv/etl_data_info.h"
 
 namespace PdServ {
     class Variable;
@@ -96,18 +93,6 @@ class XmlElement {
 
         const std::string name;
         bool printed;
-
-//        typedef std::pair<const std::string *, std::string> AttributePair;
-//        typedef std::list<AttributePair> AttributeList;
-//        typedef std::map<std::string, std::string *> AttributeMap;
-//        struct Attributes: private AttributeMap {
-//            std::string& operator[](const std::string& attr);
-//            AttributeList list;
-//        };
-//        Attributes attr;
-//
-//        typedef std::list<XmlElement*> Children;
-//        Children children;
 };
 
     template <typename T>

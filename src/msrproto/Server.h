@@ -25,8 +25,6 @@
 #define MSRSERVER_H
 
 #include <set>
-#include <map>
-#include <vector>
 #include <list>
 #include <cc++/thread.h>
 
@@ -45,10 +43,7 @@ namespace PdServ {
 namespace MsrProto {
 
 class Session;
-class Channel;
-class TimeSignal;
 class Parameter;
-class XmlElement;
 class VariableDirectory;
 
 class Server: public ost::Thread {

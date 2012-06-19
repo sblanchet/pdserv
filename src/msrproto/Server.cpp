@@ -26,7 +26,6 @@
 #include "TimeSignal.h"
 #include "StatSignal.h"
 #include "Parameter.h"
-#include "Directory.h"
 #include "Session.h"
 #include "../Main.h"
 #include "../Task.h"

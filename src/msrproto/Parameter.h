@@ -39,7 +39,6 @@ namespace PdServ {
 namespace MsrProto {
 
 class Session;
-class DirectoryNode;
 class XmlElement;
 
 class Parameter: public Variable {
@@ -48,7 +47,6 @@ class Parameter: public Variable {
                 unsigned int parameterIndex,
                 const PdServ::Parameter *p,
                 unsigned int elementIndex = ~0U);
-        ~Parameter();
 
         void setXmlAttributes(XmlElement&, const char *buf,
                 struct timespec const& ts, bool shortReply,

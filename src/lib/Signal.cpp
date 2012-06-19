@@ -23,10 +23,8 @@
 
 #include "../Debug.h"
 
-#include "../Session.h"
 #include "../SessionTask.h"
 #include "Signal.h"
-#include "Task.h"
 #include "Main.h"
 #include "SessionTaskData.h"
 

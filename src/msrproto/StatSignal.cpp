@@ -26,7 +26,6 @@
 #include "TaskStatistics.h"
 #include "SubscriptionManager.h"
 #include "../TaskStatistics.h"
-#include "../Main.h"
 #include "../Task.h"
 
 using namespace MsrProto;

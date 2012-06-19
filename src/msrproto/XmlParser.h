@@ -32,8 +32,6 @@
 
 namespace MsrProto {
 
-class Session;
-
 class XmlParser {
     public:
         XmlParser(size_t max = bufIncrement * 1000);

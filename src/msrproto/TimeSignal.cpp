@@ -25,9 +25,7 @@
 #include "Session.h"
 #include "SubscriptionManager.h"
 #include "TaskStatistics.h"
-#include "../SessionTask.h"
 #include "../TaskStatistics.h"
-#include "../Main.h"
 #include "../Task.h"
 
 using namespace MsrProto;

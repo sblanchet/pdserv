@@ -23,11 +23,9 @@
  *****************************************************************************/
 
 #include "../Debug.h"
-#include "../Session.h"
 #include "../SessionTask.h"
 #include "SessionTaskData.h"
 #include "ShmemDataStructures.h"
-#include "Task.h"
 #include "Signal.h"
 
 ////////////////////////////////////////////////////////////////////////////

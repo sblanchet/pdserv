@@ -38,7 +38,6 @@
 #include <locale>
 #include <sstream>
 #include <iostream>
-#include <stack>
 
 using namespace MsrProto;
 

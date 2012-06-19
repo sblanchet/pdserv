@@ -29,11 +29,9 @@
 #include <ostream>
 #include <set>
 #include <map>
-#include <queue>
 
 namespace PdServ {
     class Channel;
-    class Main;
     class Task;
     class TaskStatistics;
 }
@@ -43,7 +41,6 @@ namespace MsrProto {
 class Channel;
 class Subscription;
 class Session;
-class XmlElement;
 
 class SubscriptionManager: public PdServ::SessionTask {
     public:

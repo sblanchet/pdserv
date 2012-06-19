@@ -45,7 +45,6 @@
 
 #include "Main.h"
 #include "Task.h"
-#include "Signal.h"
 #include "Parameter.h"
 #include "Pointer.h"
 #include "../Config.h"

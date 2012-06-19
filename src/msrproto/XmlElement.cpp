@@ -28,10 +28,9 @@
 #include "Parameter.h"
 #include "Channel.h"
 
-#include <stdint.h>
 #include <iomanip>
 #include <algorithm>
-#include <cstring>
+#include <cstring>      // strlen()
 
 using namespace MsrProto;
 

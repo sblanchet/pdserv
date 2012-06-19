@@ -22,7 +22,6 @@
  *****************************************************************************/
 
 #include "Channel.h"
-#include "Directory.h"
 #include "XmlElement.h"
 #include "../Signal.h"
 
@@ -36,15 +35,7 @@ Channel::Channel(const Server *server, const PdServ::Signal *s,
     Variable(server, s, channelIndex, elementIndex),
     signal(s)
 {
-
     //cout << __PRETTY_FUNCTION__ << index << endl;
-//    cout << path() << ' ' << index << ' ' << sigOffset << endl;
-
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Channel::~Channel()
-{
 }
 
 /////////////////////////////////////////////////////////////////////////////

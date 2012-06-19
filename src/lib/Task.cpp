@@ -30,10 +30,8 @@
 #include "SessionTaskData.h"
 #include "../SessionTask.h"
 #include "Task.h"
-#include "Main.h"
 #include "Signal.h"
 #include "Pointer.h"
-#include "../TaskStatistics.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // Data structures used in Task

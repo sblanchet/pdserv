@@ -26,6 +26,7 @@
 #include "../Debug.h"
 
 #include <algorithm>
+#include <cstring>
 
 using namespace MsrProto;
 

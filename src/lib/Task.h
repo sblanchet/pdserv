@@ -25,17 +25,14 @@
 #define LIB_TASK_H
 
 #include <vector>
-#include <map>
 #include <cstddef>
 #include <cc++/thread.h>
 
 #include "../Variable.h"
 #include "../Task.h"
 #include "../TaskStatistics.h"
-//#include "ShmemDataStructures.h"
 
 namespace PdServ {
-    struct TaskStatistics;
     class SessionTask;
 }
 

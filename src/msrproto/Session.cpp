@@ -35,18 +35,12 @@
 #include "../Task.h"
 #include "../Signal.h"
 #include "../Parameter.h"
-#include "../SessionTaskData.h"
-#include "../SessionStatistics.h"
-#include "../TaskStatistics.h"
 
 #include "Session.h"
 #include "Server.h"
 #include "Channel.h"
 #include "Parameter.h"
-#include "Directory.h"
 #include "SubscriptionManager.h"
-#include "TaskStatistics.h"
-#include "Subscription.h"
 
 using namespace MsrProto;
 

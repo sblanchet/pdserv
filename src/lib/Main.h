@@ -33,7 +33,6 @@
 #include <cc++/thread.h>
 
 namespace PdServ {
-    class Session;
     class Signal;
 }
 

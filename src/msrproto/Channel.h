@@ -33,7 +33,6 @@ namespace PdServ {
 
 namespace MsrProto {
 
-class DirectoryNode;
 class XmlElement;
 
 class Channel: public Variable {
@@ -41,7 +40,6 @@ class Channel: public Variable {
         Channel(const Server *, const PdServ::Signal *s,
                 unsigned int channelIndex,
                 unsigned int index = ~0U);
-        ~Channel();
 
         void setXmlAttributes(XmlElement&, bool shortReply,
                     const char *signalBuf, size_t precision) const;

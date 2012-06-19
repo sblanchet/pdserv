@@ -32,6 +32,7 @@
 #include "Subscription.h"
 
 #include <algorithm>
+#include <queue>
 
 using namespace MsrProto;
 

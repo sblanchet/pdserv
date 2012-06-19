@@ -34,8 +34,6 @@ namespace PdServ {
 
 namespace MsrProto {
 
-class Server;
-
 class TimeSignal: public PdServ::Signal {
     public:
         TimeSignal(const PdServ::Task *task, const std::string& path);

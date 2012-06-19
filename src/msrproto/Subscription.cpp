@@ -27,10 +27,8 @@
 #include "Channel.h"
 #include "SubscriptionManager.h"
 #include "Subscription.h"
-#include "Session.h"
 
 #include <algorithm>
-#include <cstdio> // snprintf
 
 using namespace MsrProto;
 
@@ -43,11 +41,6 @@ Subscription::Subscription(const Channel* channel):
     data_eptr = 0;
     trigger = 0;
     nblocks = 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Subscription::~Subscription()
-{
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -29,7 +29,6 @@
 #include <vector>
 
 namespace PdServ {
-    class Variable;
     class Signal;
     class Parameter;
     class Session;
