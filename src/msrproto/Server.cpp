@@ -57,7 +57,7 @@ Server::Server(const PdServ::Main *main, const PdServ::Config& defaultConfig,
     root = new VariableDirectory(this);
 
     const PdServ::Task *primaryTask;
-    for (unsigned int i = 0; i < main->numTasks(); ++i) {
+    for (size_t i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
 
         const PdServ::Task::Signals& signals = task->getSignals();

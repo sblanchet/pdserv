@@ -53,7 +53,7 @@ Session::Session( Server *server, ost::TCPSocket *socket,
 {
     timeTask = 0;
 
-    for (unsigned int i = 0; i < main->numTasks(); ++i) {
+    for (size_t i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
 
         subscriptionManager[task] = new SubscriptionManager(this, task);
@@ -685,8 +685,8 @@ void Session::xsad()
         }
 
         double ts = mainSignal->sampleTime;
-        log_debug("Subscribe to signal %s %i %f", channel[*it]->path().c_str(),
-                *it, ts);
+        //log_debug("Subscribe to signal %s %i %f", channel[*it]->path().c_str(),
+                //*it, ts);
         subscriptionManager[main->getTask(ts)]->subscribe( channel[*it], event,
                     reduction * mainSignal->decimation,
                     blocksize, base64, precision);

@@ -58,7 +58,6 @@ void SubscriptionManager::subscribe (const Channel *c,
         bool event, unsigned int decimation,
         size_t blocksize, bool base64, size_t precision)
 {
-    log_debug("Setting subscription event");
     remove(signalSubscriptionMap[c->signal][c]);
 
     Subscription *subscription = new Subscription(c);
