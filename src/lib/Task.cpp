@@ -230,7 +230,7 @@ void Task::subscribe(const Signal* s, bool insert) const
         scl[i] = s;
         signalPosition[s->index] = i;
 
-        log_debug("insert %s @ %u[%zu]", s->path.c_str(), w, i);
+        log_debug("insert %s @ %zu[%zu]", s->path.c_str(), w, i);
 //        debug() << "insert" << s->path << w << i << (void*)signalCopyList[w];
     }
     else {
