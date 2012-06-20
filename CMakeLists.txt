@@ -136,21 +136,12 @@ SET (CPACK_SOURCE_PACKAGE_FILE_NAME
 SET (CPACK_GENERATOR "TGZ")
 SET (CPACK_GENERATOR "DEB")
 SET (CPACK_DEBIAN_PACKAGE_MAINTAINER "Richard Hacker") #required
-SET (CPACK_SOURCE_IGNORE_FILES
-    "/CMakeCache.txt"
-    "/CMakeFiles/"
-    "/Makefile$"
+LIST (APPEND CPACK_SOURCE_IGNORE_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/*build.*/"
     "/\\\\.hg"
-    "/build.*"
-    "/config.h$"
-    "/pdserv-.*\\\\.tar\\\\."
-    "/test/config$"
-    "/test/parser$"
-    "/test/test1$"
-    "\\\\.so"
     "\\\\.sw.$"
     "~$"
-    "${CPACK_SOURCE_IGNORE_FILES}"
+    "\\\\.orig$"
     )
 
 INCLUDE (CPack)
@@ -176,6 +167,7 @@ ADD_DEFINITIONS ("-Wall -ansi")
 
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include" "${ABS_INCLUDEDIR}")
 ADD_SUBDIRECTORY (src)
+ADD_SUBDIRECTORY (include)
 ADD_SUBDIRECTORY (test)
 
 # include (ExternalProject)
@@ -186,10 +178,6 @@ ADD_SUBDIRECTORY (test)
 #     BUILD_IN_SOURCE 1
 #     INSTALL_COMMAND ""
 # )
-
-INSTALL (DIRECTORY include/
-    DESTINATION "${ABS_INCLUDEDIR}"
-    FILES_MATCHING PATTERN "*.h")
 
 OPTION ( DEBUG "Debugging output" OFF )
 SET  (PDS_DEBUG ${DEBUG})
