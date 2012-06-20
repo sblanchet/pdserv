@@ -32,7 +32,6 @@ struct timespec;
 namespace PdServ {
 
 class Session;
-class SessionTask;
 
 class Variable {
     public:

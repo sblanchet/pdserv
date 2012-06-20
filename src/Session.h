@@ -24,17 +24,11 @@
 #ifndef SESSION_H
 #define SESSION_H
 
-#include <string>
-#include <list>
 #include <ctime>
 
 namespace PdServ {
 
-class Task;
-class Signal;
 class Main;
-class SessionStatistics;
-class TaskStatistics;
 
 class Session {
     public:

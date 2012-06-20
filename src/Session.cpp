@@ -22,7 +22,6 @@
  *****************************************************************************/
 
 #include "Session.h"
-#include "SessionStatistics.h"
 #include "Main.h"
 
 using namespace PdServ;

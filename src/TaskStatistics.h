@@ -24,8 +24,6 @@
 #ifndef TASKSTATISTICS_H
 #define TASKSTATISTICS_H
 
-#include <ctime>
-
 namespace PdServ {
 
 struct TaskStatistics {

@@ -29,7 +29,6 @@ class SessionTaskData;
 namespace PdServ {
 
 class Task;
-class TaskStatistics;
 class Signal;
 
 class SessionTask {
@@ -39,6 +38,10 @@ class SessionTask {
 
         const Task* const task;
 
+        // Inform the class that a new variable is being transmitted from the
+        // application. This is typically called within signal->subscribe()
+        // method
+        // Reimplement this
         virtual void newSignal(const Signal*) = 0;
 
         // Pointer where a session can store private management variables

@@ -4,6 +4,10 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
+ *  The ProcessParameter extends Parameter with a Process relation.
+ *  Thus, when this class' setValue() method is called, it can call the main
+ *  Process with the new value.
+ *
  *  This file is part of the pdserv library.
  *
  *  The pdserv library is free software: you can redistribute it and/or modify

@@ -28,7 +28,6 @@ namespace PdServ {
 
 class Task;
 class Session;
-class TaskStatistics;
 
 class SessionTaskData {
     public:

@@ -32,8 +32,8 @@ namespace PdServ {
 struct SessionStatistics {
     std::string remote;
     std::string client;
-    unsigned int countIn;
-    unsigned int countOut;
+    size_t countIn;
+    size_t countOut;
     struct timespec connectedTime;
 };
 

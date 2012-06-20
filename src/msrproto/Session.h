@@ -64,6 +64,7 @@ namespace PdServ {
     class SessionTaskData;
     class Task;
     class TaskStatistics;
+    class SessionStatistics;
 }
 
 namespace MsrProto {

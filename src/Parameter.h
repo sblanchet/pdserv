@@ -4,6 +4,9 @@
  *
  *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
  *
+ *  This class extends the general Variable with a setValue() method, enabling
+ *  the value to be set.
+ *
  *  This file is part of the pdserv library.
  *
  *  The pdserv library is free software: you can redistribute it and/or modify

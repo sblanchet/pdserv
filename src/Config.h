@@ -30,15 +30,6 @@
 
 namespace PdServ {
 
-// struct ConfigEmpty: public std::runtime_error {
-//     ConfigEmpty();
-// };
-//
-// struct ConfigError: public std::runtime_error {
-//     ConfigError(yaml_document_t *document, yaml_node_t *node,
-//             const std::string& reason);
-// };
-
 class Config {
     public:
         Config();

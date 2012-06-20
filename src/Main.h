@@ -43,9 +43,7 @@ namespace MsrProto {
 namespace PdServ {
 
 class Signal;
-class Parameter;
 class ProcessParameter;
-class Variable;
 class Task;
 class Session;
 class Config;
@@ -56,13 +54,18 @@ class Main {
         Main(const std::string& name, const std::string& version);
         virtual ~Main();
 
-        const std::string name;
-        const std::string version;
+        const std::string name;         /**< Application name */
+        const std::string version;      /**< Application version */
 
+        // Get the current system time.
+        // Reimplement this method in the class specialization
         virtual int gettime(struct timespec *) const = 0;
 
         size_t numTasks() const;
-        const Task *getTask(unsigned int n) const;
+        const Task *getTask(size_t n) const;
+
+        // Get Task with a specific sample time.
+        // Returns Task, NULL if it doesn't exist
         const Task *getTask(double sampleTime) const;
 
         typedef std::list<const ProcessParameter*> ProcessParameters;
@@ -72,6 +75,7 @@ class Main {
 
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 
+        // Poll the current value of a list of signals
         void poll( Session *session, const Signal * const *s,
                 size_t nelem, void *buf, struct timespec *t) const;
 
