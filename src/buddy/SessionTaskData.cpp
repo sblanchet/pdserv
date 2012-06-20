@@ -52,14 +52,15 @@ SessionTaskData::SessionTaskData (const char *album,
 bool SessionTaskData::rxPdo(const struct timespec **time,
         const PdServ::TaskStatistics **stat)
 {
-    if (*next <= *current)
+    if (*next - *current != 1U)
         return false;
 
     current = next;
-    if (++next == photoMax) {
+    if (++next == photoMax)
         next = photoReady;
+
+    if (current == photoReady)
         photo = album;
-    }
     else
         photo += photoSize;
 
