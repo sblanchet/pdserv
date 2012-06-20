@@ -21,12 +21,9 @@
  *
  *****************************************************************************/
 
-#include <algorithm>
-#include <cerrno>
-
-#include "Main.h"
 #include "../Debug.h"
 #include "Parameter.h"
+#include "Main.h"
 
 //////////////////////////////////////////////////////////////////////
 Parameter::Parameter( const Main *main, char *parameterData,

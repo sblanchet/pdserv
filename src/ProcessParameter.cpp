@@ -37,6 +37,11 @@ ProcessParameter::ProcessParameter ( Main const* main, const std::string& path,
 }
 
 //////////////////////////////////////////////////////////////////////
+ProcessParameter::~ProcessParameter ()
+{
+}
+
+//////////////////////////////////////////////////////////////////////
 int ProcessParameter::setValue(const PdServ::Session *session, const char* src,
                 size_t startIndex, size_t nelem) const
 {

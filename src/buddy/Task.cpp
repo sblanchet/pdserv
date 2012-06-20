@@ -23,10 +23,15 @@
 
 #include "Task.h"
 #include "Signal.h"
+#include "../SessionTask.h"
+#include "SessionTaskData.h"
 
 //////////////////////////////////////////////////////////////////////
-Task::Task( Main *main, double sampleTime):
-    PdServ::Task(sampleTime), main(main)
+Task::Task( Main *main, double sampleTime,
+        const unsigned int* photoReady, const char *album,
+        const struct app_properties *app_properties):
+    PdServ::Task(sampleTime), main(main),
+    photoReady(photoReady), album(album), app_properties(app_properties)
 {
 }
 
@@ -36,4 +41,24 @@ const Signal *Task::addSignal(const SignalInfo& si)
     Signal *s = new Signal(this, si);
     signals.push_back(s);
     return s;
+}
+
+//////////////////////////////////////////////////////////////////////
+void Task::prepare (PdServ::SessionTask *st) const
+{
+    st->sessionTaskData =
+        new SessionTaskData(album, photoReady, app_properties);
+}
+
+//////////////////////////////////////////////////////////////////////
+void Task::cleanup (const PdServ::SessionTask *st) const
+{
+    delete st->sessionTaskData;
+}
+
+//////////////////////////////////////////////////////////////////////
+bool Task::rxPdo (PdServ::SessionTask *st, const struct ::timespec **time,
+        const PdServ::TaskStatistics **stat) const
+{
+    return st->sessionTaskData->rxPdo(time, stat);
 }

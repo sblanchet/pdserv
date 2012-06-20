@@ -57,7 +57,6 @@ SET (main_src
     Signal.cpp          Signal.h
     Parameter.cpp       Parameter.h
     ProcessParameter.cpp ProcessParameter.h
-    #                        SessionShadow.h
     Debug.cpp           Debug.h
     SessionTaskData.cpp SessionTaskData.h
     )
@@ -108,7 +107,6 @@ IF (RT_APP AND NOT DISABLE_BUDDY)
         buddy/Task.cpp buddy/Task.h
         buddy/Main.cpp buddy/Main.h
         buddy/Parameter.cpp buddy/Parameter.h
-        #buddy/SessionShadow.cpp buddy/SessionShadow.h
         buddy/SessionTaskData.cpp buddy/SessionTaskData.h
 
         "${ETL_DATA}" "${BUDDY_IOCTL}"

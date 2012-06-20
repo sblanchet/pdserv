@@ -40,6 +40,7 @@ class ProcessParameter: public Parameter {
                 Datatype dtype,
                 size_t ndims = 1,
                 const size_t *dim = 0);
+        virtual ~ProcessParameter();
 
         virtual int setValue(const char *buf,
                 size_t startIndex, size_t nelem) const = 0;

@@ -27,8 +27,6 @@
 
 #include "Variable.h"
 
-struct timespec;
-
 namespace PdServ {
 
 class Session;

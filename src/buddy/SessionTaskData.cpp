@@ -21,39 +21,53 @@
  *
  *****************************************************************************/
 
-#include "../Session.h"
 #include "../Debug.h"
 #include "SessionTaskData.h"
-#include "Task.h"
 #include "Signal.h"
 #include <app_taskstats.h>
 #include <fio_ioctl.h>
 
 ////////////////////////////////////////////////////////////////////////////
-SessionTaskData::SessionTaskData( PdServ::Session* s, const Task* t,
-        const char *album, unsigned int current,
+SessionTaskData::SessionTaskData (const char *album,
+        const unsigned int *photoReady,
         const struct app_properties *app_properties):
-    PdServ::SessionTaskData(s, t),
-    album(album), photoSize(app_properties->rtB_size),
+    album(album), photoReady(photoReady),
+    photoMax(photoReady + app_properties->rtB_count),
+    photoSize(app_properties->rtB_size),
     statsOffset(photoSize
             - app_properties->num_tasks*sizeof(struct task_stats))
 {
-    photo = album + current*photoSize;
+    const struct timespec *time;
+    const PdServ::TaskStatistics *stat;
+
+    current = photoReady;
+    next = photoReady + 1;
+
+    photo = album;
+
+    while (rxPdo(&time, &stat));
+}
+
+////////////////////////////////////////////////////////////////////////////
+bool SessionTaskData::rxPdo(const struct timespec **time,
+        const PdServ::TaskStatistics **stat)
+{
+    if (*next <= *current)
+        return false;
+
+    current = next;
+    if (++next == photoMax) {
+        next = photoReady;
+        photo = album;
+    }
+    else
+        photo += photoSize;
+
     updateStatistics();
-}
 
-////////////////////////////////////////////////////////////////////////////
-const struct timespec *SessionTaskData::getTaskTime(
-        const Task*) const
-{
-    return &time;
-}
-
-////////////////////////////////////////////////////////////////////////////
-const PdServ::TaskStatistics* SessionTaskData::getTaskStatistics(
-        const Task*) const
-{
-    return &stat;
+    *time = &this->time;
+    *stat = &this->stat;
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -75,17 +89,7 @@ void SessionTaskData::updateStatistics()
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void SessionTaskData::newSignalData(unsigned int current)
-{
-    photo = album + current*photoSize;
-
-    updateStatistics();
-
-    session->newSignalData(this, &time);
-}
-
-////////////////////////////////////////////////////////////////////////////
-const void *SessionTaskData::getValue(const Signal *signal) const
+const char *SessionTaskData::getValue(const Signal *signal) const
 {
     return photo + signal->offset;
 }

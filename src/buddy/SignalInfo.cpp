@@ -24,12 +24,11 @@
 #include "config.h"
 
 #include <algorithm>
-#include <cerrno>
 #include <sstream>
 
 #include "Main.h"
 #include "../Debug.h"
-#include "Parameter.h"
+#include "SignalInfo.h"
 
 #ifdef TRADITIONAL
     static const bool traditional = 1;

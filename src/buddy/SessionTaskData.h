@@ -26,32 +26,28 @@
 
 #include <ctime>
 
-#include "../SessionTaskData.h"
 #include "../TaskStatistics.h"
 
-namespace PdServ {
-    class Session;
-}
-
-class Task;
 class Signal;
-struct Pdo;
 
-class SessionTaskData: public PdServ::SessionTaskData {
+class SessionTaskData {
     public:
-        SessionTaskData(PdServ::Session* session, const Task* t,
-                const char *album, unsigned int current,
+        SessionTaskData( const char *album, const unsigned int* photoReady,
                 const struct app_properties*);
 
-        const void *getValue(const Signal *) const;
-        const PdServ::TaskStatistics* getTaskStatistics(const Task*) const;
-        const struct timespec *getTaskTime(const Task*) const;
-        void newSignalData(unsigned int current);
+        const char *getValue(const Signal *) const;
+        bool rxPdo(const struct timespec **time,
+                const PdServ::TaskStatistics **stat);
 
     private:
         const char * const album;
+        const unsigned int * const photoReady;
+        const unsigned int * const photoMax;
         size_t const photoSize;
         size_t const statsOffset;
+
+        const unsigned int* current;
+        const unsigned int* next;
 
         const char *photo;
         PdServ::TaskStatistics stat;

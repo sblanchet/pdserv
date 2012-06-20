@@ -42,7 +42,6 @@
 #include "Signal.h"
 #include "Parameter.h"
 #include "../Config.h"
-#include "../Session.h"
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -96,7 +95,21 @@ void Main::serve(const PdServ::Config& config, int fd)
         log.debug("   %zu %s", i, p->path.c_str());
     }
 
-    mainTask = new Task(this, 1.0e-6 * app_properties.sample_period);
+    photoReady = new unsigned int[app_properties.rtB_count];
+    std::fill_n(photoReady, app_properties.rtB_count, 0);
+    photoCount = 0;
+
+    shmem_len = app_properties.rtB_size * app_properties.rtB_count;
+    shmem = ::mmap(0, shmem_len, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (shmem == MAP_FAILED)
+        goto out;
+    log.info("Mapped shared memory segment with %zu bytes and %zu snapshots",
+            shmem_len, app_properties.rtB_count);
+
+    photoAlbum = reinterpret_cast<const char *>(shmem);
+
+    mainTask = new Task(this, 1.0e-6 * app_properties.sample_period,
+            photoReady, photoAlbum, &app_properties);
     task.push_back(mainTask);
     log.debug("Added Task with sample time %f", mainTask->sampleTime);
 
@@ -115,20 +128,7 @@ void Main::serve(const PdServ::Config& config, int fd)
         log.debug("   %zu %s", i, s->path.c_str());
     }
 
-    shmem_len = app_properties.rtB_size * app_properties.rtB_count;
-    shmem = ::mmap(0, shmem_len, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (shmem == MAP_FAILED)
-        goto out;
-    log.info("Mapped shared memory segment with %zu bytes and %zu snapshots",
-            shmem_len, app_properties.rtB_count);
-
-    photoAlbum = reinterpret_cast<const char *>(shmem);
-
     readPointer = ioctl(fd, RESET_BLOCKIO_RP);
-
-    photoReady = new unsigned int[app_properties.rtB_count];
-    std::fill_n(photoReady, app_properties.rtB_count, 0);
-    photoCount = 0;
 
     startServers(config);
 
@@ -194,13 +194,6 @@ int Main::gettime(struct timespec *ts) const
     ts->tv_nsec = tv.tv_usec * 1000;
 
     return 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-PdServ::SessionShadow *Main::newSession(PdServ::Session *session) const
-{
-    return new SessionShadow(session, mainTask, readPointer, photoReady,
-            photoAlbum, &app_properties);
 }
 
 /////////////////////////////////////////////////////////////////////////////

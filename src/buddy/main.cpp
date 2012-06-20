@@ -328,8 +328,7 @@ int main(int argc, char **argv)
                             fd = etl_main;
                         }
 
-                        Main(app_properties).serve(
-                                config[app_properties.name], fd);
+                        Main(app_properties).serve(config, fd);
                     }
                 }
                 else

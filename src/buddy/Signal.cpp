@@ -24,6 +24,7 @@
 #include "Signal.h"
 
 #include "../Session.h"
+#include "../SessionTask.h"
 #include "../Debug.h"
 #include "Main.h"
 #include "Task.h"
@@ -38,13 +39,13 @@ Signal::Signal( const Task *task, const SignalInfo& si):
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::subscribe(PdServ::Session *session) const
+void Signal::subscribe(PdServ::SessionTask *session) const
 {
-    session->newSignal(task, this);
+    session->newSignal(this);
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::unsubscribe(PdServ::Session *) const
+void Signal::unsubscribe(PdServ::SessionTask *) const
 {
 }
 
@@ -64,7 +65,7 @@ void Signal::getValue( const PdServ::Session *, void *dest,
 }
 
 //////////////////////////////////////////////////////////////////////
-const void *Signal::getValue(const PdServ::SessionTaskData *std) const
+const char *Signal::getValue(const PdServ::SessionTask* st) const
 {
-    return static_cast<const SessionTaskData*>(std)->getValue(this);
+    return st->sessionTaskData->getValue(this);
 }

@@ -26,6 +26,8 @@
 
 #include <list>
 
+struct timespec;
+
 namespace PdServ {
 
 class Signal;
@@ -35,7 +37,7 @@ class TaskStatistics;
 class Task {
     public:
         Task(double sampleTime);
-        ~Task();
+        virtual ~Task();
 
         const double sampleTime;
 

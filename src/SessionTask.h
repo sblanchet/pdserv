@@ -24,7 +24,6 @@
 #ifndef SESSIONTASK_H
 #define SESSIONTASK_H
 
-struct timespec;
 class SessionTaskData;
 
 namespace PdServ {

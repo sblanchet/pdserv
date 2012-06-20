@@ -24,14 +24,10 @@
 #ifndef BUDDY_MAIN_H
 #define BUDDY_MAIN_H
 
-#include <map>
-#include <set>
 #include <log4cpp/Category.hh>
 
 #include "../Main.h"
 #include "fio_ioctl.h"
-
-#include <cc++/thread.h>
 
 namespace log4cpp {
     class Category;
@@ -41,14 +37,10 @@ namespace PdServ {
     class Session;
     class Signal;
     class Config;
-    class ProcessParameter;
-    class SessionShadow;
 }
 
 class Parameter;
-class Signal;
 class Task;
-class SessionShadow;
 
 class Main: public PdServ::Main {
     public:
@@ -94,7 +86,6 @@ class Main: public PdServ::Main {
                 const PdServ::Signal * const *s, size_t nelem,
                 void * const * pollDest, struct timespec *t) const;
         int gettime(struct timespec *) const;
-        PdServ::SessionShadow *newSession(PdServ::Session *) const;
 };
 
 #endif // BUDDY_MAIN_H

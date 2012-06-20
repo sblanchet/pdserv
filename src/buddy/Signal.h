@@ -24,15 +24,12 @@
 #ifndef BUDDY_SIGNAL
 #define BUDDY_SIGNAL
 
-//#include <set>
-//#include <cc++/thread.h>
-
 #include "../Signal.h"
 #include "SignalInfo.h"
 
 namespace PdServ {
     class Session;
-    class SessionTaskData;
+    class SessionTask;
 }
 
 class Task;
@@ -45,30 +42,21 @@ class Signal: public PdServ::Signal {
         const Main * const main;
         const size_t offset;
         const SignalInfo info;
-//        const char * const addr;
-//
-//        static const size_t dataTypeIndex[PdServ::Variable::maxWidth+1];
-//        const size_t index;
 
     private:
         const Task * const task;
-//
-//        mutable ost::Semaphore mutex;
-//
-//        typedef std::set<const PdServ::Session*> SessionSet;
-//        mutable SessionSet sessions;
 
         // Reimplemented from PdServ::Signal
-        void subscribe(PdServ::Session *) const;
-        void unsubscribe(PdServ::Session *) const;
+        void subscribe(PdServ::SessionTask *) const;
+        void unsubscribe(PdServ::SessionTask *) const;
         double sampleTime() const;
         double poll(const PdServ::Session *s,
-                void *buf, struct timespec *t) const;
-        const void *getValue(const PdServ::SessionTaskData*) const;
+                void *buf, struct ::timespec *t) const;
+        const char *getValue(const PdServ::SessionTask*) const;
 
         // Reimplemented from PdServ::Variable
         void getValue(const PdServ::Session*, void *buf,
-                struct timespec * = 0) const;
+                struct ::timespec * = 0) const;
 };
 
 #endif //BUDDY_SIGNAL

@@ -32,11 +32,24 @@ class SignalInfo;
 
 class Task: public PdServ::Task {
     public:
-        Task(Main *main, double sampleTime);
+        Task(Main *main, double sampleTime,
+                const unsigned int* photoReady, const char *album,
+                const struct app_properties *app_properties);
 
         const Signal *addSignal(const SignalInfo& si);
 
         const Main * const main;
+
+    private:
+        const unsigned int* const photoReady;
+        const char * const album;
+        const struct app_properties* const app_properties;
+
+        // Reimplemented from PdServ::Task
+        void prepare(PdServ::SessionTask *) const;
+        void cleanup(const PdServ::SessionTask *) const;
+        bool rxPdo(PdServ::SessionTask *, const struct ::timespec **tasktime,
+                const PdServ::TaskStatistics **taskStatistics) const;
 };
 
 #endif // BUDDY_TASK_H
