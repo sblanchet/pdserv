@@ -71,7 +71,7 @@ namespace PdServ {
 //////////////////////////////////////////////////////////////////////
 Variable::Variable(
                 const std::string& path,
-                Datatype dtype,
+                const Datatype& dtype,
                 size_t ndims,
                 const size_t *dim):
     path(path),

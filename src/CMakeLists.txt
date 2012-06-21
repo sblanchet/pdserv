@@ -54,6 +54,7 @@ SET (main_src
     Task.cpp            Task.h
     Main.cpp            Main.h
     Variable.cpp        Variable.h
+    DataType.cpp        DataType.h
     Signal.cpp          Signal.h
     Parameter.cpp       Parameter.h
     ProcessParameter.cpp ProcessParameter.h

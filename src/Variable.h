@@ -45,7 +45,7 @@ class Variable {
         };
 
         Variable( const std::string& path,
-                Datatype dtype,
+                const Datatype& dtype,
                 size_t ndims = 1,
                 const size_t dim[] = 0);
 
@@ -55,7 +55,7 @@ class Variable {
                 const void *data, size_t nelem = 0, char delim = ',') const;
 
         const std::string path;         /**< Variable path */
-        const Datatype dtype;           /**< Data type */
+        const Datatype& dtype;          /**< Data type */
         const size_t elemSize;          /**< Bytes for a single element */
 
         const size_t nelem;             /**< Number of elements */

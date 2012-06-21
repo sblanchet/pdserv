@@ -91,6 +91,32 @@ struct pdtask* pdserv_create_task(
         const char *name        /**< Optional name string */
         );
 
+/** Create compound data type
+ *
+ * Use this to create an application specific data type.
+ * Use @pdserv_compound_add_field to insert fields
+ *
+ * returns:
+ *      handle to compound data type
+ */
+enum pdserv_datatype_t pdserv_create_compound(
+        struct pdserv* pdserv,  /**< Pointer to pdserv struct */
+        const char *name,       /**< Data type name */
+        size_t size             /**< Size of compound */
+        );
+
+/** Add a field to a compound data type
+ */
+void pdserv_compound_add_field(
+        struct pdserv* pdserv,  /**< Pointer to pdserv struct */
+        enum pdserv_datatype_t handle,  /**< Compound handle */
+        const char *name,       /**< Data type name */
+        enum pdserv_datatype_t data_type, /**< Field data type */
+        size_t offset,          /**< Offset of field */
+        size_t ndim,            /**< Number of dimensions */
+        size_t *dim             /**< Dimensions */
+        );
+
 /** Register a signal
  *
  * This call registers a signal, i.e. Variables that are calculated
