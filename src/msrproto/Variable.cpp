@@ -26,6 +26,7 @@
 #include "Directory.h"
 #include "../Signal.h"
 #include "../Parameter.h"
+#include "../DataType.h"
 
 #include <cstdio>
 #include <stdint.h>
@@ -40,7 +41,8 @@ Variable::Variable(const Server *server, const PdServ::Variable *v,
     elementIndex(elementIndex != ~0U ? elementIndex : 0),
     variable(v),
     variableIndex(variableIndex),
-    nelem(elementIndex == ~0U ? v->nelem : 1), memSize(nelem * v->elemSize)
+    nelem(elementIndex == ~0U ? v->dim.nelem : 1),
+    memSize(nelem * v->dtype.size)
 {
 }
 
@@ -84,28 +86,28 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
         XmlElement::Attribute(element, "comment") << variable->comment;
 
     // datasize=
-    XmlElement::Attribute(element, "datasize") << variable->elemSize;
+    XmlElement::Attribute(element, "datasize") << variable->dtype.size;
 
     // typ=
-    const char *dtype = 0;
-    switch (variable->dtype) {
-        case PdServ::Variable::boolean_T: dtype = "TCHAR";     break;
-        case PdServ::Variable::uint8_T:   dtype = "TUCHAR";    break;
-        case PdServ::Variable::int8_T:    dtype = "TCHAR";     break;
-        case PdServ::Variable::uint16_T:  dtype = "TUSHORT";   break;
-        case PdServ::Variable::int16_T:   dtype = "TSHORT";    break;
-        case PdServ::Variable::uint32_T:  dtype = "TUINT";     break;
-        case PdServ::Variable::int32_T:   dtype = "TINT";      break;
-        case PdServ::Variable::uint64_T:  dtype = "TULINT";    break;
-        case PdServ::Variable::int64_T:   dtype = "TLINT";     break;
-        case PdServ::Variable::single_T:  dtype = "TFLT";      break;
-        case PdServ::Variable::double_T:  dtype = "TDBL";      break;
-        default:                                break;
+    const char *dtype;
+    switch (variable->dtype.primary()) {
+        case PdServ::DataType::boolean_T : dtype = "TCHAR";      break;
+        case PdServ::DataType::  uint8_T : dtype = "TUCHAR";    break;
+        case PdServ::DataType::   int8_T : dtype = "TCHAR";     break;
+        case PdServ::DataType:: uint16_T : dtype = "TUSHORT";   break;
+        case PdServ::DataType::  int16_T : dtype = "TSHORT";    break;
+        case PdServ::DataType:: uint32_T : dtype = "TUINT";     break;
+        case PdServ::DataType::  int32_T : dtype = "TINT";      break;
+        case PdServ::DataType:: uint64_T : dtype = "TULINT";    break;
+        case PdServ::DataType::  int64_T : dtype = "TLINT";     break;
+        case PdServ::DataType:: double_T : dtype = "TDBL";      break;
+        case PdServ::DataType:: single_T : dtype = "TFLT";      break;
+        default                          : dtype = 0;           break;
     }
     if (nelem > 1)
         XmlElement::Attribute(element, "typ")
             << dtype
-            << (variable->ndims == 1 ? "_LIST" : "_MATRIX");
+            << (variable->dim.size() == 1 ? "_LIST" : "_MATRIX");
     else
         XmlElement::Attribute(element, "typ") << dtype;
 
@@ -120,14 +122,14 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
         size_t cnum, rnum;
 
         // Transmit either a vector or a matrix
-        if (variable->ndims == 1) {
-            cnum = variable->nelem;
+        if (variable->dim.size() == 1) {
+            cnum = variable->dim.nelem;
             rnum = 1;
             orientation = "VECTOR";
         }
         else {
-            cnum = variable->dim[variable->ndims - 1];
-            rnum = variable->nelem / cnum;
+            cnum = variable->dim.back();
+            rnum = variable->dim.nelem / cnum;
             orientation = "MATRIX_ROW_MAJOR";
         }
 
@@ -146,13 +148,4 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
 
     // hide=
     // unhide=
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Variable::toCSV(std::ostream& os,
-        const void *data, size_t nblocks, size_t precision) const
-{
-    precision = os.precision(precision);
-    variable->print(os, data, nblocks * nelem, ',');
-    os.precision(precision);
 }

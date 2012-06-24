@@ -27,6 +27,7 @@
 #include "Session.h"
 #include "../Parameter.h"
 #include "../Debug.h"
+#include "../DataType.h"
 
 #include <sstream>
 #include <cerrno>
@@ -67,19 +68,19 @@ Parameter::Parameter(const Server *server, unsigned int variableIndex,
     dependent(dependent),
     persistent(false)
 {
-    //cout << __PRETTY_FUNCTION__ << index << endl;
-    switch (mainParam->dtype) {
-        case PdServ::Variable::boolean_T: append = setTo<bool>;     break;
-        case PdServ::Variable::uint8_T:   append = setTo<uint8_t>;  break;
-        case PdServ::Variable::int8_T:    append = setTo<int8_t>;   break;
-        case PdServ::Variable::uint16_T:  append = setTo<uint16_t>; break;
-        case PdServ::Variable::int16_T:   append = setTo<int16_t>;  break;
-        case PdServ::Variable::uint32_T:  append = setTo<uint32_t>; break;
-        case PdServ::Variable::int32_T:   append = setTo<int32_t>;  break;
-        case PdServ::Variable::uint64_T:  append = setTo<uint64_t>; break;
-        case PdServ::Variable::int64_T:   append = setTo<int64_t>;  break;
-        case PdServ::Variable::single_T:  append = setTo<float>;    break;
-        case PdServ::Variable::double_T:  append = setTo<double>;   break;
+//    //cout << __PRETTY_FUNCTION__ << index << endl;
+    switch (mainParam->dtype.primary()) {
+        case PdServ::DataType::boolean_T: append = setTo<bool>;     break;
+        case PdServ::DataType::uint8_T:   append = setTo<uint8_t>;  break;
+        case PdServ::DataType::int8_T:    append = setTo<int8_t>;   break;
+        case PdServ::DataType::uint16_T:  append = setTo<uint16_t>; break;
+        case PdServ::DataType::int16_T:   append = setTo<int16_t>;  break;
+        case PdServ::DataType::uint32_T:  append = setTo<uint32_t>; break;
+        case PdServ::DataType::int32_T:   append = setTo<int32_t>;  break;
+        case PdServ::DataType::uint64_T:  append = setTo<uint64_t>; break;
+        case PdServ::DataType::int64_T:   append = setTo<int64_t>;  break;
+        case PdServ::DataType::single_T:  append = setTo<float>;    break;
+        case PdServ::DataType::double_T:  append = setTo<double>;   break;
         default:           append = 0;               break;
     }
 }
@@ -124,10 +125,10 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
 
     if (hex)
         XmlElement::Attribute(element, "hexvalue")
-            .hexDec( valueBuf + elementIndex * mainParam->elemSize, memSize);
+            .hexDec(valueBuf + elementIndex * mainParam->dtype.size, memSize);
     else
         XmlElement::Attribute(element, "value").csv( this,
-                valueBuf + elementIndex * mainParam->elemSize, 1, precision);
+                valueBuf + elementIndex * mainParam->dtype.size, 1, precision);
 
     if (!id.empty())
         XmlElement::Attribute(element, "id").setEscaped(id.c_str());
@@ -159,7 +160,7 @@ int Parameter::setHexValue(const Session *session,
     // FIXME: actually the setting operation must also check for
     // endianness!
 
-    count = (c - valueBuf) / mainParam->elemSize;
+    count = (c - valueBuf) / mainParam->dtype.size;
     return mainParam->setValue(
             session, valueBuf, elementIndex + startindex, count);
 }

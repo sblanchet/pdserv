@@ -31,7 +31,7 @@ using namespace PdServ;
 Parameter::Parameter(
         const std::string& path,
         unsigned int mode,
-        Datatype dtype,
+        const DataType& dtype,
         size_t ndims,
         const size_t *dim):
     Variable(path, dtype, ndims, dim), mode(mode)

@@ -36,17 +36,22 @@ namespace PdServ {
 
 class DataType {
     public:
+        struct DimType: public std::vector<size_t> {
+            DimType(size_t ndims, const size_t *dim);
+            const size_t nelem;
+        };
+
         struct Field {
             Field(const std::string& name, const DataType& type,
                     size_t offset, size_t ndims, const size_t *dims);
             const std::string name;
             const DataType& type;
             const size_t offset;
-            const std::vector<size_t> dims;
-            const size_t nelem;
+            const DimType dim;
         };
 
         enum Primary {
+            compound_T = 0,
             boolean_T,
             uint8_T,  int8_T,
             uint16_T, int16_T,
@@ -60,6 +65,11 @@ class DataType {
 
         const std::string name;
         const size_t size;
+        virtual Primary primary() const;
+        static const size_t maxWidth = 8; /**< Maximum supported data type
+                                            size in bytes */
+
+        virtual size_t align() const;
 
         void addField(const std::string& name,
                 const DataType& type,
@@ -72,6 +82,8 @@ class DataType {
                     const FieldList& fieldList);
         };
         const FieldList& getFieldList() const;
+
+        bool operator==(const DataType& other) const;
 
         static const DataType& boolean;
         static const DataType&   uint8;

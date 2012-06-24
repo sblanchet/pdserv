@@ -109,13 +109,6 @@ XmlElement::Attribute::~Attribute()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void XmlElement::Attribute::csv(const Variable* var, const char *buf,
-        size_t nblocks, size_t precision)
-{
-    var->toCSV(os, buf, nblocks, precision);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 std::ostream& XmlElement::Attribute::operator<<(const char *s)
 {
     os << s;
@@ -169,6 +162,25 @@ void XmlElement::Attribute::setEscaped( const char *v, size_t n)
     }
 
     os << v;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void XmlElement::Attribute::csv(const Variable* var, const char *buf,
+        size_t nblocks, size_t precision)
+{
+    const PdServ::Variable* v = var->variable;
+    char delim = '\0';
+
+    //precision = os.precision(precision);
+    os.precision(precision);
+    while (nblocks--) {
+        if (delim)
+            os << delim;
+        delim = ',';
+        v->dtype.print(os, buf, var->nelem);
+        buf += v->dtype.size;
+    }
+    //os.precision(precision);
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -130,7 +130,7 @@ int Main::setParameter(const Session *, const ProcessParameter *param,
     std::ostringstream os;
     os << param->path;
 
-    if (nelem < param->nelem) {
+    if (nelem < param->dim.nelem) {
         os << '[' << startIndex;
         if (nelem > 1)
             os << ".." << (startIndex + nelem - 1);
@@ -142,7 +142,7 @@ int Main::setParameter(const Session *, const ProcessParameter *param,
     if (nelem > 1)
         os << '[';
 
-    param->print(os, data, nelem, ' ');
+    param->dtype.print(os, data, nelem);
 
     if (nelem > 1)
         os << ']';

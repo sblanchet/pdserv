@@ -56,12 +56,8 @@ class Variable: public DirectoryNode {
         const unsigned int variableIndex;
         const size_t nelem;
         const size_t memSize;
-//        const size_t bufferOffset;
 
         void setAttributes(XmlElement &element, bool shortReply) const;
-
-        void toCSV(std::ostream& os,
-                const void *buf, size_t nblocks, size_t precision) const;
 
     private:
 };

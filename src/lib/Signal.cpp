@@ -27,9 +27,10 @@
 #include "Signal.h"
 #include "Main.h"
 #include "SessionTaskData.h"
+#include "../DataType.h"
 
 //////////////////////////////////////////////////////////////////////
-const size_t Signal::dataTypeIndex[PdServ::Variable::maxWidth+1] = {
+const size_t Signal::dataTypeIndex[PdServ::DataType::maxWidth+1] = {
     3 /*0*/, 3 /*1*/, 2 /*2*/, 3 /*3*/,
     1 /*4*/, 3 /*5*/, 3 /*6*/, 3 /*7*/, 0 /*8*/
 };
@@ -39,7 +40,7 @@ Signal::Signal( Task *task,
         size_t index,
         unsigned int decimation,
         const char *path,
-        Datatype dtype,
+        const PdServ::DataType& dtype,
         const void *addr,
         size_t ndims,
         const size_t *dim):

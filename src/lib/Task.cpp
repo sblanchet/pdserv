@@ -171,14 +171,14 @@ void Task::nrt_init()
 
 /////////////////////////////////////////////////////////////////////////////
 Signal* Task::addSignal( unsigned int decimation,
-        const char *path, PdServ::Variable::Datatype datatype,
+        const char *path, const PdServ::DataType& datatype,
         const void *addr, size_t n, const size_t *dim)
 {
     Signal *s = new Signal(this, signals.size(),
             decimation, path, datatype, addr, n, dim);
 
     signals.push_back(s);
-    signalTypeCount[s->dataTypeIndex[s->elemSize]]++;
+    signalTypeCount[s->dataTypeIndex[s->dtype.align()]]++;
     signalMemSize += s->memSize;
 
     return s;
@@ -217,7 +217,7 @@ void Task::subscribe(const Signal* s, bool insert) const
 
     //log_debug("%i %s", insert, s->path.c_str());
 
-    size_t w = s->dataTypeIndex[s->elemSize];
+    size_t w = s->dataTypeIndex[s->dtype.align()];
     const Signal **scl = signalCopyList[w];
 
     wp->signal = s;
@@ -358,7 +358,7 @@ void Task::update(const struct timespec *t)
 
         signalListId = sp->signalListId;
         const Signal *signal = sp->signal;
-        size_t w = signal->dataTypeIndex[signal->elemSize];
+        size_t w = signal->dataTypeIndex[signal->dtype.align()];
         struct CopyList *cl;
 //        cout << "Signal " << signal->index << " pos=" << sp->signalPosition;
 

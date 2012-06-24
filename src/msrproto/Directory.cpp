@@ -32,6 +32,7 @@
 #include "../Signal.h"
 #include "../Parameter.h"
 #include "../Debug.h"
+#include "../DataType.h"
 
 #include <cstring>
 #include <cerrno>
@@ -95,13 +96,13 @@ bool VariableDirectory::insert( const PdServ::Parameter *p, const std::string &a
     parameterMap[p] = mainParam;
     parameters.push_back(mainParam);
 
-    if (server->traditionalMode() and p->nelem > 1) {
-        parameters.reserve(parameters.size() + p->nelem);
+    if (server->traditionalMode() and p->dim.nelem > 1) {
+        parameters.reserve(parameters.size() + p->dim.nelem);
 
-        for (size_t i = 0; i < p->nelem; ++i) {
-            Parameter *parameter = new Parameter(server, parameters.size(),
-                    p, i);
-            mainParam->insert(parameter, i, p->nelem, p->ndims, p->dim);
+        for (size_t i = 0; i < p->dim.size(); ++i) {
+            Parameter *parameter =
+                new Parameter(server, parameters.size(), p, i);
+            mainParam->insert(parameter, i, p->dim.nelem, p->dim);
 
             parameters.push_back(parameter);
             mainParam->addChild(parameter);
@@ -143,12 +144,12 @@ bool VariableDirectory::insert(const PdServ::Signal *s,
     channels.push_back(mainChannel);
 
     /* Traditional mode: Break non-scalar signals into scalar components. */
-    if (server->traditionalMode() and s->nelem > 1) {
-        channels.reserve(channels.size() + s->nelem);
+    if (server->traditionalMode() and s->dim.nelem > 1) {
+        channels.reserve(channels.size() + s->dim.nelem);
 
-        for (size_t i = 0; i < s->nelem; ++i) {
+        for (size_t i = 0; i < s->dim.nelem; ++i) {
             Channel *subChannel = new Channel(server, s, channels.size(), i);
-            mainChannel->insert(subChannel, i, s->nelem, s->ndims, s->dim);
+            mainChannel->insert(subChannel, i, s->dim.nelem, s->dim);
 
             channels.push_back(subChannel);
         }
@@ -336,10 +337,10 @@ DirectoryNode *DirectoryNode::insert(
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void DirectoryNode::insert(Variable *var, size_t index,
-        size_t nelem, size_t ndims, const size_t *dim)
+void DirectoryNode::insert(Variable *var, size_t index, size_t nelem,
+        const PdServ::DataType::DimType& dim, size_t dimIdx)
 {
-    nelem /= *dim++;
+    nelem /= dim[dimIdx++];
     size_t x = index / nelem;
 
     std::ostringstream os;
@@ -352,7 +353,7 @@ void DirectoryNode::insert(Variable *var, size_t index,
         DirectoryNode *dir = children[name];
         if (!dir)
             dir = insert(new DirectoryNode(server), name);
-        dir->insert( var, index - x*nelem , nelem, ndims - 1, dim);
+        dir->insert( var, index - x*nelem , nelem, dim, dimIdx);
     }
 }
 

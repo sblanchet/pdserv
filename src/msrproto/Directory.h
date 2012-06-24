@@ -27,6 +27,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include "../DataType.h"
 
 namespace PdServ {
     class Signal;
@@ -58,8 +59,9 @@ class DirectoryNode {
 
         DirectoryNode *push(std::string &name);
         DirectoryNode *insert(DirectoryNode* node, const std::string &name);
-        void insert(Variable *var, size_t index,
-                size_t nelem, size_t ndims, const size_t *dim);
+        void insert(Variable *var, size_t index, size_t nelem,
+                const PdServ::DataType::DimType& dim,
+                size_t dimIdx = 0);
 
         DirectoryNode *parent;
         const std::string *name;

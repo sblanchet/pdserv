@@ -30,6 +30,75 @@
 
 using namespace PdServ;
 
+template <class T>
+    struct TypeNum {};
+
+template <>
+    struct TypeNum<bool> {
+        static const DataType::Primary value = DataType::boolean_T;
+        static const size_t align = sizeof(bool);
+    };
+
+template <>
+    struct TypeNum<uint8_t> {
+        static const DataType::Primary value = DataType::uint8_T;
+        static const size_t align = sizeof(uint8_t);
+    };
+
+template <>
+    struct TypeNum<int8_t> {
+        static const DataType::Primary value = DataType::int8_T;
+        static const size_t align = sizeof(int8_t);
+    };
+
+template <>
+    struct TypeNum<uint16_t> {
+        static const DataType::Primary value = DataType::uint16_T;
+        static const size_t align = sizeof(uint16_t);
+    };
+
+template <>
+    struct TypeNum<int16_t> {
+        static const DataType::Primary value = DataType::int16_T;
+        static const size_t align = sizeof(int16_t);
+    };
+
+template <>
+    struct TypeNum<uint32_t> {
+        static const DataType::Primary value = DataType::uint32_T;
+        static const size_t align = sizeof(uint32_t);
+    };
+
+template <>
+    struct TypeNum<int32_t> {
+        static const DataType::Primary value = DataType::int32_T;
+        static const size_t align = sizeof(int32_t);
+    };
+
+template <>
+    struct TypeNum<uint64_t> {
+        static const DataType::Primary value = DataType::uint64_T;
+        static const size_t align = sizeof(uint64_t);
+    };
+
+template <>
+    struct TypeNum<int64_t> {
+        static const DataType::Primary value = DataType::int64_T;
+        static const size_t align = sizeof(int64_t);
+    };
+
+template <>
+    struct TypeNum<double> {
+        static const DataType::Primary value = DataType::double_T;
+        static const size_t align = sizeof(double);
+    };
+
+template <>
+    struct TypeNum<float> {
+        static const DataType::Primary value = DataType::single_T;
+        static const size_t align = sizeof(float);
+    };
+
 ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
 namespace {
@@ -53,6 +122,14 @@ namespace {
                         os << *val++;
                     }
                     return os;
+                }
+
+                DataType::Primary primary() const {
+                    return TypeNum<T>::value;
+                }
+
+                size_t align () const {
+                    return TypeNum<T>::align;
                 }
         };
 
@@ -134,11 +211,17 @@ const DataType* primaryTypes[11] = {
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
+DataType::DimType::DimType (size_t ndims, const size_t *dim):
+    std::vector<size_t>(dim ? dim : &ndims, dim ? dim + ndims : &ndims + 1),
+    nelem(std::accumulate(begin(), end(), 1U, std::multiplies<size_t>()))
+{
+}
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 DataType::Field::Field (const std::string& name, const DataType& type,
         size_t offset, size_t ndims, const size_t *dims):
-    name(name), type(type), offset(offset), dims(dims, dims + ndims),
-    nelem(std::accumulate(dims, dims + ndims,
-                1U, std::multiplies<size_t>()))
+    name(name), type(type), offset(offset), dim(ndims, dims)
 {
 }
 
@@ -169,6 +252,12 @@ DataType::~DataType ()
 }
 
 //////////////////////////////////////////////////////////////////////
+DataType::Primary DataType::primary () const
+{
+    return compound_T;
+}
+
+//////////////////////////////////////////////////////////////////////
 std::ostream& DataType::print(std::ostream& os,
         const char *data, size_t n) const
 {
@@ -180,7 +269,7 @@ std::ostream& DataType::print(std::ostream& os,
             if (delim)
                 os << delim;
             delim = ';';
-            (*it)->type.print(os, data + (*it)->offset, (*it)->nelem);
+            (*it)->type.print(os, data + (*it)->offset, (*it)->dim.nelem);
         }
         data += size;
     }
@@ -200,4 +289,18 @@ void DataType::addField (const std::string& name, const DataType& type,
 const DataType::FieldList& DataType::getFieldList () const
 {
     return fieldList;
+}
+
+//////////////////////////////////////////////////////////////////////
+size_t DataType::align () const
+{
+    size_t n = 1U;
+    for (FieldList::const_iterator it = fieldList.begin();
+            it != fieldList.end(); ++it) {
+        size_t n1 = (*it)->type.align();
+        if (n < n1)
+            n = n1;
+    }
+
+    return n;
 }

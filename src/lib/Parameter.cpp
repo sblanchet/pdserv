@@ -32,7 +32,7 @@ Parameter::Parameter(
         Main const* main,
         const char *path,
         unsigned int mode,
-        Datatype dtype,
+        const PdServ::DataType& dtype,
         void *addr,
         size_t ndims,
         const size_t *dim):

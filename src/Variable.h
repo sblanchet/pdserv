@@ -26,6 +26,8 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
+#include "DataType.h"
 
 struct timespec;
 
@@ -35,41 +37,25 @@ class Session;
 
 class Variable {
     public:
-        enum Datatype {
-            boolean_T,
-            uint8_T,  int8_T,
-            uint16_T, int16_T,
-            uint32_T, int32_T,
-            uint64_T, int64_T,
-            double_T, single_T
-        };
-
         Variable( const std::string& path,
-                const Datatype& dtype,
+                const DataType& dtype,
                 size_t ndims = 1,
-                const size_t dim[] = 0);
+                const size_t *dim = 0);
 
         virtual ~Variable();
 
-        void print(std::ostream& os,
-                const void *data, size_t nelem = 0, char delim = ',') const;
+//        void print(std::ostream& os,
+//                const char *data, size_t nelem = 0) const;
 
         const std::string path;         /**< Variable path */
-        const Datatype& dtype;          /**< Data type */
-        const size_t elemSize;          /**< Bytes for a single element */
 
-        const size_t nelem;             /**< Number of elements */
+        const DataType& dtype;          /**< Data type */
+        const DataType::DimType dim;    /**< The dimension vector */
         const size_t memSize;           /**< Total memory size */
-
-        const size_t ndims;             /**< Number of dimensions */
-        size_t const* const dim;        /**< The dimension vector */
 
         std::string alias;              /**< Optional alias */
         std::string unit;               /**< Optional unit */
         std::string comment;            /**< Optional comment */
-
-        static const size_t maxWidth = 8; /**< Maximum supported data type
-                                            size in bytes */
 
         // This method directly copies the variable's value into buf. This
         // method has to be used when a variable's value is valid only within
@@ -80,19 +66,7 @@ class Variable {
                 struct ::timespec * = 0   /**< Optional timespec stamp */
                 ) const = 0;
 
-        static const size_t dataTypeSize[11];
     private:
-
-        typedef void (*PrintFunc)(std::ostream&,
-                const void *, size_t);
-        PrintFunc printFunc;
-
-        template <class T>
-            static void print(std::ostream& os,
-                    const void *data, size_t n);
-
-        static size_t getNElem( size_t dims, const size_t dim[]);
-        static const size_t *makeDimVector( size_t len, const size_t dim[]);
 };
 
 }

@@ -27,6 +27,7 @@
 #include "Channel.h"
 #include "SubscriptionManager.h"
 #include "Subscription.h"
+#include "../DataType.h"
 
 #include <algorithm>
 
@@ -35,7 +36,7 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 Subscription::Subscription(const Channel* channel):
     channel(channel),
-    bufferOffset(channel->elementIndex * channel->signal->elemSize)
+    bufferOffset(channel->elementIndex * channel->signal->dtype.size)
 {
     data_bptr = 0;
     data_eptr = 0;

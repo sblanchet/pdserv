@@ -36,7 +36,7 @@ class Signal: public Variable {
         Signal( const std::string& path,
                 double sampleTime,
                 unsigned int decimation,
-                Datatype dtype,
+                const DataType& dtype,
                 size_t ndims = 1,
                 const size_t *dim = 0);
 

@@ -24,6 +24,7 @@
 #include "Channel.h"
 #include "XmlElement.h"
 #include "../Signal.h"
+#include "../DataType.h"
 
 #include <sstream>
 
@@ -63,5 +64,5 @@ void Channel::setXmlAttributes( XmlElement &element,
 
     if (data)
         XmlElement::Attribute(element, "value")
-            .csv( this, data + elementIndex * signal->elemSize, 1, precision);
+            .csv( this, data + elementIndex * signal->dtype.size, 1, precision);
 }

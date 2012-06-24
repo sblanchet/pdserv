@@ -30,7 +30,7 @@ Signal::Signal(
         const std::string& path,
         double ts,
         unsigned int decimation,
-        Datatype dtype,
+        const DataType& dtype,
         size_t ndims,
         const size_t *dim):
     Variable(path, dtype, ndims, dim),

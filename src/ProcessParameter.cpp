@@ -29,8 +29,9 @@
 using namespace PdServ;
 
 //////////////////////////////////////////////////////////////////////
-ProcessParameter::ProcessParameter ( Main const* main, const std::string& path,
-        unsigned int mode, Datatype dtype, size_t ndims, const size_t *dim):
+ProcessParameter::ProcessParameter (Main const* main,
+        const std::string& path, unsigned int mode,
+        const DataType& dtype, size_t ndims, const size_t *dim):
     Parameter(path, mode, dtype, ndims, dim),
     main(main)
 {

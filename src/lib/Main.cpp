@@ -44,6 +44,7 @@
 #include <log4cpp/SyslogAppender.hh>
 
 #include "Main.h"
+#include "../DataType.h"
 #include "Task.h"
 #include "Parameter.h"
 #include "Pointer.h"
@@ -124,7 +125,7 @@ int Main::gettime(struct timespec* t) const
 
 /////////////////////////////////////////////////////////////////////////////
 Parameter* Main::addParameter( const char *path,
-        unsigned int mode, PdServ::Variable::Datatype datatype,
+        unsigned int mode, const PdServ::DataType& datatype,
         void *addr, size_t n, const size_t *dim)
 {
     if (variableSet.find(path) != variableSet.end())
@@ -140,7 +141,7 @@ Parameter* Main::addParameter( const char *path,
 
 /////////////////////////////////////////////////////////////////////////////
 Signal* Main::addSignal( Task *task, unsigned int decimation,
-        const char *path, PdServ::Variable::Datatype datatype,
+        const char *path, const PdServ::DataType& datatype,
         const void *addr, size_t n, const size_t *dim)
 {
     if (variableSet.find(path) != variableSet.end())
@@ -165,8 +166,8 @@ int Main::setParameter(const Parameter *p, size_t startIndex,
     // to narrowest data type size. This ensures that the data is
     // allways aligned correctly.
     sdo->parameter = p;
-    sdo->offset = p->elemSize * startIndex;
-    size_t n = p->elemSize * count;
+    sdo->offset = p->dtype.size * startIndex;
+    size_t n = p->dtype.size * count;
     std::copy(data, data + n, p->valueBuf + sdo->offset);
 
     // Now write the length to trigger the action
@@ -220,7 +221,7 @@ int Main::run()
     //
     // parameterDataOffset[] holds the start index of a data types with
     // 8, 4, 2 and 1 bytes alignment
-    const size_t dataTypeIndex[PdServ::Variable::maxWidth+1] = {
+    const size_t dataTypeIndex[PdServ::DataType::maxWidth+1] = {
         3 /*0*/, 3 /*1*/, 2 /*2*/, 3 /*3*/,
         1 /*4*/, 3 /*5*/, 3 /*6*/, 3 /*7*/, 0 /*8*/
     };
@@ -235,7 +236,7 @@ int Main::run()
 
         // Push the next smaller data type forward by the parameter's
         // memory requirement
-        parameterDataOffset[dataTypeIndex[p->elemSize] + 1] += p->memSize;
+        parameterDataOffset[dataTypeIndex[p->dtype.align()] + 1] += p->memSize;
     }
 
     // Accumulate the offsets so that they follow each other in the shared
@@ -283,8 +284,9 @@ int Main::run()
     for (PdServ::Main::ProcessParameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {
         const Parameter *p = static_cast<const Parameter*>(*it);
-        p->valueBuf = sdoData + parameterDataOffset[dataTypeIndex[p->elemSize]];
-        parameterDataOffset[dataTypeIndex[p->elemSize]] += p->memSize;
+        p->valueBuf =
+            sdoData + parameterDataOffset[dataTypeIndex[p->dtype.align()]];
+        parameterDataOffset[dataTypeIndex[p->dtype.align()]] += p->memSize;
 
         std::copy(p->addr, p->addr + p->memSize, p->valueBuf);
     }

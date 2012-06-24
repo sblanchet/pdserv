@@ -35,6 +35,7 @@
 #include "../Task.h"
 #include "../Signal.h"
 #include "../Parameter.h"
+#include "../DataType.h"
 
 #include "Session.h"
 #include "Server.h"
@@ -373,7 +374,7 @@ void Session::readChannel()
     const VariableDirectory::Channels& chanList = root.getChannels();
 
     typedef std::list<const PdServ::Signal*> SignalList;
-    SignalList orderedSignals[PdServ::Variable::maxWidth + 1];
+    SignalList orderedSignals[PdServ::DataType::maxWidth + 1];
 
     for (VariableDirectory::Channels::const_iterator it = chanList.begin();
             it != chanList.end(); it++) {
@@ -382,7 +383,7 @@ void Session::readChannel()
             continue;
 
         bufOffset[mainSignal] = 0;
-        orderedSignals[mainSignal->elemSize].push_back(mainSignal);
+        orderedSignals[mainSignal->dtype.align()].push_back(mainSignal);
     }
 
     const PdServ::Signal *signalList[bufOffset.size()];

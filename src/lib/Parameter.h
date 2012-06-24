@@ -36,7 +36,7 @@ class Parameter: public PdServ::ProcessParameter {
         Parameter ( Main const* main,
                 const char *path,
                 unsigned int mode,
-                Datatype dtype,
+                const PdServ::DataType& dtype,
                 void *addr,
                 size_t ndims = 1,
                 const size_t *dim = 0);

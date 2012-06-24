@@ -28,6 +28,7 @@
 #include <cc++/thread.h>
 
 #include "../Signal.h"
+#include "../DataType.h"
 
 namespace PdServ {
     class Session;
@@ -42,14 +43,15 @@ class Signal: public PdServ::Signal {
                 size_t index,
                 unsigned int decimation,
                 const char *path,
-                Datatype dtype,
+                const PdServ::DataType& dtype,
                 const void *addr,
                 size_t ndims = 1,
                 const size_t *dim = 0);
 
         const char * const addr;
 
-        static const size_t dataTypeIndex[PdServ::Variable::maxWidth+1];
+        static const size_t dataTypeIndex[PdServ::DataType::maxWidth+1];
+//        const PdServ::DataType& dataType;
         const size_t index;
 
     private:

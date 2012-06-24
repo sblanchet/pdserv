@@ -27,13 +27,14 @@
 #include "SubscriptionManager.h"
 #include "../TaskStatistics.h"
 #include "../Task.h"
+#include "../DataType.h"
 
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 StatSignal::StatSignal(const PdServ::Task *t,
         const std::string& path, Type type):
-    PdServ::Signal(path, t->sampleTime, 1, double_T, 1, 0),
+    PdServ::Signal(path, t->sampleTime, 1, PdServ::DataType::float64, 1, 0),
     task(t), type(type)
 {
 }

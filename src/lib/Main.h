@@ -34,6 +34,7 @@
 
 namespace PdServ {
     class Signal;
+    class DataType;
 }
 
 class Parameter;
@@ -55,11 +56,11 @@ class Main: public PdServ::Main {
         Task* getTask(size_t index) const;
 
         Parameter* addParameter( const char *path,
-                unsigned int mode, PdServ::Variable::Datatype datatype,
+                unsigned int mode, const PdServ::DataType& datatype,
                 void *addr, size_t n, const size_t *dim);
 
         Signal* addSignal( Task *task, unsigned int decimation,
-                const char *path, PdServ::Variable::Datatype datatype,
+                const char *path, const PdServ::DataType& datatype,
                 const void *addr, size_t n, const size_t *dim);
         int setParameter(const Parameter *p, size_t startIndex,
                 size_t nelem, const char *data,

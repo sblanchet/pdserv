@@ -34,6 +34,7 @@
 
 namespace PdServ {
     class SessionTask;
+    class DataType;
 }
 
 class Main;
@@ -49,7 +50,7 @@ class Task: public PdServ::Task {
 
         typedef std::vector<const Signal*> SignalVector;
         Signal* addSignal( unsigned int decimation,
-                const char *path, PdServ::Variable::Datatype datatype,
+                const char *path, const PdServ::DataType& datatype,
                 const void *addr, size_t n, const size_t *dim);
 
         size_t getShmemSpace(double t) const;

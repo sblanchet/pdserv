@@ -38,7 +38,7 @@ class Parameter: public Variable {
     public:
         Parameter ( const std::string& path,
                 unsigned int mode,
-                Datatype dtype,
+                const DataType& dtype,
                 size_t ndims = 1,
                 const size_t *dim = 0);
 
