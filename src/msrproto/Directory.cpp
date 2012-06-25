@@ -99,7 +99,7 @@ bool VariableDirectory::insert( const PdServ::Parameter *p, const std::string &a
     if (server->traditionalMode() and p->dim.nelem > 1) {
         parameters.reserve(parameters.size() + p->dim.nelem);
 
-        for (size_t i = 0; i < p->dim.size(); ++i) {
+        for (size_t i = 0; i < p->dim.nelem; ++i) {
             Parameter *parameter =
                 new Parameter(server, parameters.size(), p, i);
             mainParam->insert(parameter, i, p->dim.nelem, p->dim);
