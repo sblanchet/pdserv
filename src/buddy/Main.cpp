@@ -204,8 +204,8 @@ int Main::setParameter( const Parameter *param, size_t startIndex,
     struct param_change delta;
 
     delta.rtP = parameterBuf;
-    delta.pos = data - parameterBuf + startIndex * param->elemSize;
-    delta.len = count * param->elemSize;
+    delta.pos = data - parameterBuf + startIndex * param->dtype.size;
+    delta.len = count * param->dtype.size;
     delta.count = 0;
     gettime(mtime);
 
