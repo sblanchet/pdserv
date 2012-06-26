@@ -83,7 +83,7 @@ SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
     else {
         std::copy(si->dim, si->dim + 2, dim);
         if (si->orientation == si_matrix_col_major) {
-            switch (PdServ::Variable::dataTypeSize[dataType()]) {
+            switch (dataType().align()) {
                 case 1:
                     readFunc  = transpose<uint8_t,'R'>;
                     writeFunc = transpose<uint8_t,'W'>;
@@ -105,7 +105,7 @@ SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
     }
 
     if (!readFunc) {
-        switch (PdServ::Variable::dataTypeSize[dataType()]) {
+        switch (dataType().align()) {
             case 1:
                 readFunc  = copy<uint8_t,'R'>;
                 writeFunc = copy<uint8_t,'W'>;
@@ -162,19 +162,19 @@ size_t SignalInfo::ndim() const
 }
 
 //////////////////////////////////////////////////////////////////////
-PdServ::Variable::Datatype SignalInfo::dataType() const
+const PdServ::DataType& SignalInfo::dataType() const
 {
     switch (si->data_type) {
-        case si_boolean_T: return PdServ::Variable::boolean_T;
-        case si_uint8_T:   return PdServ::Variable::uint8_T;
-        case si_sint8_T:   return PdServ::Variable::int8_T;
-        case si_uint16_T:  return PdServ::Variable::uint16_T;
-        case si_sint16_T:  return PdServ::Variable::int16_T;
-        case si_uint32_T:  return PdServ::Variable::uint32_T;
-        case si_sint32_T:  return PdServ::Variable::int32_T;
-        case si_double_T:  return PdServ::Variable::double_T;
-        case si_single_T:  return PdServ::Variable::single_T;
-        default:           return PdServ::Variable::double_T;
+        case si_boolean_T: return PdServ::DataType::boolean;
+        case si_uint8_T:   return PdServ::DataType::uint8;
+        case si_sint8_T:   return PdServ::DataType::int8;
+        case si_uint16_T:  return PdServ::DataType::uint16;
+        case si_sint16_T:  return PdServ::DataType::int16;
+        case si_uint32_T:  return PdServ::DataType::uint32;
+        case si_sint32_T:  return PdServ::DataType::int32;
+        case si_double_T:  return PdServ::DataType::float64;
+        case si_single_T:  return PdServ::DataType::float32;
+        default:           return PdServ::DataType::float64;
     }
 }
 

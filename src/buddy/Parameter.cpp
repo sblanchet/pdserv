@@ -47,7 +47,7 @@ int Parameter::setValue(const char* src, size_t startIndex, size_t nelem) const
     ost::SemaphoreLock lock(mutex);
 
     si.write(valueBuf, src, startIndex, nelem);
-    return main->setParameter(this, 0, this->nelem, valueBuf, &mtime);
+    return main->setParameter(this, startIndex, nelem, valueBuf, &mtime);
 }
 
 //////////////////////////////////////////////////////////////////////
