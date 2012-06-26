@@ -133,6 +133,8 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
     if (!id.empty())
         XmlElement::Attribute(element, "id").setEscaped(id.c_str());
 
+    addCompoundFields(element, variable->dtype);
+
     return;
 }
 

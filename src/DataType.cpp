@@ -268,7 +268,7 @@ std::ostream& DataType::print(std::ostream& os,
                 it != fieldList.end(); ++it) {
             if (delim)
                 os << delim;
-            delim = ';';
+            delim = ',';
             (*it)->type.print(os, data + (*it)->offset, (*it)->dim.nelem);
         }
         data += size;

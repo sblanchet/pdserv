@@ -33,6 +33,7 @@ namespace PdServ {
     class Variable;
     class Signal;
     class Parameter;
+    class DimType;
 }
 
 namespace MsrProto {
@@ -58,8 +59,12 @@ class Variable: public DirectoryNode {
         const size_t memSize;
 
         void setAttributes(XmlElement &element, bool shortReply) const;
+        void addCompoundFields(XmlElement &element,
+                const PdServ::DataType& ) const;
 
     private:
+        void setDataType(XmlElement &element, const PdServ::DataType& dtype,
+                const PdServ::DataType::DimType& dim) const;
 };
 
 }

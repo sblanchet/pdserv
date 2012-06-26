@@ -43,26 +43,30 @@ Channel::Channel(const Server *server, const PdServ::Signal *s,
 void Channel::setXmlAttributes( XmlElement &element,
         bool shortReply, const char *data, size_t precision) const
 {
-    // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
-    //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
-    double freq = 1.0 / signal->sampleTime / signal->decimation;
-
-    // The MSR protocoll wants a bufsize, the maximum number of
-    // values that can be retraced. This artificial limitation does
-    // not exist any more. Instead, choose a buffer size so that
-    // at a maximum of 10 seconds has to be stored.
-    size_t bufsize = 10 * std::max( 1U, (unsigned int)(freq + 0.5));
-
     setAttributes(element, shortReply);
 
-    if (shortReply)
-        return;
+    if (!shortReply) {
+        // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
+        //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
+        double freq = 1.0 / signal->sampleTime / signal->decimation;
 
-    // bufsize=
-    XmlElement::Attribute(element, "bufsize") << bufsize;
-    XmlElement::Attribute(element, "HZ") << freq;
+        // The MSR protocoll wants a bufsize, the maximum number of
+        // values that can be retraced. This artificial limitation does
+        // not exist any more. Instead, choose a buffer size so that
+        // at a maximum of 10 seconds has to be stored.
+        size_t bufsize = 10 * std::max( 1U, (unsigned int)(freq + 0.5));
 
-    if (data)
-        XmlElement::Attribute(element, "value")
-            .csv( this, data + elementIndex * signal->dtype.size, 1, precision);
+        if (shortReply)
+            return;
+
+        // bufsize=
+        XmlElement::Attribute(element, "bufsize") << bufsize;
+        XmlElement::Attribute(element, "HZ") << freq;
+
+        if (data)
+            XmlElement::Attribute(element, "value").csv(this,
+                    data + elementIndex * signal->dtype.size, 1, precision);
+    }
+
+    addCompoundFields(element, variable->dtype);
 }

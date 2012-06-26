@@ -64,6 +64,82 @@ const PdServ::Parameter* Variable::parameter() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Variable::setDataType(XmlElement &element, const PdServ::DataType& dtype,
+        const PdServ::DataType::DimType& dim) const
+{
+    // datasize=
+    XmlElement::Attribute(element, "datasize") << dtype.size;
+
+    // typ=
+    const char *dtstr;
+    switch (dtype.primary()) {
+        case PdServ::DataType::boolean_T : dtstr = "TCHAR";      break;
+        case PdServ::DataType::  uint8_T : dtstr = "TUCHAR";    break;
+        case PdServ::DataType::   int8_T : dtstr = "TCHAR";     break;
+        case PdServ::DataType:: uint16_T : dtstr = "TUSHORT";   break;
+        case PdServ::DataType::  int16_T : dtstr = "TSHORT";    break;
+        case PdServ::DataType:: uint32_T : dtstr = "TUINT";     break;
+        case PdServ::DataType::  int32_T : dtstr = "TINT";      break;
+        case PdServ::DataType:: uint64_T : dtstr = "TULINT";    break;
+        case PdServ::DataType::  int64_T : dtstr = "TLINT";     break;
+        case PdServ::DataType:: double_T : dtstr = "TDBL";      break;
+        case PdServ::DataType:: single_T : dtstr = "TFLT";      break;
+        default                          : dtstr = "COMPOUND";  break;
+    }
+    if (dim.nelem > 1)
+        XmlElement::Attribute(element, "typ")
+            << dtstr
+            << (dim.size() == 1 ? "_LIST" : "_MATRIX");
+    else
+        XmlElement::Attribute(element, "typ") << dtstr;
+
+    // For vectors:
+    // anz=
+    // cnum=
+    // rnum=
+    // orientation=
+    if (dim.nelem > 1) {
+        XmlElement::Attribute(element, "anz") << dim.nelem;
+        const char *orientation;
+        size_t cnum, rnum;
+
+        // Transmit either a vector or a matrix
+        if (dim.size() == 1) {
+            cnum = dim.nelem;
+            rnum = 1;
+            orientation = "VECTOR";
+        }
+        else {
+            cnum = dim.back();
+            rnum = dim.nelem / cnum;
+            orientation = "MATRIX_ROW_MAJOR";
+        }
+
+        XmlElement::Attribute(element, "cnum") << cnum;
+        XmlElement::Attribute(element, "rnum") << rnum;
+        XmlElement::Attribute(element, "orientation") << orientation;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Variable::addCompoundFields(XmlElement &element,
+        const PdServ::DataType& dtype) const
+{
+    const PdServ::DataType::FieldList& fieldList = dtype.getFieldList();
+
+    for (PdServ::DataType::FieldList::const_iterator it = fieldList.begin();
+            it != fieldList.end(); ++it) {
+        XmlElement field("field", element);
+        XmlElement::Attribute(field, "name").setEscaped((*it)->name.c_str());
+        XmlElement::Attribute(field, "offset") << (*it)->offset;
+
+        setDataType(element, (*it)->type, (*it)->dim);
+
+        addCompoundFields(field, (*it)->type);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Variable::setAttributes(XmlElement &element, bool shortReply) const
 {
     // name=
@@ -85,58 +161,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
     if (!variable->comment.empty())
         XmlElement::Attribute(element, "comment") << variable->comment;
 
-    // datasize=
-    XmlElement::Attribute(element, "datasize") << variable->dtype.size;
-
-    // typ=
-    const char *dtype;
-    switch (variable->dtype.primary()) {
-        case PdServ::DataType::boolean_T : dtype = "TCHAR";      break;
-        case PdServ::DataType::  uint8_T : dtype = "TUCHAR";    break;
-        case PdServ::DataType::   int8_T : dtype = "TCHAR";     break;
-        case PdServ::DataType:: uint16_T : dtype = "TUSHORT";   break;
-        case PdServ::DataType::  int16_T : dtype = "TSHORT";    break;
-        case PdServ::DataType:: uint32_T : dtype = "TUINT";     break;
-        case PdServ::DataType::  int32_T : dtype = "TINT";      break;
-        case PdServ::DataType:: uint64_T : dtype = "TULINT";    break;
-        case PdServ::DataType::  int64_T : dtype = "TLINT";     break;
-        case PdServ::DataType:: double_T : dtype = "TDBL";      break;
-        case PdServ::DataType:: single_T : dtype = "TFLT";      break;
-        default                          : dtype = "COMPOUND";  break;
-    }
-    if (nelem > 1)
-        XmlElement::Attribute(element, "typ")
-            << dtype
-            << (variable->dim.size() == 1 ? "_LIST" : "_MATRIX");
-    else
-        XmlElement::Attribute(element, "typ") << dtype;
-
-    // For vectors:
-    // anz=
-    // cnum=
-    // rnum=
-    // orientation=
-    if (nelem > 1) {
-        XmlElement::Attribute(element, "anz") << nelem;
-        const char *orientation;
-        size_t cnum, rnum;
-
-        // Transmit either a vector or a matrix
-        if (variable->dim.size() == 1) {
-            cnum = variable->dim.nelem;
-            rnum = 1;
-            orientation = "VECTOR";
-        }
-        else {
-            cnum = variable->dim.back();
-            rnum = variable->dim.nelem / cnum;
-            orientation = "MATRIX_ROW_MAJOR";
-        }
-
-        XmlElement::Attribute(element, "cnum") << cnum;
-        XmlElement::Attribute(element, "rnum") << rnum;
-        XmlElement::Attribute(element, "orientation") << orientation;
-    }
+    setDataType(element, variable->dtype, variable->dim);
 
     // unit=
     if (!variable->unit.empty())

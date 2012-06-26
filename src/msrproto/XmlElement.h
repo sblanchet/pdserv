@@ -51,6 +51,8 @@ class XmlElement {
          * Children are destroyed if they were not released beforehand */
         ~XmlElement();
 
+        const size_t level;
+
         std::ostream& prefix();
 
         class Attribute {
