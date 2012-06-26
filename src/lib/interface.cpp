@@ -28,6 +28,11 @@
 #include "../DataType.h"
 #include "pdserv.h"
 
+typedef std::vector<PdServ::DataType*> CompoundVector;
+CompoundVector compoundType;
+
+static const PdServ::DataType& getDataType(int dt);
+
 /////////////////////////////////////////////////////////////////////////////
 struct pdserv* pdserv_create( const char *name, const char *version,
         int (*gettime)(struct timespec*))
@@ -51,8 +56,27 @@ struct pdtask* pdserv_create_task(struct pdserv* pdserv, double tsample,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+int pdserv_create_compound( const char *name, size_t size)
+{
+    int dt = pd_datatype_end + compoundType.size();
+    compoundType.push_back(new PdServ::DataType(name, size));
+    return dt;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void pdserv_compound_add_field(int compound, const char *name,
+        int data_type, size_t offset, size_t ndims, size_t *dim)
+{
+    compoundType[compound - pd_datatype_end]
+        ->addField(name, getDataType(data_type), offset, ndims, dim);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void pdserv_exit(struct pdserv* pdserv)
 {
+    for (CompoundVector::const_iterator it = compoundType.begin();
+            it != compoundType.end(); ++it)
+        delete *it;
     delete reinterpret_cast<Main*>(pdserv);
 }
 
@@ -79,7 +103,7 @@ void pdserv_update(struct pdtask* task, const struct timespec *t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-static const PdServ::DataType& getDataType(enum pdserv_datatype_t dt)
+static const PdServ::DataType& getDataType(int dt)
 {
     switch (dt) {
         case pd_boolean_T: return PdServ::DataType::boolean;
@@ -93,8 +117,9 @@ static const PdServ::DataType& getDataType(enum pdserv_datatype_t dt)
         case pd_sint64_T:  return PdServ::DataType::int64;
         case pd_double_T:  return PdServ::DataType::float64;
         case pd_single_T:  return PdServ::DataType::float32;
+        default:
+                           return *compoundType[dt - pd_datatype_end];
     }
-    return PdServ::DataType::boolean;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -102,7 +127,7 @@ struct pdvariable *pdserv_signal(
         struct pdtask* pdtask,
         unsigned int decimation,
         const char *path,
-        enum pdserv_datatype_t datatype,
+        int datatype,
         const void *addr,
         size_t n,
         const size_t dim[]
@@ -121,7 +146,7 @@ struct pdvariable *pdserv_parameter(
         struct pdserv* pdserv,
         const char *path,
         unsigned int mode,
-        enum pdserv_datatype_t datatype,
+        int datatype,
         void *addr,
         size_t n,
         const size_t dim[],

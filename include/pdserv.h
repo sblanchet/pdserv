@@ -36,14 +36,18 @@ extern "C" {
  * Let the enumeration start at 1 so that an unset data type could be
  * detected.
  */
-enum pdserv_datatype_t {
-    pd_double_T = 1, pd_single_T,
-    pd_uint8_T,      pd_sint8_T,
-    pd_uint16_T,     pd_sint16_T,
-    pd_uint32_T,     pd_sint32_T,
-    pd_uint64_T,     pd_sint64_T,
-    pd_boolean_T
-};
+#define pd_double_T     1
+#define pd_single_T     2
+#define pd_uint8_T      3
+#define pd_sint8_T      4
+#define pd_uint16_T     5
+#define pd_sint16_T     6
+#define pd_uint32_T     7
+#define pd_sint32_T     8
+#define pd_uint64_T     9
+#define pd_sint64_T     10
+#define pd_boolean_T    11
+#define pd_datatype_end 12
 
 /** Structure declarations.
  */
@@ -99,8 +103,7 @@ struct pdtask* pdserv_create_task(
  * returns:
  *      handle to compound data type
  */
-enum pdserv_datatype_t pdserv_create_compound(
-        struct pdserv* pdserv,  /**< Pointer to pdserv struct */
+int pdserv_create_compound(
         const char *name,       /**< Data type name */
         size_t size             /**< Size of compound */
         );
@@ -108,10 +111,9 @@ enum pdserv_datatype_t pdserv_create_compound(
 /** Add a field to a compound data type
  */
 void pdserv_compound_add_field(
-        struct pdserv* pdserv,  /**< Pointer to pdserv struct */
-        enum pdserv_datatype_t handle,  /**< Compound handle */
+        int compound,           /**< Compound handle */
         const char *name,       /**< Data type name */
-        enum pdserv_datatype_t data_type, /**< Field data type */
+        int data_type,          /**< Field data type */
         size_t offset,          /**< Offset of field */
         size_t ndim,            /**< Number of dimensions */
         size_t *dim             /**< Dimensions */
@@ -142,7 +144,7 @@ struct pdvariable *pdserv_signal(
         unsigned int decimation,  /**< Decimation with which the signal is
                                    * calculated */
         const char *path,         /**< Signal path */
-        enum pdserv_datatype_t datatype, /**< Signal data type */
+        int datatype,             /**< Signal data type */
         const void *addr,         /**< Signal address */
         size_t n,                 /**< Element count.
                                    * If @dim != NULL, this is the number
@@ -197,7 +199,7 @@ struct pdvariable *pdserv_parameter(
         struct pdserv* pdserv,    /**< Pointer to pdserv structure */
         const char *path,         /**< Parameter path */
         unsigned int mode,        /**< Access mode, same as Unix file mode */
-        enum pdserv_datatype_t datatype, /**< Parameter data type */
+        int datatype,             /**< Parameter data type */
         void *addr,               /**< Parameter address */
         size_t n,                 /**< Element count.  If @dim != NULL, this
                                    * is the number elements in * @dim */
