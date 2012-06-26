@@ -102,7 +102,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
         case PdServ::DataType::  int64_T : dtype = "TLINT";     break;
         case PdServ::DataType:: double_T : dtype = "TDBL";      break;
         case PdServ::DataType:: single_T : dtype = "TFLT";      break;
-        default                          : dtype = 0;           break;
+        default                          : dtype = "COMPOUND";  break;
     }
     if (nelem > 1)
         XmlElement::Attribute(element, "typ")

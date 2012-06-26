@@ -78,22 +78,6 @@ std::ostream& XmlElement::prefix()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void XmlElement::setAttributes(const Parameter *p, const char *buf,
-        struct timespec const& ts, bool shortReply, bool hex,
-        size_t precision, const std::string& id)
-{
-    p->setXmlAttributes(
-            *this, buf, ts, shortReply, hex, precision, id);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void XmlElement::setAttributes(const Channel *c, const char *buf,
-        bool shortReply, size_t precision)
-{
-    c->setXmlAttributes( *this, shortReply, buf, precision);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 // XmlElement::Attribute
 /////////////////////////////////////////////////////////////////////////////
 XmlElement::Attribute::Attribute(XmlElement& el, const char *name):

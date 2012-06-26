@@ -234,12 +234,12 @@ void DirectoryNode::list(
 
             param->mainParam->getValue(session, buf, &ts);
 
-            XmlElement ("parameter", parent)
-                .setAttributes(param, buf, ts, 0, 0, 16);
+            XmlElement xml("parameter", parent);
+            param->setXmlAttributes(xml, buf, ts, 0, 0, 16);
         }
         else if (channel) {
-            XmlElement("channel", parent)
-                .setAttributes(channel, 0, 0, 0);
+            XmlElement xml("channel", parent);
+            channel->setXmlAttributes(xml, 0, 0, 0);
         }
     }
 }

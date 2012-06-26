@@ -407,9 +407,11 @@ void Session::readChannel()
 
     XmlElement channels("channels", ostream, streamlock);
     for (VariableDirectory::Channels::const_iterator it = chanList.begin();
-            it != chanList.end(); it++)
-        XmlElement("channel", channels).setAttributes(*it,
-                buf + bufOffset[(*it)->signal], shortReply, 16);
+            it != chanList.end(); it++) {
+        XmlElement el("channel", channels);
+        (*it)->setXmlAttributes(
+                el, shortReply, buf + bufOffset[(*it)->signal], 16);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -452,8 +454,9 @@ void Session::readParameter()
 
         std::string id;
         inbuf.getString("id", id);
-        XmlElement ("parameter", ostream, streamlock)
-            .setAttributes(p, buf, ts, shortReply, hex, 16, id);
+
+        XmlElement xml("parameter", ostream, streamlock);
+        p->setXmlAttributes(xml, buf, ts, shortReply, hex, 16, id);
 
         return;
     }
@@ -469,9 +472,10 @@ void Session::readParameter()
 
         mainParam->getValue(this, buf, &ts);
 
-        while (it != parameters.end() and mainParam == (*it)->mainParam)
-            XmlElement ("parameter",  parametersElement).setAttributes(
-                    *it++, buf, ts, shortReply, hex, 16);
+        while (it != parameters.end() and mainParam == (*it)->mainParam) {
+            XmlElement xml("parameter",  parametersElement);
+            (*it++)->setXmlAttributes(xml, buf, ts, shortReply, hex, 16);
+        }
     }
 }
 
