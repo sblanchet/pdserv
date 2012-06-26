@@ -38,6 +38,16 @@ uint16_t var1[2][3][4] = {
     { {1,2,3,4}, {5,6,7}, },
 };
 
+struct s1 {
+    double d[5];
+    char c;
+};
+
+struct s2 {
+    struct s1 s1[2];
+    int16_t i16;
+};
+
 int copy_param(struct pdtask *, const struct pdvariable *,
         void* dst, const void* src, size_t len, void *priv_data)
 {
@@ -62,10 +72,44 @@ int main(int argc, const char *argv[])
     uint32_t param[] = {1,2,3,4};
     struct pdtask *task[3];
 
+    struct s1 s1 = {{1,2,3,4,5}, 'a'};
+    struct s2 s2[2] = {
+        {
+            {
+                {{6,7,8,9,10},'b'},
+                {{11,12,13,14,15},'c'}
+            },
+            -123
+        },
+        {
+            {
+                {{6,7,8,9,10},'b'},
+                {{11,12,13,14,15},'c'}
+            },
+            -124
+        },
+    };
+
+    int s1_t = pdserv_create_compound("s1", sizeof(s1));
+    int s2_t = pdserv_create_compound("s2", sizeof(struct s2));
+
+    pdserv_compound_add_field(s1_t, "d",
+            pd_double_T, offsetof(struct s1, d), 5, NULL);
+    pdserv_compound_add_field(s1_t, "c",
+            pd_sint8_T, offsetof(struct s1, c), 1, NULL);
+
+    pdserv_compound_add_field(s2_t, "s1", s1_t,
+            offsetof(struct s2, s1), 2, NULL);
+    pdserv_compound_add_field(s2_t, "i16", pd_sint16_T,
+            offsetof(struct s2, i16), 1, NULL);
+
     task[0] = pdserv_create_task(pdserv, 0.1, "Task1");
 
 //    assert(!pdserv_signal(pdserv, 0, 1, "/path/to/variable", "var1",
 //            si_uint16_T, 3, var1_dims, var1));
+
+    assert(pdserv_signal(task[0], 1, "/s1", s1_t, &s1, 1, NULL));
+    assert(pdserv_signal(task[0], 1, "/s2", s2_t, s2, 2, NULL));
 
     assert(pdserv_signal(task[0], 1, "/path/to/double",
             pd_double_T, dbl, 3, NULL));
