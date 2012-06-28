@@ -23,6 +23,7 @@
 
 #include "DataType.h"
 #include <assert.h>
+#include <stddef.h>
 
 #include <iostream>
 using std::cout;
