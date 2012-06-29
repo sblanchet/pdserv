@@ -60,9 +60,9 @@ void SubscriptionManager::subscribe (const Channel *c,
 {
     remove(signalSubscriptionMap[c->signal][c]);
 
-    Subscription *subscription = new Subscription(c);
+    Subscription *subscription =
+        new Subscription(c, event, decimation, blocksize, base64, precision);
     signalSubscriptionMap[c->signal][c] = subscription;
-    subscription->set(event, decimation, blocksize, base64, precision);
 
     DecimationTuple& dt = activeSignals[subscription->decimation];
     if (!dt.first)

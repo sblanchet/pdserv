@@ -34,6 +34,7 @@ namespace ost {
 
 namespace PdServ {
     class Parameter;
+    class DataType;
 }
 
 namespace MsrProto {
@@ -43,10 +44,13 @@ class XmlElement;
 
 class Parameter: public Variable {
     public:
-        Parameter(const Server *,
-                unsigned int parameterIndex,
-                const PdServ::Parameter *p,
-                unsigned int elementIndex = ~0U);
+        Parameter( const PdServ::Parameter *p,
+                const std::string& name, DirectoryNode* parent,
+                unsigned int parameterIndex, bool traditional);
+
+        Parameter(const Parameter *c,
+                const std::string& name, DirectoryNode* parent,
+                const PdServ::DataType& dtype, size_t nelem, size_t offset);
 
         void setXmlAttributes(XmlElement&, const char *buf,
                 struct timespec const& ts, bool shortReply,
@@ -58,25 +62,24 @@ class Parameter: public Variable {
         int setDoubleValue(const Session *,
                 const char *, size_t startindex, size_t &count) const;
 
-       void valueChanged(std::ostream &os, ost::Semaphore&,
-               size_t start, size_t nelem) const;
+        void valueChanged(std::ostream &os, ost::Semaphore&,
+                size_t start, size_t nelem) const;
 
-       const PdServ::Parameter * const mainParam;
-
-       typedef std::vector<const Parameter*> ChildList;
-       const ChildList& getChildren() const;
-       void addChild(const Parameter *);
+        const PdServ::Parameter * const mainParam;
 
     private:
         const bool dependent;
         const bool persistent;
 
-       ChildList children;
+        int setElements(std::istream& is,
+                const PdServ::DataType& dtype,
+                const PdServ::DataType::DimType& dim,
+                char *&buf, size_t& count) const;
 
-        void (*append)(char *&, double);
-
-        template<class T>
-            static void setTo(char *&dst, double src);
+        // Reimplemented from Variable
+        const Variable* createChild(
+                DirectoryNode* dir, const std::string& path,
+                const PdServ::DataType& dtype, size_t nelem, size_t offset);
 };
 
 }

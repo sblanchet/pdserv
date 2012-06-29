@@ -224,7 +224,8 @@ void Session::run()
             for ( AicSet::iterator it = aic.begin();
                     it != aic.end(); ++it) {
                 const Parameter *param = root.find(*it);
-                param->valueChanged(ostream, streamlock, 0, param->nelem);
+                param->valueChanged(ostream, streamlock,
+                        0, param->dim.nelem);
             }
 
             aic.clear();
@@ -582,7 +583,7 @@ void Session::writeParameter()
 
     unsigned int startindex = 0;
     if (inbuf.getUnsigned("startindex", startindex)) {
-        if (startindex >= p->nelem)
+        if (startindex >= p->dim.nelem)
             return;
     }
 

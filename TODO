@@ -6,3 +6,5 @@ $Id$
 - Export hg information in dist tarball.
 - Improve FindMercurial macros (use hg parent).
 - Include AUTHORS, README, NEWS, etc. in dist tarball, installation and RPM.
+
+- MsrProto::XmlElement with implicit lock

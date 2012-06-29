@@ -28,15 +28,15 @@ namespace MsrProto {
 
 class Subscription {
     public:
-        Subscription(const Channel *);
+        Subscription(const Channel *, bool event, unsigned int decimation,
+                size_t blocksize, bool base64, size_t precision);
+        ~Subscription();
 
         const Channel *channel;
 
         bool newValue(const char *buf);
         void print(XmlElement &parent);
 
-        void set(bool event, unsigned int decimation,
-                size_t blocksize, bool base64, size_t precision);
 
         unsigned int decimation;
 

@@ -105,9 +105,6 @@ int main(int argc, const char *argv[])
 
     task[0] = pdserv_create_task(pdserv, 0.1, "Task1");
 
-//    assert(!pdserv_signal(pdserv, 0, 1, "/path/to/variable", "var1",
-//            si_uint16_T, 3, var1_dims, var1));
-
     assert(pdserv_signal(task[0], 1, "/s1", s1_t, &s1, 1, NULL));
     assert(pdserv_signal(task[0], 1, "/s2", s2_t, s2, 2, NULL));
 
@@ -119,10 +116,6 @@ int main(int argc, const char *argv[])
 
     assert(pdserv_signal(task[0], 1, "/path/to/var2",
             pd_uint16_T, var1, 3, var1_dims));
-//    assert(pdserv_signal(task[0], 1, "/path/to/var2",
-//            pd_uint16_T, var1, 1, 0));
-//    assert(pdserv_signal(task[0], 1, "/path/to/var2",
-//            pd_uint16_T, var1, 3, var1_dims));
 
     struct pdvariable *p3 = pdserv_parameter(pdserv, "/path/to/mdimparam",
             0666, pd_uint16_T, var1, 3, var1_dims, copy_param, (void*) 10);

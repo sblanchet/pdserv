@@ -105,7 +105,7 @@ namespace {
     template <class T>
         class PrimaryType: public DataType {
             public:
-                PrimaryType(): DataType(sizeof(T)) {
+                PrimaryType(): DataType(sizeof(T), setValue) {
                 }
 
             private:
@@ -130,6 +130,11 @@ namespace {
 
                 size_t align () const {
                     return TypeNum<T>::align;
+                }
+
+                static void setValue(char *&dst, double src) {
+                    *reinterpret_cast<T*>(dst) = src;
+                    dst += sizeof(T);
                 }
         };
 
@@ -181,35 +186,6 @@ const DataType& DataType::float64 = PrimaryType<  double>();
 const DataType& DataType::float32 = PrimaryType<   float>();
 
 //////////////////////////////////////////////////////////////////////
-const DataType* primaryTypes[11] = {
-    &DataType::boolean,
-    &DataType::uint8,   &DataType:: int8,
-    &DataType::uint16,  &DataType::int16,
-    &DataType::uint32,  &DataType::int32,
-    &DataType::uint64,  &DataType::int64,
-    &DataType::float64, &DataType::float32
-};
-
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-// namespace PdServ {
-//     std::ostream& operator<<(std::ostream& os,
-//             const DataType::FieldList& fieldList)
-//     {
-//         for (DataType::FieldList::const_iterator it = fieldList.begin();
-//                 it != fieldList.end(); ++it) {
-//             (*it)->type.printType(name, );
-//             //const DataType::Field* f = *it;
-//             //if (f->name.empty()) {
-//             //}
-//             //else {
-//             //}
-//         }
-//         return os;
-//     }
-// }
-
-//////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 DataType::DimType::DimType (size_t ndims, const size_t *dim):
     std::vector<size_t>(dim ? dim : &ndims, dim ? dim + ndims : &ndims + 1),
@@ -228,18 +204,19 @@ DataType::Field::Field (const std::string& name, const DataType& type,
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 DataType::DataType (const std::string& name, size_t size):
-    name(name), size(size)
+    name(name), size(size), setValue(0)
 {
 }
 
 //////////////////////////////////////////////////////////////////////
 DataType::DataType (const DataType& other):
-    name(other.name), size(other.size)
+    name(other.name), size(other.size), setValue(other.setValue)
 {
 }
 
 //////////////////////////////////////////////////////////////////////
-DataType::DataType (size_t size): size(size)
+DataType::DataType (size_t size, void (*setValue)(char *&, double )):
+    size(size), setValue(setValue)
 {
 }
 

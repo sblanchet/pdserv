@@ -54,18 +54,17 @@ Server::Server(const PdServ::Main *main, const PdServ::Config& defaultConfig,
     log_debug("traditional=%u", traditional);
     log_debug("port=%u", port);
 
-    root = new VariableDirectory(this);
-
     const PdServ::Task *primaryTask;
+    const std::string prefix(traditional
+            ? std::string(1,'/').append(main->name)
+            : std::string());
     for (size_t i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
 
         const PdServ::Task::Signals& signals = task->getSignals();
         for (PdServ::Task::Signals::const_iterator it = signals.begin();
-                it != signals.end(); it++) {
-
-            root->insert(*it, main->name);
-        }
+                it != signals.end(); it++)
+            root.insert(*it, prefix, traditional);
 
         std::ostringstream prefix;
         prefix << "/Taskinfo/" << i << '/';
@@ -75,35 +74,35 @@ Server::Server(const PdServ::Main *main, const PdServ::Config& defaultConfig,
             primaryTask = task;
 
         path = prefix.str() + "TaskTime";
-        if (!root->find<Channel>(path))
-            root->insert(new TimeSignal(task, path));
+        if (!root.find<Channel>(path))
+            root.insert(new TimeSignal(task, path), "", traditional);
 
         path = prefix.str() + "ExecTime";
-        if (!root->find<Channel>(path))
-            root->insert( new StatSignal(task, path, StatSignal::ExecTime));
+        if (!root.find<Channel>(path))
+            root.insert( new StatSignal(task, path, StatSignal::ExecTime),
+                    "", traditional);
 
         path = prefix.str() + "Period";
-        if (!root->find<Channel>(path))
-            root->insert( new StatSignal(task, path, StatSignal::Period));
+        if (!root.find<Channel>(path))
+            root.insert( new StatSignal(task, path, StatSignal::Period),
+                    "", traditional);
 
         path = prefix.str() + "Overrun";
-        if (!root->find<Channel>(path)) {
-            //cerr_debug() << "insert" << path;
-            root->insert( new StatSignal(task, path, StatSignal::Overrun));
-        }
+        if (!root.find<Channel>(path))
+            root.insert( new StatSignal(task, path, StatSignal::Overrun),
+                    "", traditional);
     }
 
-    if (!root->find<Channel>("/Time"))
-        root->insert(new TimeSignal(primaryTask, "/Time"));
+//    if (!root.find<Channel>("/Time"))
+//        root.insert(new TimeSignal(primaryTask, "/Time"));
 
-    const PdServ::Main::ProcessParameters& parameters = main->getParameters();
+    const PdServ::Main::ProcessParameters& mainParam = main->getParameters();
     PdServ::Main::ProcessParameters::const_iterator it;
-    for (it = parameters.begin(); it != parameters.end(); ++it) {
-        root->insert(*it, main->name);
-    }
+    for (it = mainParam.begin(); it != mainParam.end(); ++it)
+        root.insert(*it, prefix, traditional);
 
-    if (!root->find<Parameter>("/Taskinfo/Abtastfrequenz")) {
-    }
+//    if (!root.find<Parameter>("/Taskinfo/Abtastfrequenz")) {
+//    }
 
     start();
 }
@@ -217,6 +216,6 @@ void Server::parameterChanged(const PdServ::Parameter *p,
 /////////////////////////////////////////////////////////////////////////////
 const VariableDirectory& Server::getRoot() const
 {
-    return *root;
+    return root;
 }
 

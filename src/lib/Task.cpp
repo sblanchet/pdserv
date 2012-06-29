@@ -230,13 +230,13 @@ void Task::subscribe(const Signal* s, bool insert) const
         scl[i] = s;
         signalPosition[s->index] = i;
 
-        log_debug("insert %s @ %zu[%zu]", s->path.c_str(), w, i);
+//        log_debug("insert %s @ %zu[%zu]", s->path.c_str(), w, i);
 //        debug() << "insert" << s->path << w << i << (void*)signalCopyList[w];
     }
     else {
         size_t pos = signalPosition[s->index];
 
-        log_debug("erase %s @ %zu", s->path.c_str(), pos);
+//        log_debug("erase %s @ %zu", s->path.c_str(), pos);
 
         wp->action = SignalList::Remove;
         wp->signalPosition = pos;
@@ -365,8 +365,8 @@ void Task::update(const struct timespec *t)
         switch (sp->action) {
             case SignalList::Insert:
                 // Insert the signal at list end
-                log_debug("RT insert %s @ %zu", signal->path.c_str(),
-                        signalTypeCount[w]);
+//                log_debug("RT insert %s @ %zu", signal->path.c_str(),
+//                        signalTypeCount[w]);
 
                 cl = copyList[w] + signalTypeCount[w]++;
 
@@ -388,8 +388,8 @@ void Task::update(const struct timespec *t)
 
                 signalMemSize -= signal->memSize;
 
-                log_debug("RT remove %s @ %zu", signal->path.c_str(),
-                        signalTypeCount[w]);
+//                log_debug("RT remove %s @ %zu", signal->path.c_str(),
+//                        signalTypeCount[w]);
 
 //                cout << " removed" << endl;
                 break;

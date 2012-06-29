@@ -30,6 +30,9 @@
 
 #include "../SessionStatistics.h"
 #include "../Config.h"
+#include "Parameter.h"
+#include "Channel.h"
+#include "Directory.h"
 
 namespace log4cpp {
     class Category;
@@ -43,8 +46,6 @@ namespace PdServ {
 namespace MsrProto {
 
 class Session;
-class Parameter;
-class VariableDirectory;
 
 class Server: public ost::Thread {
     public:
@@ -75,7 +76,7 @@ class Server: public ost::Thread {
         int port;
         bool traditional;
 
-        VariableDirectory *root;
+        VariableDirectory root;
 
         mutable ost::Semaphore mutex;
 

@@ -84,6 +84,7 @@ class DataType {
         const FieldList& getFieldList() const;
 
         bool operator==(const DataType& other) const;
+        void (* const setValue)(char *&, double);
 
         static const DataType& boolean;
         static const DataType&   uint8;
@@ -121,24 +122,11 @@ class DataType {
 
     protected:
         DataType(const DataType& other);
-        explicit DataType(size_t size);
+        explicit DataType(size_t size, void (*)(char *&dst, double src));
 
     private:
 
-        static const DataType* primaryTypes[11];
-
         FieldList fieldList;
-
-        // typedef void (*PrintFunc)(std::ostream&,
-        //         const void *, size_t);
-        // PrintFunc printFunc;
-
-        // template <class T>
-        //     static void print(std::ostream& os,
-        //             const void *data, size_t n);
-
-        // static size_t getNElem( size_t dims, const size_t dim[]);
-        // static const size_t *makeDimVector( size_t len, const size_t dim[]);
 };
 
 }

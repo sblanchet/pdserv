@@ -44,10 +44,8 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-VariableDirectory::VariableDirectory(const Server *server):
-    DirectoryNode(server)
+VariableDirectory::VariableDirectory()
 {
-    parent = this;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -66,96 +64,89 @@ void VariableDirectory::list(
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool VariableDirectory::insert( const PdServ::Parameter *p, const std::string &appName)
+DirectoryNode *VariableDirectory::mkdir(std::string& path,
+        char &hide, bool traditional)
 {
-    std::string pathstr;
-    if (server->traditionalMode() and appName.size())
-        pathstr.append(1,'/').append(appName);
-    pathstr.append(p->path);
+    const char *p = path.c_str();
 
-    const char *path = pathstr.c_str();
-
-    if (*path++ != '/')
-        return true;
+    if (*p++ != '/')
+        return 0;
 
     std::string name;
-    char hide = 0;
-    //debug() << "parameter" << p->path;
-    DirectoryNode *dir = mkdir(path, hide, name);
-    if (!dir)
-        return true;
+    hide = 0;
 
-    if (server->traditionalMode() and (hide == 1 or hide == 'p')) {
-        //debug() << "hide paameter" << p->path;
-        return false;
-    }
+    DirectoryNode *dir = DirectoryNode::mkdir(p, hide, name, traditional);
+    path = name;
 
-    Parameter *mainParam = new Parameter(server, parameters.size(), p);
-    dir->insert(mainParam, name);
-
-    parameterMap[p] = mainParam;
-    parameters.push_back(mainParam);
-
-    if (server->traditionalMode() and p->dim.nelem > 1) {
-        parameters.reserve(parameters.size() + p->dim.nelem);
-
-        for (size_t i = 0; i < p->dim.nelem; ++i) {
-            Parameter *parameter =
-                new Parameter(server, parameters.size(), p, i);
-            mainParam->insert(parameter, i, p->dim.nelem, p->dim);
-
-            parameters.push_back(parameter);
-            mainParam->addChild(parameter);
-        }
-    }
-
-    return false;
+    return dir;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool VariableDirectory::insert(const PdServ::Signal *s,
-        const std::string &appName)
+void VariableDirectory::insertChildren(const Channel *c)
 {
-    std::string pathstr;
-    if (server->traditionalMode() and appName.size())
-        pathstr.append(1,'/').append(appName);
-    pathstr.append(s->path);
+    const Variable::List* children = c->getChildren();
+    if (!children)
+        return;
 
-    const char *path = pathstr.c_str();
-
-    if (*path++ != '/')
-        return true;
-
-    std::string name;
-    char hide = 0;
-    //debug() << "signal" << s->path;
-    DirectoryNode *dir = mkdir(path, hide, name);
-    if (!dir)
-        return true;
-
-    if (server->traditionalMode() and (hide == 1 or hide == 'k')) {
-        //debug() << "hide sign" << s->path;
-        return false;
+    channels.reserve(channels.size() + children->size());
+    for (Variable::List::const_iterator it = children->begin();
+            it != children->end();  ++it) {
+        c = static_cast<const Channel*>(*it);
+        channels.push_back(c);
+        insertChildren(c);
     }
+}
 
-    Channel *mainChannel = new Channel(server, s, channels.size());
-    dir->insert(mainChannel, name);
+/////////////////////////////////////////////////////////////////////////////
+void VariableDirectory::insert(const PdServ::Signal *signal,
+        std::string path, bool traditional)
+{
+    char hide;
 
-    channels.push_back(mainChannel);
+    path.append(signal->path);
 
-    /* Traditional mode: Break non-scalar signals into scalar components. */
-    if (server->traditionalMode() and s->dim.nelem > 1) {
-        channels.reserve(channels.size() + s->dim.nelem);
+    DirectoryNode *dir = mkdir(path, hide, traditional);
+    if (dir and !(traditional and (hide == 1 or hide == 'k'))) {
+        Channel *c =
+            new Channel(signal, path, dir, channels.size(), traditional);
 
-        for (size_t i = 0; i < s->dim.nelem; ++i) {
-            Channel *subChannel = new Channel(server, s, channels.size(), i);
-            mainChannel->insert(subChannel, i, s->dim.nelem, s->dim);
-
-            channels.push_back(subChannel);
-        }
+        channels.push_back(c);
+        insertChildren(c);
     }
+}
 
-    return false;
+/////////////////////////////////////////////////////////////////////////////
+void VariableDirectory::insertChildren(const Parameter *p)
+{
+    const Variable::List* children = p->getChildren();
+    if (!children)
+        return;
+
+    parameters.reserve(parameters.size() + children->size());
+    for (Variable::List::const_iterator it = children->begin();
+            it != children->end();  ++it) {
+        p = static_cast<const Parameter*>(*it);
+        parameters.push_back(p);
+        insertChildren(p);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void VariableDirectory::insert(const PdServ::Parameter *param,
+        std::string path, bool traditional)
+{
+    char hide;
+
+    path.append(param->path);
+
+    DirectoryNode *dir = mkdir(path, hide, traditional);
+    if (dir and !(traditional and (hide == 1 or hide == 'p'))) {
+        Parameter *p =
+            new Parameter(param, path, dir, parameters.size(), traditional);
+        parameters.push_back(p);
+        parameterMap[param] = p;
+        insertChildren(p);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -190,9 +181,14 @@ const Parameter* VariableDirectory::getParameter(size_t idx) const
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-DirectoryNode::DirectoryNode(const Server *server, bool hypernode):
-    server(server),
-    hypernode(hypernode)
+DirectoryNode::DirectoryNode(const std::string& name, DirectoryNode* parent):
+    parent(parent)
+{
+    rename(parent, name);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+DirectoryNode::DirectoryNode(): parent(this), name(0)
 {
 }
 
@@ -202,11 +198,18 @@ DirectoryNode::~DirectoryNode()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void DirectoryNode::rename(DirectoryNode* parent, const std::string& name)
+{
+    this->parent = parent;
+    this->name = parent->insert(this, name);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void DirectoryNode::list(
         PdServ::Session *session, XmlElement& parent, const char *path) const
 {
     char c;
-    std::string name = split(path, c);
+    std::string name = split(path, c, false);
 
     Children::const_iterator it = children.find(name);
     if (!name.empty()) {
@@ -260,33 +263,13 @@ bool DirectoryNode::hasChildren() const
 DirectoryNode *DirectoryNode::find(const char *path) const
 {
     char c;
-    std::string name = split(path, c);
+    std::string name = split(path, c, false);
 
     Children::const_iterator it = children.find(name);
     if (name.empty() or it == children.end())
         return 0;
 
     return *path ? it->second->find(path) : it->second;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-DirectoryNode *DirectoryNode::push(std::string &name)
-{
-    if (hypernode) {
-        std::ostringstream os;
-        os << children.size();
-        name = os.str();
-        return this;
-    }
-    else {
-        // Create another directory and move this node into the new dir
-        DirectoryNode *dir = new DirectoryNode(server, true);
-        parent->insert(dir, *this->name);
-        dir->insert(this, "0");
-
-        name = "1";
-        return dir;
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -301,9 +284,23 @@ void DirectoryNode::dump() const
 
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode *DirectoryNode::mkdir(
-        const char *path, char &hide, std::string &name)
+        const std::string& path, std::string& name)
 {
-    name = split(path, hide);
+    const char *p = path.c_str();
+
+    if (*p++ != '/')
+        return 0;
+
+    char hide;
+
+    return DirectoryNode::mkdir(p, hide, name, false);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+DirectoryNode *DirectoryNode::mkdir(
+        const char *path, char &hide, std::string &name, bool traditional)
+{
+    name = split(path, hide, traditional);
 
     if (name.empty())
         return 0;
@@ -313,52 +310,46 @@ DirectoryNode *DirectoryNode::mkdir(
     if (*path) {
         // We're not at the end of the path yet
         if (!node)
-            node = insert(new DirectoryNode(server), name);
+            node = new DirectoryNode(name, this);
 
-        return node->mkdir(path, hide, name);
+        return node->mkdir(path, hide, name, traditional);
     }
 
     // Check whether the node exists
-    if (node)
-        return server->traditionalMode() ? node->push(name) : 0;
+    if (node) {
+        log_debug("node %s exists", name.c_str());
+        if (!traditional)
+            return 0;
+
+        if (reinterpret_cast<const Channel*>(node)
+                or reinterpret_cast<const Parameter*>(node)) {
+
+            DirectoryNode* dir = new DirectoryNode(name, this);
+            node->rename(dir, "0");
+            name = "1";
+            return dir;
+        }
+        std::ostringstream os;
+        os << children.size();
+        name = os.str();
+
+        return this;
+    }
 
     return this;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-DirectoryNode *DirectoryNode::insert(
-        DirectoryNode *node, const std::string &name)
+const std::string* DirectoryNode::insert (DirectoryNode *child,
+        const std::string& name)
 {
-    children[name] = node;
-    node->parent = this;
-    node->name = &children.find(name)->first;
-
-    return node;
+    children[name] = child;
+    return &children.find(name)->first;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void DirectoryNode::insert(Variable *var, size_t index, size_t nelem,
-        const PdServ::DataType::DimType& dim, size_t dimIdx)
-{
-    nelem /= dim[dimIdx++];
-    size_t x = index / nelem;
-
-    std::ostringstream os;
-    os << x;
-    std::string name(os.str());
-
-    if (nelem == 1)
-        insert(var, name);
-    else {
-        DirectoryNode *dir = children[name];
-        if (!dir)
-            dir = insert(new DirectoryNode(server), name);
-        dir->insert( var, index - x*nelem , nelem, dim, dimIdx);
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-std::string DirectoryNode::split(const char *&path, char &hide) const
+std::string DirectoryNode::split(const char *&path,
+        char &hide, bool traditional) const
 {
     // Skip whitespace at the beginning of the path
     while (std::isspace(*path, std::locale::classic()))
@@ -371,7 +362,7 @@ std::string DirectoryNode::split(const char *&path, char &hide) const
         slash++;
 
     const char *nameEnd = slash;
-    if (server->traditionalMode()) {
+    if (traditional) {
         nameEnd = path;
         while (nameEnd < slash and *nameEnd != '<')
             nameEnd++;

@@ -57,11 +57,11 @@ void Signal::subscribe(PdServ::SessionTask *s) const
     ost::SemaphoreLock lock(mutex);
 
     if (sessions.empty()) {
-        log_debug("Request signal from RT task %p", s);
+//        log_debug("Request signal from RT task %p", s);
         task->subscribe(this, true);
     }
     else if (s->sessionTaskData->isBusy(this)) {
-        log_debug("Signal already transferred");
+//        log_debug("Signal already transferred");
         s->newSignal(this);
     }
 

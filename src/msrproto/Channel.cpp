@@ -31,12 +31,37 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Channel::Channel(const Server *server, const PdServ::Signal *s,
-        unsigned int channelIndex, unsigned int elementIndex):
-    Variable(server, s, channelIndex, elementIndex),
+Channel::Channel(const PdServ::Signal *s,
+        const std::string& name, DirectoryNode* dir,
+        unsigned int channelIndex, bool traditional):
+    Variable(s, name, dir, channelIndex),
     signal(s)
 {
     //cout << __PRETTY_FUNCTION__ << index << endl;
+//    log_debug("new var %s idx=%zu size=%zu, nelem=%zu", path().c_str(),
+//            variableIndex, dtype.size, dim.nelem);
+    //traditional = true;
+    createChildren(traditional);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Channel::Channel(const Channel *parent, const std::string& name,
+        DirectoryNode *dir, const PdServ::DataType& dtype,
+        size_t nelem, size_t offset):
+    Variable(parent, name, dir, dtype, nelem, offset),
+    signal(parent->signal)
+{
+//    log_debug("new var %s idx=%zu size=%zu, nelem=%zu", path().c_str(),
+//            variableIndex, dtype.size, dim.nelem);
+    createChildren(true);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Variable* Channel::createChild(DirectoryNode* dir,
+                const std::string& name,
+                const PdServ::DataType& dtype, size_t nelem, size_t offset)
+{
+    return new Channel(this, name, dir, dtype, nelem, offset);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -65,8 +90,8 @@ void Channel::setXmlAttributes( XmlElement &element,
 
         if (data)
             XmlElement::Attribute(element, "value").csv(this,
-                    data + elementIndex * signal->dtype.size, 1, precision);
+                    data + offset, 1, precision);
     }
 
-    addCompoundFields(element, variable->dtype);
+    addCompoundFields(element, dtype);
 }

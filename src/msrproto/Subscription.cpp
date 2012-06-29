@@ -34,21 +34,15 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Subscription::Subscription(const Channel* channel):
+Subscription::Subscription(const Channel *channel, bool event,
+        unsigned int decimation, size_t blocksize,
+        bool base64, size_t precision):
     channel(channel),
-    bufferOffset(channel->elementIndex * channel->signal->dtype.size)
+    bufferOffset(channel->offset)
 {
-    data_bptr = 0;
-    data_eptr = 0;
     trigger = 0;
     nblocks = 0;
-}
 
-/////////////////////////////////////////////////////////////////////////////
-void Subscription::set( bool event, unsigned int decimation,
-        size_t blocksize, bool base64, size_t precision)
-{
-//    cout << __PRETTY_FUNCTION__ << signal->path << endl;
     if (!decimation)
         decimation = 1U;
 
@@ -71,12 +65,17 @@ void Subscription::set( bool event, unsigned int decimation,
     this->base64 = base64;
 
     size_t dataLen = this->blocksize * channel->memSize;
-    if (data_eptr < data_bptr + dataLen) {
-        data_bptr = new char[dataLen];
-        data_eptr = data_bptr + dataLen;
 
-        data_pptr = data_bptr;
-    }
+    data_bptr = new char[dataLen];
+    data_eptr = data_bptr + dataLen;
+
+    data_pptr = data_bptr;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Subscription::~Subscription()
+{
+    delete data_bptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -110,6 +109,9 @@ bool Subscription::newValue (const char *buf)
 /////////////////////////////////////////////////////////////////////////////
 void Subscription::print(XmlElement &parent)
 {
+//    if (!nblocks)
+//        return;
+
     XmlElement datum(event ? "E" : "F", parent);
     XmlElement::Attribute(datum, "c") << channel->variableIndex;
 

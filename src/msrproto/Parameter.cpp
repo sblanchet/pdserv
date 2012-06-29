@@ -54,49 +54,36 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-template<class T>
-void Parameter::setTo(char *&dst, double src) {
-    *reinterpret_cast<T*>(dst) = static_cast<T>(src);
-    dst += sizeof(T);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Parameter::Parameter(const Server *server, unsigned int variableIndex,
-        const PdServ::Parameter *p, unsigned int elementIndex):
-    Variable(server, p, variableIndex, elementIndex),
+Parameter::Parameter( const PdServ::Parameter *p,
+        const std::string& name, DirectoryNode* dir,
+        unsigned int variableIndex, bool traditional):
+    Variable(p, name, dir, variableIndex),
     mainParam(p),
-    dependent(dependent),
+    dependent(false),
     persistent(false)
 {
-//    //cout << __PRETTY_FUNCTION__ << index << endl;
-    switch (mainParam->dtype.primary()) {
-        case PdServ::DataType::boolean_T: append = setTo<bool>;     break;
-        case PdServ::DataType::uint8_T:   append = setTo<uint8_t>;  break;
-        case PdServ::DataType::int8_T:    append = setTo<int8_t>;   break;
-        case PdServ::DataType::uint16_T:  append = setTo<uint16_t>; break;
-        case PdServ::DataType::int16_T:   append = setTo<int16_t>;  break;
-        case PdServ::DataType::uint32_T:  append = setTo<uint32_t>; break;
-        case PdServ::DataType::int32_T:   append = setTo<int32_t>;  break;
-        case PdServ::DataType::uint64_T:  append = setTo<uint64_t>; break;
-        case PdServ::DataType::int64_T:   append = setTo<int64_t>;  break;
-        case PdServ::DataType::single_T:  append = setTo<float>;    break;
-        case PdServ::DataType::double_T:  append = setTo<double>;   break;
-        default:           append = 0;               break;
-    }
+    createChildren(traditional);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const Parameter::ChildList& Parameter::getChildren() const
+Parameter::Parameter(const Parameter *parent, const std::string& name,
+        DirectoryNode *dir, const PdServ::DataType& dtype,
+        size_t nelem, size_t offset):
+    Variable(parent, name, dir, dtype, nelem, offset),
+    mainParam(parent->mainParam),
+    dependent(true),
+    persistent(parent->persistent)
 {
-    return children;
+    //log_debug("new var %s %zu @%zu", name.c_str(), nelem, offset);
+    createChildren(true);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Parameter::addChild(const Parameter *p)
+const Variable* Parameter::createChild(DirectoryNode* dir,
+                const std::string& name,
+                const PdServ::DataType& dtype, size_t nelem, size_t offset)
 {
-    if (children.empty())
-        children.reserve(nelem);
-    children.push_back(p);
+    return new Parameter(this, name, dir, dtype, nelem, offset);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -125,10 +112,10 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
 
     if (hex)
         XmlElement::Attribute(element, "hexvalue")
-            .hexDec(valueBuf + elementIndex * mainParam->dtype.size, memSize);
+            .hexDec(valueBuf + offset, dtype.size);
     else
         XmlElement::Attribute(element, "value").csv( this,
-                valueBuf + elementIndex * mainParam->dtype.size, 1, precision);
+                valueBuf + offset, 1, precision);
 
     if (!id.empty())
         XmlElement::Attribute(element, "id").setEscaped(id.c_str());
@@ -142,8 +129,9 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
 int Parameter::setHexValue(const Session *session,
         const char *s, size_t startindex, size_t &count) const
 {
-    char valueBuf[memSize];
-    const char *valueEnd = valueBuf + memSize;
+    const size_t len = dtype.size * count;
+    char valueBuf[len];
+    const char *valueEnd = valueBuf + len;
     static const char hexNum[] = {
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
         0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -163,38 +151,73 @@ int Parameter::setHexValue(const Session *session,
     // endianness!
 
     count = (c - valueBuf) / mainParam->dtype.size;
-    return mainParam->setValue(
-            session, valueBuf, elementIndex + startindex, count);
+    return mainParam->setValue( session, valueBuf,
+            offset + startindex * dtype.size, len);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Parameter::setElements(std::istream& is,
+        const PdServ::DataType& dtype, const PdServ::DataType::DimType& dim,
+        char*& buf, size_t& count) const
+{
+    if (dtype.primary() == dtype.compound_T) {
+        const PdServ::DataType::FieldList& fieldList = dtype.getFieldList();
+        PdServ::DataType::FieldList::const_iterator it;
+        for (size_t i = 0; i < dim.nelem; ++i) {
+            for (it = fieldList.begin(); it != fieldList.end(); ++it) {
+                int rv = setElements(is, (*it)->type, (*it)->dim, buf, count);
+                if (rv)
+                    return rv;
+            }
+        }
+        return 0;
+    }
+
+    double v;
+    char c;
+    for (size_t i = 0; i < dim.nelem; ++i) {
+
+        is >> v;
+        if (!is)
+            return -EINVAL;
+
+        dtype.setValue(buf, v);
+        count++;
+
+        is >> c;
+        if (!is)
+            return 1;
+
+        if (c != ',' and c != ';' and !isspace(c))
+            return -EINVAL;
+    }
+
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 int Parameter::setDoubleValue(const Session *session,
         const char *buf, size_t startindex, size_t &count) const
 {
-    char value[memSize];
-    char *dataBuf = value;
+    char valueBuf[memSize];
+    char *dataBuf = valueBuf;
+
     std::istringstream is(buf);
     is.imbue(std::locale::classic());
 
-    char c;
-    double v;
-    for (count = 0; count < nelem - startindex; count++) {
-        if (count) {
-            is >> c;
-            if (c != ',' and c != ';' and !isspace(c))
-                return -EINVAL;
-        }
+    //log_debug("buf=%s", buf);
+    count = 0;
+    int rv = setElements(is, dtype, dim, dataBuf, count);
 
-        is >> v;
-
-        if (!is)
-            break;
-
-        (*append)(dataBuf, v);
-    }
-
-    return mainParam->setValue(
-            session, value, elementIndex + startindex, count);
+//    log_debug("rv=%i startindex=%zu offset=%zu count=%zu",
+//            rv, startindex, offset/dtype.size + startindex, count);
+//    for (size_t i = 0; i < count; i++)
+//        std::cerr << ((const double*)valueBuf)[i] << ' ';
+//    std::cerr << std::endl;
+    return rv < 0
+        ? rv
+        : mainParam->setValue( session, valueBuf,
+                offset/dtype.size + startindex, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -205,9 +228,17 @@ void Parameter::valueChanged( std::ostream &os, ost::Semaphore &mutex,
         XmlElement pu("pu", os, mutex);
         XmlElement::Attribute(pu, "index") << variableIndex;
     }
+//    log_debug("start=%zu nelem=%zu", start, nelem);
 
-    while (!children.empty() and nelem--) {
+    const Variable::List *children = getChildren();
+    if (!children)
+        return;
+
+    Variable::List::const_iterator it = children->begin();
+    while (start--)
+        it++;
+    while (nelem--) {
         XmlElement pu("pu", os, mutex);
-        XmlElement::Attribute(pu, "index") << children[start++]->variableIndex;
+        XmlElement::Attribute(pu, "index") << (*it++)->variableIndex;
     }
 }

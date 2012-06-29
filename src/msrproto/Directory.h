@@ -30,6 +30,7 @@
 #include "../DataType.h"
 
 namespace PdServ {
+    class Variable;
     class Signal;
     class Parameter;
     class Session;
@@ -45,7 +46,8 @@ class XmlElement;
 
 class DirectoryNode {
     public:
-        DirectoryNode(const Server *, bool hypernode = false);
+        explicit DirectoryNode(const std::string& name,
+                DirectoryNode *parent);
         virtual ~DirectoryNode();
 
         void list(PdServ::Session *,
@@ -55,65 +57,74 @@ class DirectoryNode {
 
         DirectoryNode *find(const char *path) const;
 
-        DirectoryNode *mkdir(const char *path, char &hide, std::string &name);
+        DirectoryNode *mkdir(const char *path, char &hide,
+                std::string &name, bool traditional);
 
-        DirectoryNode *push(std::string &name);
-        DirectoryNode *insert(DirectoryNode* node, const std::string &name);
+        void rename(DirectoryNode* parent,
+                const std::string& name);
+
         void insert(Variable *var, size_t index, size_t nelem,
                 const PdServ::DataType::DimType& dim,
                 size_t dimIdx = 0);
 
-        DirectoryNode *parent;
-        const std::string *name;
-
         void dump() const;
 
     protected:
-        const Server * const server;
+        explicit DirectoryNode();
+        DirectoryNode *mkdir(const std::string& path, std::string& name);
 
     private:
-        std::string split(const char *&path, char &hide) const;
+        std::string split(const char *&path,
+                char &hide, bool traditional) const;
 
         typedef std::map<std::string, DirectoryNode*> Children;
         Children children;
 
-        bool hypernode;
+        DirectoryNode * parent;
+        const std::string* name;
+
+        const std::string* insert(DirectoryNode* child,
+                const std::string& name);
 };
 
 /////////////////////////////////////////////////////////////////////////////
 class VariableDirectory: private DirectoryNode {
     public:
-        VariableDirectory(const Server *);
+        VariableDirectory();
         ~VariableDirectory();
+
+        void insert(const PdServ::Signal *signal,
+                std::string prefix, bool traditional);
+        void insert(const PdServ::Parameter *parameter,
+                std::string prefix, bool traditional);
 
         void list(PdServ::Session *,
                 XmlElement& parent, const char *path) const;
 
-        bool insert(const PdServ::Signal *s, const std::string &name = std::string());
-        bool insert(const PdServ::Parameter *p, const std::string &name = std::string());
+        typedef std::vector<const Channel*> Channels;
+        typedef std::vector<const Parameter*> Parameters;
 
-       typedef std::vector<const Channel*> Channels;
-       typedef std::vector<const Parameter*> Parameters;
+        const Channels& getChannels() const;
+        const Channel * getChannel(size_t) const;
 
-       const Channels& getChannels() const;
-       const Channel * getChannel(size_t) const;
+        const Parameters& getParameters() const;
+        const Parameter * getParameter(size_t) const;
+        const Parameter * find(const PdServ::Parameter *p) const;
 
-       const Parameters& getParameters() const;
-       const Parameter * getParameter(size_t) const;
-       const Parameter * find(const PdServ::Parameter *p) const;
-
-       template <typename T>
-           const T * find(const std::string& path) const;
+        template <typename T>
+            const T * find(const std::string& path) const;
 
     private:
-       Channels channels;
-       Parameters parameters;
+        Channels channels;
+        Parameters parameters;
 
-       typedef std::map<const PdServ::Parameter *, const Parameter *>
-           ParameterMap;
-       ParameterMap parameterMap;
+        typedef std::map<const PdServ::Parameter *, const Parameter *>
+            ParameterMap;
+        ParameterMap parameterMap;
 
-       VariableDirectory();
+        DirectoryNode *mkdir(std::string& path, char &hide, bool traditional);
+        void insertChildren(const Channel* c);
+        void insertChildren(const Parameter* p);
 };
 
 /////////////////////////////////////////////////////////////////////////////

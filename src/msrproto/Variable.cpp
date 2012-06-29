@@ -35,20 +35,69 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Variable::Variable(const Server *server, const PdServ::Variable *v,
-        unsigned int variableIndex, unsigned int elementIndex):
-    DirectoryNode(server),
-    elementIndex(elementIndex != ~0U ? elementIndex : 0),
+Variable::Variable(const PdServ::Variable *v,
+        const std::string& name,
+        DirectoryNode* parent,
+        unsigned int variableIndex):
+    DirectoryNode(name, parent),
     variable(v),
     variableIndex(variableIndex),
-    nelem(elementIndex == ~0U ? v->dim.nelem : 1),
-    memSize(nelem * v->dtype.size)
+    dtype(v->dtype),
+    dim(v->dim),
+    offset(0U),
+    memSize(dtype.size * dim.nelem)
 {
+    children = 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Variable::Variable(const Variable *v,
+        const std::string& name,
+        DirectoryNode* dir,
+        const PdServ::DataType& dtype,
+        size_t nelem, size_t offset):
+    DirectoryNode(name, dir),
+    variable(v->variable),
+    variableIndex(v->variableIndex + v->childCount() + 1),
+    dtype(dtype),
+    dim(1, &nelem),
+    offset(offset),
+    memSize(dtype.size * dim.nelem)
+{
+    children = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Variable::~Variable()
 {
+    if (children) {
+        for (List::const_iterator it = children->begin();
+                it != children->end(); ++it)
+            delete *it;
+
+        delete children;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+size_t Variable::childCount() const
+{
+    if (!children)
+        return 0;
+
+    size_t n = children->size();
+
+    for (List::const_iterator it = children->begin();
+            it != children->end(); ++it)
+        n += (*it)->childCount();
+
+    return n;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Variable::List* Variable::getChildren() const
+{
+    return children;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -161,7 +210,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
     if (!variable->comment.empty())
         XmlElement::Attribute(element, "comment") << variable->comment;
 
-    setDataType(element, variable->dtype, variable->dim);
+    setDataType(element, dtype, dim);
 
     // unit=
     if (!variable->unit.empty())
@@ -173,4 +222,97 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
 
     // hide=
     // unhide=
+}
+
+
+/////////////////////////////////////////////////////////////////////////////
+void Variable::createChildren(bool traditional)
+{
+    if (!traditional
+            or (dim.nelem == 1 and dtype.primary() != dtype.compound_T))
+        return;
+
+    children = new List;
+
+    if (dtype.primary() == dtype.compound_T or dim.size() > 1)
+        createChildren("", dtype, dim, 0, offset);
+    else {
+        size_t offset = this->offset;
+        for (size_t i = 0; i < dim[0]; ++i) {
+            std::ostringstream os;
+
+            os << i;
+
+            children->push_back(
+                    createChild(this, os.str(), dtype, 1, offset));
+
+            offset += dtype.size;
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+size_t Variable::createChildren(const std::string& path,
+        const PdServ::DataType& dtype,
+        const PdServ::DataType::DimType& dim, size_t dimIdx, size_t offset)
+{
+    if (dtype.primary() == dtype.compound_T)
+        return createCompoundChildren(path, dtype, dim, dimIdx, offset);
+    else
+        return createVectorChildren(path, dtype, dim, dimIdx, offset);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+size_t Variable::createVectorChildren(
+        const std::string& path, const PdServ::DataType& dtype,
+        const PdServ::DataType::DimType& dim, size_t dimIdx, size_t offset)
+{
+//    log_debug("%s %zu", path.c_str(), dimIdx);
+    if (dimIdx != dim.size() - 1) {
+        for (size_t i = 0; i < dim[dimIdx]; ++i) {
+            std::ostringstream os;
+            os << path << '/' << i;
+            offset += createChildren(os.str(), dtype, dim, dimIdx + 1, offset);
+        }
+
+        return dtype.size * dim.nelem;
+    }
+
+    if (dim.back() == 1) {
+        children->push_back(
+                createChild(this, path.substr(1), dtype, 1, offset));
+    }
+    else {
+        std::string name;
+        DirectoryNode* dir = mkdir(path, name);
+        children->push_back(
+                createChild(dir, name, dtype, dim.back(), offset));
+    }
+
+    return dtype.size * dim.back();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+size_t Variable::createCompoundChildren(
+        const std::string& path, const PdServ::DataType& dtype,
+        const PdServ::DataType::DimType& dim, size_t dimIdx, size_t offset)
+{
+//    log_debug("%s %zu", path.c_str(), dim.nelem);
+    if (dimIdx != dim.size() and dim.nelem != 1) {
+        for (size_t i = 0; i < dim[dimIdx]; ++i) {
+            std::ostringstream os;
+            os << path << '/' << i;
+            offset += createChildren(os.str(), dtype, dim, dimIdx + 1, offset);
+        }
+
+        return dtype.size * dim.nelem;
+    }
+
+    const PdServ::DataType::FieldList& fieldList = dtype.getFieldList();
+    for (PdServ::DataType::FieldList::const_iterator it = fieldList.begin();
+            it != fieldList.end(); ++it) {
+        createChildren(path + '/' + (*it)->name,
+                (*it)->type, (*it)->dim, 0, offset + (*it)->offset);
+    }
+    return dtype.size;
 }

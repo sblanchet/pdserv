@@ -152,7 +152,6 @@ void XmlElement::Attribute::setEscaped( const char *v, size_t n)
 void XmlElement::Attribute::csv(const Variable* var, const char *buf,
         size_t nblocks, size_t precision)
 {
-    const PdServ::Variable* v = var->variable;
     char delim = '\0';
 
     //precision = os.precision(precision);
@@ -161,8 +160,8 @@ void XmlElement::Attribute::csv(const Variable* var, const char *buf,
         if (delim)
             os << delim;
         delim = ',';
-        v->dtype.print(os, buf, var->nelem);
-        buf += v->dtype.size;
+        var->dtype.print(os, buf, var->dim.nelem);
+        buf += var->dtype.size;
     }
     //os.precision(precision);
 }
