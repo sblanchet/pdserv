@@ -321,8 +321,8 @@ DirectoryNode *DirectoryNode::mkdir(
         if (!traditional)
             return 0;
 
-        if (reinterpret_cast<const Channel*>(node)
-                or reinterpret_cast<const Parameter*>(node)) {
+        if (dynamic_cast<const Channel*>(node)
+                or dynamic_cast<const Parameter*>(node)) {
 
             DirectoryNode* dir = new DirectoryNode(name, this);
             node->rename(dir, "0");
@@ -330,10 +330,10 @@ DirectoryNode *DirectoryNode::mkdir(
             return dir;
         }
         std::ostringstream os;
-        os << children.size();
+        os << node->children.size();
         name = os.str();
 
-        return this;
+        return node;
     }
 
     return this;
