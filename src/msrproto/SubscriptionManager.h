@@ -26,7 +26,6 @@
 
 #include "../SessionTask.h"
 
-#include <ostream>
 #include <set>
 #include <map>
 
@@ -41,6 +40,7 @@ namespace MsrProto {
 class Channel;
 class Subscription;
 class Session;
+class ostream;
 
 class SubscriptionManager: public PdServ::SessionTask {
     public:
@@ -48,7 +48,7 @@ class SubscriptionManager: public PdServ::SessionTask {
 
         const Session * const session;
 
-        void rxPdo(std::ostream& os, ost::Semaphore& streamlock, bool quiet);
+        void rxPdo(ostream& os, bool quiet);
 
         void clear();
         void unsubscribe(const Channel *s);

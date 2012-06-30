@@ -37,19 +37,16 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 // XmlElement
 /////////////////////////////////////////////////////////////////////////////
-XmlElement::XmlElement(const char *name, std::ostream &os,
-        ost::Semaphore &mutex):
-    level(0), os(os), mutex(&mutex), name(name)
+XmlElement::XmlElement(const char *name, std::ostream &os):
+    level(0), os(os), name(name)
 {
-    this->mutex->wait();
-
     this->os << '<' << name;
     printed = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 XmlElement::XmlElement(const char *name, XmlElement &parent):
-    level(parent.level + 1), os(parent.prefix()), mutex(0), name(name)
+    level(parent.level + 1), os(parent.prefix()), name(name)
 {
     os << std::string(level, ' ') << '<' << name;
     printed = false;
@@ -64,8 +61,6 @@ XmlElement::~XmlElement()
         os << '/';
 
     os << ">\r\n" << std::flush;
-    if (mutex)
-        mutex->post();
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -44,7 +44,7 @@ class Channel;
 class XmlElement {
     public:
         //XmlElement(const char *name);
-        XmlElement(const char *name, std::ostream &os, ost::Semaphore &);
+        XmlElement(const char *name, std::ostream &os);
         XmlElement(const char *name, XmlElement &parent);
 
         /** Destructor.
@@ -84,9 +84,8 @@ class XmlElement {
 
     private:
         std::ostream& os;
-        ost::Semaphore * const mutex;
 
-        const std::string name;
+        const char * const name;
         bool printed;
 };
 

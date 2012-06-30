@@ -25,6 +25,7 @@
 #include "XmlElement.h"
 #include "Directory.h"
 #include "Session.h"
+#include "OStream.h"
 #include "../Parameter.h"
 #include "../Debug.h"
 #include "../DataType.h"
@@ -221,24 +222,26 @@ int Parameter::setDoubleValue(const Session *session,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Parameter::valueChanged( std::ostream &os, ost::Semaphore &mutex,
+void Parameter::valueChanged( ostream &xmlstream,
         size_t start, size_t nelem) const
 {
-    {
-        XmlElement pu("pu", os, mutex);
-        XmlElement::Attribute(pu, "index") << variableIndex;
-    }
-//    log_debug("start=%zu nelem=%zu", start, nelem);
-
-    const Variable::List *children = getChildren();
-    if (!children)
-        return;
-
-    Variable::List::const_iterator it = children->begin();
-    while (start--)
-        it++;
-    while (nelem--) {
-        XmlElement pu("pu", os, mutex);
-        XmlElement::Attribute(pu, "index") << (*it++)->variableIndex;
-    }
+     {
+         ostream::locked ls(xmlstream);
+         XmlElement pu("pu", ls);
+         XmlElement::Attribute(pu, "index") << variableIndex;
+     }
+ //    log_debug("start=%zu nelem=%zu", start, nelem);
+ 
+     const Variable::List *children = getChildren();
+     if (!children)
+         return;
+ 
+     Variable::List::const_iterator it = children->begin();
+     while (start--)
+         it++;
+     while (nelem--) {
+         ostream::locked ls(xmlstream);
+         XmlElement pu("pu", ls);
+         XmlElement::Attribute(pu, "index") << (*it++)->variableIndex;
+     }
 }

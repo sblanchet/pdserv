@@ -50,7 +50,7 @@
 
 #include "../Session.h"
 #include "XmlParser.h"
-#include "XmlElement.h"
+#include "OStream.h"
 
 #include <cc++/thread.h>
 #include <cc++/socketport.h>
@@ -73,7 +73,7 @@ class SubscriptionManager;
 class TaskStatistics;
 class SessionStatistics;
 class Server;
-class XmlElement;
+class Parameter;
 class Subscription;
 class VariableDirectory;
 
@@ -102,8 +102,6 @@ class Session: public ost::Thread, public PdServ::Session {
         Server * const server;
         const VariableDirectory &root;
 
-        ost::Semaphore streamlock;
-
         struct TCPStream: public ost::Socket, public std::streambuf {
             TCPStream(ost::TCPSocket *socket);
 
@@ -124,7 +122,9 @@ class Session: public ost::Thread, public PdServ::Session {
         };
         TCPStream tcp;
 
+        ost::Semaphore streamlock;
         std::ostream ostream;
+        MsrProto::ostream xmlstream;
 
         ost::Semaphore mutex;
         log4cpp::NDC::ContextStack *ctxt;
