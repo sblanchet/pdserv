@@ -116,7 +116,7 @@ void pdserv_compound_add_field(
         int data_type,          /**< Field data type */
         size_t offset,          /**< Offset of field */
         size_t ndim,            /**< Number of dimensions */
-        size_t *dim             /**< Dimensions */
+        const size_t *dim       /**< Dimensions */
         );
 
 /** Register a signal

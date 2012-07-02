@@ -65,7 +65,7 @@ int pdserv_create_compound( const char *name, size_t size)
 
 /////////////////////////////////////////////////////////////////////////////
 void pdserv_compound_add_field(int compound, const char *name,
-        int data_type, size_t offset, size_t ndims, size_t *dim)
+        int data_type, size_t offset, size_t ndims, const size_t *dim)
 {
     compoundType[compound - pd_datatype_end]
         ->addField(name, getDataType(data_type), offset, ndims, dim);
