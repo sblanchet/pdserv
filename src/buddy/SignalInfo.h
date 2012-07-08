@@ -49,6 +49,8 @@ class SignalInfo {
         size_t nelem;
         size_t rows;
 
+        size_t type_size;
+
         typedef void (*CopyFunc)(void *dst, const void *src,
                 size_t start, size_t count, size_t nelem, size_t cols);
         CopyFunc readFunc;

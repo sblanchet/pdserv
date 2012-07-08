@@ -130,9 +130,8 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
 int Parameter::setHexValue(const Session *session,
         const char *s, size_t startindex, size_t &count) const
 {
-    const size_t len = dtype.size * count;
-    char valueBuf[len];
-    const char *valueEnd = valueBuf + len;
+    char valueBuf[memSize];
+    const char *valueEnd = valueBuf + memSize;
     static const char hexNum[] = {
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
         0,10,11,12,13,14,15, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -153,7 +152,7 @@ int Parameter::setHexValue(const Session *session,
 
     count = (c - valueBuf) / mainParam->dtype.size;
     return mainParam->setValue( session, valueBuf,
-            offset + startindex * dtype.size, len);
+            offset + startindex * dtype.size, c - valueBuf);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -218,7 +217,7 @@ int Parameter::setDoubleValue(const Session *session,
     return rv < 0
         ? rv
         : mainParam->setValue( session, valueBuf,
-                offset/dtype.size + startindex, count);
+                offset + startindex * dtype.size, count * dtype.size);
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -73,6 +73,7 @@ void SignalInfo::transpose( void *_dst, const void *_src,
 SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
     si(si), model(model)
 {
+    type_size = dataType().size;
     nelem = si->dim[0] * si->dim[1];
     readFunc = 0;
 
@@ -83,7 +84,7 @@ SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
     else {
         std::copy(si->dim, si->dim + 2, dim);
         if (si->orientation == si_matrix_col_major) {
-            switch (dataType().align()) {
+            switch (type_size) {
                 case 1:
                     readFunc  = transpose<uint8_t,'R'>;
                     writeFunc = transpose<uint8_t,'W'>;
@@ -105,7 +106,7 @@ SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
     }
 
     if (!readFunc) {
-        switch (dataType().align()) {
+        switch (type_size) {
             case 1:
                 readFunc  = copy<uint8_t,'R'>;
                 writeFunc = copy<uint8_t,'W'>;
@@ -188,6 +189,6 @@ void SignalInfo::read( void *dst, const void *src) const
 void SignalInfo::write( void *dst, const void *src,
         size_t start, size_t count) const
 {
-    writeFunc(dst, src, start, count, nelem, dim[1]);
+    writeFunc(dst, src, start/type_size, count/type_size, nelem, dim[1]);
 }
 

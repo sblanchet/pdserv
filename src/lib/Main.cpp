@@ -155,7 +155,7 @@ Signal* Main::addSignal( Task *task, unsigned int decimation,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(const Parameter *p, size_t startIndex,
+int Main::setParameter(const Parameter *p, size_t offset,
         size_t count, const char *data, struct timespec *mtime) const
 {
     ost::SemaphoreLock lock(sdoMutex);
@@ -166,12 +166,11 @@ int Main::setParameter(const Parameter *p, size_t startIndex,
     // to narrowest data type size. This ensures that the data is
     // allways aligned correctly.
     sdo->parameter = p;
-    sdo->offset = p->dtype.size * startIndex;
-    size_t n = p->dtype.size * count;
-    std::copy(data, data + n, p->valueBuf + sdo->offset);
+    sdo->offset = offset;
+    std::copy(data, data + count, p->valueBuf + sdo->offset);
 
     // Now write the length to trigger the action
-    sdo->count = n;
+    sdo->count = count;
 
     do {
         ost::Thread::sleep(delay);
