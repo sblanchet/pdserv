@@ -71,7 +71,7 @@ class Main {
         typedef std::list<const ProcessParameter*> ProcessParameters;
         const ProcessParameters& getParameters() const;
         int setParameter(const Session *, const ProcessParameter *p,
-                size_t startIndex, size_t nelem, const char *data) const;
+                size_t offset, size_t count, const char *data) const;
 
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 

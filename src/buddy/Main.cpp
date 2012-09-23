@@ -197,15 +197,15 @@ int Main::gettime(struct timespec *ts) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter( const Parameter *param, size_t startIndex,
-        size_t count, const char *data, struct timespec *mtime) const
+int Main::setParameter( const Parameter *param, const char *dataPtr,
+        size_t count, struct timespec *mtime) const
 {
     ost::SemaphoreLock lock(paramMutex);
     struct param_change delta;
 
     delta.rtP = parameterBuf;
-    delta.pos = data - parameterBuf + startIndex * param->dtype.size;
-    delta.len = count * param->dtype.size;
+    delta.pos = dataPtr - parameterBuf;
+    delta.len = count;
     delta.count = 0;
     gettime(mtime);
 

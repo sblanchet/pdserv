@@ -116,35 +116,35 @@ void Main::startServers(const Config& config)
 
 /////////////////////////////////////////////////////////////////////////////
 int Main::setParameter(const Session *, const ProcessParameter *param,
-        size_t startIndex, size_t nelem, const char *data) const
+        size_t offset, size_t count, const char *data) const
 {
-    int rv = param->setValue(data, startIndex, nelem);
+    int rv = param->setValue(data, offset, count);
 
     if (rv) {
         parameterLog.notice("Parameter change %s failed (%s)",
                 param->path.c_str(), strerror(errno));
         return rv;
     }
-    msrproto->parameterChanged(param, startIndex, nelem);
+    msrproto->parameterChanged(param, offset, count);
 
     std::ostringstream os;
     os << param->path;
 
-    if (nelem < param->dim.nelem) {
-        os << '[' << startIndex;
-        if (nelem > 1)
-            os << ".." << (startIndex + nelem - 1);
+    if (count < param->dim.nelem) {
+        os << '[' << offset;
+        if (count > 1)
+            os << ".." << (offset + count - 1);
         os << ']';
     }
 
     os << " = ";
 
-    if (nelem > 1)
+    if (count > 1)
         os << '[';
 
-    param->dtype.print(os, data, nelem);
+    param->dtype.print(os, data, count);
 
-    if (nelem > 1)
+    if (count > 1)
         os << ']';
 
     parameterLog.notice(os.str());

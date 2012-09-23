@@ -205,12 +205,12 @@ void Server::setAic(const Parameter *p)
 
 /////////////////////////////////////////////////////////////////////////////
 void Server::parameterChanged(const PdServ::Parameter *p,
-        size_t startIndex, size_t nelem)
+        size_t offset, size_t count)
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
-        (*it)->parameterChanged(p, startIndex, nelem);
+        (*it)->parameterChanged(p, offset, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -44,7 +44,7 @@ ProcessParameter::~ProcessParameter ()
 
 //////////////////////////////////////////////////////////////////////
 int ProcessParameter::setValue(const PdServ::Session *session, const char* src,
-                size_t startIndex, size_t nelem) const
+                size_t offset, size_t count) const
 {
-    return main->setParameter(session, this, startIndex, nelem, src);
+    return main->setParameter(session, this, offset, count, src);
 }

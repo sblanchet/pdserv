@@ -39,42 +39,53 @@
 //////////////////////////////////////////////////////////////////////
 template <typename T, char dir>
 void SignalInfo::copy(void *_dst, const void *_src,
-        size_t start, size_t count, size_t , size_t)
+        size_t *offset, size_t *count, size_t , size_t)
 {
-    const T *src =
-        reinterpret_cast<const T*>(_src) + (dir == 'R' ? start : 0);
+    const T *src = reinterpret_cast<const T*>(_src);
 
-    std::copy(src, src + count,
-            reinterpret_cast<T*>(_dst) + (dir == 'W' ? start : 0));
+    std::copy(src, src + *count / sizeof(T),
+            reinterpret_cast<T*>(_dst) + *offset / sizeof(T));
 }
 
 //////////////////////////////////////////////////////////////////////
 template <typename T, char dir>
 void SignalInfo::transpose( void *_dst, const void *_src,
-        size_t start, size_t count, size_t nelem, size_t cols)
+        size_t *offset, size_t *count, size_t nelem, size_t cols)
 {
     const T* src = reinterpret_cast<const T*>(_src);
     T* dst = reinterpret_cast<T*>(_dst);
+
     const size_t rows = nelem / cols;
-    size_t n = rows * (start % cols) + (start / cols);
+    size_t i = (rows * (*offset % cols) + (*offset / cols)) / sizeof(T);
+    size_t n = *count / sizeof(T);
 
-    while (count--) {
-
-        if      (dir == 'W')    dst[n] = *src++;
-        else if (dir == 'R')    *dst++ = src[n];
-
-        n += rows;
-        if (n >= nelem)
-            n -= nelem - 1;
+    if (dir == 'W') {
+        *offset = i * sizeof(T);
+        *count  = ((n - 1) * rows + 1) * sizeof(T);
     }
+
+    nelem--;
+    while (n--) {
+
+        if      (dir == 'W')    dst[i] = *src++;
+        else if (dir == 'R')    *dst++ = src[i];
+
+        i += cols;
+        if (i > nelem)
+            i -= nelem;
+    }
+
 }
 
 //////////////////////////////////////////////////////////////////////
 SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
     si(si), model(model)
 {
-    type_size = dataType().size;
+    size_t type_size = dataType().size;
+
     nelem = si->dim[0] * si->dim[1];
+    memsize = type_size * nelem;
+
     readFunc = 0;
 
     if (si->dim[0] == 1 or si->dim[1] == 1) {
@@ -182,13 +193,16 @@ const PdServ::DataType& SignalInfo::dataType() const
 //////////////////////////////////////////////////////////////////////
 void SignalInfo::read( void *dst, const void *src) const
 {
-    readFunc(dst, src, 0, nelem, nelem, dim[1]);
+    size_t i = 0;
+    size_t n = memsize;
+
+    readFunc(dst, src, &i, &n, nelem, dim[1]);
 }
 
 //////////////////////////////////////////////////////////////////////
 void SignalInfo::write( void *dst, const void *src,
-        size_t start, size_t count) const
+        size_t *offset, size_t *count) const
 {
-    writeFunc(dst, src, start/type_size, count/type_size, nelem, dim[1]);
+    writeFunc(dst, src, offset, count, nelem, dim[1]);
 }
 

@@ -51,11 +51,11 @@ Parameter::~Parameter()
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::setValue(const char* src, size_t startIndex, size_t nelem) const
+int Parameter::setValue(const char* src, size_t offset, size_t count) const
 {
     ost::SemaphoreLock lock(mutex);
 
-    return main->setParameter(this, startIndex, nelem, src, &mtime);
+    return main->setParameter(this, offset, count, src, &mtime);
 }
 
 //////////////////////////////////////////////////////////////////////

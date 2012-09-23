@@ -103,6 +103,9 @@ int main(int argc, const char *argv[])
     pdserv_compound_add_field(s2_t, "i16", pd_sint16_T,
             offsetof(struct s2, i16), 1, NULL);
 
+    if (argc > 1)
+        pdserv_config_file(pdserv, argv[1]);
+
     task[0] = pdserv_create_task(pdserv, 0.1, "Task1");
 
     assert(pdserv_signal(task[0], 1, "/s1", s1_t, &s1, 1, NULL));

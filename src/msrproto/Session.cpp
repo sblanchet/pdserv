@@ -133,13 +133,13 @@ void Session::setAIC(const Parameter *p)
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::parameterChanged(const PdServ::Parameter *p,
-        size_t startIndex, size_t nelem)
+        size_t offset, size_t count)
 {
     const Parameter *param = root.find(p);
 
     ost::SemaphoreLock lock(mutex);
     if (aic.find(p) == aic.end())
-        param->valueChanged(xmlstream, startIndex, nelem);
+        param->valueChanged(xmlstream, offset, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////

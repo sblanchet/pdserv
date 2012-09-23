@@ -42,12 +42,13 @@ Parameter::~Parameter()
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::setValue(const char* src, size_t startIndex, size_t nelem) const
+int Parameter::setValue(const char* src, size_t offset, size_t count) const
 {
     ost::SemaphoreLock lock(mutex);
 
-    si.write(valueBuf, src, startIndex, nelem);
-    return main->setParameter(this, startIndex, nelem, valueBuf, &mtime);
+    si.write(valueBuf, src, &offset, &count);
+    return
+        main->setParameter(this, valueBuf + offset, count, &mtime);
 }
 
 //////////////////////////////////////////////////////////////////////

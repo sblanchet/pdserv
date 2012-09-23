@@ -48,8 +48,8 @@ class Main: public PdServ::Main {
 
         void serve(const PdServ::Config& config, int fd);
 
-        int setParameter( const Parameter *p, size_t startIndex,
-                size_t nelem, const char *data, struct timespec *) const;
+        int setParameter( const Parameter *p, const char* dataPtr,
+                size_t len, struct timespec *) const;
 
     private:
         const struct app_properties &app_properties;

@@ -62,8 +62,8 @@ class Main: public PdServ::Main {
         Signal* addSignal( Task *task, unsigned int decimation,
                 const char *path, const PdServ::DataType& datatype,
                 const void *addr, size_t n, const size_t *dim);
-        int setParameter(const Parameter *p, size_t startIndex,
-                size_t nelem, const char *data,
+        int setParameter(const Parameter *p, size_t offset,
+                size_t count, const char *data,
                 struct timespec *) const;
 
         static const double bufferTime;

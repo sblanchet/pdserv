@@ -56,8 +56,7 @@ class Parameter: public PdServ::ProcessParameter {
         mutable struct timespec mtime;
 
         // Reimplemented from PdServ::ProcessParameter
-        int setValue(
-                const char *buf, size_t startIndex, size_t nelem) const;
+        int setValue(const char *buf, size_t offset, size_t count) const;
 
         // Reimplemented from PdServ::Variable
         void getValue(const PdServ::Session*,

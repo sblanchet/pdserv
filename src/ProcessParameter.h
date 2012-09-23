@@ -47,14 +47,14 @@ class ProcessParameter: public Parameter {
         virtual ~ProcessParameter();
 
         virtual int setValue(const char *buf,
-                size_t startIndex, size_t nelem) const = 0;
+                size_t offset, size_t count) const = 0;
 
     private:
         Main const * const main;
 
         // Reimplemented from PdServ::Parameter
         int setValue(const Session *, const char *buf,
-                size_t startIndex, size_t nelem) const;
+                size_t offset, size_t count) const;
 };
 
 }

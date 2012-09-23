@@ -48,7 +48,7 @@ class Parameter: public Variable {
 
         // Set the value of the Parameter
         virtual int setValue(const Session *, const char *buf,
-                size_t startIndex, size_t nelem) const = 0;
+                size_t offset, size_t count) const = 0;
 };
 
 }
