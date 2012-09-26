@@ -98,17 +98,19 @@ class DataType {
         static const DataType& float64;
         static const DataType& float32;
 
-        virtual std::ostream& print(std::ostream& os,
-                const char *data, size_t n) const;
+        virtual void print(std::ostream& os, const char *data,
+                const char* start, const char* end) const;
 
         struct Printer {
-            Printer(const DataType* dt, const char *addr, size_t size):
-                type(dt), addr(addr), size(size) {
+            Printer(const DataType* dt, const char *addr, size_t nelem):
+                type(dt), addr(addr), size(nelem * dt->size) {
                 }
 
             friend std::ostream& operator<<(std::ostream& os,
                     const Printer& obj) {
-                return obj.type->print(os, obj.addr, obj.size);
+                obj.type->print(os, obj.addr, obj.addr,
+                        obj.addr + obj.size);
+                return os;
             }
 
             const DataType* const type;

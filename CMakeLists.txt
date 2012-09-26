@@ -33,10 +33,11 @@
 #       -DLIBDIR=<${prefix}/lib>
 #       -DDISABLE_BUDDY=0         # Do not build etherlab_buddy2
 #
-#  For debugging, use the
-
+#  For debugging, use
+#
 #       -DCMAKE_BUILD_TYPE=Debug|Release|RelWithDebInfo|MinSizeRel
-
+#       -DDEBUG=1               # prints debug messages in terminal
+#
 #  option
 #
 ##############################################################################

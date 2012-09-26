@@ -83,8 +83,7 @@ class Session: public ost::Thread, public PdServ::Session {
         ~Session();
 
         void broadcast(Session *s, const std::string &element);
-        void parameterChanged(const PdServ::Parameter*,
-                size_t startIndex, size_t nelem);
+        void parameterChanged(const Parameter*);
         void setAIC(const Parameter* p);
         void getSessionStatistics(PdServ::SessionStatistics &stats) const;
 

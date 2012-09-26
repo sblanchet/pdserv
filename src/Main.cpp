@@ -130,7 +130,7 @@ int Main::setParameter(const Session *, const ProcessParameter *param,
     std::ostringstream os;
     os << param->path;
 
-    if (count < param->dim.nelem) {
+    if (count < param->memSize) {
         os << '[' << offset;
         if (count > 1)
             os << ".." << (offset + count - 1);
@@ -139,13 +139,7 @@ int Main::setParameter(const Session *, const ProcessParameter *param,
 
     os << " = ";
 
-    if (count > 1)
-        os << '[';
-
-    param->dtype.print(os, data, count);
-
-    if (count > 1)
-        os << ']';
+    param->dtype.print(os, data - offset, data, data + count);
 
     parameterLog.notice(os.str());
 

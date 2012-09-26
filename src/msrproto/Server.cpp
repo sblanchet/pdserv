@@ -204,13 +204,30 @@ void Server::setAic(const Parameter *p)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::parameterChanged(const PdServ::Parameter *p,
+void Server::parameterChanged(const PdServ::Parameter *mainParam,
         size_t offset, size_t count)
 {
+    const Parameter *p = root.find(mainParam);
+
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
-        (*it)->parameterChanged(p, offset, count);
+        (*it)->parameterChanged(p);
+ 
+     const Variable::List *children = p->getChildren();
+     if (!children)
+         return;
+ 
+     for (Variable::List::const_iterator it = children->begin();
+             it != children->end(); ++it) {
+         const Parameter *child = static_cast<const Parameter*>(*it);
+         if (child->offset >= offset 
+                 and (child->offset + child->memSize < offset + count)) {
+             for (std::set<Session*>::iterator it = sessions.begin();
+                     it != sessions.end(); it++)
+                 (*it)->parameterChanged(child);
+         }
+     }
 }
 
 /////////////////////////////////////////////////////////////////////////////

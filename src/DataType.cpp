@@ -22,6 +22,7 @@
  *****************************************************************************/
 
 #include "DataType.h"
+#include "Debug.h"
 #include <stdint.h>
 #include <ostream>
 #include <functional>   // std::multiplies
@@ -109,19 +110,22 @@ namespace {
                 }
 
             private:
-                std::ostream& print(std::ostream& os,
-                        const char *data, size_t n) const {
+                void print(std::ostream& os, const char *data,
+                        const char* start, const char *end) const {
                     const T* val = reinterpret_cast<const T*>(data);
-                    char delim = '\0';
+                    const T* lastVal = reinterpret_cast<const T*>(end);
+                    char delim = 0;
 
-                    while (n--) {
+                    for (;val < lastVal; val++) {
+                        if ((const char*)val < start)
+                            continue;
+
                         if (delim)
                             os << delim;
                         delim = ',';
 
-                        os << *val++;
+                        os << *val;
                     }
-                    return os;
                 }
 
                 DataType::Primary primary() const {
@@ -139,35 +143,41 @@ namespace {
         };
 
     template<>
-        std::ostream& PrimaryType<int8_t>::print(std::ostream& os,
-                const char *data, size_t n) const {
+        void PrimaryType<int8_t>::print(std::ostream& os, const char *data,
+                const char* start, const char *end) const {
             const int8_t* val = reinterpret_cast<const int8_t*>(data);
-            char delim = '\0';
+            const int8_t* lastVal = reinterpret_cast<const int8_t*>(end);
+            char delim = 0;
 
-            while (n--) {
+            for (;val < lastVal; val++) {
+                if ((const char*)val < start)
+                    continue;
+
                 if (delim)
                     os << delim;
                 delim = ',';
 
-                os << (int)*val++;
+                os << (int)*val;
             }
-            return os;
         }
 
     template<>
-        std::ostream& PrimaryType<uint8_t>::print(std::ostream& os,
-                const char *data, size_t n) const {
+        void PrimaryType<uint8_t>::print(std::ostream& os, const char *data,
+                const char* start, const char *end) const {
             const uint8_t* val = reinterpret_cast<const uint8_t*>(data);
-            char delim = '\0';
+            const uint8_t* lastVal = reinterpret_cast<const uint8_t*>(end);
+            char delim = 0;
 
-            while (n--) {
+            for (;val < lastVal; val++) {
+                if ((const char*)val < start)
+                    continue;
+
                 if (delim)
                     os << delim;
                 delim = ',';
 
-                os << (unsigned)*val++;
+                os << (unsigned)*val;
             }
-            return os;
         }
 }
 
@@ -235,31 +245,41 @@ DataType::Primary DataType::primary () const
 }
 
 //////////////////////////////////////////////////////////////////////
-std::ostream& DataType::print(std::ostream& os,
-        const char *data, size_t n) const
+void DataType::print(std::ostream& os,
+        const char *data, const char *start, const char *end) const
 {
-    char delim = '\0';
+    char delim = 0;
 
-    while (n--) {
+    for (; data < end; data += this->size) {
         for (FieldList::const_iterator it = fieldList.begin();
                 it != fieldList.end(); ++it) {
+
+            const char *p1 = data + (*it)->offset;
+            if (p1 < start)
+                continue;
+
             if (delim)
                 os << delim;
             delim = ',';
-            (*it)->type.print(os, data + (*it)->offset, (*it)->dim.nelem);
-        }
-        data += size;
-    }
 
-    return os;
+            const char *p2 = p1 + (*it)->dim.nelem * (*it)->type.size;
+            if (p2 < end)
+                (*it)->type.print(os, p1, start, p2);
+            else {
+                (*it)->type.print(os, p1, start, end);
+                return;
+            }
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////
 void DataType::addField (const std::string& name, const DataType& type,
         size_t offset, size_t ndims, const size_t* dims)
 {
-    fieldList.push_back(new Field(name, type, offset, dims ? ndims : 1,
-                dims ? dims : &ndims));
+    fieldList.push_back(dims
+            ? new Field(name, type, offset, ndims, dims)
+            : new Field(name, type, offset, 1, &ndims));
 }
 
 //////////////////////////////////////////////////////////////////////

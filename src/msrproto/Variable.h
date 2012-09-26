@@ -53,7 +53,7 @@ class Variable: public DirectoryNode {
 
         const PdServ::Variable * const variable;
 
-        const unsigned int variableIndex;
+        const unsigned int index;
         const PdServ::DataType& dtype;
         const PdServ::DataType::DimType dim;
         const size_t offset;

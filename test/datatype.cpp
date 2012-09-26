@@ -63,7 +63,7 @@ int main(int argc, const char *argv[])
     dts2->addField("y", DataType::int8, offsetof(struct _s2, y), 4);
 
     cout << (*dt)(s,2) << endl;
-    cout << (*dt)(s3) << endl;
+    cout << (*dt)(s3,4) << endl;
 
     return 0;
 }

@@ -41,7 +41,7 @@ Variable::Variable(const PdServ::Variable *v,
         unsigned int variableIndex):
     DirectoryNode(name, parent),
     variable(v),
-    variableIndex(variableIndex),
+    index(variableIndex),
     dtype(v->dtype),
     dim(v->dim),
     offset(0U),
@@ -58,7 +58,7 @@ Variable::Variable(const Variable *v,
         size_t nelem, size_t offset):
     DirectoryNode(name, dir),
     variable(v->variable),
-    variableIndex(v->variableIndex + v->childCount() + 1),
+    index(v->index + v->childCount() + 1),
     dtype(dtype),
     dim(1, &nelem),
     offset(offset),
@@ -194,7 +194,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
     // name=
     // value=
     // index=
-    XmlElement::Attribute(element, "index") << variableIndex;
+    XmlElement::Attribute(element, "index") << index;
     XmlElement::Attribute(element, "name").setEscaped(path().c_str());
 
     if (shortReply)

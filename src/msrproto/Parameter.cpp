@@ -150,9 +150,9 @@ int Parameter::setHexValue(const Session *session,
     // FIXME: actually the setting operation must also check for
     // endianness!
 
-    count = (c - valueBuf) / mainParam->dtype.size;
+    count = c - valueBuf;
     return mainParam->setValue( session, valueBuf,
-            offset + startindex * dtype.size, c - valueBuf);
+            offset + startindex * dtype.size, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -182,7 +182,7 @@ int Parameter::setElements(std::istream& is,
             return -EINVAL;
 
         dtype.setValue(buf, v);
-        count++;
+        count += dtype.size;
 
         is >> c;
         if (!is)
@@ -217,30 +217,5 @@ int Parameter::setDoubleValue(const Session *session,
     return rv < 0
         ? rv
         : mainParam->setValue( session, valueBuf,
-                offset + startindex * dtype.size, count * dtype.size);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Parameter::valueChanged( ostream &xmlstream,
-        size_t start, size_t nelem) const
-{
-     {
-         ostream::locked ls(xmlstream);
-         XmlElement pu("pu", ls);
-         XmlElement::Attribute(pu, "index") << variableIndex;
-     }
- //    log_debug("start=%zu nelem=%zu", start, nelem);
- 
-     const Variable::List *children = getChildren();
-     if (!children)
-         return;
- 
-     Variable::List::const_iterator it = children->begin();
-     while (start--)
-         it++;
-     while (nelem--) {
-         ostream::locked ls(xmlstream);
-         XmlElement pu("pu", ls);
-         XmlElement::Attribute(pu, "index") << (*it++)->variableIndex;
-     }
+                offset + startindex * dtype.size, count);
 }

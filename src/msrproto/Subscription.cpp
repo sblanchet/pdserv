@@ -113,7 +113,7 @@ void Subscription::print(XmlElement &parent)
 //        return;
 
     XmlElement datum(event ? "E" : "F", parent);
-    XmlElement::Attribute(datum, "c") << channel->variableIndex;
+    XmlElement::Attribute(datum, "c") << channel->index;
 
     XmlElement::Attribute value(datum, "d");
     if (base64)

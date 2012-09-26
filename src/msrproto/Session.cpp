@@ -132,14 +132,15 @@ void Session::setAIC(const Parameter *p)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::parameterChanged(const PdServ::Parameter *p,
-        size_t offset, size_t count)
+void Session::parameterChanged(const Parameter *p)
 {
-    const Parameter *param = root.find(p);
-
     ost::SemaphoreLock lock(mutex);
-    if (aic.find(p) == aic.end())
-        param->valueChanged(xmlstream, offset, count);
+
+    if (aic.find(p->mainParam) == aic.end()) {
+        ostream::locked ls(xmlstream);
+        XmlElement pu("pu", ls);
+        XmlElement::Attribute(pu, "index") << p->index;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -226,8 +227,7 @@ void Session::run()
         if (aicDelay and !--aicDelay) {
             for ( AicSet::iterator it = aic.begin();
                     it != aic.end(); ++it) {
-                const Parameter *param = root.find(*it);
-                param->valueChanged(xmlstream, 0, param->dim.nelem);
+                parameterChanged(root.find(*it));
             }
 
             aic.clear();
@@ -617,7 +617,7 @@ void Session::writeParameter()
 
     if (errnum) {
         // If an error occurred, tell this client to reread the value
-        parameterChanged(p->mainParam, startindex, count);
+        parameterChanged(p);
     }
 }
 
