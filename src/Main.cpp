@@ -26,6 +26,7 @@
 
 #include <cerrno>
 #include <cstdlib>
+#include <syslog.h>
 #include <log4cpp/Category.hh>
 
 #include "Main.h"

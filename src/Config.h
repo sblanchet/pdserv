@@ -33,7 +33,6 @@ namespace PdServ {
 class Config {
     public:
         Config();
-        Config(const Config& other);
         ~Config();
 
         const char * load(const char *file);
@@ -62,6 +61,8 @@ class Config {
 
         yaml_document_t *document;
         yaml_node_t *node;
+
+        void clear();
 };
 
 inline Config Config::operator[](char *key) const {

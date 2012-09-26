@@ -42,9 +42,9 @@ struct pdserv* pdserv_create( const char *name, const char *version,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int pdserv_config_file( struct pdserv* pdserv, const char *name)
+void pdserv_config_file( struct pdserv* pdserv, const char *name)
 {
-    return reinterpret_cast<Main*>(pdserv)->configFile(name);
+    reinterpret_cast<Main*>(pdserv)->setConfigFile(name);
 }
 
 /////////////////////////////////////////////////////////////////////////////

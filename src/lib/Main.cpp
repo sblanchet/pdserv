@@ -42,6 +42,8 @@
 
 #include <log4cpp/Category.hh>
 #include <log4cpp/SyslogAppender.hh>
+#include <log4cpp/OstreamAppender.hh>
+#include <log4cpp/PropertyConfigurator.hh>
 
 #include "Main.h"
 #include "../DataType.h"
@@ -92,15 +94,9 @@ Main::~Main()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::configFile(const std::string& file)
+void Main::setConfigFile(const char *file)
 {
-    const char *err = config.load(file.c_str());
-    if (err) {
-        std::cerr << err << std::endl;
-        return -1;
-    }
-
-    return 0;
+    configFile = file;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -301,6 +297,47 @@ int Main::run()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Main::consoleLogging()
+{
+    log4cpp::Appender *cerr =
+        new log4cpp::OstreamAppender("console", &std::cerr);
+    cerr->setLayout(new log4cpp::BasicLayout());
+
+    log4cpp::Category::getRoot().addAppender(cerr);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::configureLogging(const PdServ::Config& config)
+{
+    if (!config) {
+        log4cpp::Category& root = log4cpp::Category::getRoot();
+
+        log4cpp::Appender *appender =
+            new log4cpp::SyslogAppender("syslog", "pdserv", LOG_LOCAL0);
+        appender->setLayout(new log4cpp::BasicLayout());
+
+        root.addAppender(appender);
+        root.setPriority(log4cpp::Priority::NOTICE);
+
+        return;
+    }
+
+    std::string text = config;
+
+    char filename[100];
+    strcpy(filename, "/tmp/buddylog.conf-XXXXXX");
+    int fd = mkstemp(filename);
+    log_debug("%s", filename);
+
+    ::write(fd, text.c_str(), text.size());
+    ::close(fd);
+
+    log4cpp::PropertyConfigurator::configure(filename);
+
+    ::unlink(filename);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 int Main::daemonize()
 {
     pid = ::fork();
@@ -360,6 +397,50 @@ int Main::daemonize()
     // Initialize non-real time tasks
     for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
         static_cast<Task*>(*it)->nrt_init();
+
+    // Load custom configuration file
+    const char *confError;
+    if (!configFile.empty()) {
+        // Only catch the error here. Report failures later
+        confError = config.load(configFile.c_str());
+    }
+
+    if (!config) {
+        // Try to load environment configuration file
+        const char *env = ::getenv("PDSERV_CONFIG");
+
+        if (env and ::strlen(env)) {
+            const char *err = config.load(env);
+
+            if (err)
+                log_debug("%s", err);
+            else
+                log_debug("Loaded ENV config %s", env);
+        }
+    }
+
+    if (!config) {
+        // Try to load default configuration file
+        const char *f = QUOTE(SYSCONFDIR) "/pdserv.conf";
+        if (config.load(f))
+            log_debug("No default configuration file %s", f);
+        else
+            log_debug("Loaded default configuration file %s", f);
+    }
+
+    configureLogging(config["logging"]);
+
+#ifdef PDS_DEBUG
+    consoleLogging();
+#endif
+
+    if (confError) {
+        log4cpp::Category& log = log4cpp::Category::getRoot();
+        log.crit("Load config: %s", confError);
+    }
+    else {
+        log_debug("Loaded configuration file %s", configFile.c_str());
+    }
 
     PdServ::Main::startServers(config);
 

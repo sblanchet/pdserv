@@ -75,7 +75,19 @@ struct pdserv* pdserv_create(
                                             * used. */
         );
 
-int pdserv_config_file(
+/** Set the path to a configuration file
+ *
+ * This file will only be loaded after calling pdserv_prepare() in
+ * non-real-time context.
+ *
+ * Failure to load will be reported in syslog
+ *
+ * A configuration file may also be set using the PDSERV_CONFIG environment
+ * variable. Failing that, the default configuration
+ *      ${etherlab_dir}/etc/pdserv.conf
+ * will be attempted
+ */
+void pdserv_config_file(
         struct pdserv* pdserv, /**< Pointer to pdserv struct */
         const char *file
         );

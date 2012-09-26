@@ -47,7 +47,7 @@ class Main: public PdServ::Main {
                 int (*gettime)(struct timespec*));
         ~Main();
 
-        int configFile(const std::string& name);
+        void setConfigFile(const char *file);
 
         int run();
         void getParameters(Task *, const struct timespec *) const;
@@ -70,6 +70,8 @@ class Main: public PdServ::Main {
 
     private:
         mutable ost::Semaphore mutex;
+
+        std::string configFile;
         PdServ::Config config;
 
         int pid;
@@ -87,6 +89,8 @@ class Main: public PdServ::Main {
         VariableSet variableSet;
 
         int daemonize();
+        void consoleLogging();
+        void configureLogging(const PdServ::Config&);
 
         // Reimplemented from PdServ::Main
         void processPoll( unsigned int delay_ms,

@@ -41,12 +41,6 @@ Config::Config(): node(0)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Config::Config(const Config &other):
-    document(other.document), node(other.node)
-{
-}
-
-/////////////////////////////////////////////////////////////////////////////
 Config::Config(yaml_document_t *d, yaml_node_t *n): document(d), node(n)
 {
 }
@@ -54,9 +48,17 @@ Config::Config(yaml_document_t *d, yaml_node_t *n): document(d), node(n)
 /////////////////////////////////////////////////////////////////////////////
 Config::~Config()
 {
+    clear();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Config::clear()
+{
     if (!file.empty()) {
         yaml_document_delete(document);
         delete document;
+
+        file.clear();
     }
 }
 
@@ -82,7 +84,9 @@ const char * Config::load(const char *file)
     /* Set input file */
     yaml_parser_set_input_file(&parser, fh);
 
+    clear();
     document = new yaml_document_t;
+    this->file = file;
 
     /* START new code */
     if (!yaml_parser_load(&parser, document)) {
