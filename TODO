@@ -8,3 +8,6 @@ $Id$
 - Include AUTHORS, README, NEWS, etc. in dist tarball, installation and RPM.
 
 - MsrProto::XmlElement with implicit lock
+
+- Improve startup error reporting in pdserv_prepare()
+    - use semaphores/pipes/signals
