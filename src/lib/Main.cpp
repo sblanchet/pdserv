@@ -354,6 +354,40 @@ int Main::daemonize()
         return 0;
     }
 
+    const char *env = ::getenv("PDSERV_CONFIG");
+
+    // Load custom configuration file
+    if (!configFile.empty()) {
+        // Only catch the error here. Report failures later
+        const char *confError = config.load(configFile.c_str());
+        if (confError) {
+            log4cpp::Category& log = log4cpp::Category::getRoot();
+            log.crit("Load config: %s", confError);
+        }
+    }
+    else if (env and ::strlen(env)) {
+        // Try to load environment configuration file
+        const char *err = config.load(env);
+
+        if (err)
+            log_debug("%s", err);
+        else
+            log_debug("Loaded ENV config %s", env);
+    }
+    else {
+        // Try to load default configuration file
+        const char *f = QUOTE(SYSCONFDIR) "/pdserv.conf";
+        if (config.load(f))
+            log_debug("No default configuration file %s", f);
+        else
+            log_debug("Loaded default configuration file %s", f);
+    }
+
+    if (!config)
+        log_debug("Could not find any configuration file");
+    else
+        log_debug("Loaded configuration file %s", configFile.c_str());
+
     // Only child runs after this point
     pid = getpid();
 
@@ -398,49 +432,11 @@ int Main::daemonize()
     for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
         static_cast<Task*>(*it)->nrt_init();
 
-    // Load custom configuration file
-    const char *confError;
-    if (!configFile.empty()) {
-        // Only catch the error here. Report failures later
-        confError = config.load(configFile.c_str());
-    }
-
-    if (!config) {
-        // Try to load environment configuration file
-        const char *env = ::getenv("PDSERV_CONFIG");
-
-        if (env and ::strlen(env)) {
-            const char *err = config.load(env);
-
-            if (err)
-                log_debug("%s", err);
-            else
-                log_debug("Loaded ENV config %s", env);
-        }
-    }
-
-    if (!config) {
-        // Try to load default configuration file
-        const char *f = QUOTE(SYSCONFDIR) "/pdserv.conf";
-        if (config.load(f))
-            log_debug("No default configuration file %s", f);
-        else
-            log_debug("Loaded default configuration file %s", f);
-    }
-
     configureLogging(config["logging"]);
 
 #ifdef PDS_DEBUG
     consoleLogging();
 #endif
-
-    if (confError) {
-        log4cpp::Category& log = log4cpp::Category::getRoot();
-        log.crit("Load config: %s", confError);
-    }
-    else {
-        log_debug("Loaded configuration file %s", configFile.c_str());
-    }
 
     PdServ::Main::startServers(config);
 
