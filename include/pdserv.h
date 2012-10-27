@@ -161,7 +161,7 @@ struct pdvariable *pdserv_signal(
         size_t n,                 /**< Element count.
                                    * If @dim != NULL, this is the number
                                    * elements in @dim */
-        const size_t dim[]        /**< Dimensions. If NULL, consider the
+        const size_t *dim         /**< Dimensions. If NULL, consider the
                                    * parameter to be a vector of length @n */
         );
 
@@ -215,7 +215,7 @@ struct pdvariable *pdserv_parameter(
         void *addr,               /**< Parameter address */
         size_t n,                 /**< Element count.  If @dim != NULL, this
                                    * is the number elements in * @dim */
-        const size_t dim[],       /**< Dimensions. If NULL, consider the
+        const size_t *dim,        /**< Dimensions. If NULL, consider the
                                    * parameter to be a vector of length @n */
         paramtrigger_t trigger,   /**< Callback for updating the parameter
                                    * inside real time context */

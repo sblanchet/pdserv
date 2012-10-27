@@ -130,7 +130,7 @@ struct pdvariable *pdserv_signal(
         int datatype,
         const void *addr,
         size_t n,
-        const size_t dim[]
+        const size_t *dim
         )
 {
     Task *task = reinterpret_cast<Task*>(pdtask);
@@ -149,12 +149,13 @@ struct pdvariable *pdserv_parameter(
         int datatype,
         void *addr,
         size_t n,
-        const size_t dim[],
+        const size_t *dim,
         paramtrigger_t trigger = 0,
         void *priv_data = 0
         )
 {
     Main *main = reinterpret_cast<Main*>(pdserv);
+
     Parameter *p = main->addParameter(
             path, mode, getDataType(datatype), addr, n, dim);
     if (trigger)
