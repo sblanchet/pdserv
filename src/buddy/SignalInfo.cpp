@@ -30,12 +30,6 @@
 #include "../Debug.h"
 #include "SignalInfo.h"
 
-#ifdef TRADITIONAL
-    static const bool traditional = 1;
-#else
-    static const bool traditional = 0;
-#endif
-
 //////////////////////////////////////////////////////////////////////
 template <typename T, char dir>
 void SignalInfo::copy(void *_dst, const void *_src,
@@ -143,18 +137,18 @@ std::string SignalInfo::path() const
 {
     std::ostringstream p;
 
-    if (traditional)
-        p << '/' << model;
+    if (::strlen(si->path))
+        p << '/' << si->path;
 
-    p << '/' << si->path << '/' << si->name;
+    p << '/' << si->name;
 
 #ifdef HAVE_SIMULINK_PORT
-    if (!traditional and si->port) {
+    if (si->port) {
         p << '/';
         if (*si->alias)
             p << si->alias;
         else
-            p << si->port-1;
+            p << (si->port - 1);
     }
 #endif
 
