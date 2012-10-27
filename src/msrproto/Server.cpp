@@ -41,65 +41,109 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Server::Server(const PdServ::Main *main, const PdServ::Config& defaultConfig,
-        const PdServ::Config &config):
+Server::Server(const PdServ::Main *main,
+        const PdServ::Config& defaultConfig, const PdServ::Config &config):
     main(main),
     log(log4cpp::Category::getInstance(main->name)),
-    port(config["port"]),
-    traditional( static_cast<unsigned int>( config["traditional"].isTrue()
-                ? config["traditional"]
-                : defaultConfig["traditional"])),
+    port(config["port"].toUInt()),
     mutex(1)
 {
-    log_debug("traditional=%u", traditional);
+    traditional = config["traditional"]
+        ? config["traditional"].toUInt()
+        : defaultConfig["traditional"].toUInt();
+
     log_debug("port=%u", port);
 
     const PdServ::Task *primaryTask;
-    const std::string prefix(traditional
-            ? std::string(1,'/').append(main->name)
-            : std::string());
+
+    DirectoryNode* baseDir = this;
+    if (traditional and config["modelnameprefix"].toUInt())
+        baseDir =
+            create(config["name"] ? config["name"].toString() : main->name);
+
     for (size_t i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
-
-        const PdServ::Task::Signals& signals = task->getSignals();
-        for (PdServ::Task::Signals::const_iterator it = signals.begin();
-                it != signals.end(); it++)
-            root.insert(*it, prefix, traditional);
-
-        std::ostringstream prefix;
-        prefix << "/Taskinfo/" << i << '/';
-        std::string path;
+        Channel* c;
 
         if (!i or primaryTask->sampleTime > task->sampleTime)
             primaryTask = task;
 
-        path = prefix.str() + "TaskTime";
-        if (!root.find<Channel>(path))
-            root.insert(new TimeSignal(task, path), "", traditional);
+        const PdServ::Task::Signals& signals = task->getSignals();
 
-        path = prefix.str() + "ExecTime";
-        if (!root.find<Channel>(path))
-            root.insert( new StatSignal(task, path, StatSignal::ExecTime),
-                    "", traditional);
+        // Reserve at least signal count and additionally 4 Taskinfo signals
+        channels.reserve(channels.size() + signals.size() + 4);
 
-        path = prefix.str() + "Period";
-        if (!root.find<Channel>(path))
-            root.insert( new StatSignal(task, path, StatSignal::Period),
-                    "", traditional);
+        for (PdServ::Task::Signals::const_iterator it = signals.begin();
+                it != signals.end(); it++) {
+            c = new Channel(*it,
+                    channels.size(), (*it)->dtype, (*it)->dim, 0, 0);
 
-        path = prefix.str() + "Overrun";
-        if (!root.find<Channel>(path))
-            root.insert( new StatSignal(task, path, StatSignal::Overrun),
-                    "", traditional);
+//            log_debug("new channel %p %s", c, (*it)->path.c_str());
+            char hidden;
+            if (traditional)
+                baseDir->traditionalPathInsert(c, (*it)->path, hidden);
+            else
+                baseDir->pathInsert(c, (*it)->path);
+
+            c->hidden = hidden == 'c' or hidden == 'k' or hidden == 1;
+
+            channels.push_back(c);
+//            log_debug("new channel %p %s %s",
+//                    c, c->path().c_str(), (*it)->path.c_str());
+
+            if (traditional)
+                createChildren(c);
+        }
+
+        DirectoryNode* taskInfo = create("Taskinfo");
+
+        std::ostringstream os;
+        os << i;
+        DirectoryNode* t = taskInfo->create(os.str());
+
+        c = new TimeSignal(task, channels.size());
+        channels.push_back(c);
+        t->insert(c, "TaskTime");
+
+        c = new StatSignal(task, StatSignal::ExecTime, channels.size());
+        channels.push_back(c);
+        t->insert(c, "ExecTime");
+
+        c = new StatSignal(task, StatSignal::Period, channels.size());
+        channels.push_back(c);
+        t->insert(c, "Period");
+
+        c = new StatSignal(task, StatSignal::Overrun, channels.size());
+        channels.push_back(c);
+        t->insert(c, "Overrun");
     }
 
 //    if (!root.find<Channel>("/Time"))
 //        root.insert(new TimeSignal(primaryTask, "/Time"));
 
     const PdServ::Main::ProcessParameters& mainParam = main->getParameters();
+
+    parameters.reserve(parameters.size() + mainParam.size());
+
     PdServ::Main::ProcessParameters::const_iterator it;
-    for (it = mainParam.begin(); it != mainParam.end(); ++it)
-        root.insert(*it, prefix, traditional);
+    for (it = mainParam.begin(); it != mainParam.end(); ++it) {
+        Parameter* p = new Parameter(*it,
+                parameters.size(), (*it)->dtype, (*it)->dim, 0, 0);
+
+        char hidden;
+        if (traditional)
+            baseDir->traditionalPathInsert(p, (*it)->path, hidden);
+        else
+            baseDir->pathInsert(p, (*it)->path);
+
+        p->hidden = hidden == 'p' or hidden == 1;
+
+        parameters.push_back(p);
+        parameterMap[*it] = p;
+            
+        if (traditional)
+            createChildren(p);
+    }
 
 //    if (!root.find<Parameter>("/Taskinfo/Abtastfrequenz")) {
 //    }
@@ -207,7 +251,7 @@ void Server::setAic(const Parameter *p)
 void Server::parameterChanged(const PdServ::Parameter *mainParam,
         size_t offset, size_t count)
 {
-    const Parameter *p = root.find(mainParam);
+    const Parameter *p = find(mainParam);
 
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
@@ -231,8 +275,145 @@ void Server::parameterChanged(const PdServ::Parameter *mainParam,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const VariableDirectory& Server::getRoot() const
+const Channel* Server::getChannel(size_t n) const
 {
-    return root;
+    return n < channels.size() ? channels[n] : 0;
 }
 
+/////////////////////////////////////////////////////////////////////////////
+const Server::Channels& Server::getChannels() const
+{
+    return channels;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Parameter* Server::getParameter(size_t n) const
+{
+    return n < parameters.size() ? parameters[n] : 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Server::Parameters& Server::getParameters() const
+{
+    return parameters;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Parameter *Server::find( const PdServ::Parameter *p) const
+{
+    return parameterMap.find(p)->second;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Server::createChildren(Variable* var)
+{
+    if (var->dim.isScalar() and var->dtype.isPrimary())
+        return;
+
+    if (var->dtype.isPrimary())
+        createVectorChildren(var, var, std::string(),
+                var->dtype, var->dim, 0, 0);
+    else
+        createCompoundChildren(var, var, var->dtype, var->dim, 0, 0);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+size_t Server::createVectorChildren (Variable* var,
+        DirectoryNode* dir, const std::string& name,
+        const PdServ::DataType& dtype,
+        const PdServ::DataType::DimType& dim, size_t dimIdx, size_t offset)
+{
+    if (dimIdx + 1 < dim.size()) {
+        if (!name.empty())
+            dir = new DirectoryNode(dir, name);
+
+        size_t begin = offset;
+        for (size_t i = 0; i < dim[dimIdx]; ++i) {
+            std::ostringstream os;
+            os << i;
+            offset += createVectorChildren(var, dir, os.str(),
+                    dtype, dim, dimIdx + 1, offset);
+        }
+
+        return offset - begin;
+    }
+
+    if (!name.empty())
+        dir = createChild(var, dir, name, dtype, dim.back(), offset);
+
+    if (!dim.isScalar()) {
+        for (size_t i = 0; i < dim.back(); ++i) {
+            std::ostringstream os;
+            os << i;
+            createChild(var, dir, os.str(), dtype, 1, offset);
+            offset += dtype.size;
+        }
+    }
+
+    return dim.back() * dtype.size;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+size_t Server::createCompoundChildren (Variable* var,
+        DirectoryNode* dir, const PdServ::DataType& dtype,
+        const PdServ::DataType::DimType& dim, size_t dimIdx, size_t offset)
+{
+    if (dimIdx < dim.size() and !dim.isScalar()) {
+        size_t begin = offset;
+        for (size_t i = 0; i < dim[dimIdx]; ++i) {
+            std::ostringstream os;
+            os << i;
+            offset += createCompoundChildren(
+                    var, new DirectoryNode(dir, os.str()),
+                    dtype, dim, dimIdx + 1, offset);
+        }
+
+        return offset - begin;
+    }
+
+    const PdServ::DataType::FieldList& fieldList = dtype.getFieldList();
+    PdServ::DataType::FieldList::const_iterator it;
+    for (it = fieldList.begin(); it != fieldList.end(); ++it) {
+
+        if ( (*it)->type.isPrimary())
+            createVectorChildren(var, dir, (*it)->name,
+                    (*it)->type, (*it)->dim, 0, offset + (*it)->offset);
+        else
+            createCompoundChildren(var,
+                    new DirectoryNode(dir, (*it)->name),
+                    (*it)->type, (*it)->dim, 0, offset + (*it)->offset);
+    }
+
+    return dim.nelem * dtype.size;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+DirectoryNode* Server::createChild (Variable* var,
+        DirectoryNode* dir, const std::string& name,
+        const PdServ::DataType& dtype, size_t nelem, size_t offset)
+{
+    Channel   *c = dynamic_cast<Channel*  >(var);
+    Parameter *p = dynamic_cast<Parameter*>(var);
+
+    if (c) {
+        c = new Channel(c->signal, channels.size(), dtype,
+                PdServ::DataType::DimType(1,&nelem), offset, c);
+        channels.push_back(c);
+        dir->insert(c, name);
+
+//        log_debug("child %s @ %zu", c->path().c_str(), offset);
+        return c;
+    }
+
+    if (p) {
+        p = new Parameter(p->mainParam, parameters.size(), dtype,
+                PdServ::DataType::DimType(1,&nelem), offset, p);
+        parameters.push_back(p);
+        dir->insert(p, name);
+
+//        log_debug("child %s @ %zu", p->path().c_str(), offset);
+        return p;
+    }
+
+    return 0;
+}

@@ -110,13 +110,7 @@ Config Config::operator[](const char *key) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Config::operator!() const
-{
-    return node == 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-bool Config::isTrue() const
+Config::operator bool() const
 {
     return node != 0;
 }
@@ -159,7 +153,7 @@ Config Config::operator[](size_t index) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Config::operator std::string() const
+std::string Config::toString() const
 {
     if (!node or node->type != YAML_SCALAR_NODE)
         return std::string();
@@ -183,9 +177,9 @@ namespace PdServ {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Config::operator int() const
+int Config::toInt() const
 {
-    std::string sval(*this);
+    std::string sval(toString());
     if (sval.empty())
         return 0;
 
@@ -193,9 +187,9 @@ Config::operator int() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Config::operator unsigned int() const
+unsigned int Config::toUInt() const
 {
-    std::string sval(*this);
+    std::string sval(toString());
     if (sval.empty())
         return 0;
 

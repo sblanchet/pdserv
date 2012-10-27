@@ -184,7 +184,7 @@ void configure_logging(const PdServ::Config& config)
         return;
     }
 
-    std::string text = config;
+    std::string text = config.toString();
 
     char filename[100];
     strcpy(filename, "/tmp/buddylog.conf-XXXXXX");

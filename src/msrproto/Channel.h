@@ -37,24 +37,15 @@ class XmlElement;
 
 class Channel: public Variable {
     public:
-        Channel(const PdServ::Signal *s,
-                const std::string& name, DirectoryNode* parent,
-                unsigned int channelIndex, bool traditional);
-
-        Channel(const Channel *c,
-                const std::string& name, DirectoryNode* parent,
-                const PdServ::DataType& dtype, size_t nelem, size_t offset);
+        Channel(const PdServ::Signal *s, size_t index,
+                const PdServ::DataType& dtype,
+                const PdServ::DataType::DimType& dim,
+                size_t offset, Channel *parent);
 
         void setXmlAttributes(XmlElement&, bool shortReply,
                     const char *signalBuf, size_t precision) const;
 
         const PdServ::Signal *signal;
-
-    private:
-        // Reimplemented from Variable
-        const Variable* createChild(
-                DirectoryNode* dir, const std::string& path,
-                const PdServ::DataType& dtype, size_t nelem, size_t offset);
 };
 
 }

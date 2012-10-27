@@ -31,37 +31,15 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Channel::Channel(const PdServ::Signal *s,
-        const std::string& name, DirectoryNode* dir,
-        unsigned int channelIndex, bool traditional):
-    Variable(s, name, dir, channelIndex),
+Channel::Channel(const PdServ::Signal *s, size_t index,
+                const PdServ::DataType& dtype,
+                const PdServ::DataType::DimType& dim,
+                size_t offset, Channel *parent):
+    Variable(s, index, dtype, dim, offset, parent),
     signal(s)
 {
-    //cout << __PRETTY_FUNCTION__ << index << endl;
-//    log_debug("new var %s idx=%zu size=%zu, nelem=%zu", path().c_str(),
-//            variableIndex, dtype.size, dim.nelem);
-    //traditional = true;
-    createChildren(traditional);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Channel::Channel(const Channel *parent, const std::string& name,
-        DirectoryNode *dir, const PdServ::DataType& dtype,
-        size_t nelem, size_t offset):
-    Variable(parent, name, dir, dtype, nelem, offset),
-    signal(parent->signal)
-{
-//    log_debug("new var %s idx=%zu size=%zu, nelem=%zu", path().c_str(),
-//            variableIndex, dtype.size, dim.nelem);
-    createChildren(true);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Variable* Channel::createChild(DirectoryNode* dir,
-                const std::string& name,
-                const PdServ::DataType& dtype, size_t nelem, size_t offset)
-{
-    return new Channel(this, name, dir, dtype, nelem, offset);
+//    log_debug("new var %s idx=%u size=%zu, nelem=%zu offset=%zu",
+//            path().c_str(), index, dtype.size, dim.nelem, offset);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -72,7 +50,8 @@ void Channel::setXmlAttributes( XmlElement &element,
 
     if (!shortReply) {
         // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
-        //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
+        //   datasize="8" bufsize="500" HZ="50" unit=""
+        //   value="1283134199.93743"/>
         double freq = 1.0 / signal->sampleTime / signal->decimation;
 
         // The MSR protocoll wants a bufsize, the maximum number of

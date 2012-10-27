@@ -23,7 +23,6 @@
 
 #include "Parameter.h"
 #include "XmlElement.h"
-#include "Directory.h"
 #include "Session.h"
 #include "OStream.h"
 #include "../Parameter.h"
@@ -55,36 +54,14 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Parameter::Parameter( const PdServ::Parameter *p,
-        const std::string& name, DirectoryNode* dir,
-        unsigned int variableIndex, bool traditional):
-    Variable(p, name, dir, variableIndex),
+Parameter::Parameter(const PdServ::Parameter *p, size_t index,
+                const PdServ::DataType& dtype,
+                const PdServ::DataType::DimType& dim,
+                size_t offset, Parameter *parent):
+    Variable(p, index, dtype, dim, offset, parent),
     mainParam(p),
-    dependent(false),
-    persistent(false)
+    dependent(parent != 0)
 {
-    createChildren(traditional);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Parameter::Parameter(const Parameter *parent, const std::string& name,
-        DirectoryNode *dir, const PdServ::DataType& dtype,
-        size_t nelem, size_t offset):
-    Variable(parent, name, dir, dtype, nelem, offset),
-    mainParam(parent->mainParam),
-    dependent(true),
-    persistent(parent->persistent)
-{
-    //log_debug("new var %s %zu @%zu", name.c_str(), nelem, offset);
-    createChildren(true);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Variable* Parameter::createChild(DirectoryNode* dir,
-                const std::string& name,
-                const PdServ::DataType& dtype, size_t nelem, size_t offset)
-{
-    return new Parameter(this, name, dir, dtype, nelem, offset);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -104,8 +81,8 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
             << flags + (dependent ? 0x100 : 0);
 
         // persistent=
-        if (persistent)
-            XmlElement::Attribute(element, "persistent") << persistent;
+        if (mainParam->persistent)
+            XmlElement::Attribute(element, "persistent") << 1;
     }
 
     // mtime=

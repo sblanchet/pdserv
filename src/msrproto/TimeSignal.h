@@ -25,6 +25,7 @@
 #define MSRTIMESIGNAL_H
 
 #include "../Signal.h"
+#include "Channel.h"
 
 namespace PdServ {
     class Session;
@@ -34,9 +35,9 @@ namespace PdServ {
 
 namespace MsrProto {
 
-class TimeSignal: public PdServ::Signal {
+class TimeSignal: public PdServ::Signal, public Channel {
     public:
-        TimeSignal(const PdServ::Task *task, const std::string& path);
+        TimeSignal(const PdServ::Task *task, size_t index);
 
         const PdServ::Task * const task;
 

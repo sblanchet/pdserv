@@ -32,7 +32,6 @@
 #include "../Config.h"
 #include "Parameter.h"
 #include "Channel.h"
-#include "Directory.h"
 
 namespace log4cpp {
     class Category;
@@ -47,7 +46,7 @@ namespace MsrProto {
 
 class Session;
 
-class Server: public ost::Thread {
+class Server: public DirectoryNode, public ost::Thread {
     public:
         Server(const PdServ::Main *main, const PdServ::Config& defaultConfig,
                 const PdServ::Config &config);
@@ -61,22 +60,35 @@ class Server: public ost::Thread {
 
         void sessionClosed(Session *s);
 
-        const VariableDirectory& getRoot() const;
-
         void getSessionStatistics(
                 std::list<PdServ::SessionStatistics>& stats) const;
 
         const PdServ::Main * const main;
         log4cpp::Category &log;
 
-        bool traditionalMode() const { return traditional; }
+        typedef std::vector<const Channel*> Channels;
+        typedef std::vector<const Parameter*> Parameters;
+
+        const Channels& getChannels() const;
+        const Channel * getChannel(size_t) const;
+
+        const Parameters& getParameters() const;
+        const Parameter * getParameter(size_t) const;
+        const Parameter * find(const PdServ::Parameter *p) const;
+
+        template <typename T>
+            const T * find(const std::string& path) const;
 
     private:
         std::set<Session*> sessions;
         int port;
         bool traditional;
 
-        VariableDirectory root;
+        Channels channels;
+        Parameters parameters;
+        typedef std::map<const PdServ::Parameter *, const Parameter *>
+            ParameterMap;
+        ParameterMap parameterMap;
 
         mutable ost::Semaphore mutex;
 
@@ -84,7 +96,38 @@ class Server: public ost::Thread {
         void initial();
         void run();
         void final();
+
+        void createChildren(Variable* var);
+        DirectoryNode* createChild(Variable* var,
+                DirectoryNode *dir, const std::string& name,
+                const PdServ::DataType& dtype,
+                size_t nelem, size_t offset);
+        size_t createChildren(Variable* var, DirectoryNode* dir,
+                const PdServ::DataType& dtype,
+                const PdServ::DataType::DimType& dim, size_t dimIdx,
+                size_t offset);
+        size_t createCompoundChildren(Variable* var, DirectoryNode* dir,
+                const PdServ::DataType& dtype,
+                const PdServ::DataType::DimType& dim, size_t dimIdx,
+                size_t offset);
+        size_t createVectorChildren(Variable* var,
+                DirectoryNode* dir, const std::string& name,
+                const PdServ::DataType& dtype,
+                const PdServ::DataType::DimType& dim, size_t dimIdx,
+                size_t offset);
+
 };
+
+/////////////////////////////////////////////////////////////////////////////
+template <typename T>
+const T *Server::find(const std::string &p) const
+{
+    if (p.empty() or p[0] != '/')
+        return 0;
+
+    const DirectoryNode *node = DirectoryNode::find(p, 1);
+    return node ? dynamic_cast<const T*>(node) : 0;
+}
 
 }
 #endif //MSRSERVER_H

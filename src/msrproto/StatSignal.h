@@ -25,6 +25,7 @@
 #define MSRSTATSIGNAL_H
 
 #include "../Signal.h"
+#include "Channel.h"
 #include <stdint.h>
 
 namespace PdServ {
@@ -34,12 +35,11 @@ namespace PdServ {
 
 namespace MsrProto {
 
-class StatSignal: public PdServ::Signal {
+class StatSignal: public PdServ::Signal, public Channel {
     public:
         enum Type {ExecTime, Period, Overrun};
 
-        StatSignal(const PdServ::Task *task,
-                const std::string& path, Type type);
+        StatSignal(const PdServ::Task *task, Type type, size_t index);
 
         const PdServ::Task * const task;
 

@@ -63,7 +63,9 @@ int gettime(struct timespec *t)
 
 int main(int argc, const char *argv[])
 {
-    struct pdserv *pdserv = pdserv_create(argv[0], "1.0", gettime);
+    const char *name = strrchr(argv[0], '/');
+    struct pdserv *pdserv =
+        pdserv_create(name ? name+1 : argv[0], "1.0", gettime);
     size_t var1_dims[] = {2,3,4};
     struct timespec time;
     double dbl[3] = { 13,14,15};
@@ -111,16 +113,16 @@ int main(int argc, const char *argv[])
     assert(pdserv_signal(task[0], 1, "/s1", s1_t, &s1, 1, NULL));
     assert(pdserv_signal(task[0], 1, "/s2", s2_t, s2, 2, NULL));
 
-    assert(pdserv_signal(task[0], 1, "/path/to/double",
+    assert(pdserv_signal(task[0], 1, "/path<lksjdf/to>ljk/double",
             pd_double_T, dbl, 3, NULL));
 
     assert(pdserv_signal(task[0], 1, "/Tme",
             pd_double_T, &dbltime, 1, NULL));
 
-    assert(pdserv_signal(task[0], 1, "/path/to/var2",
+    assert(pdserv_signal(task[0], 1, "/path //to/ var2",
             pd_uint16_T, var1, 3, var1_dims));
 
-    struct pdvariable *p3 = pdserv_parameter(pdserv, "/path/to/mdimparam",
+    struct pdvariable *p3 = pdserv_parameter(pdserv, "/path //to/ mdimparam",
             0666, pd_uint16_T, var1, 3, var1_dims, copy_param, (void*) 10);
     assert(p3);
 
@@ -128,7 +130,7 @@ int main(int argc, const char *argv[])
             "/Taskinfo/Abtastfrequenz", 0666, pd_double_T, &tick, 1, 0, 0, 0);
     assert(p1);
 
-    struct pdvariable *p = pdserv_parameter(pdserv, "/path/to/param", 0666,
+    struct pdvariable *p = pdserv_parameter(pdserv, "/path/to<hide>/param", 0666,
             pd_uint32_T, param, 4, 0, copy_param, (void*)10);
     assert(p);
 

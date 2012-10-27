@@ -50,7 +50,7 @@ using namespace MsrProto;
 Session::Session( Server *server, ost::TCPSocket *socket,
         log4cpp::NDC::ContextStack* ctxt):
     PdServ::Session(server->main),
-    server(server), root(server->getRoot()),
+    server(server),
     tcp(socket), streamlock(1), ostream(&tcp), xmlstream(ostream, streamlock),
     mutex(1), ctxt(ctxt)
 {
@@ -84,6 +84,7 @@ Session::~Session()
         delete it->second;
 
     server->sessionClosed(this);
+    delete ctxt;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -227,7 +228,7 @@ void Session::run()
         if (aicDelay and !--aicDelay) {
             for ( AicSet::iterator it = aic.begin();
                     it != aic.end(); ++it) {
-                parameterChanged(root.find(*it));
+                parameterChanged(server->find(*it));
             }
 
             aic.clear();
@@ -347,16 +348,16 @@ void Session::readChannel()
 {
     const Channel *c = 0;
     bool shortReply = inbuf.isTrue("short");
-    std::string path;
+    std::string name;
     unsigned int index;
 
-    if (inbuf.getString("name", path)) {
-        c = root.find<Channel>(path);
+    if (inbuf.getString("name", name)) {
+        c = server->find<Channel>(name);
         if (!c)
             return;
     }
     else if (inbuf.getUnsigned("index", index)) {
-        c = root.getChannel(index);
+        c = server->getChannel(index);
         if (!c)
             return;
     }
@@ -378,15 +379,16 @@ void Session::readChannel()
     const PdServ::Signal *mainSignal = 0;
     std::map<const PdServ::Signal*, size_t> bufOffset;
 
-    const VariableDirectory::Channels& chanList = root.getChannels();
+    const Server::Channels& chanList = server->getChannels();
 
     typedef std::list<const PdServ::Signal*> SignalList;
     SignalList orderedSignals[PdServ::DataType::maxWidth + 1];
 
-    for (VariableDirectory::Channels::const_iterator it = chanList.begin();
+    for (Server::Channels::const_iterator it = chanList.begin();
             it != chanList.end(); it++) {
         mainSignal = (*it)->signal;
-        if (bufOffset.find(mainSignal) != bufOffset.end())
+        if (bufOffset.find(mainSignal) != bufOffset.end()
+                or (*it)->hidden)
             continue;
 
         bufOffset[mainSignal] = 0;
@@ -414,8 +416,11 @@ void Session::readChannel()
 
     ostream::locked ls(xmlstream);
     XmlElement channels("channels", ls);
-    for (VariableDirectory::Channels::const_iterator it = chanList.begin();
+    for (Server::Channels::const_iterator it = chanList.begin();
             it != chanList.end(); it++) {
+        if ((*it)->hidden)
+            continue;
+
         XmlElement el("channel", channels);
         (*it)->setXmlAttributes(
                 el, shortReply, buf + bufOffset[(*it)->signal], 16);
@@ -432,7 +437,7 @@ void Session::listDirectory()
 
     ostream::locked ls(xmlstream);
     XmlElement element("listing", ls);
-    root.list(this, element, path);
+    server->list(this, element, path);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -445,12 +450,12 @@ void Session::readParameter()
 
     const Parameter *p = 0;
     if (inbuf.getString("name", name)) {
-        p = root.find<Parameter>(name.c_str());
+        p = server->find<Parameter>(name);
         if (!p)
             return;
     }
     else if (inbuf.getUnsigned("index", index)) {
-        p = root.getParameter(index);
+        p = server->getParameter(index);
         if (!p)
             return;
     }
@@ -474,12 +479,17 @@ void Session::readParameter()
     ostream::locked ls(xmlstream);
     XmlElement parametersElement("parameters", ls);
 
-    const VariableDirectory::Parameters& parameters = root.getParameters();
-    VariableDirectory::Parameters::const_iterator it = parameters.begin();
+    const Server::Parameters& parameters = server->getParameters();
+    Server::Parameters::const_iterator it = parameters.begin();
     while ( it != parameters.end()) {
         const PdServ::Parameter* mainParam = (*it)->mainParam;
         char buf[mainParam->memSize];
         struct timespec ts;
+
+        if ((*it)->hidden) {
+            ++it;
+            continue;
+        }
 
         mainParam->getValue(this, buf, &ts);
 
@@ -497,8 +507,8 @@ void Session::readParamValues()
     XmlElement param_values("param_values", ls);
     XmlElement::Attribute values(param_values, "value");
 
-    const VariableDirectory::Parameters& parameters = root.getParameters();
-    VariableDirectory::Parameters::const_iterator it = parameters.begin();
+    const Server::Parameters& parameters = server->getParameters();
+    Server::Parameters::const_iterator it = parameters.begin();
     while ( it != parameters.end()) {
         const PdServ::Parameter* mainParam = (*it)->mainParam;
         char buf[mainParam->memSize];
@@ -585,10 +595,10 @@ void Session::writeParameter()
     unsigned int index;
     std::string name;
     if (inbuf.getString("name", name)) {
-        p = root.find<Parameter>(name.c_str());
+        p = server->find<Parameter>(name);
     }
     else if (inbuf.getUnsigned("index", index)) {
-        p = root.getParameter(index);
+        p = server->getParameter(index);
     }
 
     if (!p)
@@ -629,7 +639,7 @@ void Session::xsad()
     bool event = inbuf.isTrue("event");
     bool foundReduction = false, foundBlocksize = false;
     std::list<unsigned int> indexList;
-    const VariableDirectory::Channels& channel = root.getChannels();
+    const Server::Channels& channel = server->getChannels();
 
     if (inbuf.isTrue("sync")) {
         for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
@@ -722,7 +732,7 @@ void Session::xsod()
     //cout << __LINE__ << "xsod: " << endl;
 
     if (inbuf.getUnsignedList("channels", intList)) {
-        const VariableDirectory::Channels& channel = root.getChannels();
+        const Server::Channels& channel = server->getChannels();
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
             if (*it < channel.size()) {

@@ -41,13 +41,10 @@ class ostream;
 
 class Parameter: public Variable {
     public:
-        Parameter( const PdServ::Parameter *p,
-                const std::string& name, DirectoryNode* parent,
-                unsigned int parameterIndex, bool traditional);
-
-        Parameter(const Parameter *c,
-                const std::string& name, DirectoryNode* parent,
-                const PdServ::DataType& dtype, size_t nelem, size_t offset);
+        Parameter(const PdServ::Parameter *p, size_t index,
+                const PdServ::DataType& dtype,
+                const PdServ::DataType::DimType& dim,
+                size_t offset, Parameter *parent);
 
         void setXmlAttributes(XmlElement&, const char *buf,
                 struct timespec const& ts, bool shortReply,
@@ -63,17 +60,11 @@ class Parameter: public Variable {
 
     private:
         const bool dependent;
-        const bool persistent;
 
         int setElements(std::istream& is,
                 const PdServ::DataType& dtype,
                 const PdServ::DataType::DimType& dim,
                 char *&buf, size_t& count) const;
-
-        // Reimplemented from Variable
-        const Variable* createChild(
-                DirectoryNode* dir, const std::string& path,
-                const PdServ::DataType& dtype, size_t nelem, size_t offset);
 };
 
 }

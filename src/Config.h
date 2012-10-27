@@ -36,6 +36,7 @@ class Config {
         ~Config();
 
         const char * load(const char *file);
+        const std::string& fileName() const;
 
         Config operator[](const std::string&) const;
         Config operator[](const char *) const;
@@ -45,13 +46,12 @@ class Config {
         template <typename T>
             bool get(T& value) const;
 
-        bool isTrue() const;
-        bool operator!() const;
+        operator bool() const;
 
-        operator int() const;
-        operator unsigned int() const;
-        operator double() const;
-        operator std::string() const;
+        int             toInt() const;
+        unsigned int    toUInt() const;
+        double          toDouble() const;
+        std::string     toString() const;
 
     protected:
         Config(yaml_document_t *document, yaml_node_t *node);

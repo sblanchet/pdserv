@@ -42,7 +42,8 @@ SET (msrproto_src
     msrproto/Variable.cpp               msrproto/Variable.h
     msrproto/Channel.cpp                msrproto/Channel.h
     msrproto/Parameter.cpp              msrproto/Parameter.h
-    msrproto/Directory.cpp              msrproto/Directory.h
+    msrproto/DirectoryNode.cpp          msrproto/DirectoryNode.h
+    msrproto/HyperDirNode.cpp           msrproto/HyperDirNode.h
     msrproto/Server.cpp                 msrproto/Server.h
     )
 

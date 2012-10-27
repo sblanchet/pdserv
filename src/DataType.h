@@ -39,6 +39,19 @@ class DataType {
         struct DimType: public std::vector<size_t> {
             DimType(size_t ndims, const size_t *dim);
             const size_t nelem;
+
+            bool isScalar() const {
+                return nelem == 1;
+            }
+
+            bool isVector() const {
+                return size() == 1;
+            }
+
+            bool isMultiDim() const {
+                return size() > 1;
+            }
+
         };
 
         struct Field {
@@ -66,6 +79,7 @@ class DataType {
         const std::string name;
         const size_t size;
         virtual Primary primary() const;
+        bool isPrimary() const;
         static const size_t maxWidth = 8; /**< Maximum supported data type
                                             size in bytes */
 

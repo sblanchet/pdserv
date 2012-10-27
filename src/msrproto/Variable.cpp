@@ -23,48 +23,25 @@
 
 #include "Variable.h"
 #include "XmlElement.h"
-#include "Directory.h"
-#include "../Signal.h"
-#include "../Parameter.h"
-#include "../DataType.h"
 
-#include <cstdio>
-#include <stdint.h>
 #include <sstream>
 
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Variable::Variable(const PdServ::Variable *v,
-        const std::string& name,
-        DirectoryNode* parent,
-        unsigned int variableIndex):
-    DirectoryNode(name, parent),
-    variable(v),
-    index(variableIndex),
-    dtype(v->dtype),
-    dim(v->dim),
-    offset(0U),
-    memSize(dtype.size * dim.nelem)
+Variable::Variable (const PdServ::Variable* v, size_t index,
+        const PdServ::DataType& dtype, const PdServ::DataType::DimType& dim,
+        size_t offset, Variable* parent):
+    variable(v), index(index),
+    dtype(dtype), dim(dim), offset(offset),
+    memSize(dtype.size * dim.nelem),
+    hidden(false)
 {
     children = 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Variable::Variable(const Variable *v,
-        const std::string& name,
-        DirectoryNode* dir,
-        const PdServ::DataType& dtype,
-        size_t nelem, size_t offset):
-    DirectoryNode(name, dir),
-    variable(v->variable),
-    index(v->index + v->childCount() + 1),
-    dtype(dtype),
-    dim(1, &nelem),
-    offset(offset),
-    memSize(dtype.size * dim.nelem)
-{
-    children = 0;
+    if (parent) {
+        hidden = parent->hidden;
+        parent->addChild(this);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -80,36 +57,18 @@ Variable::~Variable()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-size_t Variable::childCount() const
-{
-    if (!children)
-        return 0;
-
-    size_t n = children->size();
-
-    for (List::const_iterator it = children->begin();
-            it != children->end(); ++it)
-        n += (*it)->childCount();
-
-    return n;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 const Variable::List* Variable::getChildren() const
 {
     return children;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const PdServ::Signal* Variable::signal() const
+void Variable::addChild(const Variable* child)
 {
-    return dynamic_cast<const PdServ::Signal*>(variable);
-}
+    if (!children)
+        children = new List;
 
-/////////////////////////////////////////////////////////////////////////////
-const PdServ::Parameter* Variable::parameter() const
-{
-    return dynamic_cast<const PdServ::Parameter*>(variable);
+    children->push_back(child);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -122,7 +81,7 @@ void Variable::setDataType(XmlElement &element, const PdServ::DataType& dtype,
     // typ=
     const char *dtstr;
     switch (dtype.primary()) {
-        case PdServ::DataType::boolean_T : dtstr = "TCHAR";      break;
+        case PdServ::DataType::boolean_T : dtstr = "TCHAR";     break;
         case PdServ::DataType::  uint8_T : dtstr = "TUCHAR";    break;
         case PdServ::DataType::   int8_T : dtstr = "TCHAR";     break;
         case PdServ::DataType:: uint16_T : dtstr = "TUSHORT";   break;
@@ -135,10 +94,10 @@ void Variable::setDataType(XmlElement &element, const PdServ::DataType& dtype,
         case PdServ::DataType:: single_T : dtstr = "TFLT";      break;
         default                          : dtstr = "COMPOUND";  break;
     }
-    if (dim.nelem > 1)
+    if (!dim.isScalar())
         XmlElement::Attribute(element, "typ")
             << dtstr
-            << (dim.size() == 1 ? "_LIST" : "_MATRIX");
+            << (dim.isVector() ? "_LIST" : "_MATRIX");
     else
         XmlElement::Attribute(element, "typ") << dtstr;
 
@@ -147,13 +106,13 @@ void Variable::setDataType(XmlElement &element, const PdServ::DataType& dtype,
     // cnum=
     // rnum=
     // orientation=
-    if (dim.nelem > 1) {
+    if (!dim.isScalar()) {
         XmlElement::Attribute(element, "anz") << dim.nelem;
         const char *orientation;
         size_t cnum, rnum;
 
         // Transmit either a vector or a matrix
-        if (dim.size() == 1) {
+        if (dim.isVector()) {
             cnum = dim.nelem;
             rnum = 1;
             orientation = "VECTOR";
@@ -222,97 +181,4 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
 
     // hide=
     // unhide=
-}
-
-
-/////////////////////////////////////////////////////////////////////////////
-void Variable::createChildren(bool traditional)
-{
-    if (!traditional
-            or (dim.nelem == 1 and dtype.primary() != dtype.compound_T))
-        return;
-
-    children = new List;
-
-    if (dtype.primary() == dtype.compound_T or dim.size() > 1)
-        createChildren("", dtype, dim, 0, offset);
-    else {
-        size_t offset = this->offset;
-        for (size_t i = 0; i < dim[0]; ++i) {
-            std::ostringstream os;
-
-            os << i;
-
-            children->push_back(
-                    createChild(this, os.str(), dtype, 1, offset));
-
-            offset += dtype.size;
-        }
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-size_t Variable::createChildren(const std::string& path,
-        const PdServ::DataType& dtype,
-        const PdServ::DataType::DimType& dim, size_t dimIdx, size_t offset)
-{
-    if (dtype.primary() == dtype.compound_T)
-        return createCompoundChildren(path, dtype, dim, dimIdx, offset);
-    else
-        return createVectorChildren(path, dtype, dim, dimIdx, offset);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-size_t Variable::createVectorChildren(
-        const std::string& path, const PdServ::DataType& dtype,
-        const PdServ::DataType::DimType& dim, size_t dimIdx, size_t offset)
-{
-//    log_debug("%s %zu", path.c_str(), dimIdx);
-    if (dimIdx != dim.size() - 1) {
-        for (size_t i = 0; i < dim[dimIdx]; ++i) {
-            std::ostringstream os;
-            os << path << '/' << i;
-            offset += createChildren(os.str(), dtype, dim, dimIdx + 1, offset);
-        }
-
-        return dtype.size * dim.nelem;
-    }
-
-    if (dim.back() == 1) {
-        children->push_back(
-                createChild(this, path.substr(1), dtype, 1, offset));
-    }
-    else {
-        std::string name;
-        DirectoryNode* dir = mkdir(path, name);
-        children->push_back(
-                createChild(dir, name, dtype, dim.back(), offset));
-    }
-
-    return dtype.size * dim.back();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-size_t Variable::createCompoundChildren(
-        const std::string& path, const PdServ::DataType& dtype,
-        const PdServ::DataType::DimType& dim, size_t dimIdx, size_t offset)
-{
-//    log_debug("%s %zu", path.c_str(), dim.nelem);
-    if (dimIdx != dim.size() and dim.nelem != 1) {
-        for (size_t i = 0; i < dim[dimIdx]; ++i) {
-            std::ostringstream os;
-            os << path << '/' << i;
-            offset += createChildren(os.str(), dtype, dim, dimIdx + 1, offset);
-        }
-
-        return dtype.size * dim.nelem;
-    }
-
-    const PdServ::DataType::FieldList& fieldList = dtype.getFieldList();
-    for (PdServ::DataType::FieldList::const_iterator it = fieldList.begin();
-            it != fieldList.end(); ++it) {
-        createChildren(path + '/' + (*it)->name,
-                (*it)->type, (*it)->dim, 0, offset + (*it)->offset);
-    }
-    return dtype.size;
 }

@@ -75,11 +75,11 @@ class SessionStatistics;
 class Server;
 class Parameter;
 class Subscription;
-class VariableDirectory;
 
 class Session: public ost::Thread, public PdServ::Session {
     public:
-        Session( Server *s, ost::TCPSocket *socket, log4cpp::NDC::ContextStack*);
+        Session( Server *s, ost::TCPSocket *socket,
+                log4cpp::NDC::ContextStack*);
         ~Session();
 
         void broadcast(Session *s, const std::string &element);
@@ -99,7 +99,6 @@ class Session: public ost::Thread, public PdServ::Session {
 
     private:
         Server * const server;
-        const VariableDirectory &root;
 
         struct TCPStream: public ost::Socket, public std::streambuf {
             TCPStream(ost::TCPSocket *socket);

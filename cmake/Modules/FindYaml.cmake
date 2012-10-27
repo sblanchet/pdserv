@@ -10,7 +10,7 @@ find_package(PkgConfig)
 if (NOT ${CMAKE_VERSION} VERSION_LESS 2.8)
     set (QUIET QUIET)
 endif ()
-pkg_check_modules(PC_YAML ${QUIET} yaml)
+pkg_check_modules(PC_YAML ${QUIET} yaml-0.1)
 
 set(YAML_DEFINITIONS ${PC_YAML_CFLAGS_OTHER})
 

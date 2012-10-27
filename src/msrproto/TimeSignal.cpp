@@ -32,8 +32,10 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-TimeSignal::TimeSignal(const PdServ::Task *t, const std::string& path):
-    PdServ::Signal(path, t->sampleTime, 1, PdServ::DataType::float64, 1, 0),
+TimeSignal::TimeSignal(const PdServ::Task *t, size_t index):
+    PdServ::Signal("Time", t->sampleTime, 1, PdServ::DataType::float64, 1, 0),
+    Channel(this, index,
+            this->PdServ::Signal::dtype, this->PdServ::Signal::dim, 0, 0),
     task(t)
 {
 }

@@ -198,7 +198,8 @@ const DataType& DataType::float32 = PrimaryType<   float>();
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 DataType::DimType::DimType (size_t ndims, const size_t *dim):
-    std::vector<size_t>(dim ? dim : &ndims, dim ? dim + ndims : &ndims + 1),
+    std::vector<size_t>(dim, dim + ndims),
+//    std::vector<size_t>(dim ? dim : &ndims, dim ? dim + ndims : &ndims + 1),
     nelem(std::accumulate(begin(), end(), 1U, std::multiplies<size_t>()))
 {
 }
@@ -236,6 +237,12 @@ DataType::~DataType ()
     for (FieldList::const_iterator it = fieldList.begin();
             it != fieldList.end(); ++it)
         delete *it;
+}
+
+//////////////////////////////////////////////////////////////////////
+bool DataType::isPrimary () const
+{
+    return primary() != compound_T;
 }
 
 //////////////////////////////////////////////////////////////////////

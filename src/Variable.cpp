@@ -38,7 +38,7 @@ Variable::Variable(
                 const size_t *dim):
     path(path),
     dtype(dtype),
-    dim(ndims, dim),
+    dim(dim ? ndims : 1, dim ? dim : &ndims),
     memSize(this->dim.nelem * dtype.size)
 {
 }
