@@ -102,6 +102,7 @@ class Session: public ost::Thread, public PdServ::Session {
 
         struct TCPStream: public ost::Socket, public std::streambuf {
             TCPStream(ost::TCPSocket *socket);
+            ~TCPStream();
 
             int read(char *buf, size_t n, timeout_t timeout);
             int getSocket() const;
