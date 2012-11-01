@@ -1,7 +1,7 @@
 syntax: glob
 
-**.sw?
 **.orig
+**.sw?
 **~
 CMakeCache.txt
 CMakeFiles
@@ -27,5 +27,7 @@ test/CTestTestfile.cmake
 test/Makefile
 test/cmake_install.cmake
 test/config
+test/datatype
 test/parser
 test/test1
+test/xmlwriter
