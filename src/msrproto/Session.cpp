@@ -753,6 +753,8 @@ void Session::xsod()
 Session::TCPStream::TCPStream( ost::TCPSocket *server):
     Socket(::accept(server->getSocket(), NULL, NULL))
 {
+    file = 0;
+
     ost::tpport_t port;
     ost::IPV4Host peer = getPeer(&port);
 
@@ -774,6 +776,12 @@ Session::TCPStream::TCPStream( ost::TCPSocket *server):
     Socket::state = CONNECTED;
     inBytes = 0;
     outBytes = 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Session::TCPStream::~TCPStream()
+{
+    ::fclose(file);
 }
 
 /////////////////////////////////////////////////////////////////////////////
