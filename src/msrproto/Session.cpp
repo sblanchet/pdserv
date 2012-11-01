@@ -119,6 +119,7 @@ void Session::broadcast(Session *, const std::string &message)
 {
     ost::SemaphoreLock lock(mutex);
 
+    ostream::locked ls(xmlstream);
     ostream << message << std::flush;
 }
 
