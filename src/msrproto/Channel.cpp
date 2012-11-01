@@ -75,11 +75,11 @@ void Channel::setXmlAttributes( XmlElement &element,
         //   datasize="8" bufsize="500" HZ="50" unit="" value="1283134199.93743"/>
         double freq = 1.0 / signal->sampleTime / signal->decimation;
 
-        // The MSR protocoll wants a bufsize, the maximum number of
+        // The MSR protocol wants a bufsize, the maximum number of
         // values that can be retraced. This artificial limitation does
         // not exist any more. Instead, choose a buffer size so that
         // at a maximum of 10 seconds has to be stored.
-        size_t bufsize = 10 * std::max( 1U, (unsigned int)(freq + 0.5));
+        size_t bufsize = 10 * std::max(1U, (unsigned int)(freq + 0.5));
 
         if (shortReply)
             return;
