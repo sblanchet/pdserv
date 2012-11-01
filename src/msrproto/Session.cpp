@@ -117,9 +117,8 @@ const PdServ::TaskStatistics *Session::getTaskStatistics (
 /////////////////////////////////////////////////////////////////////////////
 void Session::broadcast(Session *, const std::string &message)
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::SemaphoreLock lock(streamlock);
 
-    ostream::locked ls(xmlstream);
     ostream << message << std::flush;
 }
 
