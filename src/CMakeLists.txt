@@ -31,6 +31,7 @@ SET (CMAKE_CXX_FLAGS "-Wunused")
 
 SET (msrproto_src
     msrproto/StatSignal.cpp             msrproto/StatSignal.h
+    msrproto/Event.cpp                  msrproto/Event.h
     msrproto/TimeSignal.cpp             msrproto/TimeSignal.h
     msrproto/Subscription.cpp           msrproto/Subscription.h
     msrproto/SubscriptionManager.cpp    msrproto/SubscriptionManager.h
@@ -57,10 +58,10 @@ SET (main_src
     Variable.cpp        Variable.h
     DataType.cpp        DataType.h
     Signal.cpp          Signal.h
+    Event.cpp           Event.h
     Parameter.cpp       Parameter.h
     ProcessParameter.cpp ProcessParameter.h
     Debug.cpp           Debug.h
-    SessionTaskData.cpp SessionTaskData.h
     )
 
 FIND_PACKAGE (Log4Cpp REQUIRED)
@@ -109,7 +110,6 @@ IF (RT_APP AND NOT DISABLE_BUDDY)
         buddy/Task.cpp buddy/Task.h
         buddy/Main.cpp buddy/Main.h
         buddy/Parameter.cpp buddy/Parameter.h
-        buddy/SessionTaskData.cpp buddy/SessionTaskData.h
 
         "${ETL_DATA}" "${BUDDY_IOCTL}"
 
@@ -137,8 +137,8 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     lib/Task.cpp            lib/Task.h
     lib/Main.cpp            lib/Main.h
     lib/Signal.cpp          lib/Signal.h
+    lib/Event.cpp           lib/Event.h
     lib/Parameter.cpp       lib/Parameter.h
-    #lib/SessionShadow.cpp   lib/SessionShadow.h
     lib/SessionTaskData.cpp lib/SessionTaskData.h
 
     ${msrproto_src}
