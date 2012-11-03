@@ -21,43 +21,36 @@
  *
  *****************************************************************************/
 
-#ifndef SHMDATASTRUCTURES_H
-#define SHMDATASTRUCTURES_H
+#include <sstream>
+#include <libintl.h>
 
-#include <cstddef>
-#include <ctime>
+#include "Event.h"
+#include "XmlElement.h"
+#include "../Config.h"
 
-#include "../TaskStatistics.h"
+using namespace MsrProto;
 
-namespace PdServ {
-    class Event;
+/////////////////////////////////////////////////////////////////////////////
+Event::Event(const PdServ::Event *e, const PdServ::Config& config):
+    event(e), config(config)
+{
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// Data structures used in Task
-/////////////////////////////////////////////////////////////////////////////
-class Signal;
+void Event::toXml(ostream::locked& ls,
+        size_t index, bool state, const struct timespec& t) const
+{
+    XmlElement msg(config["level"].toString("debug").c_str(), ls);
 
-struct Pdo {
-    enum {Empty = 0, SignalList = 1008051969, Data = 1006101981} type;
-    unsigned int signalListId;
-    size_t count;
-    unsigned int seqNo;
-    struct timespec time;
-    struct PdServ::TaskStatistics taskStatistics;
-    struct Pdo *next;
-    union {
-        char data[];
-        size_t signal[];
-    };
-};
+    std::ostringstream indexStr;
+    indexStr << index + config["indexoffset"].toInt();
 
-/////////////////////////////////////////////////////////////////////////////
-struct EventData {
-    const PdServ::Event *event;
-    size_t index;
-    bool state;
-    timespec time;
-};
-
-#endif
+    XmlElement::Attribute(msg, "id") << event->id;
+    XmlElement::Attribute(msg, "index") << indexStr.str();
+    XmlElement::Attribute(msg, "state") << state;
+    XmlElement::Attribute(msg, "time") << t;
+    XmlElement::Attribute(msg, "path")
+        .setEscaped(config["subsystem"].toString().c_str());
+    XmlElement::Attribute(msg, "message")
+        .setEscaped(event->formatMessage(config, index).c_str());
+}

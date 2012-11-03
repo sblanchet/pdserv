@@ -30,9 +30,11 @@ using namespace PdServ;
 Session::Session(const Main *m): main(m)
 {
     main->gettime(&connectedTime);
+    main->prepare(this);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
+    main->cleanup(this);
 }

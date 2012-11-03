@@ -54,6 +54,7 @@ extern "C" {
 struct pdserv;
 struct pdtask;
 struct pdvariable;
+struct pdevent;
 
 /** Initialise pdserv library.
  *
@@ -163,6 +164,35 @@ struct pdvariable *pdserv_signal(
                                    * elements in @dim */
         const size_t *dim         /**< Dimensions. If NULL, consider the
                                    * parameter to be a vector of length @n */
+        );
+
+/** Callback on event clear
+ *
+ * This function is called when the caller wants to clear the event
+ */
+typedef void (*pdserv_event_clear_t)(
+        const struct pdevent* event,  /**< Pointer to event */
+        size_t elem,            /**< Element to be cleared */
+        char state,
+        void *priv_data         /**< private data */
+        );
+
+/** Register an event channel
+ *
+ */
+const struct pdevent *pdserv_event(
+        struct pdserv* pdserv,    /**< Pointer to pdserv structure */
+        int id,                   /**< Event Id */
+        size_t n,                 /**< Element count */
+        pdserv_event_clear_t clear, /**< Clear callback function */
+        void *priv_data           /**< Verbatim data passed to callback */
+        );
+
+void pdserv_event_set(
+        const struct pdevent *event,
+        size_t element,
+        char state,
+        const timespec *t
         );
 
 /** Callback on a parameter update event

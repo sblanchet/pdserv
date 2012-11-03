@@ -38,7 +38,9 @@ namespace PdServ {
 }
 
 class Parameter;
+class Session;
 class Signal;
+class Event;
 class Task;
 
 class Main: public PdServ::Main {
@@ -54,6 +56,10 @@ class Main: public PdServ::Main {
 
         Task* addTask(double sampleTime, const char *name);
         Task* getTask(size_t index) const;
+
+        Event* addEvent(int id, size_t nelem);
+        bool setEvent(const Event* event,
+                size_t element, bool state, const timespec* t) const;
 
         Parameter* addParameter( const char *path,
                 unsigned int mode, const PdServ::DataType& datatype,
@@ -79,11 +85,26 @@ class Main: public PdServ::Main {
         size_t shmem_len;
         void *shmem;
 
+        /* Pointer to event states in shmem */
+        struct EventData *eventData;
+
+        /* Structure where event changes are written to in shmem */
+        struct EventData **eventDataWp;   // Pointer to next write location
+        struct EventData *eventDataStart; // First valid block
+        struct EventData *eventDataEnd;   // Last valid block
+        mutable ost::Semaphore eventMutex;
+
         struct SDOStruct *sdo;
         mutable ost::Semaphore sdoMutex;
         char *sdoData;
 
         int (* const rttime)(struct timespec*);
+
+        typedef std::list<Event*> EventList;
+        EventList events;
+
+        typedef std::set<int> EventSet;
+        EventSet eventSet;
 
         typedef std::set<std::string> VariableSet;
         VariableSet variableSet;
@@ -97,6 +118,12 @@ class Main: public PdServ::Main {
                 const PdServ::Signal * const *s, size_t nelem,
                 void * const *pollDest, struct timespec *t) const;
         int gettime(struct timespec *) const;
+        PdServ::Main::Events getEvents() const;
+        void prepare(PdServ::Session *session) const;
+        void cleanup(const PdServ::Session *session) const;
+        bool getNextEvent( const PdServ::Session* session,
+                const PdServ::Event **event, size_t *index,
+                bool *state, struct timespec *t) const;
 };
 
 #endif // LIB_MAIN_H

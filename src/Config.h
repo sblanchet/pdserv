@@ -51,7 +51,7 @@ class Config {
         int             toInt() const;
         unsigned int    toUInt() const;
         double          toDouble() const;
-        std::string     toString() const;
+        std::string     toString(const std::string& s = std::string()) const;
 
     protected:
         Config(yaml_document_t *document, yaml_node_t *node);

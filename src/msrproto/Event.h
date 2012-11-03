@@ -21,43 +21,34 @@
  *
  *****************************************************************************/
 
-#ifndef SHMDATASTRUCTURES_H
-#define SHMDATASTRUCTURES_H
+#ifndef MSREVENT_H
+#define MSREVENT_H
 
-#include <cstddef>
-#include <ctime>
+#include "Channel.h"
+#include "OStream.h"
+#include "../Config.h"
+#include "../Signal.h"
+#include "../Event.h"
 
-#include "../TaskStatistics.h"
+namespace MsrProto {
 
-namespace PdServ {
-    class Event;
+class Event {
+    public:
+        Event(const PdServ::Event *s, const PdServ::Config& config);
+
+        const PdServ::Event *event;
+        void toXml(ostream::locked& ls,
+                size_t index, bool state, const struct timespec& t) const;
+
+    private:
+        const PdServ::Config config;
+
+//        const std::string severity;
+//        const std::string path;
+//        const std::string message;
+//        const size_t indexOffset;
+};
+
 }
 
-/////////////////////////////////////////////////////////////////////////////
-// Data structures used in Task
-/////////////////////////////////////////////////////////////////////////////
-class Signal;
-
-struct Pdo {
-    enum {Empty = 0, SignalList = 1008051969, Data = 1006101981} type;
-    unsigned int signalListId;
-    size_t count;
-    unsigned int seqNo;
-    struct timespec time;
-    struct PdServ::TaskStatistics taskStatistics;
-    struct Pdo *next;
-    union {
-        char data[];
-        size_t signal[];
-    };
-};
-
-/////////////////////////////////////////////////////////////////////////////
-struct EventData {
-    const PdServ::Event *event;
-    size_t index;
-    bool state;
-    timespec time;
-};
-
-#endif
+#endif //MSREVENT_H

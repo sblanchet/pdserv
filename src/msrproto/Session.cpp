@@ -39,6 +39,7 @@
 
 #include "Session.h"
 #include "Server.h"
+#include "Event.h"
 #include "Channel.h"
 #include "Parameter.h"
 #include "XmlElement.h"
@@ -232,6 +233,16 @@ void Session::run()
             }
 
             aic.clear();
+        }
+
+        const PdServ::Event* mainEvent;
+        bool state;
+        struct timespec t;
+        size_t index;
+        while (main->getNextEvent(this, &mainEvent, &index, &state, &t)) {
+            ostream::locked ls(xmlstream);
+            server->getEvents()[mainEvent->index]
+                ->toXml(ls, index, state, t);
         }
     }
 }

@@ -2,7 +2,8 @@
  *
  *  $Id$
  *
- *  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
+ *  Copyright 2010 - 2012  Richard Hacker (lerichi at gmx dot net)
+ *                         Florian Pose <fp@igh-essen.com>
  *
  *  This file is part of the pdserv library.
  *
@@ -21,30 +22,12 @@
  *
  *****************************************************************************/
 
-#ifndef SESSION_H
-#define SESSION_H
+#include "../Debug.h"
+#include "SessionData.h"
+#include "ShmemDataStructures.h"
+#include "Event.h"
 
-#include <ctime>
-
-struct SessionData;
-
-namespace PdServ {
-
-class Main;
-
-class Session {
-    public:
-        Session(const Main *main);
-        virtual ~Session();
-
-        const Main * const main;
-
-        // opague pointer used by the server
-        SessionData *data;
-
-    protected:
-        struct timespec connectedTime;
-};
-
+////////////////////////////////////////////////////////////////////////////
+SessionData::SessionData (EventData* rp): readPointer(rp)
+{
 }
-#endif //SESSION_H

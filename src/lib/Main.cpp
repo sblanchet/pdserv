@@ -45,13 +45,16 @@
 #include <log4cpp/OstreamAppender.hh>
 #include <log4cpp/PropertyConfigurator.hh>
 
+#include "pdserv.h"
 #include "Main.h"
-#include "../DataType.h"
 #include "Task.h"
 #include "Parameter.h"
+#include "Event.h"
 #include "Pointer.h"
+#include "ShmemDataStructures.h"
+#include "../Session.h"
+#include "../DataType.h"
 #include "../Config.h"
-#include "pdserv.h"
 
 /////////////////////////////////////////////////////////////////////////////
 struct SDOStruct {
@@ -62,6 +65,10 @@ struct SDOStruct {
     struct timespec time;
 };
 
+struct SessionData {
+    struct EventData* eventReadPointer;
+};
+
 /////////////////////////////////////////////////////////////////////////////
 const double Main::bufferTime = 2.0;
 
@@ -69,7 +76,7 @@ const double Main::bufferTime = 2.0;
 Main::Main( const char *name, const char *version,
         int (*gettime)(struct timespec*)):
     PdServ::Main(name, version),
-    mutex(1), sdoMutex(1),
+    mutex(1), eventMutex(1), sdoMutex(1),
     rttime(gettime ? gettime : &PdServ::Main::localtime)
 {
     shmem_len = 0;
@@ -120,6 +127,19 @@ int Main::gettime(struct timespec* t) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+Event* Main::addEvent (int id, size_t nelem)
+{
+    if (eventSet.find(id) != eventSet.end())
+        return 0;
+
+    Event *e = new Event(this, events.size(), id, nelem);
+    eventSet.insert(id);
+    events.push_back(e);
+
+    return e;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 Parameter* Main::addParameter( const char *path,
         unsigned int mode, const PdServ::DataType& datatype,
         void *addr, size_t n, const size_t *dim)
@@ -148,6 +168,30 @@ Signal* Main::addSignal( Task *task, unsigned int decimation,
     variableSet.insert(path);
 
     return s;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Main::setEvent(const Event* event,
+        size_t element, bool state, const timespec *t) const
+{
+    ost::SemaphoreLock lock(eventMutex);
+    struct EventData *eventData = event->data + element;
+
+    if (eventData->state == state)
+        return false;
+
+    eventData->state = state;
+    eventData->time = *t;
+
+    **eventDataWp = *eventData;
+
+    // eventDataEnd points to the last valid memory location
+    if (*eventDataWp != eventDataEnd)
+        ++*eventDataWp;
+    else
+        *eventDataWp = eventDataStart;
+
+    return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -204,7 +248,7 @@ int Main::run()
 {
     size_t numTasks = task.size();
     size_t taskMemSize[numTasks];
-    size_t i;
+    size_t i, eventCount;
 
     // The following two variables are used to organize parameters according
     // to the size of their elements so that their data type alignment is
@@ -245,6 +289,17 @@ int Main::run()
     // and as many sdo's for every parameter.
     shmem_len += sizeof(*sdo) * (parameters.size() + 1)
         + parameterDataOffset[4];
+
+    // Now check how much memory is required for events
+    eventCount = 0;
+    for (EventList::iterator it = events.begin(); it != events.end(); ++it) {
+        eventCount += (*it)->nelem;     
+    }
+    shmem_len +=
+        sizeof(*eventData) * eventCount
+        + sizeof(*eventDataStart) * 2 * eventCount;
+
+    shmem_len += sizeof(*eventDataWp);  // Memory location for write pointer
 
     // Find out the memory requirement for the tasks to pipe their variables
     // out of the real time environment
@@ -292,6 +347,22 @@ int Main::run()
         static_cast<Task*>(*it)->prepare(buf, buf + taskMemSize[i]);
         buf += taskMemSize[i++];
     }
+
+    eventData      = ptr_align<struct EventData>(buf);
+    eventDataStart = ptr_align<struct EventData>(eventData + eventCount);
+    eventDataEnd   = eventDataStart + 2*eventCount - 1;
+    eventDataWp    = ptr_align<struct EventData*>(eventDataEnd + 1);
+    *eventDataWp   = eventDataStart;
+
+    i = 0;
+    for (EventList::iterator it = events.begin(); it != events.end(); ++it) {
+        (*it)->data = eventData + i;
+        for(size_t j = 0; j < (*it)->nelem; ++j, ++i) {
+            eventData[i].event = *it;
+            eventData[i].index = j;
+        }
+    }
+//    log_debug("%zu %p %p %zu", eventCount, eventDataWp+1, (char*)shmem + shmem_len, shmem_len);
 
     return daemonize();
 }
@@ -445,6 +516,47 @@ int Main::daemonize()
         pause();
     }
     return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+PdServ::Main::Events Main::getEvents() const
+{
+    return Events(events.begin(), events.end());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::prepare(PdServ::Session *session) const
+{
+    session->data = new SessionData;
+    session->data->eventReadPointer = *eventDataWp;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::cleanup(const PdServ::Session *session) const
+{
+    delete session->data;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Main::getNextEvent( const PdServ::Session* session,
+        const PdServ::Event **event, size_t *index,
+        bool *state, struct timespec *t) const
+{
+    const EventData* eventData = session->data->eventReadPointer;
+    if (eventData == *eventDataWp)
+        return false;
+
+    *event = eventData->event;
+    *index = eventData->index;
+    *state = eventData->state;
+    *t = eventData->time;
+
+    if (eventData == eventDataEnd)
+        session->data->eventReadPointer = eventDataStart;
+    else
+        ++session->data->eventReadPointer;
+
+    return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////

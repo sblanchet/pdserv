@@ -21,43 +21,43 @@
  *
  *****************************************************************************/
 
-#ifndef SHMDATASTRUCTURES_H
-#define SHMDATASTRUCTURES_H
+#include "Event.h"
+#include "Config.h"
 
-#include <cstddef>
-#include <ctime>
+#include <sstream>
 
-#include "../TaskStatistics.h"
+using namespace PdServ;
 
-namespace PdServ {
-    class Event;
+//////////////////////////////////////////////////////////////////////
+Event::Event(size_t idx, int id, size_t nelem):
+    index(idx),
+    id(id),
+    nelem(nelem)
+{
 }
 
-/////////////////////////////////////////////////////////////////////////////
-// Data structures used in Task
-/////////////////////////////////////////////////////////////////////////////
-class Signal;
+//////////////////////////////////////////////////////////////////////
+Event::~Event()
+{
+}
 
-struct Pdo {
-    enum {Empty = 0, SignalList = 1008051969, Data = 1006101981} type;
-    unsigned int signalListId;
-    size_t count;
-    unsigned int seqNo;
-    struct timespec time;
-    struct PdServ::TaskStatistics taskStatistics;
-    struct Pdo *next;
-    union {
-        char data[];
-        size_t signal[];
-    };
-};
+//////////////////////////////////////////////////////////////////////
+std::string Event::formatMessage(const Config& config, size_t index) const
+{
+    std::ostringstream os;
+    os << index;
+    std::string text =
+        config["indexmapping"][os.str()].toString();
+    if (text.empty()) {
+        std::ostringstream os;
+        os << index + config["indexoffset"].toInt();
+        text = os.str();
+    }
 
-/////////////////////////////////////////////////////////////////////////////
-struct EventData {
-    const PdServ::Event *event;
-    size_t index;
-    bool state;
-    timespec time;
-};
+    std::string message = config["message"].toString().c_str();
+    size_t i = message.find("%m");
+    if (i != message.npos)
+        message.replace(i, 2, text);
 
-#endif
+    return message;
+}

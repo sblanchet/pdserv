@@ -153,10 +153,10 @@ Config Config::operator[](size_t index) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::string Config::toString() const
+std::string Config::toString(const std::string& defaultString) const
 {
     if (!node or node->type != YAML_SCALAR_NODE)
-        return std::string();
+        return defaultString;
 
     return std::string((char*)node->data.scalar.value, node->data.scalar.length);
 }

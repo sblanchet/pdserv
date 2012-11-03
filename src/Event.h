@@ -21,43 +21,34 @@
  *
  *****************************************************************************/
 
-#ifndef SHMDATASTRUCTURES_H
-#define SHMDATASTRUCTURES_H
+#ifndef EVENT_H
+#define EVENT_H
 
-#include <cstddef>
-#include <ctime>
-
-#include "../TaskStatistics.h"
+#include <string>
 
 namespace PdServ {
-    class Event;
+
+class Session;
+class SessionTask;
+class Config;
+
+class Event {
+    public:
+        Event(size_t index, int id, size_t nelem);
+
+        ~Event();
+
+        const size_t index;
+
+        const int id;
+        const size_t nelem;
+
+        std::string formatMessage(const Config& config, size_t index) const;
+//        void set(int level, size_t element, const timespec *t) const;
+
+    private:
+};
+
 }
 
-/////////////////////////////////////////////////////////////////////////////
-// Data structures used in Task
-/////////////////////////////////////////////////////////////////////////////
-class Signal;
-
-struct Pdo {
-    enum {Empty = 0, SignalList = 1008051969, Data = 1006101981} type;
-    unsigned int signalListId;
-    size_t count;
-    unsigned int seqNo;
-    struct timespec time;
-    struct PdServ::TaskStatistics taskStatistics;
-    struct Pdo *next;
-    union {
-        char data[];
-        size_t signal[];
-    };
-};
-
-/////////////////////////////////////////////////////////////////////////////
-struct EventData {
-    const PdServ::Event *event;
-    size_t index;
-    bool state;
-    timespec time;
-};
-
-#endif
+#endif //EVENT_H

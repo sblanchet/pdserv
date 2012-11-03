@@ -21,43 +21,20 @@
  *
  *****************************************************************************/
 
-#ifndef SHMDATASTRUCTURES_H
-#define SHMDATASTRUCTURES_H
-
-#include <cstddef>
-#include <ctime>
-
-#include "../TaskStatistics.h"
+#ifndef LIBSESSIONDATA_H
+#define LIBSESSIONDATA_H
 
 namespace PdServ {
-    class Event;
 }
 
-/////////////////////////////////////////////////////////////////////////////
-// Data structures used in Task
-/////////////////////////////////////////////////////////////////////////////
-class Signal;
+struct EventData;
 
-struct Pdo {
-    enum {Empty = 0, SignalList = 1008051969, Data = 1006101981} type;
-    unsigned int signalListId;
-    size_t count;
-    unsigned int seqNo;
-    struct timespec time;
-    struct PdServ::TaskStatistics taskStatistics;
-    struct Pdo *next;
-    union {
-        char data[];
-        size_t signal[];
-    };
+class SessionData {
+    public:
+        SessionData(EventData* writePointer);
+
+    private:
+        EventData* readPointer;
 };
 
-/////////////////////////////////////////////////////////////////////////////
-struct EventData {
-    const PdServ::Event *event;
-    size_t index;
-    bool state;
-    timespec time;
-};
-
-#endif
+#endif //LIBSESSIONDATA_H

@@ -23,6 +23,7 @@
 
 #include "Server.h"
 #include "Channel.h"
+#include "Event.h"
 #include "TimeSignal.h"
 #include "StatSignal.h"
 #include "Parameter.h"
@@ -45,82 +46,105 @@ Server::Server(const PdServ::Main *main,
         const PdServ::Config& defaultConfig, const PdServ::Config &config):
     main(main),
     log(log4cpp::Category::getInstance(main->name)),
-    port(config["port"].toUInt()),
     mutex(1)
 {
-    traditional = config["traditional"]
-        ? config["traditional"].toUInt()
+    const PdServ::Config msrConfig = config["msr"];
+
+    port = msrConfig["port"].toUInt();
+    traditional = msrConfig["traditional"]
+        ? msrConfig["traditional"].toUInt()
         : defaultConfig["traditional"].toUInt();
 
     log_debug("port=%u", port);
 
-    const PdServ::Task *primaryTask;
-
     DirectoryNode* baseDir = this;
-    if (traditional and config["modelnameprefix"].toUInt())
-        baseDir =
-            create(config["name"] ? config["name"].toString() : main->name);
+    if (traditional and msrConfig["modelnameprefix"].toUInt())
+        baseDir = create(config["name"].toString(main->name));
 
-    for (size_t i = 0; i < main->numTasks(); ++i) {
-        const PdServ::Task *task = main->getTask(i);
-        Channel* c;
+    for (size_t i = 0; i < main->numTasks(); ++i)
+        createChannels(baseDir, i);
 
-        if (!i or primaryTask->sampleTime > task->sampleTime)
-            primaryTask = task;
+    createParameters(baseDir);
+    createEvents(config["events"]);
 
-        const PdServ::Task::Signals& signals = task->getSignals();
+    start();
+}
 
-        // Reserve at least signal count and additionally 4 Taskinfo signals
-        channels.reserve(channels.size() + signals.size() + 4);
+/////////////////////////////////////////////////////////////////////////////
+void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
+{
+    const PdServ::Task *task = main->getTask(taskIdx);
+    Channel* c;
 
-        for (PdServ::Task::Signals::const_iterator it = signals.begin();
-                it != signals.end(); it++) {
-            c = new Channel(*it,
-                    channels.size(), (*it)->dtype, (*it)->dim, 0, 0);
+    const PdServ::Task::Signals& signals = task->getSignals();
 
-//            log_debug("new channel %p %s", c, (*it)->path.c_str());
-            char hidden;
-            if (traditional)
-                baseDir->traditionalPathInsert(c, (*it)->path, hidden);
-            else
-                baseDir->pathInsert(c, (*it)->path);
+    // Reserve at least signal count and additionally 4 Taskinfo signals
+    channels.reserve(channels.size() + signals.size() + 4);
 
-            c->hidden = hidden == 'c' or hidden == 'k' or hidden == 1;
+    for (PdServ::Task::Signals::const_iterator it = signals.begin();
+            it != signals.end(); it++) {
+        c = new Channel(*it,
+                channels.size(), (*it)->dtype, (*it)->dim, 0, 0);
 
-            channels.push_back(c);
-//            log_debug("new channel %p %s %s",
-//                    c, c->path().c_str(), (*it)->path.c_str());
+        char hidden;
+        if (traditional)
+            baseDir->traditionalPathInsert(c, (*it)->path, hidden);
+        else
+            baseDir->pathInsert(c, (*it)->path);
 
-            if (traditional)
-                createChildren(c);
-        }
+        c->hidden = hidden == 'c' or hidden == 'k' or hidden == 1;
 
-        DirectoryNode* taskInfo = create("Taskinfo");
-
-        std::ostringstream os;
-        os << i;
-        DirectoryNode* t = taskInfo->create(os.str());
-
-        c = new TimeSignal(task, channels.size());
         channels.push_back(c);
-        t->insert(c, "TaskTime");
 
-        c = new StatSignal(task, StatSignal::ExecTime, channels.size());
-        channels.push_back(c);
-        t->insert(c, "ExecTime");
-
-        c = new StatSignal(task, StatSignal::Period, channels.size());
-        channels.push_back(c);
-        t->insert(c, "Period");
-
-        c = new StatSignal(task, StatSignal::Overrun, channels.size());
-        channels.push_back(c);
-        t->insert(c, "Overrun");
+        if (traditional)
+            createChildren(c);
     }
 
-//    if (!root.find<Channel>("/Time"))
-//        root.insert(new TimeSignal(primaryTask, "/Time"));
+    DirectoryNode* taskInfo = create("Taskinfo");
 
+    std::ostringstream os;
+    os << taskIdx;
+    DirectoryNode* t = taskInfo->create(os.str());
+
+    c = new TimeSignal(task, channels.size());
+    channels.push_back(c);
+    t->insert(c, "TaskTime");
+
+    c = new StatSignal(task, StatSignal::ExecTime, channels.size());
+    channels.push_back(c);
+    t->insert(c, "ExecTime");
+
+    c = new StatSignal(task, StatSignal::Period, channels.size());
+    channels.push_back(c);
+    t->insert(c, "Period");
+
+    c = new StatSignal(task, StatSignal::Overrun, channels.size());
+    channels.push_back(c);
+    t->insert(c, "Overrun");
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Server::createEvents (const PdServ::Config& config)
+{
+    const PdServ::Main::Events mainEvents = main->getEvents();
+    this->events.reserve(mainEvents.size());
+    for (PdServ::Main::Events::const_iterator it = mainEvents.begin();
+            it != mainEvents.end(); ++it) {
+
+        // Create a name for the event
+        std::ostringstream id;
+        id << (*it)->id;
+
+        const PdServ::Config eventConfig = config[id.str()];
+
+        Event* e = new Event(*it, eventConfig);
+        this->events.push_back(e);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Server::createParameters(DirectoryNode* baseDir)
+{
     const PdServ::Main::ProcessParameters& mainParam = main->getParameters();
 
     parameters.reserve(parameters.size() + mainParam.size());
@@ -148,7 +172,6 @@ Server::Server(const PdServ::Main *main,
 //    if (!root.find<Parameter>("/Taskinfo/Abtastfrequenz")) {
 //    }
 
-    start();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -199,7 +222,6 @@ void Server::run()
             ndc = log4cpp::NDC::cloneStack();
             Session *s = new Session(this, server, ndc);
             sessions.insert(s);
-            s->start();
         }
         catch (ost::Socket *s) {
             log.crit("Socket failure: %s", ::strerror(s->getSystemError()));
@@ -302,6 +324,12 @@ const Server::Parameters& Server::getParameters() const
 const Parameter *Server::find( const PdServ::Parameter *p) const
 {
     return parameterMap.find(p)->second;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Server::Events& Server::getEvents() const
+{
+    return events;
 }
 
 /////////////////////////////////////////////////////////////////////////////

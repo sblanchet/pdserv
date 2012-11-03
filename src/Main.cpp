@@ -109,7 +109,7 @@ const Main::ProcessParameters& Main::getParameters() const
 void Main::startServers(const Config& config)
 {
     msrproto = new MsrProto::Server(this,
-            config["defaults"]["msr"], config[name]["msr"]);
+            config["defaults"]["msr"], config[name]);
 
 //    EtlProto::Server etlproto(this);
 

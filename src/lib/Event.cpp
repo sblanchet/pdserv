@@ -21,43 +21,30 @@
  *
  *****************************************************************************/
 
-#ifndef SHMDATASTRUCTURES_H
-#define SHMDATASTRUCTURES_H
+#include "../Debug.h"
 
-#include <cstddef>
-#include <ctime>
+#include "Event.h"
+#include "Main.h"
 
-#include "../TaskStatistics.h"
-
-namespace PdServ {
-    class Event;
+//////////////////////////////////////////////////////////////////////
+Event::Event( Main *main, size_t idx, int id, size_t nelem):
+    PdServ::Event(idx, id, nelem),
+    main(main)
+{
+    setClear(0, 0);
 }
 
-/////////////////////////////////////////////////////////////////////////////
-// Data structures used in Task
-/////////////////////////////////////////////////////////////////////////////
-class Signal;
+//////////////////////////////////////////////////////////////////////
+void Event::setClear(pdserv_event_clear_t clear, void *priv_data)
+{
+    this->clear_func = clear;
+    this->priv_data = priv_data;
+}
 
-struct Pdo {
-    enum {Empty = 0, SignalList = 1008051969, Data = 1006101981} type;
-    unsigned int signalListId;
-    size_t count;
-    unsigned int seqNo;
-    struct timespec time;
-    struct PdServ::TaskStatistics taskStatistics;
-    struct Pdo *next;
-    union {
-        char data[];
-        size_t signal[];
-    };
-};
-
-/////////////////////////////////////////////////////////////////////////////
-struct EventData {
-    const PdServ::Event *event;
-    size_t index;
-    bool state;
-    timespec time;
-};
-
-#endif
+//////////////////////////////////////////////////////////////////////
+void Event::set(size_t elem, bool state, const timespec *t) const
+{
+    if (main->setEvent(this, elem, state, t) and clear_func)
+        (*clear_func)(reinterpret_cast<const struct pdevent*>(this),
+                elem, state, priv_data);
+}

@@ -21,12 +21,30 @@
  *
  *****************************************************************************/
 
-#include "SessionTaskData.h"
+#ifndef LIB_EVENT
+#define LIB_EVENT
 
-using namespace PdServ;
+#include "../Event.h"
+#include "pdserv.h"
 
-/////////////////////////////////////////////////////////////////////////////
-SessionTaskData::SessionTaskData(Session *s, const Task *t):
-    session(s), task(t)
-{
-}
+class Main;
+struct timespec;
+
+class Event: public PdServ::Event {
+    public:
+        Event( Main *main, size_t idx, int id, size_t nelem);
+
+        const Main * const main;
+
+        struct EventData *data;
+
+        void setClear(pdserv_event_clear_t clear, void *priv_data);
+        void set(size_t element, bool state, const timespec *t) const;
+
+    private:
+
+        pdserv_event_clear_t clear_func;
+        void *priv_data;
+};
+
+#endif //LIB_EVENT

@@ -43,6 +43,7 @@ namespace MsrProto {
 namespace PdServ {
 
 class Signal;
+class Event;
 class ProcessParameter;
 class Task;
 class Session;
@@ -78,6 +79,15 @@ class Main {
         // Poll the current value of a list of signals
         void poll( Session *session, const Signal * const *s,
                 size_t nelem, void *buf, struct timespec *t) const;
+
+        typedef std::vector<const Event*> Events;
+        virtual Events getEvents() const = 0;
+
+        virtual void prepare(Session *session) const = 0;
+        virtual void cleanup(const Session *session) const = 0;
+        virtual bool getNextEvent(const Session* session,
+                const Event **event, size_t *index,
+                bool *state, struct timespec *t) const = 0;
 
     protected:
 

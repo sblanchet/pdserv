@@ -39,12 +39,14 @@ namespace log4cpp {
 
 namespace PdServ {
     class Main;
+    class Task;
     class Parameter;
 }
 
 namespace MsrProto {
 
 class Session;
+class Event;
 
 class Server: public DirectoryNode, public ost::Thread {
     public:
@@ -68,6 +70,7 @@ class Server: public DirectoryNode, public ost::Thread {
 
         typedef std::vector<const Channel*> Channels;
         typedef std::vector<const Parameter*> Parameters;
+        typedef std::vector<const Event*> Events;
 
         const Channels& getChannels() const;
         const Channel * getChannel(size_t) const;
@@ -76,6 +79,8 @@ class Server: public DirectoryNode, public ost::Thread {
         const Parameter * getParameter(size_t) const;
         const Parameter * find(const PdServ::Parameter *p) const;
 
+        const Events& getEvents() const;
+
         template <typename T>
             const T * find(const std::string& path) const;
 
@@ -83,6 +88,8 @@ class Server: public DirectoryNode, public ost::Thread {
         std::set<Session*> sessions;
         int port;
         bool traditional;
+
+        Events events;
 
         Channels channels;
         Parameters parameters;
@@ -96,6 +103,10 @@ class Server: public DirectoryNode, public ost::Thread {
         void initial();
         void run();
         void final();
+
+        void createChannels(DirectoryNode* baseDir, size_t taskNum);
+        void createParameters(DirectoryNode* baseDir);
+        void createEvents(const PdServ::Config& config);
 
         void createChildren(Variable* var);
         DirectoryNode* createChild(Variable* var,

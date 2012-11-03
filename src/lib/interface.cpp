@@ -24,6 +24,7 @@
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
+#include "Event.h"
 #include "Parameter.h"
 #include "../DataType.h"
 #include "pdserv.h"
@@ -120,6 +121,27 @@ static const PdServ::DataType& getDataType(int dt)
         default:
                            return *compoundType[dt - pd_datatype_end];
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const struct pdevent *pdserv_event (struct pdserv* pdserv, int id,
+        size_t n, pdserv_event_clear_t clear_func, void *priv_data)
+{
+    Main *main = reinterpret_cast<Main*>(pdserv);
+
+    Event *e = main->addEvent(id, n);
+
+    if (clear_func)
+        e->setClear(clear_func, priv_data);
+
+    return reinterpret_cast<const struct pdevent *>(e);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void pdserv_event_set(const struct pdevent *event,
+        size_t element, char state, const timespec *t)
+{
+    reinterpret_cast<const Event*>(event)->set(element, state != 0, t);
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -61,6 +61,12 @@ int gettime(struct timespec *t)
     return clock_gettime(CLOCK_REALTIME, t);
 }
 
+void clear_event(const struct pdevent* event, size_t index,
+        char state, void *priv_data)
+{
+    printf("%s", __func__);
+}
+
 int main(int argc, const char *argv[])
 {
     const char *name = strrchr(argv[0], '/');
@@ -73,6 +79,7 @@ int main(int argc, const char *argv[])
     double tick = 10;
     uint32_t param[] = {1,2,3,4};
     struct pdtask *task[3];
+    const struct pdevent *event;
 
     struct s1 s1 = {{1,2,3,4,5}, 'a'};
     struct s2 s2[2] = {
@@ -112,6 +119,8 @@ int main(int argc, const char *argv[])
 
     assert(pdserv_signal(task[0], 1, "/s1", s1_t, &s1, 1, NULL));
     assert(pdserv_signal(task[0], 1, "/s2", s2_t, s2, 2, NULL));
+
+    event = pdserv_event(pdserv,23,5,clear_event, 0);
 
     assert(pdserv_signal(task[0], 1, "/path<lksjdf/to>ljk/double",
             pd_double_T, dbl, 3, NULL));
@@ -155,6 +164,11 @@ int main(int argc, const char *argv[])
         dbltime = time.tv_sec + time.tv_nsec * 1.0e-9;
         pdserv_update_statistics(task[0], 10, 20, 30);
         pdserv_update(task[0], &time);
+
+        if (!(i%30)) {
+            pdserv_event_set(event, 2, 1, &time);
+            printf("sett event\n");
+        }
     }
 
     pdserv_exit(pdserv);

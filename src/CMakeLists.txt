@@ -140,6 +140,7 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     lib/Event.cpp           lib/Event.h
     lib/Parameter.cpp       lib/Parameter.h
     lib/SessionTaskData.cpp lib/SessionTaskData.h
+    lib/SessionData.cpp     lib/SessionData.h
 
     ${msrproto_src}
     ${main_src}
