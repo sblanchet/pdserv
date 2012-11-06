@@ -26,8 +26,7 @@
 #include <iostream>
 #include "EventQ.h"
 #include "Event.h"
-#include "Signal.h"
-#include <app_taskstats.h>
+//#include <app_taskstats.h>
 #include <fio_ioctl.h>
 
 /////////////////////////////////////////////////////////////////////////////
