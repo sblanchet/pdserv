@@ -36,6 +36,7 @@
 #include "Config.h"
 //#include "etlproto/Server.h"
 #include "msrproto/Server.h"
+#include "supervisor/Server.h"
 
 using namespace PdServ;
 
@@ -46,6 +47,7 @@ Main::Main(const std::string& name, const std::string& version):
                 std::string(name).append(".parameter").c_str()))
 {
     msrproto = 0;
+    supervisor = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -54,6 +56,9 @@ Main::~Main()
     for (ProcessParameters::iterator it = parameters.begin();
             it != parameters.end(); ++it)
         delete *it;
+
+    delete msrproto;
+    delete supervisor;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -108,6 +113,9 @@ const Main::ProcessParameters& Main::getParameters() const
 /////////////////////////////////////////////////////////////////////////////
 void Main::startServers(const Config& config)
 {
+    supervisor = new Supervisor::Server(this,
+            config["defaults"], config[name]);
+
     msrproto = new MsrProto::Server(this,
             config["defaults"]["msr"], config[name]);
 

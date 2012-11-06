@@ -40,6 +40,10 @@ namespace MsrProto {
     class Server;
 }
 
+namespace Supervisor {
+    class Server;
+}
+
 namespace PdServ {
 
 class Signal;
@@ -110,6 +114,7 @@ class Main {
         log4cpp::Category &parameterLog;
 
         MsrProto::Server *msrproto;
+        Supervisor::Server *supervisor;
 //        EtlProto::Server etlproto(this);
 
 };

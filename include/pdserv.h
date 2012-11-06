@@ -180,9 +180,26 @@ typedef void (*pdserv_event_clear_t)(
 /** Register an event channel
  *
  */
+#define EMERG_EVENT     0
+#define ALERT_EVENT     1
+#define CRIT_EVENT      2
+#define ERROR_EVENT     3
+#define WARN_EVENT      4
+#define NOTICE_EVENT    5
+#define INFO_EVENT      6
+#define DEBUG_EVENT     7
 const struct pdevent *pdserv_event(
         struct pdserv* pdserv,  /**< Pointer to pdserv structure */
         int id,                 /**< Event Id */
+        int priority,           /**< 0 = Emergency
+                                 *   1 = Alert
+                                 *   2 = Critical
+                                 *   3 = Error
+                                 *   4 = Warning
+                                 *   5 = Notice
+                                 *   6 = Info
+                                 *   7 = Debug
+                                 */
         size_t n,               /**< Element count */
         pdserv_event_clear_t clear, /**< Clear callback function */
         void *priv_data,        /**< Verbatim data passed to callback */

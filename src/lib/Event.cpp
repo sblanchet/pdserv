@@ -27,8 +27,9 @@
 #include "Main.h"
 
 //////////////////////////////////////////////////////////////////////
-Event::Event( Main *main, size_t idx, int id, size_t nelem):
-    PdServ::Event(idx, id, nelem),
+Event::Event( Main *main, size_t idx,
+        const PdServ::Event::Priority& prio, int id, size_t nelem):
+    PdServ::Event(idx, prio, id, nelem),
     main(main)
 {
     setClear(0, 0);

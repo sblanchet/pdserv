@@ -57,7 +57,7 @@ class Main: public PdServ::Main {
         Task* addTask(double sampleTime, const char *name);
         Task* getTask(size_t index) const;
 
-        Event* addEvent(int id, size_t nelem);
+        Event* addEvent(int id, int prio, size_t nelem);
         bool setEvent(const Event* event,
                 size_t element, bool state, const timespec* t) const;
 

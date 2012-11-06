@@ -125,12 +125,12 @@ static const PdServ::DataType& getDataType(int dt)
 
 /////////////////////////////////////////////////////////////////////////////
 const struct pdevent *pdserv_event (struct pdserv* pdserv, int id,
-        size_t n, pdserv_event_clear_t clear_func, void *priv_data,
+        int prio, size_t n, pdserv_event_clear_t clear_func, void *priv_data,
         const char *message, int index_offset, const char **index_mapping)
 {
     Main *main = reinterpret_cast<Main*>(pdserv);
 
-    Event *e = main->addEvent(id, n);
+    Event *e = main->addEvent(id, prio, n);
 
     if (clear_func)
         e->setClear(clear_func, priv_data);

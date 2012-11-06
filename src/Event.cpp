@@ -29,8 +29,9 @@
 using namespace PdServ;
 
 ////////////////////////////////////////////////////////////////////////////
-Event::Event(size_t idx, int id, size_t nelem):
+Event::Event(size_t idx, const Priority& prio, int id, size_t nelem):
     index(idx),
+    priority(prio),
     id(id),
     nelem(nelem)
 {

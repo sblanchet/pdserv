@@ -127,12 +127,25 @@ int Main::gettime(struct timespec* t) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Event* Main::addEvent (int id, size_t nelem)
+Event* Main::addEvent (int id, int prio, size_t nelem)
 {
     if (eventSet.find(id) != eventSet.end())
         return 0;
 
-    Event *e = new Event(this, events.size(), id, nelem);
+    PdServ::Event::Priority eventPrio;
+    switch (prio) {
+        case 1: eventPrio = PdServ::Event::Alert;       break;
+        case 2: eventPrio = PdServ::Event::Critical;    break;
+        case 3: eventPrio = PdServ::Event::Error;       break;
+        case 4: eventPrio = PdServ::Event::Warning;     break;
+        case 5: eventPrio = PdServ::Event::Notice;      break;
+        case 6: eventPrio = PdServ::Event::Info;        break;
+        default:
+            eventPrio = prio <= 0
+                ? PdServ::Event::Emergency
+                : PdServ::Event::Debug;
+    }
+    Event *e = new Event(this, events.size(), eventPrio, id, nelem);
     eventSet.insert(id);
     events.push_back(e);
 

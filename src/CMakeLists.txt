@@ -62,6 +62,8 @@ SET (main_src
     Parameter.cpp       Parameter.h
     ProcessParameter.cpp ProcessParameter.h
     Debug.cpp           Debug.h
+
+    supervisor/Server.cpp         supervisor/Server.h
     )
 
 FIND_PACKAGE (Log4Cpp REQUIRED)

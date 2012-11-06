@@ -21,53 +21,44 @@
  *
  *****************************************************************************/
 
-#ifndef EVENT_H
-#define EVENT_H
+#ifndef SUPERVISOR_SERVER_H
+#define SUPERVISOR_SERVER_H
 
-#include <string>
-#include <map>
+#include <cc++/thread.h>
+
+#include "../Config.h"
+#include "../Session.h"
+
+namespace log4cpp {
+    class Category;
+}
 
 namespace PdServ {
+    class Main;
+    class Config;
+}
+
+namespace Supervisor {
 
 class Session;
-class SessionTask;
-class Config;
+class Event;
 
-class Event {
+class Server: public ost::Thread, private PdServ::Session {
     public:
-        enum Priority {
-            Emergency, Alert, Critical, Error, Warning, Notice, Info, Debug
-        };
-
-        Event(size_t index, const Priority& prio, int id, size_t nelem);
-
-        ~Event();
-
-        const size_t index;
-
-        const Priority priority;
-
-        const int id;
-        const size_t nelem;
-
-        // The message of the event. %m is replaced by the mapping,
-        // Replacements:
-        //      %m: value of mapping index->text
-        //      %i: index + indexOffset
-        std::string message;
-
-        // Offset added to index when generating message to replace %i
-        int indexOffset;
-
-        // Index mapping text
-        typedef std::map<size_t, std::string> IndexMap;
-        IndexMap indexMap;
-
-        std::string formatMessage(size_t index) const;
+        Server(const PdServ::Main *main, const PdServ::Config& defaultConfig,
+                const PdServ::Config &config);
+        ~Server();
 
     private:
+        const PdServ::Main * const main;
+        log4cpp::Category &eventLog;
+
+        mutable ost::Semaphore mutex;
+
+        // Reimplemented from ost::Thread
+        void run();
 };
 
 }
 
-#endif //EVENT_H
+#endif //SUPERVISOR_SERVER_H
