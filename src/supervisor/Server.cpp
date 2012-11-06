@@ -62,8 +62,7 @@ void Server::run()
         while ((event = main->getNextEvent(this, &index, &state, &t))) {
 
             std::ostringstream os;
-            os << event->id << '.' << index << '=' << state << ' '
-                << event->formatMessage(index);
+            os << event->id << '.' << index << '=' << state;
 
             log4cpp::Priority::Value prio;
             switch (event->priority) {
@@ -93,7 +92,11 @@ void Server::run()
                     break;
             }
 
-            eventLog.log(prio, os.str());
+            if (state)
+                eventLog.log(prio,
+                        os.str() + ' ' + event->formatMessage(index));
+            else
+                eventLog.debug(os.str());
         }
     }
 }

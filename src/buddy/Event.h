@@ -30,13 +30,14 @@ class Signal;
 
 class Event: public PdServ::Event {
     public:
-        Event(const Signal *s, size_t index, int id);
+        Event(const Signal *s, size_t index, int id, const std::string& prio);
 
         bool test(const char *photo, int *triggered, double *time) const;
 
     private:
         const Signal * const signal;
         double * const value;
+        static PdServ::Event::Priority getPriority(const std::string& prio);
 };
 
 #endif //BUDDY_EVENT

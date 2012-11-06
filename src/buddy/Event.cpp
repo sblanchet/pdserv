@@ -25,8 +25,9 @@
 #include "Signal.h"
 
 //////////////////////////////////////////////////////////////////////
-Event::Event( const Signal *s, size_t index, int id):
-    PdServ::Event(index, id, s->dim.nelem),
+Event::Event( const Signal *s,
+        size_t index, int id, const std::string& prio):
+    PdServ::Event(index, getPriority(prio), id, s->dim.nelem),
     signal(s),
     value(new double[nelem])
 {
@@ -52,4 +53,31 @@ bool Event::test(const char *photo, int *triggered, double *time) const
     }
 
     return changed;
+}
+
+//////////////////////////////////////////////////////////////////////
+PdServ::Event::Priority Event::getPriority(const std::string& prio)
+{
+    if (prio == "emergency")
+        return PdServ::Event::Emergency;
+
+    if (prio == "alert")
+        return PdServ::Event::Alert;
+
+    if (prio == "critical")
+        return PdServ::Event::Critical;
+
+    if (prio == "error")
+        return PdServ::Event::Error;
+
+    if (prio == "warning")
+        return PdServ::Event::Warning;
+
+    if (prio == "notice")
+        return PdServ::Event::Notice;
+
+    if (prio == "info")
+        return PdServ::Event::Info;
+
+    return PdServ::Event::Debug;
 }

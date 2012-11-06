@@ -86,13 +86,11 @@ Main::Main(const struct app_properties& p,
     for (i = 0, eventConf = eventList[i];
             eventConf; eventConf = eventList[++i]) {
 
-        size_t id = eventConf.toUInt();
-
         std::string subsys =
             eventList[eventConf.toString()]["subsystem"].toString();
-        if (!subsys.empty() and id) {
+        if (!subsys.empty() and eventConf.toUInt()) {
             eventMap[subsys] = eventConf;
-            log.debug("Added event %s = %zu", subsys.c_str(), id);
+            log.debug("Added event %s", subsys.c_str());
         }
     }
 
@@ -154,12 +152,14 @@ Main::Main(const struct app_properties& p,
         EventMap::iterator it = eventMap.find(s->path);
         if (it != eventMap.end()
                 and s->dtype.primary() == s->dtype.double_T) {
-            Event *e = new Event(s, events.size(), it->second);
+
+            PdServ::Config config = eventList[it->second.toString()];
+
+            Event *e = new Event(s, events.size(),
+                    it->second.toUInt(), config["priority"].toString());
             events.push_back(e);
             eventCount += e->nelem;
             log.info("Watching as event: %s", s->path.c_str());
-
-            PdServ::Config config = it->second;
 
             // Set event message
             e->message = config["message"].toString();

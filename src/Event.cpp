@@ -52,7 +52,7 @@ std::string Event::formatMessage(size_t index) const
     if (i != message.npos) {
         IndexMap::const_iterator it = indexMap.find(index);
 
-        if (!message.empty())
+        if (it != indexMap.end())
             message.replace(i, 2, it->second);
     }
 
