@@ -139,17 +139,38 @@ Config Config::operator[](const std::string& key) const
 /////////////////////////////////////////////////////////////////////////////
 Config Config::operator[](size_t index) const
 {
-    if (!node or node->type != YAML_SEQUENCE_NODE)
+    if (!node)
         return Config();
 
-    yaml_node_item_t *n = node->data.sequence.items.start;
-    for (size_t i = 0; i < index; ++i, ++n) {
-        if (n == node->data.sequence.items.top) {
-            return Config();
-        }
+    switch (node->type) {
+        case YAML_SEQUENCE_NODE:
+            {
+                yaml_node_item_t *n = node->data.sequence.items.start;
+                do {
+                    if (!index--)
+                        return Config(document,
+                                yaml_document_get_node(document, *n));
+                } while (++n != node->data.sequence.items.top);
+            }
+            break;
+
+        case YAML_MAPPING_NODE:
+            {
+                yaml_node_pair_t *pair = node->data.mapping.pairs.start;
+                do {
+                    if (!index--)
+                        return Config(document,
+                                yaml_document_get_node(document,
+                                    pair->key));
+                } while (++pair != node->data.mapping.pairs.top);
+            }
+            break;
+
+        default:
+            break;
     }
 
-    return Config(document, yaml_document_get_node(document, *n));
+    return Config();
 }
 
 /////////////////////////////////////////////////////////////////////////////

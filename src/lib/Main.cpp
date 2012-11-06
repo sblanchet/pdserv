@@ -185,11 +185,10 @@ bool Main::setEvent(const Event* event,
 
     **eventDataWp = *eventData;
 
-    // eventDataEnd points to the last valid memory location
-    if (*eventDataWp != eventDataEnd)
-        ++*eventDataWp;
-    else
-        *eventDataWp = eventDataStart;
+    eventData = *eventDataWp;
+    if (++eventData == eventDataEnd)
+        eventData = eventDataStart;
+    *eventDataWp = eventData;
 
     return true;
 }
@@ -204,7 +203,7 @@ int Main::setParameter(const Parameter *p, size_t offset,
 
     // Write the parameters into the shared memory sorted from widest
     // to narrowest data type size. This ensures that the data is
-    // allways aligned correctly.
+    // always aligned correctly.
     sdo->parameter = p;
     sdo->offset = offset;
     std::copy(data, data + count, p->valueBuf + sdo->offset);
@@ -350,8 +349,8 @@ int Main::run()
 
     eventData      = ptr_align<struct EventData>(buf);
     eventDataStart = ptr_align<struct EventData>(eventData + eventCount);
-    eventDataEnd   = eventDataStart + 2*eventCount - 1;
-    eventDataWp    = ptr_align<struct EventData*>(eventDataEnd + 1);
+    eventDataEnd   = eventDataStart + 2*eventCount;
+    eventDataWp    = ptr_align<struct EventData*>(eventDataEnd);
     *eventDataWp   = eventDataStart;
 
     i = 0;
@@ -538,25 +537,21 @@ void Main::cleanup(const PdServ::Session *session) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Main::getNextEvent( const PdServ::Session* session,
-        const PdServ::Event **event, size_t *index,
-        bool *state, struct timespec *t) const
+const PdServ::Event *Main::getNextEvent( const PdServ::Session* session,
+        size_t *index, bool *state, struct timespec *t) const
 {
     const EventData* eventData = session->data->eventReadPointer;
     if (eventData == *eventDataWp)
-        return false;
+        return 0;
 
-    *event = eventData->event;
     *index = eventData->index;
     *state = eventData->state;
     *t = eventData->time;
 
-    if (eventData == eventDataEnd)
+    if (++session->data->eventReadPointer == eventDataEnd)
         session->data->eventReadPointer = eventDataStart;
-    else
-        ++session->data->eventReadPointer;
 
-    return true;
+    return eventData->event;
 }
 
 /////////////////////////////////////////////////////////////////////////////

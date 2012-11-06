@@ -40,24 +40,29 @@
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
+#include "Event.h"
+#include "EventQ.h"
 #include "Parameter.h"
 #include "../Config.h"
+#include "../Session.h"
+
+/////////////////////////////////////////////////////////////////////////////
+struct SessionData {
+    size_t eventReadPointer;
+};
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-Main::Main(const struct app_properties& p):
+Main::Main(const struct app_properties& p,
+        const PdServ::Config& config, int fd):
     PdServ::Main(p.name, p.version),
     app_properties(p),
     log(log4cpp::Category::getInstance(p.name)),
     paramMutex(1), parameterBuf(0)
 {
     pid = ::getpid();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::serve(const PdServ::Config& config, int fd)
-{
     size_t shmem_len;
+    size_t eventCount = 0;
 
     this->fd = fd;
 
@@ -70,6 +75,26 @@ void Main::serve(const PdServ::Config& config, int fd)
     log.info("   Sample period: %luus", app_properties.sample_period);
     log.info("   Number of parameters: %zu", app_properties.param_count);
     log.info("   Number of signals: %zu", app_properties.signal_count);
+
+    // Go through the list of events and set up a map path->id
+    // of paths and their corresponding id's to watch
+    const PdServ::Config eventList = config[name]["events"];
+    typedef std::map<std::string, PdServ::Config> EventMap;
+    EventMap eventMap;
+    PdServ::Config eventConf;
+    size_t i;
+    for (i = 0, eventConf = eventList[i];
+            eventConf; eventConf = eventList[++i]) {
+
+        size_t id = eventConf.toUInt();
+
+        std::string subsys =
+            eventList[eventConf.toString()]["subsystem"].toString();
+        if (!subsys.empty() and id) {
+            eventMap[subsys] = eventConf;
+            log.debug("Added event %s = %zu", subsys.c_str(), id);
+        }
+    }
 
     // Get a copy of the parameters
     parameterBuf = new char[app_properties.rtP_size];
@@ -122,17 +147,65 @@ void Main::serve(const PdServ::Config& config, int fd)
             continue;
         }
 
-        const PdServ::Signal *s =
+        const Signal *s =
             mainTask->addSignal( SignalInfo(app_properties.name, &si));
+
+        // Check whether this signal is actually an event
+        EventMap::iterator it = eventMap.find(s->path);
+        if (it != eventMap.end()
+                and s->dtype.primary() == s->dtype.double_T) {
+            Event *e = new Event(s, events.size(), it->second);
+            events.push_back(e);
+            eventCount += e->nelem;
+            log.info("Watching as event: %s", s->path.c_str());
+
+            PdServ::Config config = it->second;
+
+            // Set event message
+            e->message = config["message"].toString();
+
+            // Set index offset
+            e->indexOffset = config["indexoffset"].toInt();
+
+            // Setup index mapping if present
+            size_t i = 0;
+            PdServ::Config indexMapping = config["indexmapping"];
+            for (PdServ::Config map = indexMapping[i];
+                    map; map = indexMapping[++i])
+                e->indexMap[map.toUInt()] =
+                    indexMapping[map.toString()].toString();
+
+            // Reset config to indicate that the path was found
+            it->second = PdServ::Config();
+        }
 
         log.debug("   %zu %s", i, s->path.c_str());
     }
+
+    // Report whether some events were not discovered
+    for (EventMap::const_iterator it = eventMap.begin();
+            it != eventMap.end(); ++it) {
+        if (it->second)
+            log.warn("Event %s is not found", it->first.c_str());
+    }
+
+    eventQ = new EventQ(eventCount * 2, photoAlbum, &app_properties);
 
     readPointer = ioctl(fd, RESET_BLOCKIO_RP);
 
     startServers(config);
 
-    do {
+    return;
+
+out:
+    log.crit("Failed: %s (%i)", strerror(errno), errno);
+    ::exit(errno);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::serve()
+{
+    while (true) {
         fd_set fds;
         int n;
 
@@ -148,21 +221,31 @@ void Main::serve(const PdServ::Config& config, int fd)
         else if (!n) {
             // Signal was caught, check whether the children are still there
             log.warn("Received misterious interrupt during select()");
+            continue;
         }
-        else {
-            struct data_p data_p;
-            ioctl(fd, GET_WRITE_PTRS, &data_p);
 
-            if (data_p.wp == -ENOSPC) {
-                readPointer = ioctl(fd, RESET_BLOCKIO_RP);
-            }
-            else {
-                for (int i = readPointer; i < data_p.wp; ++i)
-                    photoReady[i] = photoCount++;
-                readPointer = ioctl(fd, SET_BLOCKIO_RP, data_p.wp);
-            }
+        struct data_p data_p;
+        ioctl(fd, GET_WRITE_PTRS, &data_p);
+
+        if (data_p.wp == -ENOSPC) {
+            readPointer = ioctl(fd, RESET_BLOCKIO_RP);
+            continue;
         }
-    } while (true);
+
+        for (int i = readPointer; i < data_p.wp; ++i) {
+
+            // Mark photo as ready
+            photoReady[i] = photoCount++;
+
+            // Go through event list to see if something happened
+            for (EventList::const_iterator it = events.begin();
+                    it != events.end(); ++it)
+                eventQ->test(*it, i);
+        }
+
+        // Tell kernel that reading has finished
+        readPointer = ioctl(fd, SET_BLOCKIO_RP, data_p.wp);
+    }
 
 out:
     log.crit("Failed: %s (%i)", strerror(errno), errno);
@@ -214,4 +297,31 @@ int Main::setParameter( const Parameter *param, const char *dataPtr,
     }
 
     return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+PdServ::Main::Events Main::getEvents() const
+{
+    return Events(events.begin(), events.end());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::prepare(PdServ::Session *session) const
+{
+    session->data = new SessionData;
+    eventQ->initialize(session->data->eventReadPointer);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::cleanup(const PdServ::Session *session) const
+{
+    delete session->data;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const PdServ::Event* Main::getNextEvent (const PdServ::Session* session,
+        size_t *index, bool *state, struct timespec *t) const
+{
+    return eventQ->getNextEvent(
+            session->data->eventReadPointer, index, state, t);
 }

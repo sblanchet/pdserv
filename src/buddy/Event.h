@@ -21,47 +21,22 @@
  *
  *****************************************************************************/
 
-#ifndef EVENT_H
-#define EVENT_H
+#ifndef BUDDY_EVENT
+#define BUDDY_EVENT
 
-#include <string>
-#include <map>
+#include "../Event.h"
 
-namespace PdServ {
+class Signal;
 
-class Session;
-class SessionTask;
-class Config;
-
-class Event {
+class Event: public PdServ::Event {
     public:
-        Event(size_t index, int id, size_t nelem);
+        Event(const Signal *s, size_t index, int id);
 
-        ~Event();
-
-        const size_t index;
-
-        const int id;
-        const size_t nelem;
-
-        // The message of the event. %m is replaced by the mapping,
-        // Replacements:
-        //      %m: value of mapping index->text
-        //      %i: index + indexOffset
-        std::string message;
-
-        // Offset added to index when generating message to replace %i
-        int indexOffset;
-
-        // Index mapping text
-        typedef std::map<size_t, std::string> IndexMap;
-        IndexMap indexMap;
-
-        std::string formatMessage(size_t index) const;
+        bool test(const char *photo, int *triggered, double *time) const;
 
     private:
+        const Signal * const signal;
+        double * const value;
 };
 
-}
-
-#endif //EVENT_H
+#endif //BUDDY_EVENT

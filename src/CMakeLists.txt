@@ -104,12 +104,15 @@ IF (RT_APP AND NOT DISABLE_BUDDY)
     FIND_PACKAGE (Threads REQUIRED)
 
     ADD_EXECUTABLE (etherlab_buddy2
-        buddy/SignalInfo.cpp buddy/SignalInfo.h
-        buddy/Signal.cpp buddy/Signal.h
+        buddy/SignalInfo.cpp            buddy/SignalInfo.h
+        buddy/Signal.cpp                buddy/Signal.h
+        buddy/Event.cpp                 buddy/Event.h
+        buddy/EventQ.cpp                buddy/EventQ.h
+        buddy/Task.cpp                  buddy/Task.h
+        buddy/Main.cpp                  buddy/Main.h
+        buddy/Parameter.cpp             buddy/Parameter.h
+        buddy/SessionTaskData.cpp       buddy/SessionTaskData.h
         buddy/main.cpp
-        buddy/Task.cpp buddy/Task.h
-        buddy/Main.cpp buddy/Main.h
-        buddy/Parameter.cpp buddy/Parameter.h
 
         "${ETL_DATA}" "${BUDDY_IOCTL}"
 

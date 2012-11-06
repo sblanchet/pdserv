@@ -24,29 +24,21 @@
 #ifndef MSREVENT_H
 #define MSREVENT_H
 
-#include "Channel.h"
 #include "OStream.h"
-#include "../Config.h"
-#include "../Signal.h"
 #include "../Event.h"
 
 namespace MsrProto {
 
 class Event {
     public:
-        Event(const PdServ::Event *s, const PdServ::Config& config);
+        Event(const PdServ::Event *s, const std::string& level);
 
         const PdServ::Event *event;
         void toXml(ostream::locked& ls,
                 size_t index, bool state, const struct timespec& t) const;
 
     private:
-        const PdServ::Config config;
-
-//        const std::string severity;
-//        const std::string path;
-//        const std::string message;
-//        const size_t indexOffset;
+        const std::string level;
 };
 
 }

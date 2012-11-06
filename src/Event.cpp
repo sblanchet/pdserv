@@ -28,7 +28,7 @@
 
 using namespace PdServ;
 
-//////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
 Event::Event(size_t idx, int id, size_t nelem):
     index(idx),
     id(id),
@@ -36,28 +36,59 @@ Event::Event(size_t idx, int id, size_t nelem):
 {
 }
 
-//////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
 Event::~Event()
 {
 }
 
-//////////////////////////////////////////////////////////////////////
-std::string Event::formatMessage(const Config& config, size_t index) const
+////////////////////////////////////////////////////////////////////////////
+std::string Event::formatMessage(size_t index) const
 {
-    std::ostringstream os;
-    os << index;
-    std::string text =
-        config["indexmapping"][os.str()].toString();
-    if (text.empty()) {
-        std::ostringstream os;
-        os << index + config["indexoffset"].toInt();
-        text = os.str();
+    std::string message = this->message;
+
+    // Replace occurrances of %m with messages from 'indexmapping'
+    size_t i = message.find("%m");
+    if (i != message.npos) {
+        IndexMap::const_iterator it = indexMap.find(index);
+
+        if (!message.empty())
+            message.replace(i, 2, it->second);
     }
 
-    std::string message = config["message"].toString().c_str();
-    size_t i = message.find("%m");
-    if (i != message.npos)
-        message.replace(i, 2, text);
+    // Replace occurrances of %i with index, possibly offset by 'indexoffset'
+    i = message.find("%i");
+    if (i != message.npos) {
+        std::ostringstream os;
+        os << index + indexOffset;
+        message.replace(i, 2, os.str());
+    }
 
     return message;
 }
+
+// ////////////////////////////////////////////////////////////////////////////
+// std::string Event::formatMessage(const Config& config, size_t index) const
+// {
+//     std::string message = config["message"].toString();
+// 
+//     // Replace occurrances of %m with messages from 'indexmapping'
+//     size_t i = message.find("%m");
+//     if (i != message.npos) {
+//         std::ostringstream os;
+//         os << index;
+//         std::string mapping = config["indexmapping"][os.str()].toString();
+// 
+//         if (!message.empty())
+//             message.replace(i, 2, mapping);
+//     }
+// 
+//     // Replace occurrances of %i with index, possibly offset by 'indexoffset'
+//     i = message.find("%i");
+//     if (i != message.npos) {
+//         std::ostringstream os;
+//         os << index + config["indexoffset"].toInt();
+//         message.replace(i, 2, os.str());
+//     }
+// 
+//     return message;
+// }

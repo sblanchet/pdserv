@@ -41,7 +41,8 @@ class Config {
         Config operator[](const std::string&) const;
         Config operator[](const char *) const;
         Config operator[](char *) const;
-        Config operator[](size_t) const;
+        Config operator[](size_t) const; // For sequence nodes, the node
+                                         // For mapping nodes, the key
 
         template <typename T>
             bool get(T& value) const;

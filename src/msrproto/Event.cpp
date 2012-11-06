@@ -31,8 +31,8 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Event::Event(const PdServ::Event *e, const PdServ::Config& config):
-    event(e), config(config)
+Event::Event(const PdServ::Event *e, const std::string& level):
+    event(e), level(level)
 {
 }
 
@@ -40,17 +40,26 @@ Event::Event(const PdServ::Event *e, const PdServ::Config& config):
 void Event::toXml(ostream::locked& ls,
         size_t index, bool state, const struct timespec& t) const
 {
-    XmlElement msg(config["level"].toString("debug").c_str(), ls);
-
-    std::ostringstream indexStr;
-    indexStr << index + config["indexoffset"].toInt();
+    XmlElement msg(level.c_str(), ls);
 
     XmlElement::Attribute(msg, "id") << event->id;
-    XmlElement::Attribute(msg, "index") << indexStr.str();
+    XmlElement::Attribute(msg, "index") << index;
     XmlElement::Attribute(msg, "state") << state;
     XmlElement::Attribute(msg, "time") << t;
-    XmlElement::Attribute(msg, "path")
-        .setEscaped(config["subsystem"].toString().c_str());
+//    XmlElement::Attribute(msg, "path")
+//        .setEscaped(config["subsystem"].toString().c_str());
     XmlElement::Attribute(msg, "message")
-        .setEscaped(event->formatMessage(config, index).c_str());
+        .setEscaped(event->formatMessage(index).c_str());
+
+//    std::ostringstream indexStr;
+//    indexStr << index + config["indexoffset"].toInt();
+//
+//    XmlElement::Attribute(msg, "id") << event->id;
+//    XmlElement::Attribute(msg, "index") << indexStr.str();
+//    XmlElement::Attribute(msg, "state") << state;
+//    XmlElement::Attribute(msg, "time") << t;
+//    XmlElement::Attribute(msg, "path")
+//        .setEscaped(config["subsystem"].toString().c_str());
+//    XmlElement::Attribute(msg, "message")
+//        .setEscaped(event->formatMessage(config, index).c_str());
 }

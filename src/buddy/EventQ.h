@@ -21,47 +21,46 @@
  *
  *****************************************************************************/
 
-#ifndef EVENT_H
-#define EVENT_H
+#ifndef BUDDY_EVENTQ_H
+#define BUDDY_EVENTQ_H
 
-#include <string>
-#include <map>
+#include <stddef.h>
+#include <ctime>
+#include <vector>
 
 namespace PdServ {
-
-class Session;
-class SessionTask;
-class Config;
-
-class Event {
-    public:
-        Event(size_t index, int id, size_t nelem);
-
-        ~Event();
-
-        const size_t index;
-
-        const int id;
-        const size_t nelem;
-
-        // The message of the event. %m is replaced by the mapping,
-        // Replacements:
-        //      %m: value of mapping index->text
-        //      %i: index + indexOffset
-        std::string message;
-
-        // Offset added to index when generating message to replace %i
-        int indexOffset;
-
-        // Index mapping text
-        typedef std::map<size_t, std::string> IndexMap;
-        IndexMap indexMap;
-
-        std::string formatMessage(size_t index) const;
-
-    private:
-};
-
+    class Event;
 }
 
-#endif //EVENT_H
+class Event;
+
+class EventQ {
+    public:
+        EventQ(size_t count, const char *album,
+                const struct app_properties *app_properties);
+
+        void test(const Event*, size_t photoIdx);
+
+        void initialize(size_t& readPointer) const;
+        const PdServ::Event* getNextEvent (size_t& readPointer,
+                size_t *index, bool *state, struct timespec *t) const;
+
+    private:
+        const char * const album;
+        const size_t photoSize;
+        //const size_t statsOffset;
+
+        size_t writePointer;
+
+        struct EventData {
+            const PdServ::Event* event;
+            size_t index;
+            bool state;
+            struct timespec time;
+        };
+
+        typedef std::vector<EventData> Events;
+        Events events;
+};
+
+#endif // BUDDY_EVENTQ_H

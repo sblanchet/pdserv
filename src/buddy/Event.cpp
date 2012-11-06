@@ -21,47 +21,35 @@
  *
  *****************************************************************************/
 
-#ifndef EVENT_H
-#define EVENT_H
+#include "Event.h"
+#include "Signal.h"
 
-#include <string>
-#include <map>
-
-namespace PdServ {
-
-class Session;
-class SessionTask;
-class Config;
-
-class Event {
-    public:
-        Event(size_t index, int id, size_t nelem);
-
-        ~Event();
-
-        const size_t index;
-
-        const int id;
-        const size_t nelem;
-
-        // The message of the event. %m is replaced by the mapping,
-        // Replacements:
-        //      %m: value of mapping index->text
-        //      %i: index + indexOffset
-        std::string message;
-
-        // Offset added to index when generating message to replace %i
-        int indexOffset;
-
-        // Index mapping text
-        typedef std::map<size_t, std::string> IndexMap;
-        IndexMap indexMap;
-
-        std::string formatMessage(size_t index) const;
-
-    private:
-};
-
+//////////////////////////////////////////////////////////////////////
+Event::Event( const Signal *s, size_t index, int id):
+    PdServ::Event(index, id, s->dim.nelem),
+    signal(s),
+    value(new double[nelem])
+{
+    std::fill_n(value, nelem, 0);
 }
 
-#endif //EVENT_H
+//////////////////////////////////////////////////////////////////////
+bool Event::test(const char *photo, int *triggered, double *time) const
+{
+    bool changed = false;
+    const double *src =
+        reinterpret_cast<const double*>(photo + signal->offset);
+
+    for (size_t i = 0; i < nelem; ++i) {
+
+        triggered[i] = (src[i] > value[i]) - (src[i] < value[i]);
+        if (triggered[i]) {
+            time[i] = src[i] ? src[i] : value[i];
+            changed = true;
+        }
+
+        value[i] = src[i];
+    }
+
+    return changed;
+}

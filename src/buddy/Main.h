@@ -41,12 +41,15 @@ namespace PdServ {
 
 class Parameter;
 class Task;
+class Event;
+class EventQ;
 
 class Main: public PdServ::Main {
     public:
-        Main(const struct app_properties&);
+        Main(const struct app_properties&,
+                const PdServ::Config& config, int fd);
 
-        void serve(const PdServ::Config& config, int fd);
+        void serve();
 
         int setParameter( const Parameter *p, const char* dataPtr,
                 size_t len, struct timespec *) const;
@@ -73,6 +76,14 @@ class Main: public PdServ::Main {
 
         size_t *readyList;
 
+        EventQ *eventQ;
+
+        typedef std::list<Event*> EventList;
+        EventList events;
+
+        typedef std::set<int> EventSet;
+        EventSet eventSet;
+
         void setupLogging(log4cpp::Category& log,
                 PdServ::Config const& config);
         void setupTTYLog(log4cpp::Category& log);
@@ -86,6 +97,11 @@ class Main: public PdServ::Main {
                 const PdServ::Signal * const *s, size_t nelem,
                 void * const * pollDest, struct timespec *t) const;
         int gettime(struct timespec *) const;
+        PdServ::Main::Events getEvents() const;
+        void prepare(PdServ::Session *session) const;
+        void cleanup(const PdServ::Session *session) const;
+        const PdServ::Event *getNextEvent( const PdServ::Session* session,
+                size_t *index, bool *state, struct timespec *t) const;
 };
 
 #endif // BUDDY_MAIN_H

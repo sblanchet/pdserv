@@ -239,7 +239,7 @@ void Session::run()
         bool state;
         struct timespec t;
         size_t index;
-        while (main->getNextEvent(this, &mainEvent, &index, &state, &t)) {
+        while ((mainEvent = main->getNextEvent(this, &index, &state, &t))) {
             ostream::locked ls(xmlstream);
             server->getEvents()[mainEvent->index]
                 ->toXml(ls, index, state, t);

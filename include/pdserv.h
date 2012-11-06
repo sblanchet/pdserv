@@ -181,12 +181,31 @@ typedef void (*pdserv_event_clear_t)(
  *
  */
 const struct pdevent *pdserv_event(
-        struct pdserv* pdserv,    /**< Pointer to pdserv structure */
-        int id,                   /**< Event Id */
-        size_t n,                 /**< Element count */
+        struct pdserv* pdserv,  /**< Pointer to pdserv structure */
+        int id,                 /**< Event Id */
+        size_t n,               /**< Element count */
         pdserv_event_clear_t clear, /**< Clear callback function */
-        void *priv_data           /**< Verbatim data passed to callback */
+        void *priv_data,        /**< Verbatim data passed to callback */
+        const char *message,    /**< Event message.
+                                 * Replacements:
+                                 *  %i: event index + offset
+                                 *  %m: event mapping index->text */
+        int index_offset,       /**< Offset added to index when replacing
+                                 * %i in message */
+        const char **index_mapping  /**< Zero terminated list of messages
+                                     * that replace %m in message */
         );
+
+void pderv_event_set_message(
+        struct pdevent *event,
+        const char *message
+        );
+
+void pderv_event_set_message(
+        struct pdevent *event,
+        const char *message
+        );
+
 
 void pdserv_event_set(
         const struct pdevent *event,

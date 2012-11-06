@@ -101,6 +101,12 @@ int main(int argc, const char *argv[])
 
     int s1_t = pdserv_create_compound("s1", sizeof(s1));
     int s2_t = pdserv_create_compound("s2", sizeof(struct s2));
+    const char *room_mapping[] = {
+        "control",
+        "pump",
+        "server",
+        0
+    };
 
     pdserv_compound_add_field(s1_t, "d",
             pd_double_T, offsetof(struct s1, d), 5, NULL);
@@ -120,7 +126,9 @@ int main(int argc, const char *argv[])
     assert(pdserv_signal(task[0], 1, "/s1", s1_t, &s1, 1, NULL));
     assert(pdserv_signal(task[0], 1, "/s2", s2_t, s2, 2, NULL));
 
-    event = pdserv_event(pdserv,23,5,clear_event, 0);
+    event = pdserv_event(pdserv,23,5,clear_event,0,
+            "Pressure %i too high in %m room", 100,
+            room_mapping);
 
     assert(pdserv_signal(task[0], 1, "/path<lksjdf/to>ljk/double",
             pd_double_T, dbl, 3, NULL));

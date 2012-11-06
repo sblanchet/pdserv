@@ -85,9 +85,8 @@ class Main {
 
         virtual void prepare(Session *session) const = 0;
         virtual void cleanup(const Session *session) const = 0;
-        virtual bool getNextEvent(const Session* session,
-                const Event **event, size_t *index,
-                bool *state, struct timespec *t) const = 0;
+        virtual const Event *getNextEvent(const Session* session,
+                size_t *index, bool *state, struct timespec *t) const = 0;
 
     protected:
 

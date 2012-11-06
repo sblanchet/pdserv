@@ -137,7 +137,7 @@ void Server::createEvents (const PdServ::Config& config)
 
         const PdServ::Config eventConfig = config[id.str()];
 
-        Event* e = new Event(*it, eventConfig);
+        Event* e = new Event(*it, eventConfig["level"].toString("debug"));
         this->events.push_back(e);
     }
 }

@@ -121,9 +121,8 @@ class Main: public PdServ::Main {
         PdServ::Main::Events getEvents() const;
         void prepare(PdServ::Session *session) const;
         void cleanup(const PdServ::Session *session) const;
-        bool getNextEvent( const PdServ::Session* session,
-                const PdServ::Event **event, size_t *index,
-                bool *state, struct timespec *t) const;
+        const PdServ::Event *getNextEvent( const PdServ::Session* session,
+                size_t *index, bool *state, struct timespec *t) const;
 };
 
 #endif // LIB_MAIN_H
