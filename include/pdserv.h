@@ -228,7 +228,7 @@ void pdserv_event_set(
         const struct pdevent *event,
         size_t element,
         char state,
-        const timespec *t
+        const struct timespec *t
         );
 
 /** Callback on a parameter update event
