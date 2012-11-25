@@ -11,3 +11,6 @@ $Id$
 
 - Improve startup error reporting in pdserv_prepare()
     - use semaphores/pipes/signals
+
+- Improve example
+- document yaml config file
