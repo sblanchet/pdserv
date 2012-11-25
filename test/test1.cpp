@@ -168,7 +168,7 @@ int main(int argc, const char *argv[])
             var1[1][0][0]++;
         dbl[0] += param[0];
         dbl[2] += param[2];
-        var1[5][0][0] += param[1];
+        var1[1][0][0] += param[1];
         dbltime = time.tv_sec + time.tv_nsec * 1.0e-9;
         pdserv_update_statistics(task[0], 10, 20, 30);
         pdserv_update(task[0], &time);
