@@ -213,17 +213,6 @@ const struct pdevent *pdserv_event(
                                      * that replace %m in message */
         );
 
-void pderv_event_set_message(
-        struct pdevent *event,
-        const char *message
-        );
-
-void pderv_event_set_message(
-        struct pdevent *event,
-        const char *message
-        );
-
-
 void pdserv_event_set(
         const struct pdevent *event,
         size_t element,
