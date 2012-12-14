@@ -171,11 +171,8 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
 
     setDataType(element, dtype, dim);
 
-    // unit=
-    if (!variable->unit.empty())
-        XmlElement::Attribute(element, "unit") << variable->unit;
-
     // text=
+    // FIXME:  variable->comment is used twice! 2012-12-14 fp
     if (!variable->comment.empty())
         XmlElement::Attribute(element, "text") << variable->comment;
 
