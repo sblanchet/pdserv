@@ -221,6 +221,8 @@ void Server::run()
         try {
             ndc = log4cpp::NDC::cloneStack();
             Session *s = new Session(this, server, ndc);
+
+            ost::SemaphoreLock lock(mutex);
             sessions.insert(s);
         }
         catch (ost::Socket *s) {

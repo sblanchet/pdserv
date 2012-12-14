@@ -60,7 +60,7 @@ std::string Event::formatMessage(size_t index) const
     i = message.find("%i");
     if (i != message.npos) {
         std::ostringstream os;
-        os << index + indexOffset;
+        os << (int)index + indexOffset;
         message.replace(i, 2, os.str());
     }
 
