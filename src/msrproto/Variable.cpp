@@ -160,12 +160,9 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
         return;
 
     // alias=
-    // unit=
     // comment=
     if (!variable->alias.empty())
         XmlElement::Attribute(element, "alias") << variable->alias;
-    if (!variable->unit.empty())
-        XmlElement::Attribute(element, "unit") << variable->unit;
     if (!variable->comment.empty())
         XmlElement::Attribute(element, "comment") << variable->comment;
 
