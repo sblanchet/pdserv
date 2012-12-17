@@ -155,8 +155,8 @@ void SubscriptionManager::newSignal( const PdServ::Signal *s)
         Subscription *s = it2->second;
         DecimationTuple& dt = activeSignals[s->decimation];
 
-        SubscriptionSet::iterator it2 = dt.second.find(s);
-        if (it2 == dt.second.end()) {
+        SubscriptionSet::iterator it3 = dt.second.find(s);
+        if (it3 == dt.second.end()) {
             dt.second.insert(s);
             doSync = !--unsubscribedCount;
         }
