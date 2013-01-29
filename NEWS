@@ -1,6 +1,23 @@
 
 $Id$
 
+Version 1.0.0
+
+- Removed duplicate unit attribute.
+- Fixed some locking issues.
+- Fixed memory leak on every network disconnect
+- Loading config file as early as possible
+- Added configuration option for lib
+- Integrated compound data types into msr protocol
+- Fixed bug where not all parameters were added in traditional mode
+- Large improvements on performance
+- Added 'out of sync' log message.
+- Change <connected> tag to name="MSR"
+- Export vector signals also in traditional mode.
+- Traditional mode as a runtime configuration option.
+- Traditional mode inserts model name in front of variable path for MSR
+- Added 64-bit library support in spec file.
+
 Version 0.99.3
 
 - Changed License to LGPLv3.
