@@ -19,6 +19,8 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with the pdserv library. If not, see <http://www.gnu.org/licenses/>.
  *
+ *  vim:tw=78
+ *
  *****************************************************************************/
 
 #ifndef PDSERV_H
@@ -166,18 +168,11 @@ struct pdvariable *pdserv_signal(
                                    * parameter to be a vector of length @n */
         );
 
-/** Callback on event clear
- *
- * This function is called when the caller wants to clear the event
- */
-typedef void (*pdserv_event_clear_t)(
-        const struct pdevent* event,  /**< Pointer to event */
-        size_t elem,            /**< Element to be cleared */
-        char state,
-        void *priv_data         /**< private data */
-        );
-
 /** Register an event channel
+ *
+ * Event channels are used to implement a messaging system. A clear text
+ * message corresponding to the event element is printed when the event is set
+ * using pdserv_event_set().
  *
  */
 #define EMERG_EVENT     0
@@ -198,26 +193,27 @@ const struct pdevent *pdserv_event(
                                  *   4 = Warning
                                  *   5 = Notice
                                  *   6 = Info
-                                 *   7 = Debug
-                                 */
-        size_t n,               /**< Element count */
-        pdserv_event_clear_t clear, /**< Clear callback function */
-        void *priv_data,        /**< Verbatim data passed to callback */
-        const char *message,    /**< Event message.
-                                 * Replacements:
-                                 *  %i: event index + offset
-                                 *  %m: event mapping index->text */
-        int index_offset,       /**< Offset added to index when replacing
-                                 * %i in message */
-        const char **index_mapping  /**< Zero terminated list of messages
-                                     * that replace %m in message */
+                                 *   7 = Debug */
+        size_t n,               /**< Vector size */
+        const char *message[]   /**< Event message list.
+                                 * @message can be NULL. If not, there must
+                                 * be at least n messages. 
+                                 *
+                                 * PdServ does not make a copy of these
+                                 * messages. They must be available
+                                 * permanently. */
         );
 
+/** Set the state of a single event.
+ *
+ * This function is used to set or reset an event. Setting the event causes
+ * the corresponding message to be printed to log and all clients.
+ */
 void pdserv_event_set(
         const struct pdevent *event,
-        size_t element,
-        char state,
-        const struct timespec *t
+        size_t element,         /**< Event element */
+        char state,             /**< boolean value */
+        const struct timespec *t /**< Current time */
         );
 
 /** Callback on a parameter update event

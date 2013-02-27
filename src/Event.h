@@ -49,21 +49,7 @@ class Event {
 
         const int id;
         const size_t nelem;
-
-        // The message of the event. %m is replaced by the mapping,
-        // Replacements:
-        //      %m: value of mapping index->text
-        //      %i: index + indexOffset
-        std::string message;
-
-        // Offset added to index when generating message to replace %i
-        int indexOffset;
-
-        // Index mapping text
-        typedef std::map<size_t, std::string> IndexMap;
-        IndexMap indexMap;
-
-        std::string formatMessage(size_t index) const;
+        const char ** message;
 
     private:
 };

@@ -42,30 +42,30 @@ Event::~Event()
 {
 }
 
-////////////////////////////////////////////////////////////////////////////
-std::string Event::formatMessage(size_t index) const
-{
-    std::string message = this->message;
-
-    // Replace occurrances of %m with messages from 'indexmapping'
-    size_t i = message.find("%m");
-    if (i != message.npos) {
-        IndexMap::const_iterator it = indexMap.find(index);
-
-        if (it != indexMap.end())
-            message.replace(i, 2, it->second);
-    }
-
-    // Replace occurrances of %i with index, possibly offset by 'indexoffset'
-    i = message.find("%i");
-    if (i != message.npos) {
-        std::ostringstream os;
-        os << (int)index + indexOffset;
-        message.replace(i, 2, os.str());
-    }
-
-    return message;
-}
+// ////////////////////////////////////////////////////////////////////////////
+// std::string Event::formatMessage(size_t index) const
+// {
+//     std::string message = this->message;
+// 
+//     // Replace occurrances of %m with messages from 'indexmapping'
+//     size_t i = message.find("%m");
+//     if (i != message.npos) {
+//         IndexMap::const_iterator it = indexMap.find(index);
+// 
+//         if (it != indexMap.end())
+//             message.replace(i, 2, it->second);
+//     }
+// 
+//     // Replace occurrances of %i with index, possibly offset by 'indexoffset'
+//     i = message.find("%i");
+//     if (i != message.npos) {
+//         std::ostringstream os;
+//         os << (int)index + indexOffset;
+//         message.replace(i, 2, os.str());
+//     }
+// 
+//     return message;
+// }
 
 // ////////////////////////////////////////////////////////////////////////////
 // std::string Event::formatMessage(const Config& config, size_t index) const

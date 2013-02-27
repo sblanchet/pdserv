@@ -92,9 +92,13 @@ void Server::run()
                     break;
             }
 
-            if (state)
-                eventLog.log(prio,
-                        os.str() + ' ' + event->formatMessage(index));
+            if (state) {
+                if (event->message)
+                    eventLog.log(prio,
+                            os.str() + ' ' + event->message[index]);
+                else
+                    eventLog.log(prio, os.str());
+            }
             else
                 eventLog.debug(os.str());
         }

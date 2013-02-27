@@ -32,20 +32,10 @@ Event::Event( Main *main, size_t idx,
     PdServ::Event(idx, prio, id, nelem),
     main(main)
 {
-    setClear(0, 0);
-}
-
-//////////////////////////////////////////////////////////////////////
-void Event::setClear(pdserv_event_clear_t clear, void *priv_data)
-{
-    this->clear_func = clear;
-    this->priv_data = priv_data;
 }
 
 //////////////////////////////////////////////////////////////////////
 void Event::set(size_t elem, bool state, const timespec *t) const
 {
-    if (main->setEvent(this, elem, state, t) and clear_func)
-        (*clear_func)(reinterpret_cast<const struct pdevent*>(this),
-                elem, state, priv_data);
+    main->setEvent(this, elem, state, t);
 }

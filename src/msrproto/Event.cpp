@@ -46,20 +46,7 @@ void Event::toXml(ostream::locked& ls,
     XmlElement::Attribute(msg, "index") << index;
     XmlElement::Attribute(msg, "state") << state;
     XmlElement::Attribute(msg, "time") << t;
-//    XmlElement::Attribute(msg, "path")
-//        .setEscaped(config["subsystem"].toString().c_str());
-    XmlElement::Attribute(msg, "message")
-        .setEscaped(event->formatMessage(index).c_str());
-
-//    std::ostringstream indexStr;
-//    indexStr << index + config["indexoffset"].toInt();
-//
-//    XmlElement::Attribute(msg, "id") << event->id;
-//    XmlElement::Attribute(msg, "index") << indexStr.str();
-//    XmlElement::Attribute(msg, "state") << state;
-//    XmlElement::Attribute(msg, "time") << t;
-//    XmlElement::Attribute(msg, "path")
-//        .setEscaped(config["subsystem"].toString().c_str());
-//    XmlElement::Attribute(msg, "message")
-//        .setEscaped(event->formatMessage(config, index).c_str());
+    if (event->message)
+        XmlElement::Attribute(msg, "message")
+            .setEscaped(event->message[index]);
 }

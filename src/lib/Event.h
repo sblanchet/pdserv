@@ -37,15 +37,12 @@ class Event: public PdServ::Event {
 
         const Main * const main;
 
+        /* Pointer into shmem where management data is stored */
         struct EventData *data;
 
-        void setClear(pdserv_event_clear_t clear, void *priv_data);
         void set(size_t element, bool state, const timespec *t) const;
 
     private:
-
-        pdserv_event_clear_t clear_func;
-        void *priv_data;
 };
 
 #endif //LIB_EVENT
