@@ -60,7 +60,7 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
         createChannels(baseDir, i);
 
     createParameters(baseDir);
-    createEvents(config["events"]);
+    createEvents();
 
     start();
 }
@@ -119,22 +119,14 @@ void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::createEvents (const PdServ::Config& config)
+void Server::createEvents ()
 {
     const PdServ::Main::Events mainEvents = main->getEvents();
     this->events.reserve(mainEvents.size());
+
     for (PdServ::Main::Events::const_iterator it = mainEvents.begin();
-            it != mainEvents.end(); ++it) {
-
-        // Create a name for the event
-        std::ostringstream id;
-        id << (*it)->id;
-
-        const PdServ::Config eventConfig = config[id.str()];
-
-        Event* e = new Event(*it, eventConfig["level"].toString("debug"));
-        this->events.push_back(e);
-    }
+            it != mainEvents.end(); ++it)
+        this->events.push_back(new Event(*it));
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -105,7 +105,7 @@ class Server: public DirectoryNode, public ost::Thread {
 
         void createChannels(DirectoryNode* baseDir, size_t taskNum);
         void createParameters(DirectoryNode* baseDir);
-        void createEvents(const PdServ::Config& config);
+        void createEvents();
 
         void createChildren(Variable* var);
         DirectoryNode* createChild(Variable* var,

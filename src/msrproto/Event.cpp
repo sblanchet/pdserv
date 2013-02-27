@@ -21,18 +21,14 @@
  *
  *****************************************************************************/
 
-#include <sstream>
-#include <libintl.h>
-
 #include "Event.h"
 #include "XmlElement.h"
-#include "../Config.h"
 
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Event::Event(const PdServ::Event *e, const std::string& level):
-    event(e), level(level)
+Event::Event(const PdServ::Event *e):
+    event(e), level(levelString(e))
 {
 }
 
@@ -40,7 +36,7 @@ Event::Event(const PdServ::Event *e, const std::string& level):
 void Event::toXml(ostream::locked& ls,
         size_t index, bool state, const struct timespec& t) const
 {
-    XmlElement msg(level.c_str(), ls);
+    XmlElement msg(level, ls);
 
     XmlElement::Attribute(msg, "id") << event->id;
     XmlElement::Attribute(msg, "index") << index;
@@ -49,4 +45,25 @@ void Event::toXml(ostream::locked& ls,
     if (event->message)
         XmlElement::Attribute(msg, "message")
             .setEscaped(event->message[index]);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const char *Event::levelString(const PdServ::Event *e)
+{
+    switch (e->priority)
+    {
+        case PdServ::Event::Emergency:
+        case PdServ::Event::Alert:
+        case PdServ::Event::Critical:
+        case PdServ::Event::Error:
+            return "error";
+        case PdServ::Event::Warning:
+            return "warn";
+        case PdServ::Event::Notice:
+        case PdServ::Event::Info:
+        case PdServ::Event::Debug:
+            return "info";
+    }
+
+    return "message";
 }
