@@ -42,24 +42,19 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Server::Server(const PdServ::Main *main,
-        const PdServ::Config& defaultConfig, const PdServ::Config &config):
+Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     main(main),
     log(log4cpp::Category::getInstance(main->name)),
     mutex(1)
 {
-    const PdServ::Config msrConfig = config["msr"];
-
-    port = msrConfig["port"].toUInt();
-    traditional = msrConfig["traditional"]
-        ? msrConfig["traditional"].toUInt()
-        : defaultConfig["traditional"].toUInt();
+    port = config["port"].toUInt();
+    itemize = config["splitvectors"].toUInt();
 
     log_debug("port=%u", port);
 
     DirectoryNode* baseDir = this;
-    if (traditional and msrConfig["modelnameprefix"].toUInt())
-        baseDir = create(config["name"].toString(main->name));
+    if (config["pathprefix"])
+        baseDir = create(config["pathprefix"].toString(main->name));
 
     for (size_t i = 0; i < main->numTasks(); ++i)
         createChannels(baseDir, i);
@@ -87,7 +82,7 @@ void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
                 channels.size(), (*it)->dtype, (*it)->dim, 0, 0);
 
         char hidden;
-        if (traditional)
+        if (itemize)
             baseDir->traditionalPathInsert(c, (*it)->path, hidden);
         else
             baseDir->pathInsert(c, (*it)->path);
@@ -96,7 +91,7 @@ void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
 
         channels.push_back(c);
 
-        if (traditional)
+        if (itemize)
             createChildren(c);
     }
 
@@ -155,7 +150,7 @@ void Server::createParameters(DirectoryNode* baseDir)
                 parameters.size(), (*it)->dtype, (*it)->dim, 0, 0);
 
         char hidden;
-        if (traditional)
+        if (itemize)
             baseDir->traditionalPathInsert(p, (*it)->path, hidden);
         else
             baseDir->pathInsert(p, (*it)->path);
@@ -165,7 +160,7 @@ void Server::createParameters(DirectoryNode* baseDir)
         parameters.push_back(p);
         parameterMap[*it] = p;
             
-        if (traditional)
+        if (itemize)
             createChildren(p);
     }
 

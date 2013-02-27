@@ -45,8 +45,7 @@ class Event;
 
 class Server: public ost::Thread, private PdServ::Session {
     public:
-        Server(const PdServ::Main *main, const PdServ::Config& defaultConfig,
-                const PdServ::Config &config);
+        Server(const PdServ::Main *main, const PdServ::Config &config);
         ~Server();
 
     private:

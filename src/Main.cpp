@@ -113,11 +113,9 @@ const Main::ProcessParameters& Main::getParameters() const
 /////////////////////////////////////////////////////////////////////////////
 void Main::startServers(const Config& config)
 {
-    supervisor = new Supervisor::Server(this,
-            config["defaults"], config[name]);
+    supervisor = new Supervisor::Server(this, config["supervisor"]);
 
-    msrproto = new MsrProto::Server(this,
-            config["defaults"]["msr"], config[name]);
+    msrproto = new MsrProto::Server(this, config["msr"]);
 
 //    EtlProto::Server etlproto(this);
 

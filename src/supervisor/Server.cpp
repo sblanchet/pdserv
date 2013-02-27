@@ -32,8 +32,7 @@
 using namespace Supervisor;
 
 /////////////////////////////////////////////////////////////////////////////
-Server::Server(const PdServ::Main *main,
-        const PdServ::Config& defaultConfig, const PdServ::Config &config):
+Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     PdServ::Session(main),
     main(main),
     eventLog(log4cpp::Category::getInstance(

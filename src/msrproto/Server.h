@@ -50,8 +50,7 @@ class Event;
 
 class Server: public DirectoryNode, public ost::Thread {
     public:
-        Server(const PdServ::Main *main, const PdServ::Config& defaultConfig,
-                const PdServ::Config &config);
+        Server(const PdServ::Main *main, const PdServ::Config &config);
         ~Server();
 
         void broadcast(Session *s, const std::string&);
@@ -87,7 +86,7 @@ class Server: public DirectoryNode, public ost::Thread {
     private:
         std::set<Session*> sessions;
         int port;
-        bool traditional;
+        bool itemize;   // Split multidimensional variables to scalars
 
         Events events;
 
