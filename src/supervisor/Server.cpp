@@ -61,7 +61,7 @@ void Server::run()
         while ((event = main->getNextEvent(this, &index, &state, &t))) {
 
             std::ostringstream os;
-            os << event->id << '.' << index << '=' << state;
+            os << event->path << '[' << index << "]=" << state;
 
             log4cpp::Priority::Value prio;
             switch (event->priority) {

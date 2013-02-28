@@ -185,7 +185,7 @@ struct pdvariable *pdserv_signal(
 #define DEBUG_EVENT     7
 const struct pdevent *pdserv_event(
         struct pdserv* pdserv,  /**< Pointer to pdserv structure */
-        int id,                 /**< Event Id */
+        const char *path,       /**< Event path */
         int priority,           /**< 0 = Emergency
                                  *   1 = Alert
                                  *   2 = Critical

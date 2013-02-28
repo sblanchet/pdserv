@@ -29,11 +29,12 @@
 using namespace PdServ;
 
 ////////////////////////////////////////////////////////////////////////////
-Event::Event(size_t idx, const Priority& prio, int id, size_t nelem):
-    index(idx),
+Event::Event(const char *path, const Priority& prio,
+        size_t nelem, const char **messages):
+    path(path),
     priority(prio),
-    id(id),
-    nelem(nelem)
+    nelem(nelem),
+    message(messages)
 {
 }
 

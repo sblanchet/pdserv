@@ -124,14 +124,12 @@ static const PdServ::DataType& getDataType(int dt)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const struct pdevent *pdserv_event (struct pdserv* pdserv, int id,
+const struct pdevent *pdserv_event (struct pdserv* pdserv, const char *path,
         int prio, size_t n, const char **message)
 {
     Main *main = reinterpret_cast<Main*>(pdserv);
 
-    Event *e = main->addEvent(id, prio, n);
-
-    e->message = message;
+    Event *e = main->addEvent(path, prio, n, message);
 
     return reinterpret_cast<const struct pdevent *>(e);
 }

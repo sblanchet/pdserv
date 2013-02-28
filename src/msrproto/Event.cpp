@@ -28,17 +28,17 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Event::Event(const PdServ::Event *e):
-    event(e), level(levelString(e))
+    event(e)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Event::toXml(ostream::locked& ls,
-        size_t index, bool state, const struct timespec& t) const
+void Event::toXml(ostream::locked& ls, const PdServ::Event* event,
+        size_t index, bool state, const struct timespec& t)
 {
-    XmlElement msg(level, ls);
+    XmlElement msg(levelString(event), ls);
 
-    XmlElement::Attribute(msg, "id") << event->id;
+    XmlElement::Attribute(msg, "path") << event->path;
     XmlElement::Attribute(msg, "index") << index;
     XmlElement::Attribute(msg, "state") << state;
     XmlElement::Attribute(msg, "time") << t;

@@ -39,15 +39,15 @@ class Event {
             Emergency, Alert, Critical, Error, Warning, Notice, Info, Debug
         };
 
-        Event(size_t index, const Priority& prio, int id, size_t nelem);
+        Event(const char *path, const Priority& prio,
+                size_t nelem, const char **messages);
 
         ~Event();
 
-        const size_t index;
+        const std::string path;
 
         const Priority priority;
 
-        const int id;
         const size_t nelem;
         const char ** message;
 

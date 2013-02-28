@@ -34,12 +34,10 @@ class Event {
         Event(const PdServ::Event *s);
 
         const PdServ::Event *event;
-        void toXml(ostream::locked& ls,
-                size_t index, bool state, const struct timespec& t) const;
+        static void toXml(ostream::locked& ls, const PdServ::Event* event,
+                size_t index, bool state, const struct timespec& t);
 
     private:
-        const char * const level;
-
         static const char* levelString(const PdServ::Event *e);
 };
 

@@ -127,9 +127,10 @@ int Main::gettime(struct timespec* t) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Event* Main::addEvent (int id, int prio, size_t nelem)
+Event* Main::addEvent (
+        const char *path, int prio, size_t nelem, const char **messages)
 {
-    if (eventSet.find(id) != eventSet.end())
+    if (variableSet.find(path) != variableSet.end())
         return 0;
 
     PdServ::Event::Priority eventPrio;
@@ -145,8 +146,9 @@ Event* Main::addEvent (int id, int prio, size_t nelem)
                 ? PdServ::Event::Emergency
                 : PdServ::Event::Debug;
     }
-    Event *e = new Event(this, events.size(), eventPrio, id, nelem);
-    eventSet.insert(id);
+    Event *e = new Event(this, path, eventPrio, nelem, messages);
+
+    variableSet.insert(path);
     events.push_back(e);
 
     return e;

@@ -241,8 +241,7 @@ void Session::run()
         size_t index;
         while ((mainEvent = main->getNextEvent(this, &index, &state, &t))) {
             ostream::locked ls(xmlstream);
-            server->getEvents()[mainEvent->index]
-                ->toXml(ls, index, state, t);
+            Event::toXml(ls, mainEvent, index, state, t);
         }
     }
 }

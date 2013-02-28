@@ -127,7 +127,7 @@ int main(int argc, const char *argv[])
     assert(pdserv_signal(task[0], 1, "/s1", s1_t, &s1, 1, NULL));
     assert(pdserv_signal(task[0], 1, "/s2", s2_t, s2, 2, NULL));
 
-    event = pdserv_event(pdserv,23,WARN_EVENT,5, room_mapping);
+    event = pdserv_event(pdserv,"/Event/path",WARN_EVENT,5, room_mapping);
 
     assert(pdserv_signal(task[0], 1, "/path<lksjdf/to>ljk/double",
             pd_double_T, dbl, 3, NULL));

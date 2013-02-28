@@ -27,9 +27,10 @@
 #include "Main.h"
 
 //////////////////////////////////////////////////////////////////////
-Event::Event( Main *main, size_t idx,
-        const PdServ::Event::Priority& prio, int id, size_t nelem):
-    PdServ::Event(idx, prio, id, nelem),
+Event::Event( Main *main, const char* path,
+        const PdServ::Event::Priority& prio, size_t nelem,
+        const char **messages):
+    PdServ::Event(path, prio, nelem, messages),
     main(main)
 {
 }
