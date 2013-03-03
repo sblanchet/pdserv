@@ -44,7 +44,9 @@ ADD_EXECUTABLE(datatype datatype.cpp)
 TARGET_LINK_LIBRARIES(datatype ${PROJECT_NAME})
 
 ADD_EXECUTABLE(parser
-    parser.cpp ${PROJECT_SOURCE_DIR}/src/msrproto/XmlParser.cpp)
+    parser.cpp ${PROJECT_SOURCE_DIR}/src/msrproto/XmlParser.cpp
+    ${PROJECT_SOURCE_DIR}/src/Debug.cpp)
+TARGET_LINK_LIBRARIES(parser ccext2 ccgnu2)
 
 #ADD_TEST(test1 test1)
 ADD_TEST(parser parser)

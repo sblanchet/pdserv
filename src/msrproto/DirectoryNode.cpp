@@ -90,15 +90,16 @@ void DirectoryNode::traditionalPathInsert(Variable* var,
         if (nameEnd != name.npos) {
             const char *s = name.c_str();
             XmlParser p(s + nameEnd, s + name.size());
+            XmlParser::Element element = p.nextElement();
 
-            if (p.next()) {
+            if (element) {
                 const char *value;
-                if (p.isTrue("hide"))
+                if (element.isTrue("hide"))
                     hidden = 1;
-                else if (p.find("hide", value))
+                else if (element.find("hide", value))
                     hidden = *value;
 
-                if (p.isTrue("unhide"))
+                if (element.isTrue("unhide"))
                     hidden = 0;
 
                 while (nameEnd

@@ -42,32 +42,47 @@ class XmlParser {
         size_t free();
 
         void newData(size_t n);
-        bool next();
 
-        const char *getCommand() const;
-        bool find(const char *name, const char *&value) const;
-        bool isEqual(const char *name, const char *s) const;
-        bool isTrue(const char *name) const;
-        bool getString(const char *name, std::string &s) const;
-        bool getUnsigned(const char *name, unsigned int &i) const;
-        bool getUnsignedList(const char *name,
-                std::list<unsigned int> &i) const;
+        typedef std::pair<const char*, const char*> Attribute;
+        typedef std::list<Attribute> AttributeList;
+        //typedef std::map<size_t, size_t> AttributePos;
+        //typedef std::map<char, AttributePos> AttributeMap;
+
+        class Element {
+            public:
+                Element(const char *command = 0,
+                        const AttributeList* attribute = 0);
+
+                operator bool() const;
+
+                const char *getCommand() const;
+                bool find(const char *name, const char *&value) const;
+                bool isEqual(const char *name, const char *s) const;
+                bool isTrue(const char *name) const;
+                bool getString(const char *name, std::string &s) const;
+                bool getUnsigned(const char *name, unsigned int &i) const;
+                bool getUnsignedList(const char *name,
+                        std::list<unsigned int> &i) const;
+
+            private:
+                const char * command;
+                const AttributeList* attribute;
+        };
+
+        Element nextElement();
 
     private:
         const size_t bufLenMax;
 
-        typedef std::map<size_t, size_t> AttributePos;
-        typedef std::map<char, AttributePos> AttributeMap;
-        AttributeMap attribute;
+        AttributeList attribute;
 
         static const size_t bufIncrement = 1024;
         size_t bufLen;
         char *buf;
 
-        size_t parsePos;        // Current parsing position
-        size_t inputEnd;        // End of input data
-        size_t commandPos;
-        size_t attrNamePos;
+        char *parsePos;        // Current parsing position
+        char *inputEnd;        // End of input data
+        char *element;         // pointer to '<' in the element
         char quote;
 
         enum ParseState {

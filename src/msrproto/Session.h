@@ -87,7 +87,7 @@ class Session: public ost::Thread, public PdServ::Session {
         void setAIC(const Parameter* p);
         void getSessionStatistics(PdServ::SessionStatistics &stats) const;
 
-        void processCommand();
+        void processCommand(const XmlParser::Element&);
 
         const struct timespec *getTaskTime(const PdServ::Task *) const;
         const PdServ::TaskStatistics *getTaskStatistics(
@@ -159,22 +159,19 @@ class Session: public ost::Thread, public PdServ::Session {
         std::string peer;
         std::string client;
 
-        // Input and output buffering
-        XmlParser inbuf;
-
         // Here are all the commands the MSR protocol supports
-        void broadcast();
-        void echo();
-        void ping();
-        void readChannel();
-        void listDirectory();
-        void readParameter();
-        void readParamValues();
-        void readStatistics();
-        void remoteHost();
-        void writeParameter();
-        void xsad();
-        void xsod();
+        void broadcast(const XmlParser::Element&);
+        void echo(const XmlParser::Element&);
+        void ping(const XmlParser::Element&);
+        void readChannel(const XmlParser::Element&);
+        void listDirectory(const XmlParser::Element&);
+        void readParameter(const XmlParser::Element&);
+        void readParamValues(const XmlParser::Element&);
+        void readStatistics(const XmlParser::Element&);
+        void remoteHost(const XmlParser::Element&);
+        void writeParameter(const XmlParser::Element&);
+        void xsad(const XmlParser::Element&);
+        void xsod(const XmlParser::Element&);
 };
 
 }

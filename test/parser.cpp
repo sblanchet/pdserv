@@ -25,6 +25,7 @@
 #include <cstring>
 #include <cstdio>
 #include <assert.h>
+#include <stdarg.h>
 
 #include <iostream>
 using std::cout;
@@ -33,53 +34,87 @@ using std::endl;
 
 using namespace MsrProto;
 
+int test_single(const char *s, ...)
+{
+    va_list ap;
+    XmlParser inbuf;
+    XmlParser::Element command;
+    int i = 0;
+
+    va_start(ap, s);
+
+    printf("%s\n", s);
+
+    for( i = 0; s[i]; ++i) {
+        *inbuf.bufptr() = s[i];
+        inbuf.newData(1);
+        command = inbuf.nextElement();
+
+        if (command) {
+            int idx = va_arg(ap, int);
+            printf("idx=%i i=%i\n", idx, i);
+            assert(idx and idx == i);
+        }
+    }
+
+    i = va_arg(ap, int);
+    assert(!i);
+
+    va_end(ap);
+    return 1;
+}
+
 int main(int argc, const char *argv[])
 {
     XmlParser inbuf;
+    XmlParser::Element command;
     const char *s;
     char *buf;
 
     // Perfectly legal statement
     s = "<rp index=\"134\" value=13>";
+    test_single(s, 24, 0);
     buf = inbuf.bufptr();
     assert( buf);                // Buffer may not be null
     assert( inbuf.free());       // and have some space
     strcpy( inbuf.bufptr(), s);
     inbuf.newData(14);
-    assert(!inbuf.next());
+    assert(!inbuf.nextElement());
     inbuf.newData(11);
-    assert( inbuf.next());
-    assert( inbuf.getCommand());         // There is a command
-    assert(!strcmp(inbuf.getCommand(), "rp"));  // which is "rp"
-    assert(!inbuf.next());              // and no next command
+    assert((command = inbuf.nextElement()));
+    assert(!strcmp(command.getCommand(), "rp"));  // which is "rp"
+    assert(!inbuf.nextElement());              // and no next command
     assert( buf == inbuf.bufptr());      // Buffer pointer does not change
 
     // An illegal command - no space after '<'
     s = "< rp>";
+    test_single(s, 0);
     strcpy( inbuf.bufptr(), s);
     inbuf.newData(strlen(s));
-    assert(!inbuf.next());
+    assert(!inbuf.nextElement());
     assert(buf == inbuf.bufptr());      // Buffer pointer does not change
 
     // Two legal commands
     s = "<a_long_command_with_slash /><wp >";
+    test_single(s, 28, 33, 0);
     strcpy( inbuf.bufptr(), s);
     inbuf.newData(strlen(s));
-    assert(inbuf.next());
-    assert(inbuf.getCommand());
-    assert(!strcmp(inbuf.getCommand(), "a_long_command_with_slash"));
-    assert(inbuf.next());
-    assert(inbuf.getCommand());
-    assert(!strcmp(inbuf.getCommand(), "wp"));
-    assert(!inbuf.next());
+    assert((command = inbuf.nextElement()));
+    assert(command.getCommand());
+    assert(!strcmp(command.getCommand(), "a_long_command_with_slash"));
+    assert((command = inbuf.nextElement()));
+    assert(command.getCommand());
+    assert(!strcmp(command.getCommand(), "wp"));
+    assert(!inbuf.nextElement());
 
     s = " lkj <wrong/ >\n<still-incorrect /> <right> lkjs dfkl";
+    test_single(s, 41, 0);
     strcpy( inbuf.bufptr(), s);
     inbuf.newData(strlen(s));
-    assert(inbuf.next());
-    assert(inbuf.getCommand());
-    assert(!strcmp(inbuf.getCommand(), "right"));
-    assert(!inbuf.next());
+    assert((command = inbuf.nextElement()));
+    assert(command.getCommand());
+    assert(!strcmp(command.getCommand(), "right"));
+    assert(!inbuf.nextElement());
 
     for (s = "<tag true with=no-quote-attr "
             "trueval=1 falseval=0 truestr=True falsestr=nottrue onstr='on' "
@@ -87,44 +122,46 @@ int main(int argc, const char *argv[])
             *s; s++) {
         *inbuf.bufptr() = *s;
         inbuf.newData(1); // == (*s == '>' and !s[1]);
-        assert(!s[1] or !inbuf.next());
+        assert(!s[1] or !inbuf.nextElement());
     }
-    assert(inbuf.next());
-    assert(inbuf.getCommand());
-    assert(!strcmp(inbuf.getCommand(), "tag"));
-    assert(!inbuf.isTrue("with"));
-    assert(!inbuf.isTrue("unknown"));
-    assert( inbuf.isTrue("true"));
-    assert( inbuf.isTrue("trueval"));
-    assert(!inbuf.isTrue("falseval"));
-    assert( inbuf.isTrue("truestr"));
-    assert(!inbuf.isTrue("falsestr"));
-    assert( inbuf.isTrue("onstr"));
-    assert(inbuf.find("and", s));
+    assert((command = inbuf.nextElement()));
+    assert(command.getCommand());
+    assert(!strcmp(command.getCommand(), "tag"));
+    assert(!command.isTrue("with"));
+    assert(!command.isTrue("unknown"));
+    assert( command.isTrue("true"));
+    assert( command.isTrue("trueval"));
+    assert(!command.isTrue("falseval"));
+    assert( command.isTrue("truestr"));
+    assert(!command.isTrue("falsestr"));
+    assert( command.isTrue("onstr"));
+    assert(command.find("and", s));
     assert(!strcmp(s, "quoted /> > &quot; &apos;"));
     std::string str;
-    assert(inbuf.getString("and", str));
+    assert(command.getString("and", str));
     assert(str == "quoted /> > \" '");
-    assert(!inbuf.next());
+    assert(!inbuf.nextElement());
 
-    s = "<tag with=no-quot/>attr and=\"quoted /> > &quot; &apos;\" />";
+    s = "<tag with=no-quot/>attr and=\"quo\\\"ted /> > &quot; &apos;\" />";
+    test_single(s, 18, 0);
     strcpy( inbuf.bufptr(), s);
     inbuf.newData(strlen(s));
-    assert(inbuf.next());
-    assert(inbuf.getCommand());
-    assert(!strcmp(inbuf.getCommand(), "tag"));
-    assert(inbuf.isTrue("tag"));        // "tag" is also an attribute
-    assert(inbuf.find("with", s));
+    assert((command = inbuf.nextElement()));
+    assert(command.getCommand());
+    assert(!strcmp(command.getCommand(), "tag"));
+    assert(command.isTrue("tag"));        // "tag" is also an attribute
+    assert(command.find("with", s));
     assert(!strcmp(s, "no-quot"));
-    assert(!inbuf.next());
+    assert(!inbuf.nextElement());
 
     s = "<with=no-quot-attr and=\"quoted /> > &quot; &apos;\" />";
+    test_single(s, 52, 0);
     strcpy( inbuf.bufptr(), s);
     inbuf.newData(strlen(s));
-    assert(inbuf.next());
-    assert(inbuf.getCommand());        // There is no command
-    assert(inbuf.find("with", s));
+    assert((command = inbuf.nextElement()));
+    assert(command.getCommand());        // There is no command
+    assert(command.find("with", s));
     assert(!strcmp(s, "no-quot-attr"));
-    assert(!inbuf.next());
+    assert(!inbuf.nextElement());
     return 0;
 }
