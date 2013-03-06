@@ -66,9 +66,6 @@ SET (main_src
     supervisor/Server.cpp         supervisor/Server.h
     )
 
-FIND_PACKAGE (Log4Cpp REQUIRED)
-FIND_PACKAGE (Yaml REQUIRED)
-
 # Search for files required by buddy.
 FIND_FILE (RT_APP "rt_app.h")
 
