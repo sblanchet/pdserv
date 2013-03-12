@@ -23,4 +23,4 @@
 ##############################################################################
 
 INSTALL (FILES "pdserv.h"
-    DESTINATION "${ABS_INCLUDEDIR}")
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")

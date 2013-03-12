@@ -27,11 +27,10 @@
 #  The following options can be specified on the command line of cmake to
 #  change the installation paths (Defaults are in <>)
 #
-#       -DPREFIX=</opt/etherlab>
-#       -DINCLUDEDIR=<${prefix}/include>
-#       -DEXECDIR=<${prefix}/bin>
-#       -DLIBDIR=<${prefix}/lib>
-#       -DDISABLE_BUDDY=0         # Do not build etherlab_buddy2
+#       -DCMAKE_INSTALL_PREFIX=</usr/local>
+#       -DCMAKE_INSTALL_INCLUDEDIR=<${CMAKE_INSTALL_PREFIX}/include>
+#       -DCMAKE_INSTALL_BINDIR=<${CMAKE_INSTALL_PREFIX}/bin>
+#       -DCMAKE_INSTALL_LIBDIR=<${CMAKE_INSTALL_PREFIX}/lib>
 #
 #  For debugging, use
 #
@@ -63,58 +62,9 @@ SET (VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL})
 # library version
 SET (SOVERSION ${MAJOR_VERSION}.${MINOR_VERSION})
 
-# Project path options
-IF (NOT PREFIX)         # Project root
-    SET (PREFIX "/opt/etherlab")
-ENDIF ()
-
-SET (CMAKE_INSTALL_PREFIX "${PREFIX}")
-LIST (APPEND CMAKE_PREFIX_PATH "${PREFIX}")
-
-IF (SYSCONFDIR)         # configuration files
-    SET (ABS_SYSCONFDIR "${SYSCONFDIR}")
-    SET (PC_SYSCONFDIR "${SYSCONFDIR}")
-ELSE ()
-    SET (ABS_SYSCONFDIR ${PREFIX}/etc)
-    SET (PC_SYSCONFDIR "\${prefix}/etc")
-ENDIF ()
-
-IF (INCLUDEDIR)         # include files
-    SET (ABS_INCLUDEDIR "${INCLUDEDIR}")
-    SET (PC_INCLUDEDIR "${INCLUDEDIR}")
-    LIST (APPEND CMAKE_INCLUDE_PATH "${INCLUDEDIR}")
-ELSE ()
-    SET (ABS_INCLUDEDIR ${PREFIX}/include)
-    SET (PC_INCLUDEDIR "\${prefix}/include")
-ENDIF ()
-
-IF (EXECDIR)            # executables
-    SET (ABS_EXECDIR "${EXECDIR}")
-    SET (PC_EXECDIR "${EXECDIR}")
-ELSE ()
-    SET (ABS_EXECDIR ${PREFIX}/bin)
-    SET (PC_EXECDIR "\${prefix}/bin")
-ENDIF ()
-
-IF (LIBDIR)             # libraries
-    SET (ABS_LIBDIR "${LIBDIR}")
-    SET (PC_LIBDIR "${LIBDIR}")
-ELSE ()
-    SET (ABS_LIBDIR ${PREFIX}/lib)
-    SET (PC_LIBDIR "\${prefix}/lib")
-ENDIF ()
-
-# Make sure that the project options are remembered
-SET (PREFIX "${PREFIX}" CACHE PATH
-    "Root directory for the project" FORCE)
-SET (SYSCONFDIR "${SYSCONFDIR}" CACHE PATH
-    "Directory for configuration files" FORCE)
-SET (INCLUDEDIR "${INCLUDEDIR}" CACHE PATH
-    "Directory for header files" FORCE)
-SET (EXECDIR "${EXECDIR}" CACHE PATH
-    "Directory for executables" FORCE)
-SET (LIBDIR "${LIBDIR}" CACHE PATH
-    "Directory for libraries" FORCE)
+# GNU Paths:
+#       CMAKE_INSTALL_*
+INCLUDE (GNUInstallDirs)
 
 SET (DISABLE_BUDDY "${DISABLE_BUDDY}" CACHE BOOL
     "Do not build etherlab_buddy" FORCE)
@@ -168,7 +118,7 @@ ENDIF ()
 
 ADD_DEFINITIONS ("-Wall -ansi")
 
-INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include" "${ABS_INCLUDEDIR}")
+INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include")
 ADD_SUBDIRECTORY (src)
 ADD_SUBDIRECTORY (include)
 ADD_SUBDIRECTORY (test)
@@ -200,4 +150,4 @@ CONFIGURE_FILE (
     )
 
 INSTALL (FILES "${CMAKE_CURRENT_SOURCE_DIR}/pdserv.conf"
-    DESTINATION "${ABS_SYSCONFDIR}")
+    DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}")
