@@ -21,11 +21,8 @@
 #  vim: tw=78 noexpandtab
 #
 
-prefix=@PREFIX@
-exec_prefix=@PC_EXECDIR@
-libdir=@PC_LIBDIR@
-includedir=@PC_INCLUDEDIR@
-sysconfdir=@PC_SYSCONFDIR@
+libdir=@CMAKE_INSTALL_FULL_LIBDIR@
+includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@
 
 Name: @PROJECT_NAME@
 Description: Process data communications library
