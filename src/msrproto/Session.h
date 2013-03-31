@@ -57,7 +57,6 @@
 #include <map>
 #include <set>
 #include <cstdio>
-#include <log4cpp/NDC.hh>
 
 namespace PdServ {
     class Parameter;
@@ -78,8 +77,7 @@ class Subscription;
 
 class Session: public ost::Thread, public PdServ::Session {
     public:
-        Session( Server *s, ost::TCPSocket *socket,
-                log4cpp::NDC::ContextStack*);
+        Session( Server *s, ost::TCPSocket *socket);
         ~Session();
 
         void broadcast(Session *s, const std::string &element);
@@ -126,7 +124,6 @@ class Session: public ost::Thread, public PdServ::Session {
         MsrProto::ostream xmlstream;
 
         ost::Semaphore mutex;
-        log4cpp::NDC::ContextStack *ctxt;
         size_t aicDelay;
         typedef std::set<const PdServ::Parameter*> AicSet;
         AicSet aic;

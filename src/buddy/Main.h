@@ -24,14 +24,10 @@
 #ifndef BUDDY_MAIN_H
 #define BUDDY_MAIN_H
 
-#include <log4cpp/Category.hh>
-
 #include "../Main.h"
 #include "fio_ioctl.h"
-
-namespace log4cpp {
-    class Category;
-}
+#include <set>
+#include <log4cplus/logger.h>
 
 namespace PdServ {
     class Session;
@@ -56,7 +52,7 @@ class Main: public PdServ::Main {
 
     private:
         const struct app_properties &app_properties;
-        log4cpp::Category &log;
+        log4cplus::Logger log;
 
         mutable ost::Semaphore paramMutex;
 
@@ -84,13 +80,13 @@ class Main: public PdServ::Main {
         typedef std::set<int> EventSet;
         EventSet eventSet;
 
-        void setupLogging(log4cpp::Category& log,
-                PdServ::Config const& config);
-        void setupTTYLog(log4cpp::Category& log);
-        void setupSyslog(log4cpp::Category& log,
-                PdServ::Config const& config);
-        void setupFileLog(log4cpp::Category& log,
-                PdServ::Config const& config);
+//        void setupLogging(log4cpp::Category& log,
+//                PdServ::Config const& config);
+//        void setupTTYLog(log4cpp::Category& log);
+//        void setupSyslog(log4cpp::Category& log,
+//                PdServ::Config const& config);
+//        void setupFileLog(log4cpp::Category& log,
+//                PdServ::Config const& config);
 
         // Reimplemented from PdServ::Main
         void processPoll(unsigned int delay_ms,

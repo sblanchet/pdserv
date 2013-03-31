@@ -33,10 +33,6 @@
 #include <sys/select.h>
 #include <sys/wait.h>           // waitpid()
 
-#include <log4cpp/OstreamAppender.hh>
-#include <log4cpp/SimpleLayout.hh>
-#include <log4cpp/Category.hh>
-
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
@@ -57,7 +53,7 @@ Main::Main(const struct app_properties& p,
         const PdServ::Config& config, int fd):
     PdServ::Main(p.name, p.version),
     app_properties(p),
-    log(log4cpp::Category::getInstance(p.name)),
+    log(log4cplus::Logger::getRoot()),
     paramMutex(1), parameterBuf(0)
 {
     pid = ::getpid();
@@ -66,15 +62,29 @@ Main::Main(const struct app_properties& p,
 
     this->fd = fd;
 
-    log.notice("Started new application server (%i)", pid);
-    log.info("   Block count: %zu", app_properties.rtB_count);
-    log.info("   Block size: %zu", app_properties.rtB_size);
-    log.info("   Parameter size: %zu", app_properties.rtP_size);
-    log.info("   Number of sample times: %zu", app_properties.num_st);
-    log.info("   Number of tasks: %zu", app_properties.num_tasks);
-    log.info("   Sample period: %luus", app_properties.sample_period);
-    log.info("   Number of parameters: %zu", app_properties.param_count);
-    log.info("   Number of signals: %zu", app_properties.signal_count);
+    LOG4CPLUS_INFO(log,
+            LOG4CPLUS_TEXT("Started new application server (pid=")
+                << pid << LOG4CPLUS_TEXT(")"));
+    LOG4CPLUS_INFO(log,
+            LOG4CPLUS_TEXT("   Block count: ") << app_properties.rtB_count);
+    LOG4CPLUS_INFO(log,
+            LOG4CPLUS_TEXT("   Block size: ") << app_properties.rtB_size);
+    LOG4CPLUS_INFO(log,
+            LOG4CPLUS_TEXT("   Parameter size: ") << app_properties.rtP_size);
+    LOG4CPLUS_INFO(log,
+            LOG4CPLUS_TEXT("   Number of sample times: ")
+            << app_properties.num_st);
+    LOG4CPLUS_INFO(log,
+            LOG4CPLUS_TEXT("   Number of tasks: ") << app_properties.num_tasks);
+    LOG4CPLUS_INFO(log,
+            LOG4CPLUS_TEXT("   Sample period (us): ")
+            << app_properties.sample_period);
+    LOG4CPLUS_INFO(log,
+            LOG4CPLUS_TEXT("   Number of parameters: ")
+            << app_properties.param_count);
+    LOG4CPLUS_INFO(log,
+            LOG4CPLUS_TEXT("   Number of signals: ")
+            << app_properties.signal_count);
 
     // Go through the list of events and set up a map path->id
     // of paths and their corresponding id's to watch
@@ -90,7 +100,8 @@ Main::Main(const struct app_properties& p,
             eventList[eventConf.toString()]["subsystem"].toString();
         if (!subsys.empty() and eventConf.toUInt()) {
             eventMap[subsys] = eventConf;
-            log.debug("Added event %s", subsys.c_str());
+            LOG4CPLUS_DEBUG(log,
+                    LOG4CPLUS_TEXT("Added event " << subsys.c_str()));
         }
     }
 
@@ -103,19 +114,21 @@ Main::Main(const struct app_properties& p,
     struct signal_info si;
     si.path = path;
     si.path_buf_len = app_properties.variable_path_len + 1;
-    log.debug("Adding parameters:");
+    LOG4CPLUS_DEBUG(log, LOG4CPLUS_TEXT("Adding parameters:"));
     for (size_t i = 0; i < app_properties.param_count; i++) {
 
         si.index = i;
         if (ioctl(fd, GET_PARAM_INFO, &si) or !si.dim[0]) {
-            log.warn("Getting parameter properties for %i failed.", i);
+            LOG4CPLUS_WARN(log,
+                    LOG4CPLUS_TEXT("Getting parameter properties for ")
+                    << i << LOG4CPLUS_TEXT(" failed."));
             continue;
         }
 
         Parameter *p = new Parameter( this, parameterBuf + si.offset,
                 SignalInfo(app_properties.name, &si));
         parameters.push_back(p);
-        log.debug("   %zu %s", i, p->path.c_str());
+        LOG4CPLUS_DEBUG(log, LOG4CPLUS_STRING_TO_TSTRING(p->path));
     }
 
     photoReady = new unsigned int[app_properties.rtB_count];
@@ -126,22 +139,28 @@ Main::Main(const struct app_properties& p,
     shmem = ::mmap(0, shmem_len, PROT_READ, MAP_PRIVATE, fd, 0);
     if (shmem == MAP_FAILED)
         goto out;
-    log.info("Mapped shared memory segment with %zu bytes and %zu snapshots",
-            shmem_len, app_properties.rtB_count);
+    LOG4CPLUS_INFO(log,
+            LOG4CPLUS_TEXT("Mapped shared memory segment with ") << shmem_len
+            << LOG4CPLUS_TEXT(" and ") << app_properties.rtB_count
+            << LOG4CPLUS_TEXT(" snapshots."));
 
     photoAlbum = reinterpret_cast<const char *>(shmem);
 
     mainTask = new Task(this, 1.0e-6 * app_properties.sample_period,
             photoReady, photoAlbum, &app_properties);
     task.push_back(mainTask);
-    log.debug("Added Task with sample time %f", mainTask->sampleTime);
+    LOG4CPLUS_DEBUG(log,
+            LOG4CPLUS_TEXT("Added Task with sample time ")
+            << mainTask->sampleTime);
 
-    log.debug("Adding signals:");
+    LOG4CPLUS_DEBUG_STR(log, LOG4CPLUS_TEXT("Adding signals:"));
     for (size_t i = 0; i < app_properties.signal_count; i++) {
 
         si.index = i;
         if (ioctl(fd, GET_SIGNAL_INFO, &si) or !si.dim[0]) {
-            log.warn("Getting signals properties for %i failed.", i);
+            LOG4CPLUS_WARN(log,
+                    LOG4CPLUS_TEXT("Getting signals properties for ")
+                    << i << LOG4CPLUS_TEXT(" failed"));
             continue;
         }
 
@@ -159,34 +178,28 @@ Main::Main(const struct app_properties& p,
                     it->second.toUInt(), config["priority"].toString());
             events.push_back(e);
             eventCount += e->nelem;
-            log.info("Watching as event: %s", s->path.c_str());
+            LOG4CPLUS_INFO(log,
+                    LOG4CPLUS_TEXT("Watching as event: ")
+                    << LOG4CPLUS_STRING_TO_TSTRING(s->path.c_str()));
 
             // Set event message
-            e->message = config["message"].toString();
-
-            // Set index offset
-            e->indexOffset = config["indexoffset"].toInt();
-
-            // Setup index mapping if present
-            size_t i = 0;
-            PdServ::Config indexMapping = config["indexmapping"];
-            for (PdServ::Config map = indexMapping[i];
-                    map; map = indexMapping[++i])
-                e->indexMap[map.toUInt()] =
-                    indexMapping[map.toString()].toString();
+//TODO            e->message = config["message"].toString();
 
             // Reset config to indicate that the path was found
             it->second = PdServ::Config();
         }
 
-        log.debug("   %zu %s", i, s->path.c_str());
+        LOG4CPLUS_DEBUG(log, LOG4CPLUS_STRING_TO_TSTRING(s->path));
     }
 
     // Report whether some events were not discovered
     for (EventMap::const_iterator it = eventMap.begin();
             it != eventMap.end(); ++it) {
         if (it->second)
-            log.warn("Event %s is not found", it->first.c_str());
+            LOG4CPLUS_WARN(log,
+                    LOG4CPLUS_TEXT("Event ")
+                    << LOG4CPLUS_STRING_TO_TSTRING(it->first)
+                    << LOG4CPLUS_TEXT(" is not found"));
     }
 
     eventQ = new EventQ(eventCount * 2, photoAlbum, &app_properties);
@@ -198,7 +211,9 @@ Main::Main(const struct app_properties& p,
     return;
 
 out:
-    log.crit("Failed: %s (%i)", strerror(errno), errno);
+    LOG4CPLUS_FATAL(log,
+            LOG4CPLUS_TEXT("Failed: ")
+            << LOG4CPLUS_C_STR_TO_TSTRING(strerror(errno)));
     ::exit(errno);
 }
 
@@ -215,12 +230,15 @@ void Main::serve()
         n = ::select(fd + 1, &fds, 0, 0, 0);
         if (n < 0) {
             // Some error occurred in select()
-            log.crit("Received fatal error in select() = %i", -errno);
+            LOG4CPLUS_FATAL(log,
+                    LOG4CPLUS_TEXT("Received fatal error in select() = "
+                        << -errno));
             goto out;
         }
         else if (!n) {
             // Signal was caught, check whether the children are still there
-            log.warn("Received misterious interrupt during select()");
+            LOG4CPLUS_WARN_STR(log, LOG4CPLUS_TEXT(
+                        "Received misterious interrupt during select()"));
             continue;
         }
 
@@ -248,7 +266,9 @@ void Main::serve()
     }
 
 out:
-    log.crit("Failed: %s (%i)", strerror(errno), errno);
+    LOG4CPLUS_FATAL(log,
+            LOG4CPLUS_TEXT("Failed: ")
+            << LOG4CPLUS_C_STR_TO_TSTRING(strerror(errno)));
     ::exit(errno);
 }
 

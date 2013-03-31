@@ -117,7 +117,6 @@ bool SessionTaskData::rxPdo (const struct timespec **time,
 
         pdo = pdo->next;
         if (pdo < txMemBegin or &pdo->data > txMemEnd) {
-            log_debug("%i\n", __LINE__);
             goto out;
         }
 
@@ -168,7 +167,6 @@ bool SessionTaskData::rxPdo (const struct timespec **time,
                 return true;
 
             default:
-                log_debug("%i\n", __LINE__);
                 goto out;
         }
     }

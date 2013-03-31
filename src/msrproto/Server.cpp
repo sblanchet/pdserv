@@ -21,6 +21,8 @@
  *
  *****************************************************************************/
 
+#include "config.h"
+
 #include "Server.h"
 #include "Channel.h"
 #include "Event.h"
@@ -32,19 +34,17 @@
 #include "../Task.h"
 #include "../Signal.h"
 #include "../ProcessParameter.h"
-#include "../Debug.h"
 
-#include <cc++/socketport.h>
+#include <cerrno>
 #include <algorithm>
-#include <log4cpp/Category.hh>
-#include <log4cpp/NDC.hh>
+#include <cc++/socketport.h>
 
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     main(main),
-    log(log4cpp::Category::getInstance(main->name)),
+    log(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("msr"))),
     mutex(1)
 {
     port = config["port"].toUInt();
@@ -70,6 +70,11 @@ void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
 {
     const PdServ::Task *task = main->getTask(taskIdx);
     Channel* c;
+
+    log4cplus::tostringstream msg;
+    LOG4CPLUS_TRACE(log,
+            LOG4CPLUS_TEXT("Create channels for task ") << taskIdx
+            << LOG4CPLUS_TEXT(", Ts=") << task->sampleTime);
 
     const PdServ::Task::Signals& signals = task->getSignals();
 
@@ -121,6 +126,9 @@ void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
 /////////////////////////////////////////////////////////////////////////////
 void Server::createEvents ()
 {
+    LOG4CPLUS_TRACE(log,
+            LOG4CPLUS_TEXT("Create events"));
+
     const PdServ::Main::Events mainEvents = main->getEvents();
     this->events.reserve(mainEvents.size());
 
@@ -132,6 +140,9 @@ void Server::createEvents ()
 /////////////////////////////////////////////////////////////////////////////
 void Server::createParameters(DirectoryNode* baseDir)
 {
+    LOG4CPLUS_TRACE(log,
+            LOG4CPLUS_TEXT("Create parameters"));
+
     const PdServ::Main::ProcessParameters& mainParam = main->getParameters();
 
     parameters.reserve(parameters.size() + mainParam.size());
@@ -172,13 +183,13 @@ Server::~Server()
 /////////////////////////////////////////////////////////////////////////////
 void Server::initial()
 {
-    log4cpp::NDC::push("msr");
+    LOG4CPLUS_INFO_STR(log, LOG4CPLUS_TEXT("Initializing MSR server"));
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Server::final()
 {
-    log4cpp::NDC::pop();
+    LOG4CPLUS_INFO_STR(log, LOG4CPLUS_TEXT("Exiting MSR server"));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -193,31 +204,38 @@ void Server::run()
             server = new ost::TCPSocket(ost::IPV4Address("0.0.0.0"), port);
         }
         catch (ost::Socket *s) {
-            if (this->port) {
-                log.crit("Could not start on port %i", port);
-                throw(s);
+            long err = s->getSystemError();
+            if (this->port or err != EADDRINUSE) {
+                LOG4CPLUS_ERROR(log,
+                        LOG4CPLUS_TEXT("Socket failure on port ") << port
+                        << LOG4CPLUS_TEXT(": ")
+                        << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(err)));
+                return;
             }
-            log.notice("Port %i is busy", port);
+            LOG4CPLUS_DEBUG(log,
+                    LOG4CPLUS_TEXT("Port ") << port
+                    << LOG4CPLUS_TEXT(" is busy"));
             port++;
         }
     } while (!server);
 
-    log.notice("Server started on port %i", port);
+    LOG4CPLUS_INFO(log, LOG4CPLUS_TEXT("Server started on port ") << port);
     while (server->isPendingConnection()) {
-        log4cpp::NDC::ContextStack *ndc;
         try {
-            ndc = log4cpp::NDC::cloneStack();
-            Session *s = new Session(this, server, ndc);
+            LOG4CPLUS_TRACE_STR(log,
+                    LOG4CPLUS_TEXT("New client connection"));
+            Session *s = new Session(this, server);
 
             ost::SemaphoreLock lock(mutex);
             sessions.insert(s);
         }
         catch (ost::Socket *s) {
-            log.crit("Socket failure: %s", ::strerror(s->getSystemError()));
-            delete ndc;
+            LOG4CPLUS_FATAL(log,
+                    LOG4CPLUS_TEXT("Socket failure: ")
+                    << LOG4CPLUS_C_STR_TO_TSTRING(
+                        ::strerror(s->getSystemError())));
         }
     }
-
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -327,6 +345,10 @@ void Server::createChildren(Variable* var)
     if (var->dim.isScalar() and var->dtype.isPrimary())
         return;
 
+    LOG4CPLUS_TRACE(log,
+            LOG4CPLUS_TEXT("Create children for ")
+            << LOG4CPLUS_STRING_TO_TSTRING(var->variable->path));
+
     if (var->dtype.isPrimary())
         createVectorChildren(var, var, std::string(),
                 var->dtype, var->dim, 0, 0);
@@ -417,8 +439,6 @@ DirectoryNode* Server::createChild (Variable* var,
                 PdServ::DataType::DimType(1,&nelem), offset, c);
         channels.push_back(c);
         dir->insert(c, name);
-
-//        log_debug("child %s @ %zu", c->path().c_str(), offset);
         return c;
     }
 
@@ -427,8 +447,6 @@ DirectoryNode* Server::createChild (Variable* var,
                 PdServ::DataType::DimType(1,&nelem), offset, p);
         parameters.push_back(p);
         dir->insert(p, name);
-
-//        log_debug("child %s @ %zu", p->path().c_str(), offset);
         return p;
     }
 

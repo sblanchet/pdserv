@@ -37,12 +37,10 @@
 #include <signal.h>             // getopt()
 #include <cstdlib>              // atoi()
 
-#include <log4cpp/PropertyConfigurator.hh>
-#include <log4cpp/Category.hh>
-#include <log4cpp/SyslogAppender.hh>
-#include <log4cpp/BasicLayout.hh>
-#include <log4cpp/OstreamAppender.hh>
-#include <log4cpp/OstreamAppender.hh>
+#include <log4cplus/consoleappender.h>
+#include <log4cplus/syslogappender.h>
+#include <log4cplus/layout.h>
+#include <log4cplus/configurator.h>
 
 #include "Main.h"
 #include "../Config.h"
@@ -85,9 +83,10 @@ void sighandler(int signal)
             break;
 
         default:
-            log4cpp::Category::getRoot().notice(
-                    "%i Received signal %i; Exiting",
-                    getpid(), signal);
+            LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),
+                    LOG4CPLUS_TEXT("PID ") << getpid()
+                    << LOG4CPLUS_TEXT(" received signal ") << signal
+                    << LOG4CPLUS_TEXT(". Exiting."));
 
             ::kill(0, SIGTERM);
             ::exit(EXIT_FAILURE);
@@ -161,42 +160,43 @@ void console_logging(bool fg)
     if (!fg)
         return;
 
-    log4cpp::Appender *cerr =
-        new log4cpp::OstreamAppender("console", &std::cerr);
-    cerr->setLayout(new log4cpp::BasicLayout());
+    log4cplus::SharedAppenderPtr cerr(new log4cplus::ConsoleAppender(true));
+    cerr->setLayout(
+            std::auto_ptr<log4cplus::Layout>(new log4cplus::SimpleLayout()));
 
-    log4cpp::Category::getRoot().addAppender(cerr);
+    log4cplus::Logger::getRoot().addAppender(cerr);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void syslog_logging()
+{
+    log4cplus::helpers::Properties p;
+    p.setProperty(LOG4CPLUS_TEXT("ident"),
+            LOG4CPLUS_TEXT("etherlab_buddy"));
+    p.setProperty(LOG4CPLUS_TEXT("facility"),LOG4CPLUS_TEXT("local0"));
+
+    log4cplus::SharedAppenderPtr appender( new log4cplus::SysLogAppender(p));
+    appender->setLayout(
+            std::auto_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(
+                    LOG4CPLUS_TEXT("%-5p %c <%x>: %m"))));
+
+    log4cplus::Logger root = log4cplus::Logger::getRoot();
+    root.addAppender(appender);
+    root.setLogLevel(log4cplus::INFO_LOG_LEVEL);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void configure_logging(const PdServ::Config& config)
 {
     if (!config) {
-        log4cpp::Category& root = log4cpp::Category::getRoot();
-
-        log4cpp::Appender *appender =
-            new log4cpp::SyslogAppender("syslog", "etherlab_buddy", LOG_LOCAL0);
-        appender->setLayout(new log4cpp::BasicLayout());
-
-        root.addAppender(appender);
-        root.setPriority(log4cpp::Priority::NOTICE);
-
+        syslog_logging();
         return;
     }
 
-    std::string text = config.toString();
 
-    char filename[100];
-    strcpy(filename, "/tmp/buddylog.conf-XXXXXX");
-    int fd = mkstemp(filename);
-    log_debug("%s", filename);
-
-    ::write(fd, text.c_str(), text.size());
-    ::close(fd);
-
-    log4cpp::PropertyConfigurator::configure(filename);
-
-    ::unlink(filename);
+    typedef std::basic_istringstream<log4cplus::tchar> tistringstream;
+    tistringstream is(LOG4CPLUS_STRING_TO_TSTRING(config.toString()));
+    log4cplus::PropertyConfigurator(is).configure();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -232,15 +232,19 @@ int main(int argc, char **argv)
 
     // Get the logging configutation
     configure_logging(config["logging"]);
-    log4cpp::Category& log = log4cpp::Category::getRoot();
     console_logging(fg);
 
+    log4cplus::Logger log = log4cplus::Logger::getRoot();
+
     if (configAccess)
-        log.notice("Configuration file %s", configFile.c_str());
+        LOG4CPLUS_INFO(log,
+                LOG4CPLUS_TEXT("Configuration file ")
+                << LOG4CPLUS_STRING_TO_TSTRING(configFile));
 
     // Make sure no other instance is running
     if ((pid = daemon_pid_file_is_running()) > 0) {
-        log.crit("ERROR: Process already running with pid %i", pid);
+        LOG4CPLUS_ERROR(log,
+                LOG4CPLUS_TEXT("Process already running with pid " << pid));
         ::exit(EBUSY);
     }
 
@@ -249,7 +253,8 @@ int main(int argc, char **argv)
         pid = daemon_fork();
 
         if (pid) {
-            log.notice("Daemon started with pid %i", pid);
+            LOG4CPLUS_INFO(log,
+                    LOG4CPLUS_TEXT("Daemon started with pid ") << pid);
             ::exit(EXIT_SUCCESS);
         }
     }
@@ -259,8 +264,9 @@ int main(int argc, char **argv)
             or ::signal(SIGHUP,  sighandler) == SIG_ERR
             or ::signal(SIGINT,  sighandler) == SIG_ERR
             or ::signal(SIGCHLD, sighandler) == SIG_ERR) {
-        log.warn("Could not set signal handler: %s (%i)",
-                strerror(errno), errno);
+        LOG4CPLUS_WARN(log,
+                LOG4CPLUS_TEXT("Could not set signal handler: ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(strerror(errno)));
     }
 
     // Cleanup on normal exit
@@ -269,8 +275,9 @@ int main(int argc, char **argv)
     // Remove and create new pid files
     daemon_pid_file_remove();
     if (daemon_pid_file_create() and !fg) {
-        log.warn("Could not create log file %s",
-                daemon_pid_file_proc_default());
+        LOG4CPLUS_WARN(log,
+                LOG4CPLUS_TEXT("Could not create log file ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(daemon_pid_file_proc_default()));
     }
 
     std::string path;
@@ -278,7 +285,9 @@ int main(int argc, char **argv)
     path.append(1, '0');
     int etl_main = ::open(path.c_str(), O_NONBLOCK | O_RDWR);
     if (etl_main < 0) {
-        log.crit("Could not open main device %s", path.c_str());
+        LOG4CPLUS_FATAL(log,
+                LOG4CPLUS_TEXT("Could not open main device ")
+                << LOG4CPLUS_STRING_TO_TSTRING(path));
         return errno;
     }
     log_debug("open(%s) = %i", path.c_str(), etl_main);
@@ -304,8 +313,10 @@ int main(int argc, char **argv)
 
                 // Wait until the file is available
                 while (::access(file.c_str(), F_OK)) {
-                    log.info("Could not access device file %s; waiting...",
-                            file.c_str());
+                    LOG4CPLUS_INFO(log,
+                            LOG4CPLUS_TEXT("Could not access device file ")
+                            << LOG4CPLUS_STRING_TO_TSTRING(file)
+                            << LOG4CPLUS_TEXT("; waiting..."));
                     sleep(1);
                 }
 
@@ -313,7 +324,9 @@ int main(int argc, char **argv)
                 fd = ::open(file.c_str(), O_NONBLOCK | O_RDONLY);
 
                 if (fd == -1) {
-                    log.error("Could not open device %s", file.c_str());
+                    LOG4CPLUS_ERROR(log,
+                            LOG4CPLUS_TEXT("Could not open device ")
+                            << LOG4CPLUS_STRING_TO_TSTRING(file));
                     continue;
                 }
                 log_debug("open(%s) = %i", file.c_str(), fd);
@@ -332,12 +345,15 @@ int main(int argc, char **argv)
                     }
                 }
                 else
-                    log.error("Could not get process information for %s",
-                            file.c_str());
+                    LOG4CPLUS_ERROR(log, LOG4CPLUS_TEXT(
+                                "Could not get process information for ")
+                            << LOG4CPLUS_STRING_TO_TSTRING(file));
                 ::close(fd);
             }
             else if (!(apps & 0x01) and app[i]) {
-                log.notice("Finished serving application pid %i", app[i]);
+                LOG4CPLUS_INFO(log,
+                        LOG4CPLUS_TEXT("Finished serving application pid ")
+                        << app[i]);
                 ::kill(app[i], SIGTERM);
                 app[i] = 0;
             }

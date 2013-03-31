@@ -25,16 +25,13 @@
 #define MAIN_H
 
 #include <cc++/thread.h>
+#include <log4cplus/logger.h>
 
 #include <list>
 #include <vector>
 #include <string>
 
 struct timespec;
-
-namespace log4cpp {
-    class Category;
-}
 
 namespace MsrProto {
     class Server;
@@ -111,7 +108,7 @@ class Main {
     private:
         mutable ost::Semaphore mutex;
 
-        log4cpp::Category &parameterLog;
+        const log4cplus::Logger parameterLog;
 
         MsrProto::Server *msrproto;
         Supervisor::Server *supervisor;

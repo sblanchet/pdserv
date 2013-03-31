@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <assert.h>
+#include <cerrno>
 #include <sys/mman.h>
 
 #include <iostream>
@@ -69,9 +70,8 @@ void clear_event(const struct pdevent* event, size_t index,
 
 int main(int argc, const char *argv[])
 {
-    const char *name = strrchr(argv[0], '/');
     struct pdserv *pdserv =
-        pdserv_create(name ? name+1 : argv[0], "1.0", gettime);
+        pdserv_create(program_invocation_short_name, "1.0", gettime);
     size_t var1_dims[] = {2,3,4};
     struct timespec time;
     double dbl[3] = { 13,14,15};

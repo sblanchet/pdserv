@@ -26,9 +26,6 @@
 #include <climits>      // HOST_NAME_MAX
 #include <unistd.h>     // gethostname
 
-#include <log4cpp/Category.hh>
-#include <log4cpp/NDC.hh>
-
 #include "../Debug.h"
 
 #include "../Main.h"
@@ -49,12 +46,11 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Session( Server *server, ost::TCPSocket *socket,
-        log4cpp::NDC::ContextStack* ctxt):
+Session::Session( Server *server, ost::TCPSocket *socket):
     PdServ::Session(server->main),
     server(server),
     tcp(socket), streamlock(1), ostream(&tcp), xmlstream(ostream, streamlock),
-    mutex(1), ctxt(ctxt)
+    mutex(1)
 {
     timeTask = 0;
 
@@ -86,7 +82,6 @@ Session::~Session()
         delete it->second;
 
     server->sessionClosed(this);
-    delete ctxt;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -149,10 +144,9 @@ void Session::parameterChanged(const Parameter *p)
 /////////////////////////////////////////////////////////////////////////////
 void Session::initial()
 {
-    log4cpp::NDC::inherit(ctxt);
-    log4cpp::NDC::push(tcp.peer.c_str());
+    log4cplus::getNDC().push(LOG4CPLUS_STRING_TO_TSTRING(tcp.peer));
 
-    server->log.notice("New session");
+    LOG4CPLUS_INFO_STR(server->log, LOG4CPLUS_TEXT("New session"));
 
     // Get the hostname
     char hostname[HOST_NAME_MAX+1];
@@ -179,8 +173,8 @@ void Session::initial()
 /////////////////////////////////////////////////////////////////////////////
 void Session::final()
 {
-    server->log.notice("Finished session");
-    log4cpp::NDC::pop();
+    LOG4CPLUS_INFO_STR(server->log, LOG4CPLUS_TEXT("Finished session"));
+    log4cplus::getNDC().remove();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -192,24 +186,36 @@ void Session::run()
     while (ostream.good()) {
         try {
             n = tcp.read(inbuf.bufptr(), inbuf.free(), 100);
+
+            if (!n) {
+                LOG4CPLUS_DEBUG_STR(server->log,
+                        LOG4CPLUS_TEXT("Client closed connection"));
+                return;
+            }
         }
         catch (ost::Socket *s) {
-            server->log.crit("Socket error %i", s->getErrorNumber());
-            break;
+            LOG4CPLUS_FATAL(server->log,
+                    LOG4CPLUS_TEXT("Socket error ") << s->getErrorNumber());
+            return;
         }
         catch (std::exception& e) {
-            server->log.crit("Exception occurred: %s", e.what());
-            break;
+            LOG4CPLUS_FATAL(server->log,
+                    LOG4CPLUS_TEXT("Exception occurred: ")
+                    << LOG4CPLUS_C_STR_TO_TSTRING(e.what()));
+            return;
         }
         catch (...) {
-            server->log.crit("Aborting on unknown exception");
-            break;
+            LOG4CPLUS_FATAL_STR(server->log,
+                    LOG4CPLUS_TEXT("Aborting on unknown exception"));
+            return;
         }
 
-        server->log.debug("Received %i bytes", n);
-        if (!n)
-            break;
-        else if (n > 0) {
+        if (n > 0) {
+            LOG4CPLUS_DEBUG(server->log,
+                    LOG4CPLUS_TEXT("Rx: ")
+                    << LOG4CPLUS_STRING_TO_TSTRING(
+                        std::string(inbuf.bufptr(), n)));
+
             inbuf.newData(n);
             XmlParser::Element command;
 
@@ -241,6 +247,9 @@ void Session::run()
             Event::toXml(ls, mainEvent, index, state, t);
         }
     }
+
+    LOG4CPLUS_FATAL_STR(server->log,
+            LOG4CPLUS_TEXT("Error occurred in output stream"));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -285,7 +294,8 @@ void Session::processCommand(const XmlParser::Element& cmd)
         if (commandLen == cmds[idx].len
                 and !strcmp(cmds[idx].name, command)) {
 
-            server->log.debug(cmds[idx].name);
+            LOG4CPLUS_TRACE(server->log,
+                    LOG4CPLUS_C_STR_TO_TSTRING(cmds[idx].name));
 
             // Call the method
             (this->*cmds[idx].func)(cmd);
@@ -302,6 +312,12 @@ void Session::processCommand(const XmlParser::Element& cmd)
             return;
         }
     }
+
+    LOG4CPLUS_WARN(server->log,
+            LOG4CPLUS_TEXT("Unknown command <")
+            << LOG4CPLUS_C_STR_TO_TSTRING(command)
+            << LOG4CPLUS_TEXT(">"));
+
 
     // Unknown command warning
     ostream::locked ls(xmlstream);
@@ -570,6 +586,14 @@ void Session::remoteHost(const XmlParser::Element& cmd)
 
     writeAccess = cmd.isEqual("access", "allow") or cmd.isTrue("access");
 
+    LOG4CPLUS_INFO(server->log,
+            LOG4CPLUS_TEXT("Logging in ")
+            << LOG4CPLUS_STRING_TO_TSTRING(peer)
+            << LOG4CPLUS_TEXT(" application ")
+            << LOG4CPLUS_STRING_TO_TSTRING(client)
+            << LOG4CPLUS_TEXT(" writeaccess=")
+            << writeAccess);
+
     if (writeAccess and cmd.isTrue("isadmin")) {
         struct timespec ts;
         std::ostringstream os;
@@ -779,6 +803,9 @@ Session::TCPStream::TCPStream( ost::TCPSocket *server):
         error(errOutput, 0, errno);
         return;
     }
+
+    // Set socket to non-blocking mode
+    setCompletion(false);
 
     Socket::state = CONNECTED;
     inBytes = 0;

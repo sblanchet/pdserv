@@ -30,6 +30,11 @@ struct task_stats ts;
 struct timespec tv = ts.time;
 #endif
 
+#ifdef HAVE_TIMEVAL
+struct task_stats ts;
+struct timeval tv = ts.time;
+#endif
+
 #ifdef HAVE_PORT
 int port = ((struct rt_app*)(0))->port;
 #endif

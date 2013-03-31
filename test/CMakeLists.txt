@@ -47,7 +47,7 @@ ADD_EXECUTABLE(parser
     parser.cpp ${PROJECT_SOURCE_DIR}/src/msrproto/XmlParser.cpp
     ${PROJECT_SOURCE_DIR}/src/Debug.cpp)
 TARGET_LINK_LIBRARIES (parser ${LIBCCEXT2_LDFLAGS}
-    ${LOG4CPP_LIBRARIES})
+    ${LOG4CPLUS_LIBRARIES})
 
 #ADD_TEST(test1 test1)
 ADD_TEST(parser parser)

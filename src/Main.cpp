@@ -27,7 +27,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <syslog.h>
-#include <log4cpp/Category.hh>
+#include <log4cplus/logger.h>
 
 #include "Main.h"
 #include "Task.h"
@@ -43,8 +43,8 @@ using namespace PdServ;
 /////////////////////////////////////////////////////////////////////////////
 Main::Main(const std::string& name, const std::string& version):
     name(name), version(version), mutex(1),
-    parameterLog(log4cpp::Category::getInstance(
-                std::string(name).append(".parameter").c_str()))
+    parameterLog(log4cplus::Logger::getInstance(
+                LOG4CPLUS_STRING_TO_TSTRING("parameter")))
 {
     msrproto = 0;
     supervisor = 0;
@@ -128,13 +128,15 @@ int Main::setParameter(const Session *, const ProcessParameter *param,
     int rv = param->setValue(data, offset, count);
 
     if (rv) {
-        parameterLog.notice("Parameter change %s failed (%s)",
-                param->path.c_str(), strerror(errno));
+        LOG4CPLUS_WARN(parameterLog,
+                "Parameter change " << param->path
+                << " failed (" << strerror(errno) << ")");
         return rv;
     }
     msrproto->parameterChanged(param, offset, count);
 
     std::ostringstream os;
+    os.imbue(std::locale::classic());
     os << param->path;
 
     if (count < param->memSize) {
@@ -148,7 +150,7 @@ int Main::setParameter(const Session *, const ProcessParameter *param,
 
     param->dtype.print(os, data - offset, data, data + count);
 
-    parameterLog.notice(os.str());
+    LOG4CPLUS_INFO(parameterLog, os.str());
 
     return 0;
 }

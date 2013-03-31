@@ -29,10 +29,6 @@
 #include "../Config.h"
 #include "../Session.h"
 
-namespace log4cpp {
-    class Category;
-}
-
 namespace PdServ {
     class Main;
     class Config;
@@ -50,7 +46,6 @@ class Server: public ost::Thread, private PdServ::Session {
 
     private:
         const PdServ::Main * const main;
-        log4cpp::Category &eventLog;
 
         mutable ost::Semaphore mutex;
 

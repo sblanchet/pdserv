@@ -27,15 +27,12 @@
 #include <set>
 #include <list>
 #include <cc++/thread.h>
+#include <log4cplus/logger.h>
 
 #include "../SessionStatistics.h"
 #include "../Config.h"
 #include "Parameter.h"
 #include "Channel.h"
-
-namespace log4cpp {
-    class Category;
-}
 
 namespace PdServ {
     class Main;
@@ -65,7 +62,7 @@ class Server: public DirectoryNode, public ost::Thread {
                 std::list<PdServ::SessionStatistics>& stats) const;
 
         const PdServ::Main * const main;
-        log4cpp::Category &log;
+        const log4cplus::Logger log;
 
         typedef std::vector<const Channel*> Channels;
         typedef std::vector<const Parameter*> Parameters;

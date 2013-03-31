@@ -112,6 +112,7 @@ class Main: public PdServ::Main {
 
         int daemonize();
         void consoleLogging();
+        void syslogLogging();
         void configureLogging(const PdServ::Config&);
 
         // Reimplemented from PdServ::Main

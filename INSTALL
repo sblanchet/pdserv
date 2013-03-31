@@ -29,7 +29,7 @@ Dependencies:
 - g++ development environment
 - CommonC++ development version
 - pkg-config (optional)
-- log4cpp
+- log4cplus
 - yaml
 
 Installation instructions:

@@ -21,13 +21,16 @@
  *
  *****************************************************************************/
 
+#include "config.h"
+
 #include "Server.h"
 #include "../Main.h"
 #include "../Event.h"
 #include "../Debug.h"
 
-#include <log4cpp/Category.hh>
+#include <log4cplus/logger.h>
 #include <sstream>
+#include <cstdio>
 
 using namespace Supervisor;
 
@@ -35,8 +38,6 @@ using namespace Supervisor;
 Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     PdServ::Session(main),
     main(main),
-    eventLog(log4cpp::Category::getInstance(
-                std::string(main->name).append(".event").c_str())),
     mutex(1)
 {
     start();
@@ -54,52 +55,53 @@ void Server::run()
     bool state;
     struct timespec t;
     size_t index;
+    const log4cplus::Logger eventLog(log4cplus::Logger::getInstance(
+                LOG4CPLUS_STRING_TO_TSTRING("event")));
 
     while (true) {
         ost::Thread::sleep(100);
 
         while ((event = main->getNextEvent(this, &index, &state, &t))) {
+            char time[50];
+            ::snprintf(time, sizeof(time), "%zu.%09lu", t.tv_sec, t.tv_nsec);
 
-            std::ostringstream os;
-            os << event->path << '[' << index << "]=" << state;
+            log4cplus::tostringstream os;
+            os << LOG4CPLUS_C_STR_TO_TSTRING(state ? "Set " : "Reset ")
+                << LOG4CPLUS_STRING_TO_TSTRING(event->path)
+                << '[' << index << ']' << '@' << time;
 
-            log4cpp::Priority::Value prio;
+            log4cplus::LogLevel prio;
             switch (event->priority) {
                 case PdServ::Event::Emergency:
-                    prio = log4cpp::Priority::FATAL;
-                    break;
                 case PdServ::Event::Alert:
-                    prio = log4cpp::Priority::ALERT;
-                    break;
                 case PdServ::Event::Critical:
-                    prio = log4cpp::Priority::CRIT;
+                    prio = log4cplus::FATAL_LOG_LEVEL;
                     break;
                 case PdServ::Event::Error:
-                    prio = log4cpp::Priority::ERROR;
+                    prio = log4cplus::ERROR_LOG_LEVEL;
                     break;
                 case PdServ::Event::Warning:
-                    prio = log4cpp::Priority::WARN;
+                    prio = log4cplus::WARN_LOG_LEVEL;
                     break;
                 case PdServ::Event::Notice:
-                    prio = log4cpp::Priority::NOTICE;
                     break;
                 case PdServ::Event::Info:
-                    prio = log4cpp::Priority::INFO;
+                    prio = log4cplus::INFO_LOG_LEVEL;
                     break;
                 case PdServ::Event::Debug:
-                    prio = log4cpp::Priority::DEBUG;
+                    prio = log4cplus::DEBUG_LOG_LEVEL;
                     break;
             }
 
             if (state) {
-                if (event->message)
-                    eventLog.log(prio,
-                            os.str() + ' ' + event->message[index]);
-                else
-                    eventLog.log(prio, os.str());
+                if (event->message and event->message[index])
+                    os << ' '
+                        << LOG4CPLUS_C_STR_TO_TSTRING(event->message[index]);
+
+                eventLog.log(prio, os.str());
             }
             else
-                eventLog.debug(os.str());
+                LOG4CPLUS_DEBUG(eventLog, os.str());
         }
     }
 }

@@ -31,6 +31,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <ctime>
+#include <sstream>
 #include <algorithm>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -40,15 +41,17 @@
 #include <fcntl.h>              // open()
 #include <limits.h>             // _POSIX_OPEN_MAX
 
-#include <log4cpp/Category.hh>
-#include <log4cpp/SyslogAppender.hh>
-#include <log4cpp/OstreamAppender.hh>
-#include <log4cpp/PropertyConfigurator.hh>
+#include <log4cplus/logger.h>
+#include <log4cplus/syslogappender.h>
+#include <log4cplus/consoleappender.h>
+#include <log4cplus/streams.h>
+#include <log4cplus/configurator.h>
 
 #include "pdserv.h"
 #include "Main.h"
 #include "Task.h"
 #include "Parameter.h"
+#include "Signal.h"
 #include "Event.h"
 #include "Pointer.h"
 #include "ShmemDataStructures.h"
@@ -81,15 +84,6 @@ Main::Main( const char *name, const char *version,
 {
     shmem_len = 0;
     shmem = 0;
-
-    log4cpp::Category& root = log4cpp::Category::getRoot();
-
-    log4cpp::Appender *appender =
-        new log4cpp::SyslogAppender("syslog", "pdserv", LOG_LOCAL0);
-    appender->setLayout(new log4cpp::BasicLayout());
-
-    root.addAppender(appender);
-    root.setPriority(log4cpp::Priority::NOTICE);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -384,42 +378,44 @@ int Main::run()
 /////////////////////////////////////////////////////////////////////////////
 void Main::consoleLogging()
 {
-    log4cpp::Appender *cerr =
-        new log4cpp::OstreamAppender("console", &std::cerr);
-    cerr->setLayout(new log4cpp::BasicLayout());
+    log4cplus::BasicConfigurator::doConfigure();
+//    log4cplus::SharedAppenderPtr cerr(new log4cplus::ConsoleAppender(true));
+//    cerr->setLayout(
+//        std::auto_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(
+//                LOG4CPLUS_TEXT("%D %p %c %x: %m"))));
+//
+//    log4cplus::Logger::getRoot().addAppender(cerr);
+}
 
-    log4cpp::Category::getRoot().addAppender(cerr);
+/////////////////////////////////////////////////////////////////////////////
+void Main::syslogLogging()
+{
+    log4cplus::helpers::Properties p;
+    p.setProperty(LOG4CPLUS_TEXT("ident"),
+            LOG4CPLUS_STRING_TO_TSTRING(name));
+    p.setProperty(LOG4CPLUS_TEXT("facility"),LOG4CPLUS_TEXT("local0"));
+
+    log4cplus::SharedAppenderPtr appender( new log4cplus::SysLogAppender(p));
+    appender->setLayout(
+            std::auto_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(
+                    LOG4CPLUS_TEXT("%-5p %c <%x>: %m"))));
+
+    log4cplus::Logger root = log4cplus::Logger::getRoot();
+    root.addAppender(appender);
+    root.setLogLevel(log4cplus::INFO_LOG_LEVEL);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::configureLogging(const PdServ::Config& config)
 {
     if (!config) {
-        log4cpp::Category& root = log4cpp::Category::getRoot();
-
-        log4cpp::Appender *appender =
-            new log4cpp::SyslogAppender("syslog", "pdserv", LOG_LOCAL0);
-        appender->setLayout(new log4cpp::BasicLayout());
-
-        root.addAppender(appender);
-        root.setPriority(log4cpp::Priority::NOTICE);
-
+        syslogLogging();
         return;
     }
 
-    std::string text = config.toString();
-
-    char filename[100];
-    strcpy(filename, "/tmp/buddylog.conf-XXXXXX");
-    int fd = mkstemp(filename);
-    log_debug("%s", filename);
-
-    ::write(fd, text.c_str(), text.size());
-    ::close(fd);
-
-    log4cpp::PropertyConfigurator::configure(filename);
-
-    ::unlink(filename);
+    typedef std::basic_istringstream<log4cplus::tchar> tistringstream;
+    tistringstream is(LOG4CPLUS_STRING_TO_TSTRING(config.toString()));
+    log4cplus::PropertyConfigurator(is).configure();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -443,35 +439,40 @@ int Main::daemonize()
 
     // Load custom configuration file
     if (!configFile.empty()) {
-        // Only catch the error here. Report failures later
-        const char *confError = config.load(configFile.c_str());
-        if (confError) {
-            log4cpp::Category& log = log4cpp::Category::getRoot();
-            log.crit("Load config: %s", confError);
-        }
+        const char *err = config.load(configFile.c_str());
+        if (err)
+            std::cout << "Load config: " << err << std::endl;
+        else
+            log_debug("Loaded specified configuration file %s",
+                    configFile.c_str());
     }
     else if (env and ::strlen(env)) {
         // Try to load environment configuration file
         const char *err = config.load(env);
 
         if (err)
-            log_debug("%s", err);
+            std::cout << "Error loading config file " << env
+                << ": " << err << std::endl;
         else
             log_debug("Loaded ENV config %s", env);
     }
     else {
         // Try to load default configuration file
         const char *f = QUOTE(SYSCONFDIR) "/pdserv.conf";
-        if (config.load(f))
-            log_debug("No default configuration file %s", f);
+        const char *err = config.load(f);
+        if (err) {
+            if (::access(f, R_OK))
+                log_debug("Could not access configuration file %s: %s",
+                        f, ::strerror(errno));
+            else
+                std::cout << "Load config error: " << err << std::endl;
+        }
         else
             log_debug("Loaded default configuration file %s", f);
     }
 
     if (!config)
-        log_debug("Could not find any configuration file");
-    else
-        log_debug("Loaded configuration file %s", configFile.c_str());
+        log_debug("No configuration loaded");
 
     // Only child runs after this point
     pid = getpid();
@@ -494,17 +495,17 @@ int Main::daemonize()
         fd_max = _POSIX_OPEN_MAX;
     else if (fd_max > 100000)
         fd_max = 512;   // no rediculous values please
-    while (fd_max--)
-        ::close(fd_max);
-
-    // Reopen STDIN, STDOUT and STDERR
-    int fd = -1;
+    while (fd_max--) {
 #ifdef PDS_DEBUG
-    fd = ::open("/dev/tty", O_RDWR);
+        if (fd_max == 2)
+            break;
 #endif
-    if (fd < 0)
-        fd = ::open("/dev/null", O_RDWR);
-    if (fd == STDIN_FILENO) {
+        ::close(fd_max);
+    }
+
+#ifndef PDS_DEBUG
+    // Reopen STDIN, STDOUT and STDERR
+    if (STDIN_FILENO == ::open("/dev/null", O_RDWR)) {
         dup2(STDIN_FILENO, STDOUT_FILENO);
         dup2(STDIN_FILENO, STDERR_FILENO);
 
@@ -512,16 +513,24 @@ int Main::daemonize()
         fcntl(STDOUT_FILENO, F_SETFL, O_WRONLY);
         fcntl(STDERR_FILENO, F_SETFL, O_WRONLY);
     }
+#endif
 
     // Initialize non-real time tasks
     for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
         static_cast<Task*>(*it)->nrt_init();
 
-    configureLogging(config["logging"]);
-
 #ifdef PDS_DEBUG
     consoleLogging();
 #endif
+
+    // Do the logging configuration. Note that logging may open file handles
+    configureLogging(config["logging"]);
+
+    LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),
+            LOG4CPLUS_TEXT("Started application ")
+            << LOG4CPLUS_STRING_TO_TSTRING(name)
+            << LOG4CPLUS_TEXT(", Version ")
+            << LOG4CPLUS_STRING_TO_TSTRING(version));
 
     PdServ::Main::startServers(config);
 
