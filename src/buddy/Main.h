@@ -80,8 +80,7 @@ class Main: public PdServ::Main {
         typedef std::set<int> EventSet;
         EventSet eventSet;
 
-//        void setupLogging(log4cpp::Category& log,
-//                PdServ::Config const& config);
+        void setupLogging(const PdServ::Config & config);
 //        void setupTTYLog(log4cpp::Category& log);
 //        void setupSyslog(log4cpp::Category& log,
 //                PdServ::Config const& config);

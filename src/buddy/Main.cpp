@@ -32,6 +32,11 @@
 #include <sys/mman.h>
 #include <sys/select.h>
 #include <sys/wait.h>           // waitpid()
+#include <log4cplus/configurator.h>
+#include <log4cplus/syslogappender.h>
+#include <log4cplus/layout.h>
+#include <log4cplus/configurator.h>
+
 
 #include "Main.h"
 #include "Task.h"
@@ -62,18 +67,19 @@ Main::Main(const struct app_properties& p,
 
     this->fd = fd;
 
+    setupLogging(config["logging"]);
+
     LOG4CPLUS_INFO(log,
             LOG4CPLUS_TEXT("Started new application server (pid=")
                 << pid << LOG4CPLUS_TEXT(")"));
+    LOG4CPLUS_INFO(log,
+            LOG4CPLUS_TEXT("   Name: ") << app_properties.name);
     LOG4CPLUS_INFO(log,
             LOG4CPLUS_TEXT("   Block count: ") << app_properties.rtB_count);
     LOG4CPLUS_INFO(log,
             LOG4CPLUS_TEXT("   Block size: ") << app_properties.rtB_size);
     LOG4CPLUS_INFO(log,
             LOG4CPLUS_TEXT("   Parameter size: ") << app_properties.rtP_size);
-    LOG4CPLUS_INFO(log,
-            LOG4CPLUS_TEXT("   Number of sample times: ")
-            << app_properties.num_st);
     LOG4CPLUS_INFO(log,
             LOG4CPLUS_TEXT("   Number of tasks: ") << app_properties.num_tasks);
     LOG4CPLUS_INFO(log,
@@ -88,7 +94,7 @@ Main::Main(const struct app_properties& p,
 
     // Go through the list of events and set up a map path->id
     // of paths and their corresponding id's to watch
-    const PdServ::Config eventList = config[name]["events"];
+    const PdServ::Config eventList = config["events"];
     typedef std::map<std::string, PdServ::Config> EventMap;
     EventMap eventMap;
     PdServ::Config eventConf;
@@ -96,13 +102,10 @@ Main::Main(const struct app_properties& p,
     for (i = 0, eventConf = eventList[i];
             eventConf; eventConf = eventList[++i]) {
 
-        std::string subsys =
-            eventList[eventConf.toString()]["subsystem"].toString();
-        if (!subsys.empty() and eventConf.toUInt()) {
-            eventMap[subsys] = eventConf;
-            LOG4CPLUS_DEBUG(log,
-                    LOG4CPLUS_TEXT("Added event " << subsys.c_str()));
-        }
+        std::string subsys = eventConf["subsystem"].toString();
+        eventMap[subsys] = eventConf;
+        LOG4CPLUS_TRACE(log,
+                LOG4CPLUS_TEXT("Added event " << subsys.c_str()));
     }
 
     // Get a copy of the parameters
@@ -172,18 +175,42 @@ Main::Main(const struct app_properties& p,
         if (it != eventMap.end()
                 and s->dtype.primary() == s->dtype.double_T) {
 
-            PdServ::Config config = eventList[it->second.toString()];
-
             Event *e = new Event(s, events.size(),
-                    it->second.toUInt(), config["priority"].toString());
+                    it->second.toUInt(), it->second["priority"].toString());
             events.push_back(e);
             eventCount += e->nelem;
-            LOG4CPLUS_INFO(log,
+            LOG4CPLUS_DEBUG(log,
                     LOG4CPLUS_TEXT("Watching as event: ")
                     << LOG4CPLUS_STRING_TO_TSTRING(s->path.c_str()));
 
             // Set event message
-//TODO            e->message = config["message"].toString();
+            e->message = new const char *[s->dim.nelem];
+            PdServ::Config messageList = it->second["message"];
+            if (s->dim.nelem > 1) {
+                for (size_t i = 0; i < s->dim.nelem; ++i) {
+                    std::string message = messageList[i].toString();
+                    if (message.empty()) {
+                        e->message[i] = 0;
+                        continue;
+                    }
+                    char *s = new char[message.size() + 1];
+                    e->message[i] = s;
+                    std::copy(message.begin(), message.end(), s);
+                    s[message.size()] = 0;
+                }
+            }
+            else {
+                std::string message = messageList.toString();
+
+                if (message.empty())
+                    e->message[0] = 0;
+                else {
+                    char *s = new char[message.size() + 1];
+                    e->message[0] = s;
+                    std::copy(message.begin(), message.end(), s);
+                    s[message.size()] = 0;
+                }
+            }
 
             // Reset config to indicate that the path was found
             it->second = PdServ::Config();
@@ -215,6 +242,31 @@ out:
             LOG4CPLUS_TEXT("Failed: ")
             << LOG4CPLUS_C_STR_TO_TSTRING(strerror(errno)));
     ::exit(errno);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::setupLogging(const PdServ::Config& config)
+{
+    if (config) {
+        typedef std::basic_istringstream<log4cplus::tchar> tistringstream;
+        tistringstream is(LOG4CPLUS_STRING_TO_TSTRING(config.toString()));
+        log4cplus::PropertyConfigurator(is).configure();
+        return;
+    }
+
+    log4cplus::helpers::Properties p;
+    p.setProperty(LOG4CPLUS_TEXT("ident"),
+            LOG4CPLUS_TEXT("etherlab_buddy"));
+    p.setProperty(LOG4CPLUS_TEXT("facility"),LOG4CPLUS_TEXT("local0"));
+
+    log4cplus::SharedAppenderPtr appender( new log4cplus::SysLogAppender(p));
+    appender->setLayout(
+            std::auto_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(
+                    LOG4CPLUS_TEXT("%-5p %c <%x>: %m"))));
+
+    log4cplus::Logger root = log4cplus::Logger::getRoot();
+    root.addAppender(appender);
+    root.setLogLevel(log4cplus::INFO_LOG_LEVEL);
 }
 
 /////////////////////////////////////////////////////////////////////////////

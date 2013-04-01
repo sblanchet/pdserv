@@ -38,9 +38,6 @@
 #include <cstdlib>              // atoi()
 
 #include <log4cplus/consoleappender.h>
-#include <log4cplus/syslogappender.h>
-#include <log4cplus/layout.h>
-#include <log4cplus/configurator.h>
 
 #include "Main.h"
 #include "../Config.h"
@@ -168,38 +165,6 @@ void console_logging(bool fg)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void syslog_logging()
-{
-    log4cplus::helpers::Properties p;
-    p.setProperty(LOG4CPLUS_TEXT("ident"),
-            LOG4CPLUS_TEXT("etherlab_buddy"));
-    p.setProperty(LOG4CPLUS_TEXT("facility"),LOG4CPLUS_TEXT("local0"));
-
-    log4cplus::SharedAppenderPtr appender( new log4cplus::SysLogAppender(p));
-    appender->setLayout(
-            std::auto_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(
-                    LOG4CPLUS_TEXT("%-5p %c <%x>: %m"))));
-
-    log4cplus::Logger root = log4cplus::Logger::getRoot();
-    root.addAppender(appender);
-    root.setLogLevel(log4cplus::INFO_LOG_LEVEL);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void configure_logging(const PdServ::Config& config)
-{
-    if (!config) {
-        syslog_logging();
-        return;
-    }
-
-
-    typedef std::basic_istringstream<log4cplus::tchar> tistringstream;
-    tistringstream is(LOG4CPLUS_STRING_TO_TSTRING(config.toString()));
-    log4cplus::PropertyConfigurator(is).configure();
-}
-
-/////////////////////////////////////////////////////////////////////////////
 int main(int argc, char **argv)
 {
     std::string configFile;
@@ -212,7 +177,7 @@ int main(int argc, char **argv)
     // Set default configuration file
     configFile
         .append(QUOTE(SYSCONFDIR))
-        .append("/pdserv.conf");
+        .append("/buddy.conf");
 
     parse_command_line(argc, argv, fg, configFile);
 
@@ -231,7 +196,7 @@ int main(int argc, char **argv)
     }
 
     // Get the logging configutation
-    configure_logging(config["logging"]);
+//    configure_logging(config["logging"]);
     console_logging(fg);
 
     log4cplus::Logger log = log4cplus::Logger::getRoot();
@@ -341,7 +306,8 @@ int main(int argc, char **argv)
                             fd = etl_main;
                         }
 
-                        Main(app_properties, config, fd).serve();
+                        Main(app_properties, config[app_properties.name], fd)
+                            .serve();
                     }
                 }
                 else

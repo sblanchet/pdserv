@@ -805,7 +805,7 @@ Session::TCPStream::TCPStream( ost::TCPSocket *server):
     }
 
     // Set socket to non-blocking mode
-    setCompletion(false);
+    //setCompletion(false);
 
     Socket::state = CONNECTED;
     inBytes = 0;

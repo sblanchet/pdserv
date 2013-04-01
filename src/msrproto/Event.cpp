@@ -38,12 +38,12 @@ void Event::toXml(ostream::locked& ls, const PdServ::Event* event,
 {
     XmlElement msg(levelString(event), ls);
 
-    XmlElement::Attribute(msg, "path") << event->path;
+    XmlElement::Attribute(msg, "path").setEscaped(event->path.c_str());
     XmlElement::Attribute(msg, "index") << index;
     XmlElement::Attribute(msg, "state") << state;
     XmlElement::Attribute(msg, "time") << t;
-    if (event->message)
-        XmlElement::Attribute(msg, "message")
+    if (event->message and state)
+        XmlElement::Attribute(msg, "text")
             .setEscaped(event->message[index]);
 }
 
@@ -55,6 +55,7 @@ const char *Event::levelString(const PdServ::Event *e)
         case PdServ::Event::Emergency:
         case PdServ::Event::Alert:
         case PdServ::Event::Critical:
+            return "crit_error";
         case PdServ::Event::Error:
             return "error";
         case PdServ::Event::Warning:

@@ -30,6 +30,7 @@
 
 #include <log4cplus/logger.h>
 #include <sstream>
+#include <iomanip>
 #include <cstdio>
 
 using namespace Supervisor;
@@ -62,13 +63,6 @@ void Server::run()
         ost::Thread::sleep(100);
 
         while ((event = main->getNextEvent(this, &index, &state, &t))) {
-            char time[50];
-            ::snprintf(time, sizeof(time), "%zu.%09lu", t.tv_sec, t.tv_nsec);
-
-            log4cplus::tostringstream os;
-            os << LOG4CPLUS_C_STR_TO_TSTRING(state ? "Set " : "Reset ")
-                << LOG4CPLUS_STRING_TO_TSTRING(event->path)
-                << '[' << index << ']' << '@' << time;
 
             log4cplus::LogLevel prio;
             switch (event->priority) {
@@ -84,7 +78,6 @@ void Server::run()
                     prio = log4cplus::WARN_LOG_LEVEL;
                     break;
                 case PdServ::Event::Notice:
-                    break;
                 case PdServ::Event::Info:
                     prio = log4cplus::INFO_LOG_LEVEL;
                     break;
@@ -93,15 +86,18 @@ void Server::run()
                     break;
             }
 
-            if (state) {
-                if (event->message and event->message[index])
-                    os << ' '
-                        << LOG4CPLUS_C_STR_TO_TSTRING(event->message[index]);
+            if (!state)
+                continue;
 
+            if (event->message and event->message[index])
+                eventLog.log(prio,
+                        LOG4CPLUS_C_STR_TO_TSTRING(event->message[index]));
+            else {
+                log4cplus::tostringstream os;
+                os << LOG4CPLUS_STRING_TO_TSTRING(event->path)
+                    << '[' << index << ']';
                 eventLog.log(prio, os.str());
             }
-            else
-                LOG4CPLUS_DEBUG(eventLog, os.str());
         }
     }
 }
