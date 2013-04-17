@@ -295,7 +295,7 @@ void Server::parameterChanged(const PdServ::Parameter *mainParam,
              it != children->end(); ++it) {
          const Parameter *child = static_cast<const Parameter*>(*it);
          if (child->offset >= offset 
-                 and (child->offset + child->memSize < offset + count)) {
+                 and (child->offset + child->memSize - 1 < offset + count)) {
              for (std::set<Session*>::iterator it = sessions.begin();
                      it != sessions.end(); it++)
                  (*it)->parameterChanged(child);
