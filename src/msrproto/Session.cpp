@@ -596,22 +596,6 @@ void Session::remoteHost(const XmlParser::Element& cmd)
             << LOG4CPLUS_STRING_TO_TSTRING(client)
             << LOG4CPLUS_TEXT(" writeaccess=")
             << writeAccess);
-
-    if (writeAccess and cmd.isTrue("isadmin")) {
-        struct timespec ts;
-        std::ostringstream os;
-        std::ostringstream message;
-        main->gettime(&ts);
-
-        os << "Adminmode filp: " << tcp.getSocket();
-        {
-            XmlElement info("info", message);
-            XmlElement::Attribute(info, "time") << ts;
-            XmlElement::Attribute(info, "text") << os.str();
-        }
-
-        server->broadcast(this, message.str());
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
