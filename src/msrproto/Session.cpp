@@ -49,7 +49,7 @@ using namespace MsrProto;
 Session::Session( Server *server, ost::TCPSocket *socket):
     PdServ::Session(server->main),
     server(server),
-    tcp(socket), streamlock(1), ostream(&tcp), xmlstream(ostream, streamlock),
+    tcp(socket), streamlock(0), ostream(&tcp), xmlstream(ostream, streamlock),
     mutex(1)
 {
     timeTask = 0;
@@ -158,16 +158,19 @@ void Session::initial()
     }
 
     // Greet the new client
-    ostream::locked ls(xmlstream);
-    XmlElement greeting("connected", ls);
-    XmlElement::Attribute(greeting, "name") << "MSR";
-    XmlElement::Attribute(greeting, "host")
-        << reinterpret_cast<const char*>(hostname);
-    XmlElement::Attribute(greeting, "app") << main->name;
-    XmlElement::Attribute(greeting, "appversion") << main->version;
-    XmlElement::Attribute(greeting, "version") << MSR_VERSION;
-    XmlElement::Attribute(greeting, "features") << MSR_FEATURES;
-    XmlElement::Attribute(greeting, "recievebufsize") << 100000000;
+    {
+        XmlElement greeting("connected", ostream);
+        XmlElement::Attribute(greeting, "name") << "MSR";
+        XmlElement::Attribute(greeting, "host")
+            << reinterpret_cast<const char*>(hostname);
+        XmlElement::Attribute(greeting, "app") << main->name;
+        XmlElement::Attribute(greeting, "appversion") << main->version;
+        XmlElement::Attribute(greeting, "version") << MSR_VERSION;
+        XmlElement::Attribute(greeting, "features") << MSR_FEATURES;
+        XmlElement::Attribute(greeting, "recievebufsize") << 100000000;
+    }
+
+    streamlock.post();
 }
 
 /////////////////////////////////////////////////////////////////////////////
