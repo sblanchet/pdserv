@@ -49,7 +49,7 @@ using namespace MsrProto;
 Session::Session( Server *server, ost::TCPSocket *socket):
     PdServ::Session(server->main),
     server(server),
-    tcp(socket), streamlock(0), ostream(&tcp), xmlstream(ostream, streamlock),
+    tcp(socket), xmlstream(&tcp),
     mutex(1)
 {
     timeTask = 0;
@@ -69,7 +69,7 @@ Session::Session( Server *server, ost::TCPSocket *socket):
     quiet = false;
     aicDelay = 0;
 
-    ostream.imbue(std::locale::classic());
+    xmlstream.imbue(std::locale::classic());
 
     detach();
 }
@@ -114,9 +114,9 @@ const PdServ::TaskStatistics *Session::getTaskStatistics (
 /////////////////////////////////////////////////////////////////////////////
 void Session::broadcast(Session *, const std::string &message)
 {
-    ost::SemaphoreLock lock(streamlock);
+    ost::SemaphoreLock lock(xmlstream.mutex);
 
-    ostream << message << std::flush;
+    xmlstream << message << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -159,7 +159,7 @@ void Session::initial()
 
     // Greet the new client
     {
-        XmlElement greeting("connected", ostream);
+        XmlElement greeting("connected", xmlstream);
         XmlElement::Attribute(greeting, "name") << "MSR";
         XmlElement::Attribute(greeting, "host")
             << reinterpret_cast<const char*>(hostname);
@@ -170,7 +170,7 @@ void Session::initial()
         XmlElement::Attribute(greeting, "recievebufsize") << 100000000;
     }
 
-    streamlock.post();
+    xmlstream.mutex.post();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -186,7 +186,7 @@ void Session::run()
     ssize_t n;
     XmlParser inbuf;
 
-    while (ostream.good()) {
+    while (xmlstream.good()) {
         try {
             n = tcp.read(inbuf.bufptr(), inbuf.free(), 100);
 

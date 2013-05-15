@@ -29,13 +29,13 @@
 
 namespace MsrProto {
 
-class ostream {
+class ostream: public std::ostream {
     public:
-        ostream(std::ostream&, ost::Semaphore& sem);
+        ostream(std::streambuf* sb);
 
         class locked {
             public:
-                locked(ostream& s): os(s.os), lock(s.sem) {
+                locked(ostream& s): os(s), lock(s.mutex) {
                 }
 
                 operator std::ostream&() {
@@ -47,9 +47,7 @@ class ostream {
                 ost::SemaphoreLock lock;
         };
 
-    private:
-        std::ostream& os;
-        ost::Semaphore& sem;
+        ost::Semaphore mutex;
 };
 
 }

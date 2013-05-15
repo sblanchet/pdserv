@@ -119,8 +119,6 @@ class Session: public ost::Thread, public PdServ::Session {
         };
         TCPStream tcp;
 
-        ost::Semaphore streamlock;
-        std::ostream ostream;
         MsrProto::ostream xmlstream;
 
         ost::Semaphore mutex;

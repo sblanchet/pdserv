@@ -34,8 +34,8 @@ using namespace MsrProto;
 
 int main(int argc, const char *argv[])
 {
-    ost::Semaphore sem(1);
-    ostream os(cout, sem);
+    ostream os(cout.rdbuf());
+    os.mutex.post();
 
     {
         ostream::locked l(os);
