@@ -33,17 +33,15 @@ class Subscription {
         ~Subscription();
 
         const Channel *channel;
+        const bool event;
+        const unsigned int decimation;
 
         bool newValue(const char *buf);
         void print(XmlElement &parent);
 
-
-        unsigned int decimation;
-
     private:
         const size_t bufferOffset;
 
-        bool event;
         unsigned int trigger;
         unsigned int trigger_start;
         size_t blocksize;

@@ -186,7 +186,7 @@ void SubscriptionManager::rxPdo(ostream& os, bool quiet)
 
             for (it2 = dt.second.begin(); it2 != it2_end; ++it2) {
                 const char *data = (*it2)->channel->signal->getValue(this);
-                if ((*it2)->newValue(data) or doSync)
+                if ((*it2)->newValue(data) or (doSync and !(*it2)->event))
                     printQ.push(*it2);
             }
         }

@@ -38,6 +38,7 @@ Subscription::Subscription(const Channel *channel, bool event,
         unsigned int decimation, size_t blocksize,
         bool base64, size_t precision):
     channel(channel),
+    event(event), decimation(event ? 1 : decimation),
     bufferOffset(channel->offset)
 {
     trigger = 0;
@@ -50,15 +51,11 @@ Subscription::Subscription(const Channel *channel, bool event,
         blocksize = 1U;
 
     if (event) {
-        this->event = 1;
-        this->decimation = 1;
         this->trigger_start = decimation;
         this->trigger = 0;
         this->blocksize = 1;
     }
     else {
-        this->event = 0;
-        this->decimation = decimation;
         this->blocksize = blocksize;
     }
     this->precision = precision;

@@ -174,7 +174,7 @@ int main(int argc, const char *argv[])
 
         if (!(i%30)) {
             pdserv_event_set(event, 2, 1, &time);
-            printf("sett event\n");
+//            printf("sett event\n");
         }
     }
 
