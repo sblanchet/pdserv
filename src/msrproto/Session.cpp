@@ -25,6 +25,8 @@
 #include <cerrno>       // ENAMETOOLONG
 #include <climits>      // HOST_NAME_MAX
 #include <unistd.h>     // gethostname
+#include <log4cplus/ndc.h>
+#include <log4cplus/loggingmacros.h>
 
 #include "../Debug.h"
 

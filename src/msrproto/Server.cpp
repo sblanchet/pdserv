@@ -38,6 +38,7 @@
 #include <cerrno>
 #include <algorithm>
 #include <cc++/socketport.h>
+#include <log4cplus/loggingmacros.h>
 
 using namespace MsrProto;
 

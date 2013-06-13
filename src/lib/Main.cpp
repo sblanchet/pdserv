@@ -46,6 +46,7 @@
 #include <log4cplus/consoleappender.h>
 #include <log4cplus/streams.h>
 #include <log4cplus/configurator.h>
+#include <log4cplus/loggingmacros.h>
 
 #include "pdserv.h"
 #include "Main.h"
