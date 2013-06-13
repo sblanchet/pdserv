@@ -40,7 +40,7 @@ make
 make install
 
 The default installation paths are:
-prefix=/opt/etherlab
+prefix=/usr/local
 sysconfdir=${prefix}/etc
 exec_prefix=${prefix}/bin
 libdir=${prefix}/lib
@@ -49,10 +49,10 @@ includedir=${prefix}/include
 To change these paths, call cmake with one or more of the following options:
 
 cmake
-        -DPREFIX=${prefix}
-        -DSYSCONFDIR=${sysconfdir}
-        -DEXECDIR=${exec_prefix}
-        -DLIBDIR=${libdir}
-        -DINCLUDEDIR=${includedir}
+        -DCMAKE_INSTALL_PREFIX=${prefix}
+        -DCMAKE_INSTALL_SYSCONFDIR=${sysconfdir}
+        -DCMAKE_INSTALL_BINDIR=${exec_prefix}
+        -DCMAKE_INSTALL_LIBDIR=${libdir}
+        -DCMAKE_INSTALL_INCLUDEDIR=${includedir}
         .
 
