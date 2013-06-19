@@ -88,12 +88,14 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
     // mtime=
     XmlElement::Attribute(element, "mtime") << mtime;
 
-    if (hex)
-        XmlElement::Attribute(element, "hexvalue")
-            .hexDec(valueBuf + offset, dtype.size);
-    else
-        XmlElement::Attribute(element, "value").csv( this,
-                valueBuf + offset, 1, precision);
+    if (valueBuf) {
+        if (hex)
+            XmlElement::Attribute(element, "hexvalue")
+                .hexDec(valueBuf + offset, dtype.size);
+        else
+            XmlElement::Attribute(element, "value").csv( this,
+                    valueBuf + offset, 1, precision);
+    }
 
     if (!id.empty())
         XmlElement::Attribute(element, "id").setEscaped(id.c_str());

@@ -403,45 +403,7 @@ void Session::readChannel(const XmlParser::Element& cmd)
         return;
     }
 
-    size_t buflen = 0;
-    const PdServ::Signal *mainSignal = 0;
-    std::map<const PdServ::Signal*, size_t> bufOffset;
-
     const Server::Channels& chanList = server->getChannels();
-
-    typedef std::list<const PdServ::Signal*> SignalList;
-    SignalList orderedSignals[PdServ::DataType::maxWidth + 1];
-
-    for (Server::Channels::const_iterator it = chanList.begin();
-            it != chanList.end(); it++) {
-        mainSignal = (*it)->signal;
-        if (bufOffset.find(mainSignal) != bufOffset.end()
-                or (*it)->hidden)
-            continue;
-
-        bufOffset[mainSignal] = 0;
-        orderedSignals[mainSignal->dtype.align()].push_back(mainSignal);
-    }
-
-    const PdServ::Signal *signalList[bufOffset.size()];
-
-    index = 0;
-    for (size_t w = 8; w; w /= 2) {
-        for (SignalList::const_iterator it = orderedSignals[w].begin();
-                it != orderedSignals[w].end(); it++) {
-            mainSignal = *it;
-
-            signalList[index] = mainSignal;
-            bufOffset[mainSignal] = buflen;
-            buflen += mainSignal->memSize;
-
-            index++;
-        }
-    }
-
-    char buf[buflen];
-    main->poll(this, signalList, bufOffset.size(), buf, 0);
-
     ostream::locked ls(xmlstream);
     XmlElement channels("channels", ls);
     for (Server::Channels::const_iterator it = chanList.begin();
@@ -450,8 +412,7 @@ void Session::readChannel(const XmlParser::Element& cmd)
             continue;
 
         XmlElement el("channel", channels);
-        (*it)->setXmlAttributes(
-                el, shortReply, buf + bufOffset[(*it)->signal], 16);
+        (*it)->setXmlAttributes( el, shortReply, 0, 16);
     }
 }
 
@@ -511,7 +472,6 @@ void Session::readParameter(const XmlParser::Element& cmd)
     Server::Parameters::const_iterator it = parameters.begin();
     while ( it != parameters.end()) {
         const PdServ::Parameter* mainParam = (*it)->mainParam;
-        char buf[mainParam->memSize];
         struct timespec ts;
 
         if ((*it)->hidden) {
@@ -519,11 +479,9 @@ void Session::readParameter(const XmlParser::Element& cmd)
             continue;
         }
 
-        mainParam->getValue(this, buf, &ts);
-
         while (it != parameters.end() and mainParam == (*it)->mainParam) {
             XmlElement xml("parameter",  parametersElement);
-            (*it++)->setXmlAttributes(xml, buf, ts, shortReply, hex, 16);
+            (*it++)->setXmlAttributes(xml, 0, ts, shortReply, hex, 16);
         }
     }
 }
