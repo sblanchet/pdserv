@@ -472,6 +472,7 @@ void Session::readParameter(const XmlParser::Element& cmd)
     Server::Parameters::const_iterator it = parameters.begin();
     while ( it != parameters.end()) {
         const PdServ::Parameter* mainParam = (*it)->mainParam;
+        char buf[mainParam->memSize];
         struct timespec ts;
 
         if ((*it)->hidden) {
@@ -479,9 +480,11 @@ void Session::readParameter(const XmlParser::Element& cmd)
             continue;
         }
 
+        mainParam->getValue(this, buf, &ts);
+
         while (it != parameters.end() and mainParam == (*it)->mainParam) {
             XmlElement xml("parameter",  parametersElement);
-            (*it++)->setXmlAttributes(xml, 0, ts, shortReply, hex, 16);
+            (*it++)->setXmlAttributes(xml, buf, ts, shortReply, hex, 16);
         }
     }
 }
@@ -793,7 +796,7 @@ int Session::TCPStream::read(char *buf, size_t count, timeout_t timeout)
 /////////////////////////////////////////////////////////////////////////////
 int Session::TCPStream::overflow ( int c )
 {
-    if (::fputc(c, file) == EOF)
+    if (!isPending(pendingOutput, 10000) or ::fputc(c, file) == EOF)
         return EOF;
 
     ++outBytes;
@@ -805,7 +808,8 @@ int Session::TCPStream::overflow ( int c )
 std::streamsize Session::TCPStream::xsputn (
         const char * s, std::streamsize count)
 {
-    if (count and ::fwrite(s, 1, count, file) != static_cast<size_t>(count))
+    if (!isPending(pendingOutput, 10000)
+            or ::fwrite(s, 1, count, file) != static_cast<size_t>(count))
         return 0;
 
     outBytes += count;
