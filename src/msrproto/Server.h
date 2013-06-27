@@ -50,7 +50,8 @@ class Server: public DirectoryNode, public ost::Thread {
         Server(const PdServ::Main *main, const PdServ::Config &config);
         ~Server();
 
-        void broadcast(Session *s, const std::string&);
+        void broadcast(Session *s, const struct timespec& ts,
+                const std::string& action, const std::string& text);
 
         void setAic(const Parameter*);
         void parameterChanged(const PdServ::Parameter*,

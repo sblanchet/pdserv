@@ -114,11 +114,16 @@ const PdServ::TaskStatistics *Session::getTaskStatistics (
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::broadcast(Session *, const std::string &message)
+void Session::broadcast(Session *, const struct timespec& ts,
+        const std::string& action, const std::string &message)
 {
-    ost::SemaphoreLock lock(xmlstream.mutex);
+    ost::SemaphoreLock lock(mutex);
 
-    xmlstream << message << std::flush;
+    Broadcast *b = new Broadcast;
+    b->ts = ts;
+    b->action = action;
+    b->message = message;
+    broadcastList.push_back(b);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -135,12 +140,7 @@ void Session::setAIC(const Parameter *p)
 void Session::parameterChanged(const Parameter *p)
 {
     ost::SemaphoreLock lock(mutex);
-
-    if (aic.find(p->mainParam) == aic.end()) {
-        ostream::locked ls(xmlstream);
-        XmlElement pu("pu", ls);
-        XmlElement::Attribute(pu, "index") << p->index;
-    }
+    changedParameter.insert(p);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -233,14 +233,52 @@ void Session::run()
             it->second->rxPdo(xmlstream, quiet);
         }
 
-        ost::SemaphoreLock lock(mutex);
-        if (aicDelay and !--aicDelay) {
-            for ( AicSet::iterator it = aic.begin();
-                    it != aic.end(); ++it) {
-                parameterChanged(server->find(*it));
+        ParameterSet cp;
+        BroadcastList broadcastList;
+        {
+            // Create an environment for mutex lock
+            ost::SemaphoreLock lock(mutex);
+
+            if (aicDelay)
+                --aicDelay;
+
+            ParameterSet::iterator it2, it = changedParameter.begin();
+            while (it != changedParameter.end()) {
+                it2 = it++;
+                if (!aicDelay or aic.find((*it2)->mainParam) == aic.end()) {
+                    cp.insert(*it2);
+                    changedParameter.erase(it2);
+                }
             }
 
-            aic.clear();
+            std::swap(this->broadcastList, broadcastList);
+        }
+
+        {
+            ostream::locked ls(xmlstream);
+            for ( ParameterSet::iterator it = cp.begin();
+                    it != cp.end(); ++it) {
+                XmlElement pu("pu", ls);
+                XmlElement::Attribute(pu, "index") << (*it)->index;
+            }
+
+            for ( BroadcastList::const_iterator it = broadcastList.begin();
+                    it != broadcastList.end(); ++it) {
+
+                XmlElement broadcast("broadcast", ls);
+
+                XmlElement::Attribute(broadcast, "time") << (*it)->ts;
+
+                if (!(*it)->action.empty())
+                    XmlElement::Attribute(broadcast, "action").setEscaped(
+                            (*it)->action.c_str());
+
+                if (!(*it)->message.empty())
+                    XmlElement::Attribute(broadcast, "text").setEscaped(
+                            (*it)->message.c_str());
+
+                delete *it;
+            }
         }
 
         const PdServ::Event* mainEvent;
@@ -335,23 +373,14 @@ void Session::processCommand(const XmlParser::Element& cmd)
 /////////////////////////////////////////////////////////////////////////////
 void Session::broadcast(const XmlParser::Element& cmd)
 {
-    std::ostringstream os;
-    {
-        XmlElement broadcast("broadcast", os);
-        struct timespec ts;
-        std::string s;
+    struct timespec ts;
+    std::string action, text;
 
-        main->gettime(&ts);
-        XmlElement::Attribute(broadcast, "time") << ts;
+    main->gettime(&ts);
+    cmd.getString("action", action);
+    cmd.getString("text", text);
 
-        if (cmd.getString("action", s))
-            XmlElement::Attribute(broadcast, "action").setEscaped(s.c_str());
-
-        if (cmd.getString("text", s))
-            XmlElement::Attribute(broadcast, "text").setEscaped(s.c_str());
-    }
-
-    server->broadcast(this, os.str());
+    server->broadcast(this, ts, action, text);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -796,7 +825,7 @@ int Session::TCPStream::read(char *buf, size_t count, timeout_t timeout)
 /////////////////////////////////////////////////////////////////////////////
 int Session::TCPStream::overflow ( int c )
 {
-    if (!isPending(pendingOutput, 10000) or ::fputc(c, file) == EOF)
+    if (::fputc(c, file) == EOF)
         return EOF;
 
     ++outBytes;
@@ -808,8 +837,7 @@ int Session::TCPStream::overflow ( int c )
 std::streamsize Session::TCPStream::xsputn (
         const char * s, std::streamsize count)
 {
-    if (!isPending(pendingOutput, 10000)
-            or ::fwrite(s, 1, count, file) != static_cast<size_t>(count))
+    if (::fwrite(s, 1, count, file) != static_cast<size_t>(count))
         return 0;
 
     outBytes += count;

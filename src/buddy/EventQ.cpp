@@ -79,7 +79,7 @@ const PdServ::Event* EventQ::getNextEvent (size_t& readPointer,
     *index = data.index;
     *state = data.state;
     *t = data.time;
-    
+
     if (++readPointer == events.size())
         readPointer = 0;
 

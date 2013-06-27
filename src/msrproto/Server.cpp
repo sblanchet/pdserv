@@ -163,7 +163,7 @@ void Server::createParameters(DirectoryNode* baseDir)
 
         parameters.push_back(p);
         parameterMap[*it] = p;
-            
+
         if (itemize)
             createChildren(p);
     }
@@ -240,12 +240,13 @@ void Server::run()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::broadcast(Session *s, const std::string &message)
+void Server::broadcast(Session *s, const struct timespec& ts,
+        const std::string& action, const std::string &message)
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
-        (*it)->broadcast(s, message);
+        (*it)->broadcast(s, ts, action, message);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -287,15 +288,15 @@ void Server::parameterChanged(const PdServ::Parameter *mainParam,
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); it++)
         (*it)->parameterChanged(p);
- 
+
      const Variable::List *children = p->getChildren();
      if (!children)
          return;
- 
+
      for (Variable::List::const_iterator it = children->begin();
              it != children->end(); ++it) {
          const Parameter *child = static_cast<const Parameter*>(*it);
-         if (child->offset >= offset 
+         if (child->offset >= offset
                  and (child->offset + child->memSize - 1 < offset + count)) {
              for (std::set<Session*>::iterator it = sessions.begin();
                      it != sessions.end(); it++)

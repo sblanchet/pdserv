@@ -302,7 +302,7 @@ int Main::run()
     // Now check how much memory is required for events
     eventCount = 0;
     for (EventList::iterator it = events.begin(); it != events.end(); ++it) {
-        eventCount += (*it)->nelem;     
+        eventCount += (*it)->nelem;
     }
     shmem_len +=
         sizeof(*eventData) * eventCount

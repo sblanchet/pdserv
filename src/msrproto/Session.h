@@ -80,7 +80,8 @@ class Session: public ost::Thread, public PdServ::Session {
         Session( Server *s, ost::TCPSocket *socket);
         ~Session();
 
-        void broadcast(Session *s, const std::string &element);
+        void broadcast(Session *s, const struct timespec& ts,
+                const std::string &action, const std::string &element);
         void parameterChanged(const Parameter*);
         void setAIC(const Parameter* p);
         void getSessionStatistics(PdServ::SessionStatistics &stats) const;
@@ -116,20 +117,34 @@ class Session: public ost::Thread, public PdServ::Session {
             std::string peer;
 
             FILE *file;
+
+            const Session *session;
         };
         TCPStream tcp;
 
         MsrProto::ostream xmlstream;
 
         ost::Semaphore mutex;
+
         size_t aicDelay;
-        typedef std::set<const PdServ::Parameter*> AicSet;
-        AicSet aic;
+        typedef std::set<const PdServ::Parameter*> MainParameterSet;
+        MainParameterSet aic;
+
+        typedef std::set<const Parameter*> ParameterSet;
+        ParameterSet changedParameter;
 
         typedef std::map<const PdServ::Task*, SubscriptionManager*>
             SubscriptionManagerMap;
         SubscriptionManagerMap subscriptionManager;
         const SubscriptionManager *timeTask;
+
+        typedef struct {
+            struct timespec ts;
+            std::string action;
+            std::string message;
+        } Broadcast;
+        typedef std::list<const Broadcast*> BroadcastList;
+        BroadcastList broadcastList;
 
         // Temporary memory space needed to handle statistic channels
         union {
