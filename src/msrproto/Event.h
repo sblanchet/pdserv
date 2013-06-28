@@ -24,7 +24,6 @@
 #ifndef MSREVENT_H
 #define MSREVENT_H
 
-#include "OStream.h"
 #include "../Event.h"
 
 namespace MsrProto {
@@ -34,7 +33,7 @@ class Event {
         Event(const PdServ::Event *s);
 
         const PdServ::Event *event;
-        static void toXml(ostream::locked& ls, const PdServ::Event* event,
+        static void toXml(std::ostream& ls, const PdServ::Event* event,
                 size_t index, bool state, const struct timespec& t);
 
     private:

@@ -50,7 +50,6 @@
 
 #include "../Session.h"
 #include "XmlParser.h"
-#include "OStream.h"
 
 #include <cc++/thread.h>
 #include <cc++/socketport.h>
@@ -117,27 +116,27 @@ class Session: public ost::Thread, public PdServ::Session {
             std::string peer;
 
             FILE *file;
-
-            const Session *session;
         };
         TCPStream tcp;
 
-        MsrProto::ostream xmlstream;
+        std::ostream xmlstream;
 
+        // Protection for inter-session communication
         ost::Semaphore mutex;
 
-        size_t aicDelay;
-        typedef std::set<const PdServ::Parameter*> MainParameterSet;
-        MainParameterSet aic;
-
+        // List of parameters that have changed
         typedef std::set<const Parameter*> ParameterSet;
         ParameterSet changedParameter;
 
-        typedef std::map<const PdServ::Task*, SubscriptionManager*>
-            SubscriptionManagerMap;
-        SubscriptionManagerMap subscriptionManager;
-        const SubscriptionManager *timeTask;
+        // Asynchronous input channels.
+        // These are actually parameters that are misused as input streams.
+        // Parameters in this set are not announced as changed as often as
+        // real parameters are.
+        typedef std::set<const PdServ::Parameter*> MainParameterSet;
+        MainParameterSet aic;
+        size_t aicDelay;        // When 0, notify that aic's have changed
 
+        // Broadcast list.
         typedef struct {
             struct timespec ts;
             std::string action;
@@ -145,6 +144,11 @@ class Session: public ost::Thread, public PdServ::Session {
         } Broadcast;
         typedef std::list<const Broadcast*> BroadcastList;
         BroadcastList broadcastList;
+
+        typedef std::map<const PdServ::Task*, SubscriptionManager*>
+            SubscriptionManagerMap;
+        SubscriptionManagerMap subscriptionManager;
+        const SubscriptionManager *timeTask;
 
         // Temporary memory space needed to handle statistic channels
         union {

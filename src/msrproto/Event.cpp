@@ -33,10 +33,10 @@ Event::Event(const PdServ::Event *e):
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Event::toXml(ostream::locked& ls, const PdServ::Event* event,
+void Event::toXml(std::ostream& os, const PdServ::Event* event,
         size_t index, bool state, const struct timespec& t)
 {
-    XmlElement msg(levelString(event), ls);
+    XmlElement msg(levelString(event), os);
 
     XmlElement::Attribute(msg, "path").setEscaped(event->path.c_str());
     XmlElement::Attribute(msg, "index") << index;

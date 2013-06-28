@@ -24,7 +24,6 @@
 #include "Parameter.h"
 #include "XmlElement.h"
 #include "Session.h"
-#include "OStream.h"
 #include "../Parameter.h"
 #include "../Debug.h"
 #include "../DataType.h"

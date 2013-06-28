@@ -171,8 +171,6 @@ void Session::initial()
         XmlElement::Attribute(greeting, "features") << MSR_FEATURES;
         XmlElement::Attribute(greeting, "recievebufsize") << 100000000;
     }
-
-    xmlstream.mutex.post();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -228,15 +226,13 @@ void Session::run()
                 processCommand(command);
         }
 
-        for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
-                it != subscriptionManager.end(); ++it) {
-            it->second->rxPdo(xmlstream, quiet);
-        }
-
+        // Collect all asynchronous events while holding mutex
         ParameterSet cp;
         BroadcastList broadcastList;
         {
-            // Create an environment for mutex lock
+            // Create an environment for mutex lock. This lock should be kept
+            // as short as possible, and especially not when writing to the
+            // output stream
             ost::SemaphoreLock lock(mutex);
 
             if (aicDelay)
@@ -254,18 +250,18 @@ void Session::run()
             std::swap(this->broadcastList, broadcastList);
         }
 
+        // Write all asynchronous events to the client
         {
-            ostream::locked ls(xmlstream);
             for ( ParameterSet::iterator it = cp.begin();
                     it != cp.end(); ++it) {
-                XmlElement pu("pu", ls);
+                XmlElement pu("pu", xmlstream);
                 XmlElement::Attribute(pu, "index") << (*it)->index;
             }
 
             for ( BroadcastList::const_iterator it = broadcastList.begin();
                     it != broadcastList.end(); ++it) {
 
-                XmlElement broadcast("broadcast", ls);
+                XmlElement broadcast("broadcast", xmlstream);
 
                 XmlElement::Attribute(broadcast, "time") << (*it)->ts;
 
@@ -281,14 +277,16 @@ void Session::run()
             }
         }
 
+        for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
+                it != subscriptionManager.end(); ++it)
+            it->second->rxPdo(xmlstream, quiet);
+
         const PdServ::Event* mainEvent;
         bool state;
         struct timespec t;
         size_t index;
-        while ((mainEvent = main->getNextEvent(this, &index, &state, &t))) {
-            ostream::locked ls(xmlstream);
-            Event::toXml(ls, mainEvent, index, state, t);
-        }
+        while ((mainEvent = main->getNextEvent(this, &index, &state, &t)))
+            Event::toXml(xmlstream, mainEvent, index, state, t);
     }
 
     LOG4CPLUS_FATAL_STR(server->log,
@@ -346,8 +344,7 @@ void Session::processCommand(const XmlParser::Element& cmd)
             // If "ack" attribute was set, send it back
             std::string id;
             if (cmd.getString("id", id)) {
-                ostream::locked ls(xmlstream);
-                XmlElement ack("ack", ls);
+                XmlElement ack("ack", xmlstream);
                 XmlElement::Attribute(ack,"id").setEscaped(id.c_str());
             }
 
@@ -363,8 +360,7 @@ void Session::processCommand(const XmlParser::Element& cmd)
 
 
     // Unknown command warning
-    ostream::locked ls(xmlstream);
-    XmlElement warn("warn", ls);
+    XmlElement warn("warn", xmlstream);
     XmlElement::Attribute(warn, "num") << 1000;
     XmlElement::Attribute(warn, "text") << "unknown command";
     XmlElement::Attribute(warn, "command").setEscaped(command);
@@ -392,8 +388,7 @@ void Session::echo(const XmlParser::Element& cmd)
 /////////////////////////////////////////////////////////////////////////////
 void Session::ping(const XmlParser::Element& cmd)
 {
-    ostream::locked ls(xmlstream);
-    XmlElement ping("ping", ls);
+    XmlElement ping("ping", xmlstream);
     std::string id;
 
     if (cmd.getString("id",id))
@@ -425,16 +420,14 @@ void Session::readChannel(const XmlParser::Element& cmd)
 
         c->signal->getValue(this, buf);
 
-        ostream::locked ls(xmlstream);
-        XmlElement channel("channel", ls);
+        XmlElement channel("channel", xmlstream);
         c->setXmlAttributes(channel, shortReply, buf, 16);
 
         return;
     }
 
     const Server::Channels& chanList = server->getChannels();
-    ostream::locked ls(xmlstream);
-    XmlElement channels("channels", ls);
+    XmlElement channels("channels", xmlstream);
     for (Server::Channels::const_iterator it = chanList.begin();
             it != chanList.end(); it++) {
         if ((*it)->hidden)
@@ -453,8 +446,7 @@ void Session::listDirectory(const XmlParser::Element& cmd)
     if (!cmd.find("path", path))
         return;
 
-    ostream::locked ls(xmlstream);
-    XmlElement element("listing", ls);
+    XmlElement element("listing", xmlstream);
     server->list(this, element, path);
 }
 
@@ -487,15 +479,13 @@ void Session::readParameter(const XmlParser::Element& cmd)
         std::string id;
         cmd.getString("id", id);
 
-        ostream::locked ls(xmlstream);
-        XmlElement xml("parameter", ls);
+        XmlElement xml("parameter", xmlstream);
         p->setXmlAttributes(xml, buf, ts, shortReply, hex, 16, id);
 
         return;
     }
 
-    ostream::locked ls(xmlstream);
-    XmlElement parametersElement("parameters", ls);
+    XmlElement parametersElement("parameters", xmlstream);
 
     const Server::Parameters& parameters = server->getParameters();
     Server::Parameters::const_iterator it = parameters.begin();
@@ -521,8 +511,7 @@ void Session::readParameter(const XmlParser::Element& cmd)
 /////////////////////////////////////////////////////////////////////////////
 void Session::readParamValues(const XmlParser::Element& cmd)
 {
-    ostream::locked ls(xmlstream);
-    XmlElement param_values("param_values", ls);
+    XmlElement param_values("param_values", xmlstream);
     XmlElement::Attribute values(param_values, "value");
 
     const Server::Parameters& parameters = server->getParameters();
@@ -557,8 +546,7 @@ void Session::readStatistics(const XmlParser::Element& cmd)
     StatList stats;
     main->getSessionStatistics(stats);
 
-    ostream::locked ls(xmlstream);
-    XmlElement clients("clients", ls);
+    XmlElement clients("clients", xmlstream);
     for (StatList::const_iterator it = stats.begin();
             it != stats.end(); it++) {
         XmlElement client("client", clients);
@@ -594,8 +582,7 @@ void Session::remoteHost(const XmlParser::Element& cmd)
 void Session::writeParameter(const XmlParser::Element& cmd)
 {
     if (!writeAccess) {
-        ostream::locked ls(xmlstream);
-        XmlElement warn("warn", ls);
+        XmlElement warn("warn", xmlstream);
         XmlElement::Attribute(warn, "text") << "No write access";
         return;
     }
@@ -668,8 +655,7 @@ void Session::xsad(const XmlParser::Element& cmd)
 
     if (cmd.getUnsigned("reduction", reduction)) {
         if (!reduction) {
-            ostream::locked ls(xmlstream);
-            XmlElement warn("warn", ls);
+            XmlElement warn("warn", xmlstream);
             XmlElement::Attribute(warn, "command") << "xsad";
             XmlElement::Attribute(warn, "text")
                 << "specified reduction=0, choosing reduction=1";
@@ -682,8 +668,7 @@ void Session::xsad(const XmlParser::Element& cmd)
 
     if (cmd.getUnsigned("blocksize", blocksize)) {
         if (!blocksize) {
-            ostream::locked ls(xmlstream);
-            XmlElement warn("warn", ls);
+            XmlElement warn("warn", xmlstream);
             XmlElement::Attribute(warn, "command") << "xsad";
             XmlElement::Attribute(warn, "text")
                 << "specified blocksize=0, choosing blocksize=1";

@@ -30,7 +30,6 @@
 #include "Channel.h"
 #include "Session.h"
 #include "Subscription.h"
-#include "OStream.h"
 #include "XmlElement.h"
 
 #include <algorithm>
@@ -164,7 +163,7 @@ void SubscriptionManager::newSignal( const PdServ::Signal *s)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::rxPdo(ostream& os, bool quiet)
+void SubscriptionManager::rxPdo(std::ostream& os, bool quiet)
 {
     typedef std::queue<Subscription*> PrintQ;
     PrintQ printQ;
@@ -193,8 +192,7 @@ void SubscriptionManager::rxPdo(ostream& os, bool quiet)
         doSync = false;
 
         if (!printQ.empty()) {
-            ostream::locked ls(os);
-            XmlElement dataTag("data", ls);
+            XmlElement dataTag("data", os);
             XmlElement::Attribute(dataTag, "level") << 0;
             XmlElement::Attribute(dataTag, "time") << *taskTime;
 

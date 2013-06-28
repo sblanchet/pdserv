@@ -21,7 +21,6 @@
  *
  *****************************************************************************/
 
-#include "OStream.h"
 #include "XmlElement.h"
 #include <cstdio>
 
@@ -34,12 +33,10 @@ using namespace MsrProto;
 
 int main(int argc, const char *argv[])
 {
-    ostream os(cout.rdbuf());
-    os.mutex.post();
+    std::ostream os(cout.rdbuf());
 
     {
-        ostream::locked l(os);
-        XmlElement a("hello", l);
+        XmlElement a("hello", os);
         XmlElement("agein", a);
     }
 
