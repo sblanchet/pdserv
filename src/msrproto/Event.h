@@ -25,6 +25,7 @@
 #define MSREVENT_H
 
 #include "../Event.h"
+#include "Session.h"
 
 namespace MsrProto {
 
@@ -33,7 +34,8 @@ class Event {
         Event(const PdServ::Event *s);
 
         const PdServ::Event *event;
-        static void toXml(std::ostream& ls, const PdServ::Event* event,
+
+        static void toXml(Session::TCPStream& tcp, const PdServ::Event* event,
                 size_t index, bool state, const struct timespec& t);
 
     private:

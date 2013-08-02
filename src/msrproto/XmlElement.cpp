@@ -27,28 +27,22 @@
 #include "Variable.h"
 #include "Parameter.h"
 #include "Channel.h"
+//#include "FindFirstOf.h"
 
 #include <iomanip>
 #include <algorithm>
-#include <cstring>      // strlen()
+#include <cstring>      // strpbrk()
 
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 // XmlElement
 /////////////////////////////////////////////////////////////////////////////
-XmlElement::XmlElement(const char *name, std::ostream &os):
-    level(0), os(os), name(name)
+XmlElement::XmlElement(const char *name, std::ostream &os,
+        size_t level, std::string *id):
+    level(level), id(id), os(os), name(name)
 {
-    this->os << '<' << name;
-    printed = false;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-XmlElement::XmlElement(const char *name, XmlElement &parent):
-    level(parent.level + 1), os(parent.prefix()), name(name)
-{
-    os << std::string(level, ' ') << '<' << name;
+    this->os << std::string(level,' ') << '<' << name;
     printed = false;
 }
 
@@ -57,19 +51,37 @@ XmlElement::~XmlElement()
 {
     if (printed)
         os << std::string(level, ' ') << "</" << name;
-    else
+    else {
+        if (id and !id->empty())
+            Attribute(*this,"id").setEscaped(id->c_str());
         os << '/';
+    }
 
-    os << ">\r\n" << std::flush;
+    os << ">\r\n";
+
+    if (id and !id->empty()) {
+        XmlElement ack("ack", os, 0, 0);
+        XmlElement::Attribute(ack,"id").setEscaped(id->c_str());
+
+        id->clear();
+    }
+
+    os << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-std::ostream& XmlElement::prefix()
+XmlElement XmlElement::createChild(const char* name)
 {
-    if (!printed)
+    if (!printed) {
+        if (id and !id->empty())
+            Attribute(*this,"id").setEscaped(id->c_str());
+
         os << ">\r\n";
-    printed = true;
-    return os;
+    }
+
+    printed = 1;
+
+    return XmlElement(name, os, level+1, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -106,14 +118,12 @@ std::ostream& XmlElement::Attribute::operator <<( struct timespec const& ts)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void XmlElement::Attribute::setEscaped( const char *v, size_t n)
+void XmlElement::Attribute::setEscaped( const char *v)
 {
     const char *escape = "<>&\"'";
-    const char *escape_end = escape + 5;
-    const char *v_end = v + (n ? n : strlen(v));
     const char *p;
 
-    while ((p = std::find_first_of(v, v_end, escape, escape_end)) != v_end) {
+    while ((p = strpbrk(v, escape))) {
         os << std::string(v, p);
         switch (*p) {
             case '<':
@@ -149,7 +159,6 @@ void XmlElement::Attribute::csv(const Variable* var, const char *buf,
 {
     char delim = '\0';
 
-    //precision = os.precision(precision);
     os.precision(precision);
     while (nblocks--) {
         if (delim)
@@ -158,7 +167,6 @@ void XmlElement::Attribute::csv(const Variable* var, const char *buf,
         var->dtype.print(os, buf, buf, buf+var->memSize);
         buf += var->dtype.size;
     }
-    //os.precision(precision);
 }
 
 /////////////////////////////////////////////////////////////////////////////

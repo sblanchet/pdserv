@@ -228,7 +228,7 @@ void DirectoryNode::list( PdServ::Session *session, XmlElement& parent,
 
         // If there are children, report this node as a directory
         if (it->second and !it->second->children.empty()) {
-            XmlElement el("dir", parent);
+            XmlElement el(parent.createChild("dir"));
             XmlElement::Attribute(el, "path")
                 << (this->path() + '/' + it->first);
         }
@@ -240,13 +240,13 @@ void DirectoryNode::list( PdServ::Session *session, XmlElement& parent,
 
             param->mainParam->getValue(session, buf, &ts);
 
-            XmlElement xml("parameter", parent);
+            XmlElement xml(parent.createChild("parameter"));
             param->setXmlAttributes(xml, buf, ts, 0, 0, 16);
         }
 
         const Channel *channel = dynamic_cast<const Channel   *>(it->second);
         if (channel and !channel->hidden) {
-            XmlElement xml("channel", parent);
+            XmlElement xml(parent.createChild("channel"));
             channel->setXmlAttributes(xml, 0, 0, 0);
         }
     }

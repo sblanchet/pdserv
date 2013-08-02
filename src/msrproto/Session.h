@@ -50,6 +50,7 @@
 
 #include "../Session.h"
 #include "XmlParser.h"
+#include "XmlElement.h"
 
 #include <cc++/thread.h>
 #include <cc++/socketport.h>
@@ -95,28 +96,34 @@ class Session: public ost::Thread, public PdServ::Session {
             return &tmp.dbl;
         }
 
+        class TCPStream: public ost::Socket, public std::streambuf {
+            public:
+                TCPStream(ost::TCPSocket *socket);
+                ~TCPStream();
+
+                int read(char *buf, size_t n, timeout_t timeout);
+
+                XmlElement createElement(const char *name);
+
+                size_t inBytes;
+                size_t outBytes;
+
+                std::string peer;
+                std::string commandId;
+
+            private:
+                std::ostream os;
+
+                FILE *file;
+
+                // Reimplemented from std::streambuf
+                int overflow ( int c );
+                std::streamsize xsputn ( const char * s, std::streamsize n );
+                int sync();
+        };
     private:
         Server * const server;
 
-        struct TCPStream: public ost::Socket, public std::streambuf {
-            TCPStream(ost::TCPSocket *socket);
-            ~TCPStream();
-
-            int read(char *buf, size_t n, timeout_t timeout);
-            int getSocket() const;
-
-            // Reimplemented from std::streambuf
-            int overflow ( int c );
-            std::streamsize xsputn ( const char * s, std::streamsize n );
-            int sync();
-
-            size_t inBytes;
-            size_t outBytes;
-
-            std::string peer;
-
-            FILE *file;
-        };
         TCPStream tcp;
 
         std::ostream xmlstream;

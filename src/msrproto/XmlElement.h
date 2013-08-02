@@ -29,7 +29,6 @@
 
 #include <sstream>
 #include <string>
-#include <cc++/thread.h>
 
 namespace PdServ {
     class Variable;
@@ -43,17 +42,20 @@ class Channel;
 
 class XmlElement {
     public:
-        //XmlElement(const char *name);
-        XmlElement(const char *name, std::ostream &os);
-        XmlElement(const char *name, XmlElement &parent);
+        XmlElement(const char *name, std::ostream &os,
+                size_t level, std::string *id);
+        XmlElement(const XmlElement& other):
+            level(other.level), id(other.id), os(other.os), name(other.name) {
+            }
 
         /** Destructor.
          * Children are destroyed if they were not released beforehand */
         ~XmlElement();
 
-        const size_t level;
+        XmlElement createChild(const char *name);
 
-        std::ostream& prefix();
+        const size_t level;
+        std::string* const id;
 
         class Attribute {
             public:
@@ -62,7 +64,7 @@ class XmlElement {
 
                 /** Set string attribute, checking for characters
                  * that need to be escaped */
-                void setEscaped( const char *value, size_t n = 0);
+                void setEscaped( const char *value);
 
                 void csv(const Variable* var, const char *buf,
                         size_t nblocks, size_t precision);

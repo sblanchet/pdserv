@@ -109,7 +109,7 @@ void Subscription::print(XmlElement &parent)
 //    if (!nblocks)
 //        return;
 
-    XmlElement datum(event ? "E" : "F", parent);
+    XmlElement datum(parent.createChild(event ? "E" : "F"));
     XmlElement::Attribute(datum, "c") << channel->index;
 
     XmlElement::Attribute value(datum, "d");

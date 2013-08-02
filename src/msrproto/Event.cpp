@@ -33,18 +33,17 @@ Event::Event(const PdServ::Event *e):
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Event::toXml(std::ostream& os, const PdServ::Event* event,
+void Event::toXml(Session::TCPStream &tcp, const PdServ::Event* event,
         size_t index, bool state, const struct timespec& t)
 {
-    XmlElement msg(levelString(event), os);
+    XmlElement msg(tcp.createElement(levelString(event)));
 
     XmlElement::Attribute(msg, "path").setEscaped(event->path.c_str());
     XmlElement::Attribute(msg, "index") << index;
     XmlElement::Attribute(msg, "state") << state;
     XmlElement::Attribute(msg, "time") << t;
     if (event->message and state)
-        XmlElement::Attribute(msg, "text")
-            .setEscaped(event->message[index]);
+        XmlElement::Attribute(msg, "text").setEscaped(event->message[index]);
 }
 
 /////////////////////////////////////////////////////////////////////////////

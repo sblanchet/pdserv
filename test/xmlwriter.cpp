@@ -36,8 +36,8 @@ int main(int argc, const char *argv[])
     std::ostream os(cout.rdbuf());
 
     {
-        XmlElement a("hello", os);
-        XmlElement("agein", a);
+//        XmlElement a("hello", os);
+//        XmlElement("agein", a);
     }
 
     return 0;

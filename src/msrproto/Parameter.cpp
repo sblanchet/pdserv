@@ -66,7 +66,7 @@ Parameter::Parameter(const PdServ::Parameter *p, size_t index,
 /////////////////////////////////////////////////////////////////////////////
 void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
         struct timespec const& mtime, bool shortReply, bool hex,
-        size_t precision, const std::string& id) const
+        size_t precision) const
 {
     unsigned int flags = MSR_R | MSR_W | MSR_WOP;
 
@@ -95,9 +95,6 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
             XmlElement::Attribute(element, "value").csv( this,
                     valueBuf + offset, 1, precision);
     }
-
-    if (!id.empty())
-        XmlElement::Attribute(element, "id").setEscaped(id.c_str());
 
     addCompoundFields(element, variable->dtype);
 

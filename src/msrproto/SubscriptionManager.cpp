@@ -163,7 +163,7 @@ void SubscriptionManager::newSignal( const PdServ::Signal *s)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::rxPdo(std::ostream& os, bool quiet)
+void SubscriptionManager::rxPdo(Session::TCPStream& tcp, bool quiet)
 {
     typedef std::queue<Subscription*> PrintQ;
     PrintQ printQ;
@@ -192,7 +192,7 @@ void SubscriptionManager::rxPdo(std::ostream& os, bool quiet)
         doSync = false;
 
         if (!printQ.empty()) {
-            XmlElement dataTag("data", os);
+            XmlElement dataTag(tcp.createElement("data"));
             XmlElement::Attribute(dataTag, "level") << 0;
             XmlElement::Attribute(dataTag, "time") << *taskTime;
 

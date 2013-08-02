@@ -48,8 +48,7 @@ class Parameter: public Variable {
 
         void setXmlAttributes(XmlElement&, const char *buf,
                 struct timespec const& ts, bool shortReply,
-                bool hex, size_t precision,
-                const std::string& id = std::string()) const;
+                bool hex, size_t precision) const;
 
         int setHexValue(const Session *,
                 const char *str, size_t startindex, size_t &count) const;

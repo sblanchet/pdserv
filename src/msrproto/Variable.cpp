@@ -137,7 +137,7 @@ void Variable::addCompoundFields(XmlElement &element,
 
     for (PdServ::DataType::FieldList::const_iterator it = fieldList.begin();
             it != fieldList.end(); ++it) {
-        XmlElement field("field", element);
+        XmlElement field(element.createChild("field"));
         XmlElement::Attribute(field, "name").setEscaped((*it)->name.c_str());
         XmlElement::Attribute(field, "offset") << (*it)->offset;
 
