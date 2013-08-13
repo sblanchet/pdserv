@@ -128,12 +128,9 @@ int Main::setParameter(const Session *, const ProcessParameter *param,
 {
     int rv = param->setValue(data, offset, count);
 
-    if (rv) {
-        LOG4CPLUS_WARN(parameterLog,
-                "Parameter change " << param->path
-                << " failed (" << strerror(errno) << ")");
+    if (rv)
         return rv;
-    }
+
     msrproto->parameterChanged(param, offset, count);
 
     std::ostringstream os;
