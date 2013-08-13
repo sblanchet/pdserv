@@ -35,7 +35,7 @@
 //Liste der Features der aktuellen rtlib-Version, wichtig, muß aktuell gehalten werden
 //da der Testmanager sich auf die Features verläßt
 
-#define MSR_FEATURES "pushparameters,binparameters,maschinehalt,eventchannels,statistics,pmtime,aic,messages"
+#define MSR_FEATURES "pushparameters,binparameters,maschinehalt,eventchannels,statistics,pmtime,aic,messages,polite"
 
 /* pushparameters: Parameter werden vom Echtzeitprozess an den Userprozess gesendet bei Änderung
    binparameters: Parameter können Binär übertragen werden
@@ -86,8 +86,6 @@ class Session: public ost::Thread, public PdServ::Session {
         void setAIC(const Parameter* p);
         void getSessionStatistics(PdServ::SessionStatistics &stats) const;
 
-        void processCommand(const XmlParser::Element&);
-
         const struct timespec *getTaskTime(const PdServ::Task *) const;
         const PdServ::TaskStatistics *getTaskStatistics(
                 const PdServ::Task *) const;
@@ -121,6 +119,7 @@ class Session: public ost::Thread, public PdServ::Session {
                 std::streamsize xsputn ( const char * s, std::streamsize n );
                 int sync();
         };
+
     private:
         Server * const server;
 
@@ -173,9 +172,11 @@ class Session: public ost::Thread, public PdServ::Session {
 //        void newSignalData(const PdServ::SessionTaskData*,
 //                const struct timespec *);
 
+        void processCommand(const XmlParser::Element&);
         // Management variables
         bool writeAccess;
         bool quiet;
+        bool polite;
         bool echoOn;
         std::string peer;
         std::string client;

@@ -69,6 +69,7 @@ Session::Session( Server *server, ost::TCPSocket *socket):
     writeAccess = false;
     echoOn = false;     // FIXME: echoOn is not yet implemented
     quiet = false;
+    polite = false;
     aicDelay = 0;
 
     xmlstream.imbue(std::locale::classic());
@@ -236,6 +237,15 @@ void Session::run()
                     tcp.commandId.clear();
                 }
             }
+        }
+
+        // End here for polite conversations
+        if (polite) {
+            ost::SemaphoreLock lock(mutex);
+            changedParameter.clear();
+            broadcastList.clear();
+            aic.clear();
+            continue;
         }
 
         // Collect all asynchronous events while holding mutex
@@ -570,6 +580,7 @@ void Session::remoteHost(const XmlParser::Element& cmd)
     cmd.getString("applicationname", client);
 
     writeAccess = cmd.isEqual("access", "allow") or cmd.isTrue("access");
+    polite = cmd.isTrue("polite");
 
     LOG4CPLUS_INFO(server->log,
             LOG4CPLUS_TEXT("Logging in ")
