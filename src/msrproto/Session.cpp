@@ -187,6 +187,8 @@ void Session::run()
     XmlParser inbuf;
 
     while (xmlstream.good()) {
+        tcp.pubsync();
+
         try {
             n = tcp.read(inbuf.bufptr(), inbuf.free(), 100);
 
@@ -225,6 +227,14 @@ void Session::run()
             while ((command = inbuf.nextElement())) {
                 command.getString("id", tcp.commandId);
                 processCommand(command);
+
+                if (!tcp.commandId.empty()) {
+                    XmlElement ack(tcp.createElement("ack"));
+                    XmlElement::Attribute(ack,"id").setEscaped(
+                            tcp.commandId.c_str());
+
+                    tcp.commandId.clear();
+                }
             }
         }
 

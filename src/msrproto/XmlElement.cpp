@@ -58,15 +58,6 @@ XmlElement::~XmlElement()
     }
 
     os << ">\r\n";
-
-    if (id and !id->empty()) {
-        XmlElement ack("ack", os, 0, 0);
-        XmlElement::Attribute(ack,"id").setEscaped(id->c_str());
-
-        id->clear();
-    }
-
-    os << std::flush;
 }
 
 /////////////////////////////////////////////////////////////////////////////
