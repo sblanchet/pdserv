@@ -156,7 +156,7 @@ void XmlElement::Attribute::csv(const Variable* var, const char *buf,
             os << delim;
         delim = ',';
         var->dtype.print(os, buf, buf, buf+var->memSize);
-        buf += var->dtype.size;
+        buf += var->memSize;
     }
 }
 
