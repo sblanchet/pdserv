@@ -44,6 +44,7 @@ class Subscription;
 class SubscriptionManager: public PdServ::SessionTask {
     public:
         SubscriptionManager(const Session *session, const PdServ::Task*);
+        ~SubscriptionManager();
 
         const Session * const session;
 

@@ -55,6 +55,12 @@ SubscriptionManager::SubscriptionManager(
 }
 
 /////////////////////////////////////////////////////////////////////////////
+SubscriptionManager::~SubscriptionManager()
+{
+    clear();
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::subscribe (const Channel *c,
         bool event, unsigned int decimation,
         size_t blocksize, bool base64, size_t precision)
