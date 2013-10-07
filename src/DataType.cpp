@@ -137,7 +137,7 @@ namespace {
                 }
 
                 static void setValue(char *&dst, double src) {
-                    *reinterpret_cast<T*>(dst) = src;
+                    *reinterpret_cast<T*>(dst) = static_cast<T>(src);
                     dst += sizeof(T);
                 }
         };
