@@ -26,8 +26,6 @@ INCLUDE_DIRECTORIES(
         ${LIBCCEXT2_INCLUDE_DIRS}
         )
 
-SET (CMAKE_CXX_FLAGS "-Wunused")
-
 SET (msrproto_src
     msrproto/StatSignal.cpp             msrproto/StatSignal.h
     msrproto/Event.cpp                  msrproto/Event.h
