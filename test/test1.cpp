@@ -62,8 +62,8 @@ int gettime(struct timespec *t)
     return clock_gettime(CLOCK_REALTIME, t);
 }
 
-void clear_event(const struct pdevent* event, size_t index,
-        char state, void *priv_data)
+void clear_event(const struct pdevent* /*event*/, size_t /*index*/,
+        char /*state*/, void * /*priv_data*/)
 {
     printf("%s", __func__);
 }

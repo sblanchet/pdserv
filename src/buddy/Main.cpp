@@ -352,7 +352,7 @@ int Main::gettime(struct timespec *ts) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter( const Parameter *param, const char *dataPtr,
+int Main::setParameter( const Parameter * /*param*/, const char *dataPtr,
         size_t count, struct timespec *mtime) const
 {
     ost::SemaphoreLock lock(paramMutex);

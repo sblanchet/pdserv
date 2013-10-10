@@ -37,7 +37,7 @@
 using namespace Supervisor;
 
 /////////////////////////////////////////////////////////////////////////////
-Server::Server(const PdServ::Main *main, const PdServ::Config &config):
+Server::Server(const PdServ::Main *main, const PdServ::Config &/*config*/):
     PdServ::Session(main),
     main(main),
     mutex(1)

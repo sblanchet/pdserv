@@ -443,9 +443,10 @@ int Main::daemonize()
         const char *err = config.load(configFile.c_str());
         if (err)
             std::cout << "Load config: " << err << std::endl;
-        else
+        else {
             log_debug("Loaded specified configuration file %s",
                     configFile.c_str());
+        }
     }
     else if (env and ::strlen(env)) {
         // Try to load environment configuration file
@@ -454,8 +455,9 @@ int Main::daemonize()
         if (err)
             std::cout << "Error loading config file " << env
                 << ": " << err << std::endl;
-        else
+        else {
             log_debug("Loaded ENV config %s", env);
+        }
     }
     else {
         // Try to load default configuration file
@@ -468,12 +470,14 @@ int Main::daemonize()
             else
                 std::cout << "Load config error: " << err << std::endl;
         }
-        else
+        else {
             log_debug("Loaded default configuration file %s", f);
+        }
     }
 
-    if (!config)
+    if (!config) {
         log_debug("No configuration loaded");
+    }
 
     // Only child runs after this point
     pid = getpid();

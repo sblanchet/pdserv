@@ -103,7 +103,7 @@ size_t Task::getShmemSpace(double T) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-SessionTaskData* Task::newSession(PdServ::Session *session)
+SessionTaskData* Task::newSession(PdServ::Session * /*session*/)
 {
     return 0; //new SessionTaskData(session, this, txMemBegin, txMemEnd);
 }

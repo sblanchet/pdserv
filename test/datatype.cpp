@@ -44,7 +44,7 @@ struct _s {
     double d2;
 };
 
-int main(int argc, const char *argv[])
+int main(int /*argc*/, const char * /*argv*/[])
 {
     DataType* dt = new DataType("struct", sizeof(struct _s));
     DataType* dts2 = new DataType("struct2", sizeof(struct _s2));

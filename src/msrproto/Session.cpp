@@ -349,7 +349,7 @@ void Session::processCommand(const XmlParser::Element& cmd)
         {15, "read_statistics",         &Session::readStatistics        },
         {15, "write_parameter",         &Session::writeParameter        },
         {17, "read_param_values",       &Session::readParamValues       },
-        {0,},
+        {0,  0,                         0},
     };
 
     // Go through the command list
@@ -402,7 +402,7 @@ void Session::echo(const XmlParser::Element& cmd)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::ping(const XmlParser::Element& cmd)
+void Session::ping(const XmlParser::Element& /*cmd*/)
 {
     tcp.createElement("ping");
 }
@@ -521,7 +521,7 @@ void Session::readParameter(const XmlParser::Element& cmd)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readParamValues(const XmlParser::Element& cmd)
+void Session::readParamValues(const XmlParser::Element& /*cmd*/)
 {
     XmlElement param_values(tcp.createElement("param_values"));
     XmlElement::Attribute values(param_values, "value");
@@ -545,7 +545,7 @@ void Session::readParamValues(const XmlParser::Element& cmd)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readStatistics(const XmlParser::Element& cmd)
+void Session::readStatistics(const XmlParser::Element& /*cmd*/)
 {
     // <clients>
     //   <client index="0" name="lansim"

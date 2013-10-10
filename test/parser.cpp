@@ -64,7 +64,7 @@ int test_single(const char *s, ...)
     return 1;
 }
 
-int main(int argc, const char *argv[])
+int main(int , const char *[])
 {
     XmlParser inbuf;
     XmlParser::Element command;

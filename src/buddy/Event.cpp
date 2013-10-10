@@ -26,7 +26,7 @@
 
 //////////////////////////////////////////////////////////////////////
 Event::Event( const Signal *s,
-        size_t index, int id, const std::string& prio):
+        size_t /*index*/, int /*id*/, const std::string& prio):
     PdServ::Event(s->path.c_str(), getPriority(prio), s->dim.nelem, 0),
     signal(s),
     value(new double[nelem])

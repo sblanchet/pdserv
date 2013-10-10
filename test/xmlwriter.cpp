@@ -31,7 +31,7 @@ using std::endl;
 
 using namespace MsrProto;
 
-int main(int argc, const char *argv[])
+int main(int /*argc*/, const char * /*argv*/[])
 {
     std::ostream os(cout.rdbuf());
 
