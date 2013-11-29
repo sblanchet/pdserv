@@ -60,7 +60,9 @@ Entwicklung mit %name.
 %prep
 %setup
 find -name CMakeCache.txt -exec rm -v {} \;
-cmake -DPREFIX=%{_prefix} -DSYSCONFDIR=%{_sysconfdir} -DLIBDIR=%{_libdir} .
+cmake -DCMAKE_INSTALL_PREFIX=%{_prefix} \
+	-DCMAKE_INSTALL_SYSCONFDIR=%{_sysconfdir} \
+	-DCMAKE_INSTALL_LIBDIR=%{_libdir} .
 
 %build
 make
