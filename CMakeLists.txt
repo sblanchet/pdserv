@@ -52,15 +52,17 @@ SET (CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE)
 # - Update SOVERSION below
 # - Update ChangeLog (hg log --branch <branch> --style=changelog > ChangeLog)
 # - Update NEWS file
+# - commit
 # - make dist
+# - add tag release-x.x.x
 #
 SET (MAJOR_VERSION 1)
-SET (MINOR_VERSION 0)
+SET (MINOR_VERSION 1)
 SET (PATCH_LEVEL 0)
 SET (VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL})
 
 # library version
-SET (SOVERSION ${MAJOR_VERSION}.${MINOR_VERSION})
+SET (SOVERSION 2.0.0)
 
 LIST (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 

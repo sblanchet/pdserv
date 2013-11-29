@@ -1,8 +1,256 @@
+2013-10-10  Richard Hacker  <lerichi@gmx.net>
+
+	* src/buddy/Event.cpp, src/buddy/Main.cpp, src/lib/Main.cpp,
+	src/lib/Task.cpp, src/msrproto/Session.cpp,
+	src/supervisor/Server.cpp, test/datatype.cpp, test/parser.cpp,
+	test/test1.cpp, test/xmlwriter.cpp:
+	Fixed compiler warnings
+	[86d2981a1092] [tip]
+
+	* CMakeLists.txt, src/CMakeLists.txt, src/test_headers.c:
+	Improved detection of struct members for buddy
+	[b45d02e43fb1]
+
+2013-10-08  Richard Hacker  <lerichi@gmx.net>
+
+	* CMakeLists.txt, src/CMakeLists.txt:
+	Removed unnecessary compile definitions that made cross-compiling
+	impossible
+	[4153b55cc1c4]
+
+2013-10-07  ha  <ha@lanserv.awi-neumayer.de>
+
+	* src/DataType.cpp:
+	Fixed typecast warning
+	[d0d17514a11d]
+
+2013-09-18  Richard Hacker  <ha@igh.de>
+
+	* src/msrproto/SubscriptionManager.cpp,
+	src/msrproto/SubscriptionManager.h:
+	Fixed memory leak where session disconnects did not release all
+	memory
+	[b42d1118ae58]
+
+2013-09-11  Richard Hacker  <lerichi@gmx.net>
+
+	* src/msrproto/XmlElement.cpp:
+	Fixed bug where outputting vectors was incorrect
+	[72a513894ab3]
+
+2013-08-13  Richard Hacker  <lerichi@gmx.net>
+
+	* src/msrproto/Session.cpp, src/msrproto/Session.h:
+	Added <remote_host polite> so that the process does not send any
+	messages by itself
+	[b373f2625c6c]
+
+	* src/Main.cpp:
+	Parameter write failure not logged any more
+	[1fe2218212fa]
+
+	* src/msrproto/Session.cpp, src/msrproto/XmlElement.cpp:
+	Moved <ack id=..> to Server.cpp
+	[8b976ecd9bad]
+
+2013-08-03  Richard Hacker  <lerichi@gmx.net>
+
+	* src/msrproto/DirectoryNode.cpp, src/msrproto/Event.cpp,
+	src/msrproto/Event.h, src/msrproto/FindFirstOf.h,
+	src/msrproto/Parameter.cpp, src/msrproto/Parameter.h,
+	src/msrproto/Session.cpp, src/msrproto/Session.h,
+	src/msrproto/Subscription.cpp, src/msrproto/SubscriptionManager.cpp,
+	src/msrproto/SubscriptionManager.h, src/msrproto/Variable.cpp,
+	src/msrproto/XmlElement.cpp, src/msrproto/XmlElement.h,
+	test/test1.cpp, test/xmlwriter.cpp:
+	Reworked the msr XML output stream
+	[d382e3d13031]
+
+2013-07-25  ha  <ha@newton.igh-essen.int>
+
+	* CMakeLists.txt, cmake/compat/FindGNUInstallDirs.cmake,
+	cmake/compat/GNUInstallDirs.cmake:
+	Improved GNUInstallDirs inclusion
+	[ec178bcca8e2]
+
+2013-07-22  ha  <ha@ernie.igh-essen.int>
+
+	* CMakeLists.txt, cmake/compat/FindGNUInstallDirs.cmake:
+	Added GNUInstallDirs for cmake < 2.8
+	[b1fa711f23bd]
+
+2013-06-28  Richard Hacker  <lerichi@gmx.net>
+
+	* src/CMakeLists.txt, src/msrproto/Event.cpp, src/msrproto/Event.h,
+	src/msrproto/OStream.cpp, src/msrproto/OStream.h,
+	src/msrproto/Parameter.cpp, src/msrproto/Session.cpp,
+	src/msrproto/Session.h, src/msrproto/SubscriptionManager.cpp,
+	src/msrproto/SubscriptionManager.h, test/xmlwriter.cpp:
+	Removed unnecessary output stream locking
+	[2356b9e48610]
+
+2013-06-27  Richard Hacker  <lerichi@gmx.net>
+
+	* src/buddy/EventQ.cpp, src/lib/Main.cpp, src/msrproto/Server.cpp,
+	src/msrproto/Server.h, src/msrproto/Session.cpp,
+	src/msrproto/Session.h:
+	Prevent inter-session locking issues
+	[526d16437ed9]
+
+2013-06-26  Richard Hacker  <lerichi@gmx.net>
+
+	* src/msrproto/Session.cpp:
+	<rk> supplies values again Timeout when write takes too long
+	[7bf4e8a631bd]
+
+2013-06-19  Richard Hacker  <lerichi@gmx.net>
+
+	* src/buddy/Signal.cpp, src/msrproto/Parameter.cpp,
+	src/msrproto/Session.cpp:
+	Removed value='' attribute for <rk> and <rp>
+	[fa054c1b954f]
+
+2013-06-13  Richard Hacker  <lerichi@gmx.net>
+
+	* INSTALL:
+	Updated INSTALL instructions
+	[2c33d0eed64f]
+
+	* src/Main.cpp, src/lib/Main.cpp, src/msrproto/Server.cpp,
+	src/msrproto/Session.cpp, src/supervisor/Server.cpp:
+	Added missing headers for log4cplus for newer compilers
+	[c6a189ec5dc6]
+
+2013-06-08  Richard Hacker  <lerichi@gmx.net>
+
+	* src/msrproto/Subscription.cpp, src/msrproto/Subscription.h,
+	src/msrproto/SubscriptionManager.cpp, test/test1.cpp:
+	Fixed incorrect behaviour in MSR where empty data tags d="" were
+	sent for event subscriptions
+	[49f3d1071ebf]
+
+2013-05-15  Richard Hacker  <lerichi@gmx.net>
+
+	* src/msrproto/OStream.cpp, src/msrproto/OStream.h,
+	src/msrproto/Session.cpp, src/msrproto/Session.h,
+	test/xmlwriter.cpp:
+	Simplified xmlstream in MSR
+	[e0958c7a5354]
+
+	* src/msrproto/Session.cpp:
+	Removed MSR <info> broadcast when new session connects
+	[095784f15675]
+
+	* pdserv.conf, src/msrproto/Session.cpp:
+	Locking fixed on MSR session initialize
+	[71dfbdb09219]
+
+2013-04-17  Richard Hacker  <lerichi@gmx.net>
+
+	* src/msrproto/Server.cpp:
+	Fixed bug where <pu> for single elements of a vector was not emitted
+	[d2ee78c9cde2]
+
+2013-04-01  lan  <lan@lansim.igh-essen.int>
+
+	* src/CMakeLists.txt, src/buddy/Main.cpp, src/buddy/Main.h,
+	src/buddy/buddy.conf, src/buddy/main.cpp, src/msrproto/Event.cpp,
+	src/msrproto/Session.cpp, src/supervisor/Server.cpp:
+	Buddy configured for log4cplus
+	[e841a5ed38ce]
+
+2013-03-31  Richard Hacker  <lerichi@gmx.net>
+
+	* CMakeLists.txt, INSTALL, cmake/Modules/FindLog4Cpp.cmake,
+	cmake/Modules/FindLog4cplus.cmake, config.h.in, pdserv.conf,
+	src/CMakeLists.txt, src/Main.cpp, src/Main.h, src/buddy/Event.cpp,
+	src/buddy/Main.cpp, src/buddy/Main.h, src/buddy/main.cpp,
+	src/lib/Main.cpp, src/lib/Main.h, src/lib/SessionTaskData.cpp,
+	src/msrproto/Server.cpp, src/msrproto/Server.h,
+	src/msrproto/Session.cpp, src/msrproto/Session.h,
+	src/supervisor/Server.cpp, src/supervisor/Server.h,
+	src/test_headers.c, test/CMakeLists.txt, test/test1.cpp:
+	Replaced logging subsystem with log4cplus
+	[05483eefdcbc]
+
+2013-03-29  Richard Hacker  <lerichi@gmx.net>
+
+	* src/lib/libpdserv.pc.in:
+	Updated pkg-config files
+	[0d13e21f6a52]
+
+2013-03-12  Richard Hacker  <ha@igh-essen.com>
+
+	* CMakeLists.txt, include/CMakeLists.txt, src/CMakeLists.txt:
+	Using standard cmake installation paths. Default installation to
+	/usr/local
+	[28bf05b7b89d]
+
+2013-03-06  Richard Hacker  <ha@igh-essen.com>
+
+	* CMakeLists.txt, src/CMakeLists.txt, test/CMakeLists.txt:
+	cmake configuration
+	[c0318c00b6d3]
+
+2013-03-03  Richard Hacker  <lerichi@gmx.net>
+
+	* src/msrproto/DirectoryNode.cpp, src/msrproto/Session.cpp,
+	src/msrproto/Session.h, src/msrproto/XmlParser.cpp,
+	src/msrproto/XmlParser.h, test/CMakeLists.txt, test/parser.cpp:
+	Optimized XML Parser
+	[c11c0b9caf18]
+
+2013-02-28  Richard Hacker  <lerichi@gmx.net>
+
+	* include/pdserv.h, src/Event.cpp, src/Event.h, src/lib/Event.cpp,
+	src/lib/Event.h, src/lib/Main.cpp, src/lib/Main.h,
+	src/lib/interface.cpp, src/msrproto/Event.cpp, src/msrproto/Event.h,
+	src/msrproto/Session.cpp, src/supervisor/Server.cpp, test/test1.cpp:
+	Events defined with a path instead of a numeric identifier
+	[348125436f32]
+
+	* src/msrproto/Event.cpp, src/msrproto/Event.h,
+	src/msrproto/Server.cpp, src/msrproto/Server.h:
+	Reduced/simplified MSR event handling
+	[c0b6c3dfd93f]
+
+2013-02-27  Richard Hacker  <lerichi@gmx.net>
+
+	* src/Main.cpp, src/msrproto/Server.cpp, src/msrproto/Server.h,
+	src/supervisor/Server.cpp, src/supervisor/Server.h:
+	Simplified configuration. Removed default configuration option
+	[bf4eef72dbcd]
+
+	* include/pdserv.h, src/Event.cpp, src/Event.h, src/lib/Event.cpp,
+	src/lib/Event.h, src/lib/interface.cpp, src/msrproto/Event.cpp,
+	src/supervisor/Server.cpp, test/test1.cpp:
+	Events are greatly simplified. No message formatting any more
+	[a26da74c9e98]
+
+2013-01-29  Florian Pose  <fp@igh-essen.com>
+
+	* .hgtags:
+	Added tag release-1.0.0 for changeset 61f91b55ab3c
+	[c2d5f2a21d9b]
+
+	* CMakeLists.txt, ChangeLog, NEWS:
+	Version 1.0.0.
+	[61f91b55ab3c] [release-1.0.0]
+
+2012-12-18  Richard Hacker  <lerichi@gmx.net>
+
+	* src/CMakeLists.txt, src/etlproto/Action.cpp, src/etlproto/Action.h,
+	src/etlproto/Directory.cpp, src/etlproto/Directory.h,
+	src/etlproto/Server.cpp, src/etlproto/Server.h,
+	src/etlproto/Session.h:
+	Refined list action
+	[18e49fc7ddf7] <EtlProto>
+
 2012-12-17  Florian Pose  <fp@igh-essen.com>
 
 	* src/msrproto/SubscriptionManager.cpp:
 	Fixed duplicate variable declaration.
-	[7b7ccc9c8b3f] [tip]
+	[7b7ccc9c8b3f]
 
 	* src/msrproto/Variable.cpp:
 	Merge.
@@ -14,16 +262,39 @@
 	Applied patch from rev 394:e42112d97662
 	[19d6cc235e2f]
 
+	* src/msrproto/Variable.cpp:
+	Removed duplicate unit='' from MSR variable stream
+	[e42112d97662] <EtlProto>
+
+	* src/etlproto/Action.cpp, src/etlproto/Action.h,
+	src/etlproto/ProtocolLayer.h, src/etlproto/Session.cpp:
+	Using ticket instead of transaction
+	[216e59c26021] <EtlProto>
+
+2012-12-12  Richard Hacker  <lerichi@gmx.net>
+
+	* src/CMakeLists.txt, src/etlproto/Action.cpp, src/etlproto/Action.h,
+	src/etlproto/IOBuffer.cpp, src/etlproto/IOBuffer.h,
+	src/etlproto/ProtocolLayer.cpp, src/etlproto/ProtocolLayer.h,
+	src/etlproto/Server.cpp, src/etlproto/Session.cpp,
+	src/etlproto/Session.h:
+	LIST command working.
+	[56f993c72e13] <EtlProto>
+
 2012-12-14  Florian Pose  <fp@igh-essen.com>
 
 	* merge
 	[197caf21fbe2]
 
-	* src/msrproto/Variable.cpp:
-	Removed duplicate unit attribute.
-	[f3f04852fb7a]
-
 2012-12-09  Richard Hacker  <lerichi@gmx.net>
+
+	* src/CMakeLists.txt, src/Main.cpp, src/Main.h,
+	src/msrproto/Server.cpp, test/test1.cpp:
+	Framing input stream working
+	[d303a6291b63] <EtlProto>
+
+	* EtlProto branch
+	[572f8f4940a2] <EtlProto>
 
 	* src/msrproto/Server.cpp:
 	Fixed another locking issue
@@ -53,6 +324,12 @@
 	* test/test1.cpp:
 	Bug in example causes segv
 	[0efd28558ec4]
+
+2012-12-14  Florian Pose  <fp@igh-essen.com>
+
+	* src/msrproto/Variable.cpp:
+	Removed duplicate unit attribute.
+	[f3f04852fb7a]
 
 2012-11-08  Richard Hacker  <ha@igh-essen.com>
 
@@ -547,15 +824,17 @@
 	* merge.
 	[35be2594762b]
 
-	* src/lib/ShmemDataStructures.h:
-	Randomized PDO IDs.
-	[819998aeca89]
-
 2012-04-10  Richard Hacker  <ha@igh-essen.com>
 
 	* src/msrproto/Session.cpp:
 	Change <connected> tag to name="MSR"
 	[1ae75b2ff22c]
+
+2012-04-16  Florian Pose  <fp@igh-essen.com>
+
+	* src/lib/ShmemDataStructures.h:
+	Randomized PDO IDs.
+	[819998aeca89]
 
 2012-04-02  Florian Pose  <fp@igh-essen.com>
 

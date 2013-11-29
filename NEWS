@@ -1,6 +1,20 @@
 
 $Id$
 
+Version 1.1.0
+
+- Fixed some bugs and memory leaks
+- Added <remote_host polite> so that the process does not send any messages by
+  itself
+- Parameter write failure not logged any more
+- Removed unnecessary output stream locking
+- Removed value='' attribute for <rk> and <rp>
+- Removed MSR <info> broadcast when new session connects
+- Using log4cplus instead of log4cpp
+- Using standard cmake installation paths. Default installation to /usr/local
+- Simplified events defined with a path instead of a numeric identifier
+- Simplified configuration. Removed default configuration option
+
 Version 1.0.0
 
 - Removed duplicate unit attribute.
