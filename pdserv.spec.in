@@ -33,7 +33,7 @@ Group(de):		Entwicklung/Bibliotheken
 Url:			http://etherlab.org/en/pdserv
 Source:			http://etherlab.org/download/pdserv/%name-%version.tar.bz2
 BuildRoot:		%_tmppath/%name-%version-root
-BuildRequires:	gcc-c++ libyaml-devel cmake
+BuildRequires:	gcc-c++ libyaml-devel cmake log4cplus-devel
 
 %description
 PdServ is a process data communication server for realtime processes.
