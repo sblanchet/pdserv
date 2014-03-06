@@ -85,6 +85,7 @@ Main::Main( const char *name, const char *version,
 {
     shmem_len = 0;
     shmem = 0;
+    tSampleMin = ~0U;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -106,6 +107,12 @@ Task* Main::addTask(double sampleTime, const char *name)
 {
     Task *t = new Task(this, sampleTime, name);
     task.push_back(t);
+
+    tSampleMin =
+        std::min(tSampleMin, static_cast<size_t>(sampleTime * 1000 + 0.5));
+    if (!tSampleMin)
+        tSampleMin = 1U;
+
     return t;
 }
 
@@ -209,8 +216,6 @@ int Main::setParameter(const Parameter *p, size_t offset,
 {
     ost::SemaphoreLock lock(sdoMutex);
 
-    size_t delay = 100; // ms FIXME
-
     // Write the parameters into the shared memory sorted from widest
     // to narrowest data type size. This ensures that the data is
     // always aligned correctly.
@@ -222,7 +227,7 @@ int Main::setParameter(const Parameter *p, size_t offset,
     sdo->count = count;
 
     do {
-        ost::Thread::sleep(delay);
+        ost::Thread::sleep(tSampleMin);
     } while (sdo->count);
 
     if (!sdo->rv)

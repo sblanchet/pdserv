@@ -82,6 +82,7 @@ class Main: public PdServ::Main {
         PdServ::Config config;
 
         int pid;
+        size_t tSampleMin;      // Minimal sample time in ms
 
         size_t shmem_len;
         void *shmem;
