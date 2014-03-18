@@ -54,7 +54,7 @@
 
 #include <cc++/thread.h>
 #include <cc++/socketport.h>
-#include <map>
+#include <vector>
 #include <set>
 #include <cstdio>
 
@@ -86,9 +86,8 @@ class Session: public ost::Thread, public PdServ::Session {
         void setAIC(const Parameter* p);
         void getSessionStatistics(PdServ::SessionStatistics &stats) const;
 
-        const struct timespec *getTaskTime(const PdServ::Task *) const;
-        const PdServ::TaskStatistics *getTaskStatistics(
-                const PdServ::Task *) const;
+        const struct timespec *getTaskTime(size_t taskId) const;
+        const PdServ::TaskStatistics *getTaskStatistics(size_t taskId) const;
 
         double *getDouble() const {
             return &tmp.dbl;
@@ -151,9 +150,8 @@ class Session: public ost::Thread, public PdServ::Session {
         typedef std::list<const Broadcast*> BroadcastList;
         BroadcastList broadcastList;
 
-        typedef std::map<const PdServ::Task*, SubscriptionManager*>
-            SubscriptionManagerMap;
-        SubscriptionManagerMap subscriptionManager;
+        typedef std::vector<SubscriptionManager*> SubscriptionManagerVector;
+        SubscriptionManagerVector subscriptionManager;
         const SubscriptionManager *timeTask;
 
         // Temporary memory space needed to handle statistic channels

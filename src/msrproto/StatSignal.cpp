@@ -32,12 +32,13 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-StatSignal::StatSignal(const PdServ::Task *t, Type type, size_t index):
-    PdServ::Signal("StatSignal", t->sampleTime, 1,
+StatSignal::StatSignal(
+        size_t taskIdx, const PdServ::Task *task, Type type, size_t index):
+    PdServ::Signal("StatSignal", task, 1,
             PdServ::DataType::float64, 1, 0),
-    Channel(this, index,
+    Channel(taskIdx, this, index,
             this->PdServ::Signal::dtype, this->PdServ::Signal::dim, 0, 0),
-    task(t), type(type)
+    type(type)
 {
 }
 
@@ -57,10 +58,10 @@ double StatSignal::getValue (
         const PdServ::Session *s, struct timespec *t) const
 {
     const Session *session = static_cast<const Session*>(s);
-    const PdServ::TaskStatistics* stats = session->getTaskStatistics(task);
+    const PdServ::TaskStatistics* stats = session->getTaskStatistics(taskIdx);
 
     if (t)
-        *t = *session->getTaskTime(task);
+        *t = *session->getTaskTime(taskIdx);
 
     if (stats) {
         switch (type) {

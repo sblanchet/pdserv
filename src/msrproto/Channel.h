@@ -34,10 +34,11 @@ namespace PdServ {
 namespace MsrProto {
 
 class XmlElement;
+class Task;
 
 class Channel: public Variable {
     public:
-        Channel(const PdServ::Signal *s, size_t index,
+        Channel(size_t taskId, const PdServ::Signal *s, size_t index,
                 const PdServ::DataType& dtype,
                 const PdServ::DataType::DimType& dim,
                 size_t offset, Channel *parent);
@@ -46,6 +47,7 @@ class Channel: public Variable {
                     const char *signalBuf, size_t precision) const;
 
         const PdServ::Signal *signal;
+        const size_t taskIdx;
 };
 
 }

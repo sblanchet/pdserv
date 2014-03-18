@@ -32,11 +32,10 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-TimeSignal::TimeSignal(const PdServ::Task *t, size_t index):
-    PdServ::Signal("Time", t->sampleTime, 1, PdServ::DataType::float64, 1, 0),
-    Channel(this, index,
-            this->PdServ::Signal::dtype, this->PdServ::Signal::dim, 0, 0),
-    task(t)
+TimeSignal::TimeSignal(size_t taskIdx, const PdServ::Task *task, size_t index):
+    PdServ::Signal("Time", task, 1, PdServ::DataType::float64, 1, 0),
+    Channel(taskIdx, this, index,
+            this->PdServ::Signal::dtype, this->PdServ::Signal::dim, 0, 0)
 {
 }
 
@@ -56,7 +55,7 @@ double TimeSignal::poll(const PdServ::Session *s,
         void *buf, struct timespec *t) const
 {
     const Session *session = static_cast<const Session*>(s);
-    const struct timespec *time = session->getTaskTime(task);
+    const struct timespec *time = session->getTaskTime(taskIdx);
 
     if (time) {
         *reinterpret_cast<double*>(buf) = 1.0e-9 * time->tv_nsec + time->tv_sec;

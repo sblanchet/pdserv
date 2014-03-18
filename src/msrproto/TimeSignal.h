@@ -37,9 +37,7 @@ namespace MsrProto {
 
 class TimeSignal: public PdServ::Signal, public Channel {
     public:
-        TimeSignal(const PdServ::Task *task, size_t index);
-
-        const PdServ::Task * const task;
+        TimeSignal(size_t taskId, const PdServ::Task *task, size_t index);
 
     private:
         // Reimplemented from PdServ::Signal

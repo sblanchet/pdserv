@@ -66,10 +66,6 @@ class Main {
         size_t numTasks() const;
         const Task *getTask(size_t n) const;
 
-        // Get Task with a specific sample time.
-        // Returns Task, NULL if it doesn't exist
-        const Task *getTask(double sampleTime) const;
-
         typedef std::list<const ProcessParameter*> ProcessParameters;
         const ProcessParameters& getParameters() const;
         int setParameter(const Session *, const ProcessParameter *p,

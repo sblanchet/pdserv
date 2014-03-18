@@ -72,7 +72,6 @@ void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
     const PdServ::Task *task = main->getTask(taskIdx);
     Channel* c;
 
-    log4cplus::tostringstream msg;
     LOG4CPLUS_TRACE(log,
             LOG4CPLUS_TEXT("Create channels for task ") << taskIdx
             << LOG4CPLUS_TEXT(", Ts=") << task->sampleTime);
@@ -84,7 +83,7 @@ void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
 
     for (PdServ::Task::Signals::const_iterator it = signals.begin();
             it != signals.end(); it++) {
-        c = new Channel(*it,
+        c = new Channel(taskIdx, *it,
                 channels.size(), (*it)->dtype, (*it)->dim, 0, 0);
 
         char hidden;
@@ -107,19 +106,19 @@ void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
     os << taskIdx;
     DirectoryNode* t = taskInfo->create(os.str());
 
-    c = new TimeSignal(task, channels.size());
+    c = new TimeSignal(taskIdx, task, channels.size());
     channels.push_back(c);
     t->insert(c, "TaskTime");
 
-    c = new StatSignal(task, StatSignal::ExecTime, channels.size());
+    c = new StatSignal(taskIdx, task, StatSignal::ExecTime, channels.size());
     channels.push_back(c);
     t->insert(c, "ExecTime");
 
-    c = new StatSignal(task, StatSignal::Period, channels.size());
+    c = new StatSignal(taskIdx, task, StatSignal::Period, channels.size());
     channels.push_back(c);
     t->insert(c, "Period");
 
-    c = new StatSignal(task, StatSignal::Overrun, channels.size());
+    c = new StatSignal(taskIdx, task, StatSignal::Overrun, channels.size());
     channels.push_back(c);
     t->insert(c, "Overrun");
 }
@@ -437,7 +436,7 @@ DirectoryNode* Server::createChild (Variable* var,
     Parameter *p = dynamic_cast<Parameter*>(var);
 
     if (c) {
-        c = new Channel(c->signal, channels.size(), dtype,
+        c = new Channel(c->taskIdx, c->signal, channels.size(), dtype,
                 PdServ::DataType::DimType(1,&nelem), offset, c);
         channels.push_back(c);
         dir->insert(c, name);

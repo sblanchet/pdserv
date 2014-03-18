@@ -56,13 +56,14 @@ Session::Session( Server *server, ost::TCPSocket *socket):
 {
     timeTask = 0;
 
+    subscriptionManager.resize(main->numTasks());
     for (size_t i = 0; i < main->numTasks(); ++i) {
         const PdServ::Task *task = main->getTask(i);
 
-        subscriptionManager[task] = new SubscriptionManager(this, task);
+        subscriptionManager[i] = new SubscriptionManager(this, task);
 
         if (!timeTask or timeTask->task->sampleTime > task->sampleTime)
-            timeTask = subscriptionManager[task];
+            timeTask = subscriptionManager[i];
     }
 
     // Setup some internal variables
@@ -80,9 +81,9 @@ Session::Session( Server *server, ost::TCPSocket *socket):
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
-    for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
+    for (SubscriptionManagerVector::iterator it = subscriptionManager.begin();
             it != subscriptionManager.end(); ++it)
-        delete it->second;
+        delete *it;
 
     server->sessionClosed(this);
 }
@@ -102,16 +103,15 @@ void Session::getSessionStatistics(PdServ::SessionStatistics &stats) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const struct timespec *Session::getTaskTime (const PdServ::Task *task) const
+const struct timespec *Session::getTaskTime (size_t taskIdx) const
 {
-    return subscriptionManager.find(task)->second->taskTime;
+    return subscriptionManager[taskIdx]->taskTime;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const PdServ::TaskStatistics *Session::getTaskStatistics (
-        const PdServ::Task *task) const
+const PdServ::TaskStatistics *Session::getTaskStatistics (size_t taskIdx) const
 {
-    return subscriptionManager.find(task)->second->taskStatistics;
+    return subscriptionManager[taskIdx]->taskStatistics;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -299,9 +299,9 @@ void Session::run()
             }
         }
 
-        for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
+        for (SubscriptionManagerVector::iterator it = subscriptionManager.begin();
                 it != subscriptionManager.end(); ++it)
-            it->second->rxPdo(tcp, quiet);
+            (*it)->rxPdo(tcp, quiet);
 
         const PdServ::Event* mainEvent;
         bool state;
@@ -652,9 +652,9 @@ void Session::xsad(const XmlParser::Element& cmd)
     const Server::Channels& channel = server->getChannels();
 
     if (cmd.isTrue("sync")) {
-        for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
+        for (SubscriptionManagerVector::iterator it = subscriptionManager.begin();
                 it != subscriptionManager.end(); ++it)
-            it->second->sync();
+            (*it)->sync();
         quiet = false;
     }
     else {
@@ -700,14 +700,15 @@ void Session::xsad(const XmlParser::Element& cmd)
         if (*it >= channel.size())
             continue;
 
-        const PdServ::Signal *mainSignal = channel[*it]->signal;
+        const Channel *c = channel[*it];
+        const PdServ::Signal *mainSignal = c->signal;
 
         if (event) {
             if (!foundReduction)
                 // If user did not supply a reduction, limit to a
                 // max of 10Hz automatically
                 reduction = static_cast<unsigned>(
-				0.1 / mainSignal->sampleTime
+				0.1 / mainSignal->task->sampleTime
                                 / mainSignal->decimation + 0.5);
         }
         else if (!foundReduction or !foundBlocksize) {
@@ -718,15 +719,14 @@ void Session::xsad(const XmlParser::Element& cmd)
 
             if (!foundReduction)
                 reduction = static_cast<unsigned>(
-				1.0 / mainSignal->sampleTime
+				1.0 / mainSignal->task->sampleTime
                                 / mainSignal->decimation
                                 / blocksize + 0.5);
         }
 
-        double ts = mainSignal->sampleTime;
         //log_debug("Subscribe to signal %s %i %f", channel[*it]->path().c_str(),
                 //*it, ts);
-        subscriptionManager[main->getTask(ts)]->subscribe( channel[*it], event,
+        subscriptionManager[c->taskIdx]->subscribe(c, event,
                     reduction * mainSignal->decimation,
                     blocksize, base64, precision);
     }
@@ -744,16 +744,15 @@ void Session::xsod(const XmlParser::Element& cmd)
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
             if (*it < channel.size()) {
-                double ts = channel[*it]->signal->sampleTime;
-                subscriptionManager[main->getTask(ts)]->unsubscribe(
-                        channel[*it]);
+                size_t taskIdx = channel[*it]->taskIdx;
+                subscriptionManager[taskIdx]->unsubscribe(channel[*it]);
             }
         }
     }
     else
-        for (SubscriptionManagerMap::iterator it = subscriptionManager.begin();
+        for (SubscriptionManagerVector::iterator it = subscriptionManager.begin();
                 it != subscriptionManager.end(); ++it)
-            it->second->clear();
+            (*it)->clear();
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -95,17 +95,6 @@ const Task* Main::getTask(size_t n) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const Task* Main::getTask(double sampleTime) const
-{
-    for (TaskList::const_iterator it = task.begin();
-            it != task.end(); ++it)
-        if ((*it)->sampleTime == sampleTime)
-            return *it;
-
-    return 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 const Main::ProcessParameters& Main::getParameters() const
 {
     return parameters;

@@ -30,11 +30,12 @@ namespace PdServ {
 
 class Session;
 class SessionTask;
+class Task;
 
 class Signal: public Variable {
     public:
         Signal( const std::string& path,
-                double sampleTime,
+                const Task* task,
                 unsigned int decimation,
                 const DataType& dtype,
                 size_t ndims = 1,
@@ -42,7 +43,7 @@ class Signal: public Variable {
 
         virtual ~Signal();
 
-        const double sampleTime;
+        const Task * const task;
         const unsigned int decimation;
 
         virtual void subscribe(SessionTask *) const = 0;
