@@ -191,7 +191,7 @@ void Session::run()
         tcp.pubsync();
 
         try {
-            n = tcp.read(inbuf.bufptr(), inbuf.free(), 100);
+            n = tcp.read(inbuf.bufptr(), inbuf.free(), 40); // ms
 
             if (!n) {
                 LOG4CPLUS_DEBUG_STR(server->log,
