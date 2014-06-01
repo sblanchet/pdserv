@@ -90,7 +90,7 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
     if (valueBuf) {
         if (hex)
             XmlElement::Attribute(element, "hexvalue")
-                .hexDec(valueBuf + offset, dtype.size);
+                .hexDec(valueBuf + offset, memSize);
         else
             XmlElement::Attribute(element, "value").csv( this,
                     valueBuf + offset, 1, precision);
