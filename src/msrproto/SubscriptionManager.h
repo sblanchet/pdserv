@@ -51,10 +51,10 @@ class SubscriptionManager: public PdServ::SessionTask {
         void rxPdo(Session::TCPStream& tcp, bool quiet);
 
         void clear();
-        void unsubscribe(const Channel *s);
-        void subscribe(const Channel *s,
-                bool event, unsigned int decimation,
-                size_t blocksize, bool base64, size_t precision);
+        void unsubscribe(const Channel *s, size_t group);
+        void subscribe(const Channel *s, size_t group,
+                size_t decimation, size_t blocksize,
+                bool base64, size_t precision);
 
         void sync();
 
@@ -66,20 +66,49 @@ class SubscriptionManager: public PdServ::SessionTask {
         static PdServ::TaskStatistics dummyTaskStatistics;
 
         size_t unsubscribedCount;
-        size_t subscribedCount;
-        bool doSync;
 
-        typedef std::map<const Channel*, Subscription*> ChannelSubscriptionMap;
+        // Here is a map of all subscribed channels. Organization:
+        // signalSubscriptionMap
+        //                      -> [signal]
+        //                      -> [channel]
+        //                      -> [group]
+        //                      -> subscription
+        typedef std::map<size_t, Subscription*> SubscriptionGroup;
+        typedef std::map<const Channel*, SubscriptionGroup>
+            ChannelSubscriptionMap;
         typedef std::map<const PdServ::Signal*, ChannelSubscriptionMap>
             SignalSubscriptionMap;
         SignalSubscriptionMap signalSubscriptionMap;
 
-        typedef std::set<Subscription*> SubscriptionSet;
-        typedef std::pair<size_t, SubscriptionSet> DecimationTuple;
-        typedef std::map<size_t, DecimationTuple> DecimationGroup;
-        DecimationGroup activeSignals;
+        // Here is a template class that implements a decimation counter
+        template <class T>
+            struct DecimationCounter: std::map<size_t, T> {
+                DecimationCounter(): counter(0) {}
+                bool busy(size_t start) {
+                    if (!counter)
+                        counter = start;
+                    return --counter;
+                }
+                size_t counter;
+            };
 
-        void remove(Subscription *s);
+        // Here are the active signals, those that are transferred via shmem.
+        // Organization: activeSignals
+        //                      -> [group]
+        //                      -> [decimation]
+        //                      -> [blocksize]
+        //                      -> subscriptionSet
+        //                      -> subscription
+        struct SubscriptionSet: std::set<Subscription*> {
+            uint64_t *time;
+            uint64_t *timePtr;
+        };
+        typedef DecimationCounter<SubscriptionSet> BlocksizeGroup;
+        typedef std::map<size_t, BlocksizeGroup> DecimationGroup;
+        typedef std::map<size_t, DecimationGroup> ActiveSignals;
+        ActiveSignals activeSignals;
+
+        void remove(Subscription *s, size_t group);
 
         // Reimplemented from PdServ::SessionTask
         void newSignal( const PdServ::Signal *);

@@ -28,23 +28,28 @@ namespace MsrProto {
 
 class Subscription {
     public:
-        Subscription(const Channel *, bool event, unsigned int decimation,
+        Subscription(const Channel *, size_t decimation,
                 size_t blocksize, bool base64, size_t precision);
         ~Subscription();
 
         const Channel *channel;
-        const bool event;
-        const unsigned int decimation;
+        const size_t decimation;        // decimation = 1 for event channels
+        const size_t blocksize;         // blocksize = 1 for event channels
 
         bool newValue(const char *buf);
         void print(XmlElement &parent);
+        void reset();
+
+        // Used when chaining Subscriptions together for printing
+        Subscription* next;
 
     private:
         const size_t bufferOffset;
 
-        unsigned int trigger;
-        unsigned int trigger_start;
-        size_t blocksize;
+        // Trigger delay mechanism for event channels
+        const size_t trigger_start;
+        size_t trigger;
+
         size_t nblocks;         // number of blocks to print
 
         size_t precision;

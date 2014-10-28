@@ -34,37 +34,26 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Subscription::Subscription(const Channel *channel, bool event,
-        unsigned int decimation, size_t blocksize,
-        bool base64, size_t precision):
+Subscription::Subscription(const Channel *channel,
+        size_t decimation, size_t blocksize, bool base64, size_t precision):
     channel(channel),
-    event(event), decimation(event ? 1 : decimation),
-    bufferOffset(channel->offset)
+    decimation(blocksize ? decimation : 1),
+    blocksize(blocksize),
+    bufferOffset(channel->offset),
+    trigger_start(decimation)
 {
     trigger = 0;
     nblocks = 0;
 
-    if (!decimation)
-        decimation = 1U;
-
-    if (!blocksize)
-        blocksize = 1U;
-
-    if (event) {
-        this->trigger_start = decimation;
-        this->trigger = 0;
-        this->blocksize = 1;
-    }
-    else {
-        this->blocksize = blocksize;
-    }
     this->precision = precision;
     this->base64 = base64;
 
-    size_t dataLen = this->blocksize * channel->memSize;
+    size_t dataLen = (blocksize + !blocksize) * channel->memSize;
 
     data_bptr = new char[dataLen];
     data_eptr = data_bptr + dataLen;
+
+    std::fill_n(data_bptr, dataLen, 0);
 
     data_pptr = data_bptr;
 }
@@ -72,7 +61,7 @@ Subscription::Subscription(const Channel *channel, bool event,
 /////////////////////////////////////////////////////////////////////////////
 Subscription::~Subscription()
 {
-    delete data_bptr;
+    delete[] data_bptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -80,44 +69,42 @@ bool Subscription::newValue (const char *buf)
 {
     const size_t n = channel->memSize;
     buf += bufferOffset;
-    if (event) {
-        if (!std::equal(buf, buf + n, data_bptr)) {
-            std::copy(buf, buf + n, data_bptr);
-            nblocks = 1;
-            data_pptr = data_bptr + n;
-        }
 
-        if (!trigger) {
-            if (nblocks)
-                trigger = trigger_start;
-            return nblocks;
-        }
-        --trigger;
-        return false;
+    if (!blocksize) {
+        if ((trigger and --trigger) or std::equal(buf, buf + n, data_bptr))
+            return false;
+
+        trigger = trigger_start;
     }
 
     std::copy(buf, buf + n, data_pptr);
     data_pptr += n;
     ++nblocks;
 
-    return nblocks == blocksize;
+    return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Subscription::print(XmlElement &parent)
 {
-//    if (!nblocks)
-//        return;
+    if (nblocks >= blocksize) {
+        XmlElement datum(parent.createChild(blocksize ? "F" : "E"));
+        XmlElement::Attribute(datum, "c") << channel->index;
 
-    XmlElement datum(parent.createChild(event ? "E" : "F"));
-    XmlElement::Attribute(datum, "c") << channel->index;
+        XmlElement::Attribute value(datum, "d");
+        if (base64)
+            value.base64(data_bptr, nblocks * channel->memSize);
+        else
+            value.csv(channel, data_bptr, nblocks, precision);
+    }
 
-    XmlElement::Attribute value(datum, "d");
-    if (base64)
-        value.base64(data_bptr, nblocks * channel->memSize);
-    else
-        value.csv(channel, data_bptr, nblocks, precision);
+    data_pptr = data_bptr;
+    nblocks = 0;
+}
 
+/////////////////////////////////////////////////////////////////////////////
+void Subscription::reset()
+{
     data_pptr = data_bptr;
     nblocks = 0;
 }

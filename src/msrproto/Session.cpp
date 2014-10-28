@@ -644,10 +644,10 @@ void Session::writeParameter(const XmlParser::Element& cmd)
 /////////////////////////////////////////////////////////////////////////////
 void Session::xsad(const XmlParser::Element& cmd)
 {
-    unsigned int reduction, blocksize, precision;
+    unsigned int reduction, blocksize, precision, group;
     bool base64 = cmd.isEqual("coding", "Base64");
     bool event = cmd.isTrue("event");
-    bool foundReduction = false, foundBlocksize = false;
+    bool foundReduction = false;
     std::list<unsigned int> indexList;
     const Server::Channels& channel = server->getChannels();
 
@@ -679,7 +679,12 @@ void Session::xsad(const XmlParser::Element& cmd)
         foundReduction = true;
     }
 
-    if (cmd.getUnsigned("blocksize", blocksize)) {
+    // Discover blocksize
+    if (event) {
+        // blocksize of zero is for event channels
+        blocksize = 0;
+    }
+    else if (cmd.getUnsigned("blocksize", blocksize)) {
         if (!blocksize) {
             XmlElement warn(tcp.createElement("warn"));
             XmlElement::Attribute(warn, "command") << "xsad";
@@ -688,12 +693,17 @@ void Session::xsad(const XmlParser::Element& cmd)
 
             blocksize = 1;
         }
-
-        foundBlocksize = true;
+    }
+    else {
+        // blocksize was not supplied, possibly human input
+        blocksize = 1;
     }
 
     if (!cmd.getUnsigned("precision", precision))
         precision = 16;
+
+    if (!cmd.getUnsigned("group", group))
+        group = 0;
 
     for (std::list<unsigned int>::const_iterator it = indexList.begin();
             it != indexList.end(); it++) {
@@ -711,24 +721,17 @@ void Session::xsad(const XmlParser::Element& cmd)
 				0.1 / mainSignal->task->sampleTime
                                 / mainSignal->decimation + 0.5);
         }
-        else if (!foundReduction or !foundBlocksize) {
+        else if (!foundReduction) {
             // Quite possibly user input; choose reduction for 1Hz
-
-            if (!foundBlocksize)
-                blocksize = 1;
-
-            if (!foundReduction)
-                reduction = static_cast<unsigned>(
-				1.0 / mainSignal->task->sampleTime
-                                / mainSignal->decimation
-                                / blocksize + 0.5);
+            reduction = static_cast<unsigned>(
+                    1.0 / mainSignal->task->sampleTime
+                    / mainSignal->decimation
+                    / blocksize + 0.5);
         }
 
-        //log_debug("Subscribe to signal %s %i %f", channel[*it]->path().c_str(),
-                //*it, ts);
-        subscriptionManager[c->taskIdx]->subscribe(c, event,
-                    reduction * mainSignal->decimation,
-                    blocksize, base64, precision);
+        subscriptionManager[c->taskIdx]->subscribe(c, group,
+                reduction * mainSignal->decimation,
+                blocksize, base64, precision);
     }
 }
 
@@ -741,11 +744,16 @@ void Session::xsod(const XmlParser::Element& cmd)
 
     if (cmd.getUnsignedList("channels", intList)) {
         const Server::Channels& channel = server->getChannels();
+        unsigned int group;
+
+        if (!cmd.getUnsigned("group", group))
+            group = 0;
+
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
             if (*it < channel.size()) {
                 size_t taskIdx = channel[*it]->taskIdx;
-                subscriptionManager[taskIdx]->unsubscribe(channel[*it]);
+                subscriptionManager[taskIdx]->unsubscribe(channel[*it], group);
             }
         }
     }
