@@ -61,17 +61,15 @@ void Channel::setXmlAttributes( XmlElement &element,
         // at a maximum of 10 seconds has to be stored.
         size_t bufsize = 10 * std::max(1U, (unsigned int)(freq + 0.5));
 
-        if (shortReply)
-            return;
-
         // bufsize=
         XmlElement::Attribute(element, "bufsize") << bufsize;
         XmlElement::Attribute(element, "HZ") << freq;
-
-        if (data)
-            XmlElement::Attribute(element, "value").csv(this,
-                    data + offset, 1, precision);
     }
 
-    addCompoundFields(element, dtype);
+    if (data)
+        XmlElement::Attribute(element, "value").csv(this,
+                data + offset, 1, precision);
+
+    if (!shortReply)
+        addCompoundFields(element, dtype);
 }

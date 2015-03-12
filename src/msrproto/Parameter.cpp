@@ -96,7 +96,8 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
                     valueBuf + offset, 1, precision);
     }
 
-    addCompoundFields(element, variable->dtype);
+    if (!shortReply)
+        addCompoundFields(element, variable->dtype);
 
     return;
 }
