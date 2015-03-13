@@ -173,6 +173,9 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
     if (!variable->comment.empty())
         XmlElement::Attribute(element, "text") << variable->comment;
 
+    if (children)
+        XmlElement::Attribute(element, "dir") << 1;
+
     // hide=
     // unhide=
 }

@@ -63,6 +63,7 @@ void Channel::setXmlAttributes( XmlElement &element,
 
         // bufsize=
         XmlElement::Attribute(element, "bufsize") << bufsize;
+        XmlElement::Attribute(element, "task") << taskIdx;
         XmlElement::Attribute(element, "HZ") << freq;
     }
 
