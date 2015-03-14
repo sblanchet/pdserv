@@ -86,7 +86,7 @@ void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
         c = new Channel(taskIdx, *it,
                 channels.size(), (*it)->dtype, (*it)->dim, 0, 0);
 
-        char hidden;
+        char hidden = 0;
         if (itemize)
             baseDir->traditionalPathInsert(c, (*it)->path, hidden);
         else
@@ -152,7 +152,7 @@ void Server::createParameters(DirectoryNode* baseDir)
         Parameter* p = new Parameter(*it,
                 parameters.size(), (*it)->dtype, (*it)->dim, 0, 0);
 
-        char hidden;
+        char hidden = 0;
         if (itemize)
             baseDir->traditionalPathInsert(p, (*it)->path, hidden);
         else
