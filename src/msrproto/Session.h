@@ -35,17 +35,17 @@
 //Liste der Features der aktuellen rtlib-Version, wichtig, muß aktuell gehalten werden
 //da der Testmanager sich auf die Features verläßt
 
-#define MSR_FEATURES "pushparameters,binparameters,maschinehalt,eventchannels,statistics,pmtime,aic,messages,polite"
+#define MSR_FEATURES "pushparameters,binparameters,eventchannels,statistics,pmtime,aic,messages,polite,list"
 
 /* pushparameters: Parameter werden vom Echtzeitprozess an den Userprozess gesendet bei Änderung
    binparameters: Parameter können Binär übertragen werden
-   maschinehalt: Rechner kann durch Haltbefehl heruntergefahren werden
    eventchannels: Kanäle werden nur bei Änderung übertragen
    statistics: Statistische Informationen über die anderen verbundenen Echtzeitprozesses
    pmtime: Die Zeit der Änderungen eines Parameters wird vermerkt und übertragen
    aic: ansychrone Input Kanäle
    messages: Kanäle mit dem Attribut: "messagetyp" werden von der msr_lib überwacht und bei Änderung des Wertes als Klartextmeldung verschickt V:6.0.10
-
+   polite: Server will not send any messages such as <pu> or <log> by itself
+   list: Server understands <list> command
 */
 
 #include "../Session.h"

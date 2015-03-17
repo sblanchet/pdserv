@@ -35,7 +35,7 @@ using namespace MsrProto;
 TimeSignal::TimeSignal(size_t taskIdx, const PdServ::Task *task, size_t index):
     PdServ::Signal("Time", task, 1, PdServ::DataType::float64, 1, 0),
     Channel(taskIdx, this, index,
-            this->PdServ::Signal::dtype, this->PdServ::Signal::dim, 0, 0)
+            this->PdServ::Signal::dtype, this->PdServ::Signal::dim, 0)
 {
 }
 

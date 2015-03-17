@@ -35,8 +35,8 @@ using namespace MsrProto;
 Channel::Channel(size_t taskIdx, const PdServ::Signal *s, size_t index,
                 const PdServ::DataType& dtype,
                 const PdServ::DataType::DimType& dim,
-                size_t offset, Channel *parent):
-    Variable(s, index, dtype, dim, offset, parent),
+                size_t offset):
+    Variable(s, index, dtype, dim, offset),
     signal(s), taskIdx(taskIdx)
 {
 //    log_debug("new var %s idx=%u size=%zu, nelem=%zu offset=%zu",
@@ -44,10 +44,10 @@ Channel::Channel(size_t taskIdx, const PdServ::Signal *s, size_t index,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Channel::setXmlAttributes( XmlElement &element,
-        bool shortReply, const char *data, size_t precision) const
+void Channel::setXmlAttributes( XmlElement &element, bool shortReply,
+        const char *data, size_t precision, bool isdir) const
 {
-    setAttributes(element, shortReply);
+    setAttributes(element, shortReply, isdir);
 
     if (!shortReply) {
         // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"

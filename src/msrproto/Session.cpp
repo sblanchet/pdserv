@@ -433,7 +433,7 @@ void Session::readChannel(const XmlParser::Element& cmd)
         c->signal->getValue(this, buf);
 
         XmlElement channel(tcp.createElement("channel"));
-        c->setXmlAttributes(channel, shortReply, buf, 16);
+        c->setXmlAttributes(channel, shortReply, buf, 16, false);
 
         return;
     }
@@ -446,7 +446,7 @@ void Session::readChannel(const XmlParser::Element& cmd)
             continue;
 
         XmlElement el(channels.createChild("channel"));
-        (*it)->setXmlAttributes( el, shortReply, 0, 16);
+        (*it)->setXmlAttributes( el, shortReply, 0, 16, false);
     }
 }
 
@@ -459,7 +459,7 @@ void Session::listDirectory(const XmlParser::Element& cmd)
         return;
 
     XmlElement element(tcp.createElement("listing"));
-    server->list(this, element, path);
+    server->listDir(this, element, path);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -492,7 +492,7 @@ void Session::readParameter(const XmlParser::Element& cmd)
         cmd.getString("id", id);
 
         XmlElement xml(tcp.createElement("parameter"));
-        p->setXmlAttributes(xml, buf, ts, shortReply, hex, 16);
+        p->setXmlAttributes(xml, buf, ts, shortReply, hex, 16, false);
 
         return;
     }
@@ -515,7 +515,7 @@ void Session::readParameter(const XmlParser::Element& cmd)
 
         while (it != parameters.end() and mainParam == (*it)->mainParam) {
             XmlElement xml(parametersElement.createChild("parameter"));
-            (*it++)->setXmlAttributes(xml, buf, ts, shortReply, hex, 16);
+            (*it++)->setXmlAttributes(xml, buf, ts, shortReply, hex, 16, false);
         }
     }
 }

@@ -31,44 +31,12 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 Variable::Variable (const PdServ::Variable* v, size_t index,
         const PdServ::DataType& dtype, const PdServ::DataType::DimType& dim,
-        size_t offset, Variable* parent):
+        size_t offset):
     variable(v), index(index),
     dtype(dtype), dim(dim), offset(offset),
     memSize(dtype.size * dim.nelem),
     hidden(false)
 {
-    children = 0;
-    if (parent) {
-        hidden = parent->hidden;
-        parent->addChild(this);
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Variable::~Variable()
-{
-    if (children) {
-        for (List::const_iterator it = children->begin();
-                it != children->end(); ++it)
-            delete *it;
-
-        delete children;
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Variable::List* Variable::getChildren() const
-{
-    return children;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Variable::addChild(const Variable* child)
-{
-    if (!children)
-        children = new List;
-
-    children->push_back(child);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -148,7 +116,8 @@ void Variable::addCompoundFields(XmlElement &element,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Variable::setAttributes(XmlElement &element, bool shortReply) const
+void Variable::setAttributes(
+        XmlElement &element, bool shortReply, bool isdir) const
 {
     // name=
     // value=
@@ -173,7 +142,7 @@ void Variable::setAttributes(XmlElement &element, bool shortReply) const
     if (!variable->comment.empty())
         XmlElement::Attribute(element, "text") << variable->comment;
 
-    if (children)
+    if (isdir)
         XmlElement::Attribute(element, "dir") << 1;
 
     // hide=

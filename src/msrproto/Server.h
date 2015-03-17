@@ -45,7 +45,7 @@ namespace MsrProto {
 class Session;
 class Event;
 
-class Server: public DirectoryNode, public ost::Thread {
+class Server: public ost::Thread {
     public:
         Server(const PdServ::Main *main, const PdServ::Config &config);
         ~Server();
@@ -71,6 +71,8 @@ class Server: public DirectoryNode, public ost::Thread {
 
         const Channels& getChannels() const;
         const Channel * getChannel(size_t) const;
+        void listDir(PdServ::Session *,
+                XmlElement& xml, const std::string& path) const;
 
         const Parameters& getParameters() const;
         const Parameter * getParameter(size_t) const;
@@ -86,11 +88,15 @@ class Server: public DirectoryNode, public ost::Thread {
         int port;
         bool itemize;   // Split multidimensional variables to scalars
 
+        DirectoryNode variableDirectory;
+        DirectoryNode* insertRoot;
+
         Events events;
 
         Channels channels;
         Parameters parameters;
-        typedef std::map<const PdServ::Parameter *, const Parameter *>
+
+        typedef std::map<const PdServ::Parameter *, const Parameter*>
             ParameterMap;
         ParameterMap parameterMap;
 
@@ -105,25 +111,60 @@ class Server: public DirectoryNode, public ost::Thread {
         void createParameters(DirectoryNode* baseDir);
         void createEvents();
 
-        void createChildren(Variable* var);
-        DirectoryNode* createChild(Variable* var,
-                DirectoryNode *dir, const std::string& name,
-                const PdServ::DataType& dtype,
-                size_t nelem, size_t offset);
-        size_t createChildren(Variable* var, DirectoryNode* dir,
-                const PdServ::DataType& dtype,
-                const PdServ::DataType::DimType& dim, size_t dimIdx,
-                size_t offset);
-        size_t createCompoundChildren(Variable* var, DirectoryNode* dir,
-                const PdServ::DataType& dtype,
-                const PdServ::DataType::DimType& dim, size_t dimIdx,
-                size_t offset);
-        size_t createVectorChildren(Variable* var,
-                DirectoryNode* dir, const std::string& name,
-                const PdServ::DataType& dtype,
-                const PdServ::DataType::DimType& dim, size_t dimIdx,
-                size_t offset);
+        struct CreateVariable {
+            CreateVariable(Server* server, DirectoryNode* baseDir,
+                    const PdServ::Variable* var);
+            CreateVariable(const CreateVariable& other);
 
+            void newDimension(
+                    const PdServ::DataType& dtype,
+                    const PdServ::DataType::DimType& dim,
+                    size_t dimIdx, size_t elemIdx,
+                    CreateVariable& c, size_t offset);
+            void newField(const PdServ::DataType::Field *field,
+                    CreateVariable& c, size_t offset);
+            bool newVariable(
+                    const PdServ::DataType& dtype,
+                    const PdServ::DataType::DimType& dim,
+                    size_t dimIdx, size_t elemIdx, size_t offset) const;
+            virtual bool createVariable(
+                    const PdServ::DataType& dtype,
+                    const PdServ::DataType::DimType& dim,
+                    size_t offset) const = 0;
+
+            std::string path() const;
+
+            std::string name;
+
+            const CreateVariable* const parent;
+            Server* const server;
+            DirectoryNode* const baseDir;
+            const PdServ::Variable* const var;
+        };
+
+        struct CreateChannel: CreateVariable {
+            CreateChannel(Server* server, DirectoryNode* baseDir,
+                    size_t taskIdx, const PdServ::Signal* s);
+
+            bool createVariable(
+                    const PdServ::DataType& dtype,
+                    const PdServ::DataType::DimType& dim,
+                    size_t offset) const;
+
+            const size_t taskIdx;
+        };
+
+        struct CreateParameter: CreateVariable {
+            CreateParameter(Server* server, DirectoryNode* baseDir,
+                    const PdServ::Parameter* p);
+
+            bool createVariable(
+                    const PdServ::DataType& dtype,
+                    const PdServ::DataType::DimType& dim,
+                    size_t offset) const;
+
+            mutable Parameter* parentParameter;
+        };
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -133,7 +174,7 @@ const T *Server::find(const std::string &p) const
     if (p.empty() or p[0] != '/')
         return 0;
 
-    const DirectoryNode *node = DirectoryNode::find(p, 1);
+    const DirectoryNode *node = variableDirectory.find(p, 1);
     return node ? dynamic_cast<const T*>(node) : 0;
 }
 

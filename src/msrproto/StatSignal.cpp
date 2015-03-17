@@ -37,7 +37,7 @@ StatSignal::StatSignal(
     PdServ::Signal("StatSignal", task, 1,
             PdServ::DataType::float64, 1, 0),
     Channel(taskIdx, this, index,
-            this->PdServ::Signal::dtype, this->PdServ::Signal::dim, 0, 0),
+            this->PdServ::Signal::dtype, this->PdServ::Signal::dim, 0),
     type(type)
 {
 }

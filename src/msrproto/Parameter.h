@@ -25,7 +25,6 @@
 #define MSRPARAMETER_H
 
 #include <string>
-#include <vector>
 #include "Variable.h"
 
 namespace PdServ {
@@ -44,11 +43,14 @@ class Parameter: public Variable {
         Parameter(const PdServ::Parameter *p, size_t index,
                 const PdServ::DataType& dtype,
                 const PdServ::DataType::DimType& dim,
-                size_t offset, Parameter *parent);
+                size_t offset, Parameter* parent);
 
         void setXmlAttributes(XmlElement&, const char *buf,
                 struct timespec const& ts, bool shortReply,
-                bool hex, size_t precision) const;
+                bool hex, size_t precision, bool isdir) const;
+
+        bool inform(Session* session, size_t begin, size_t end) const;
+        void addChild(const Parameter* child);
 
         int setHexValue(const Session *,
                 const char *str, size_t startindex, size_t &count) const;
@@ -64,6 +66,9 @@ class Parameter: public Variable {
                 const PdServ::DataType& dtype,
                 const PdServ::DataType::DimType& dim,
                 char *&buf, size_t& count) const;
+
+        typedef std::list<const Parameter*> List;
+        List children;
 };
 
 }

@@ -41,10 +41,10 @@ class Channel: public Variable {
         Channel(size_t taskId, const PdServ::Signal *s, size_t index,
                 const PdServ::DataType& dtype,
                 const PdServ::DataType::DimType& dim,
-                size_t offset, Channel *parent);
+                size_t offset);
 
         void setXmlAttributes(XmlElement&, bool shortReply,
-                    const char *signalBuf, size_t precision) const;
+                const char *signalBuf, size_t precision, bool isdir) const;
 
         const PdServ::Signal *signal;
         const size_t taskIdx;

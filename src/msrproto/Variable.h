@@ -44,9 +44,7 @@ class Variable: public DirectoryNode {
     public:
         Variable(const PdServ::Variable *v, size_t index,
                 const PdServ::DataType& dtype,
-                const PdServ::DataType::DimType& dim, size_t offset,
-                Variable* parent);
-        ~Variable();
+                const PdServ::DataType::DimType& dim, size_t offset);
 
         const PdServ::Variable * const variable;
 
@@ -57,20 +55,14 @@ class Variable: public DirectoryNode {
         const size_t memSize;
         bool hidden;
 
-        void setAttributes(XmlElement &element, bool shortReply) const;
+        void setAttributes(XmlElement &element,
+                bool shortReply, bool isdir) const;
         void addCompoundFields(XmlElement &element,
                 const PdServ::DataType& ) const;
-
-        typedef std::list<const Variable*> List;
-        const List* getChildren() const;
 
     private:
         void setDataType(XmlElement &element, const PdServ::DataType& dtype,
                 const PdServ::DataType::DimType& dim) const;
-
-        List* children;
-
-        void addChild(const Variable* child);
 };
 
 }

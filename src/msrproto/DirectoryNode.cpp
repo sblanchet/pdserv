@@ -241,13 +241,15 @@ void DirectoryNode::list( PdServ::Session *session, XmlElement& parent,
             param->mainParam->getValue(session, buf, &ts);
 
             XmlElement xml(parent.createChild("parameter"));
-            param->setXmlAttributes(xml, buf, ts, 0, 0, 16);
+            param->setXmlAttributes(
+                    xml, buf, ts, 0, 0, 16, param->childCount());
         }
 
         const Channel *channel = dynamic_cast<const Channel   *>(it->second);
         if (channel and !channel->hidden) {
             XmlElement xml(parent.createChild("channel"));
-            channel->setXmlAttributes(xml, 0, 0, 0);
+            channel->setXmlAttributes(
+                    xml, 0, 0, 0, channel->childCount());
         }
     }
 }

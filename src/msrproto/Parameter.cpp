@@ -57,23 +57,49 @@ Parameter::Parameter(const PdServ::Parameter *p, size_t index,
                 const PdServ::DataType& dtype,
                 const PdServ::DataType::DimType& dim,
                 size_t offset, Parameter *parent):
-    Variable(p, index, dtype, dim, offset, parent),
+    Variable(p, index, dtype, dim, offset),
     mainParam(p),
-    dependent(parent != 0)
+    dependent(parent)
 {
+    if (parent) {
+        parent->addChild(this);
+        hidden = parent->hidden;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Parameter::inform(Session* session, size_t begin, size_t end) const
+{
+    if (offset > end or begin > (offset + memSize))
+        return false;
+
+    session->parameterChanged(this);
+    for (List::const_iterator it = children.begin();
+            it != children.end(); ++it) {
+        if (!(*it)->inform(session, begin, end))
+            break;
+    }
+
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Parameter::addChild(const Parameter* child)
+{
+    children.push_back(child);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
         struct timespec const& mtime, bool shortReply, bool hex,
-        size_t precision) const
+        size_t precision, bool isdir) const
 {
     unsigned int flags = MSR_R | MSR_W | MSR_WOP;
 
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>
 
-    setAttributes(element, shortReply);
+    setAttributes(element, shortReply, isdir);
 
     if (!shortReply) {
         XmlElement::Attribute(element, "flags")
@@ -92,8 +118,8 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
             XmlElement::Attribute(element, "hexvalue")
                 .hexDec(valueBuf + offset, memSize);
         else
-            XmlElement::Attribute(element, "value").csv( this,
-                    valueBuf + offset, 1, precision);
+            XmlElement::Attribute(element, "value")
+                .csv(this, valueBuf + offset, 1, precision);
     }
 
     if (!shortReply)

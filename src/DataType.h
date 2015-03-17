@@ -136,6 +136,40 @@ class DataType {
             return Printer(this, reinterpret_cast<const char*>(addr), n);
         }
 
+        //////////////  Iterator to walk through the DataType
+        // Requires a class with the following members:
+        //    bool newVariable(
+        //            const PdServ::DataType& dtype,
+        //            const PdServ::DataType::DimType& dim,
+        //            size_t dimIdx, size_t elemIdx, size_t offset) const;
+        //    void newDimension(
+        //            const PdServ::DataType& dtype,
+        //            const PdServ::DataType::DimType& dim,
+        //            size_t dimIdx, size_t elemIdx,
+        //            CreateChannels& c, size_t offset);
+        //    void newField(const PdServ::DataType::Field *field,
+        //            CreateChannels& c, size_t offset);
+
+        template <class C>
+            struct Iterator {
+                Iterator(const DataType& dtype,
+                        const DimType& dim, const C& c);
+
+                void dispatch(
+                        const DataType& dtype, size_t dtypeSize,
+                        const DimType& dim, size_t dimIdx,
+                        size_t elemIdx, C c, size_t offset);
+
+                void iterateDims(
+                        const DataType& dtype, size_t dtypeSize,
+                        const DimType& dim,
+                        size_t dimIdx, size_t elemIdx, C& c, size_t offset);
+
+                void iterateFields(const FieldList& fieldList,
+                        C& c, size_t offset);
+            };
+
+
     protected:
         DataType(const DataType& other);
         explicit DataType(size_t size, void (*)(char *&dst, double src));
@@ -145,5 +179,60 @@ class DataType {
         FieldList fieldList;
 };
 
+/////////////////////////////////////////////////////////////////////////////
+    template <class C>
+DataType::Iterator<C>::Iterator(const DataType& dtype,
+        const DataType::DimType& dim, const C& c)
+{
+    dispatch(dtype, dtype.size * dim.nelem, dim, 0, 0, c, 0);
 }
+
+
+/////////////////////////////////////////////////////////////////////////////
+    template <class C>
+void DataType::Iterator<C>::dispatch(
+        const DataType& dtype, size_t dtypeSize, const DimType& dim,
+        size_t dimIdx, size_t elemIdx, C c, size_t offset)
+{
+    if (c.newVariable(dtype,dim,dimIdx,elemIdx,offset))
+        return;
+
+    if (!dim.isScalar() and dimIdx != dim.size())
+        iterateDims(dtype, dtypeSize, dim, dimIdx, elemIdx, c, offset);
+    else if (!dtype.isPrimary())
+        iterateFields(dtype.getFieldList(), c, offset);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+    template <class C>
+void DataType::Iterator<C>::iterateDims(
+        const DataType& dtype, size_t dtypeSize, const DimType& dim,
+        size_t dimIdx, size_t /*elemIdx*/, C& c, size_t offset)
+{
+    size_t end = dim[dimIdx];
+    dtypeSize /= dim[dimIdx];
+    ++dimIdx;
+    for (size_t i = 0; i < end; ++i) {
+        c.newDimension(dtype, dim, dimIdx, i, c, offset);
+        dispatch(dtype, dtypeSize, dim, dimIdx, i, c, offset);
+        offset += dtypeSize;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+    template <class C>
+void DataType::Iterator<C>::iterateFields(
+        const FieldList& fieldList, C& c, size_t offset)
+{
+    for (FieldList::const_iterator it = fieldList.begin();
+            it != fieldList.end(); ++it) {
+        const Field *field = *it;
+        c.newField(field, c, offset + field->offset);
+        dispatch(field->type, field->type.size, field->dim,
+                0, 0, c, offset + field->offset);
+    }
+}
+
+};
+
 #endif //DATATYPE_H
