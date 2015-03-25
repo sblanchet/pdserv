@@ -25,28 +25,13 @@
 
 #include "../Debug.h"
 
-#include <iostream>
-#include <cerrno>
-#include <cstring>
-#include <cstdlib>
-#include <cstdio>
-#include <ctime>
-#include <sstream>
-#include <algorithm>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>             // fork(), getpid(), chdir, sysconf
-#include <signal.h>             // signal()
-#include <fcntl.h>              // open()
-#include <limits.h>             // _POSIX_OPEN_MAX
-
-#include <log4cplus/logger.h>
-#include <log4cplus/syslogappender.h>
-#include <log4cplus/consoleappender.h>
-#include <log4cplus/streams.h>
-#include <log4cplus/configurator.h>
-#include <log4cplus/loggingmacros.h>
+#include <unistd.h>     // exit()
+#include <cerrno>       // errno
+#include <cstdio>       // perror()
+#include <algorithm>    // std::min()
+#include <sys/mman.h>   // mmap(), munmap()
+#include <sys/types.h>  // kill()
+#include <signal.h>     // kill()
 
 #include "pdserv.h"
 #include "Main.h"
@@ -57,7 +42,6 @@
 #include "Pointer.h"
 #include "ShmemDataStructures.h"
 #include "../Session.h"
-#include "../DataType.h"
 #include "../Config.h"
 
 /////////////////////////////////////////////////////////////////////////////
@@ -77,6 +61,7 @@ struct SessionData {
 const double Main::bufferTime = 2.0;
 
 /////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
 Main::Main( const char *name, const char *version,
         int (*gettime)(struct timespec*)):
     PdServ::Main(name, version),
@@ -91,8 +76,7 @@ Main::Main( const char *name, const char *version,
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
-    ::kill(pid, SIGHUP);
-
+    ::kill(pid, SIGTERM);
     ::munmap(shmem, shmem_len);
 }
 
@@ -100,6 +84,152 @@ Main::~Main()
 void Main::setConfigFile(const char *file)
 {
     configFile = file;
+    readConfiguration();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::run()
+{
+    int rv;
+
+    // Initialize library
+    rv = prefork_init();
+    if (rv)
+        return rv;
+
+    // Immediately split off a child. The parent returns to the caller so
+    // that he can get on with his job.
+    //
+    // The child continues from here.
+    //
+    // It is intentional that the child has the same process group as
+    // the parent so that it gets all the signals too.
+    pid = ::fork();
+    if (pid < 0) {
+        // Some error occurred
+        ::perror("fork()");
+        return pid;
+    }
+    else if (pid) {
+        // Parent here. Return to the caller
+        return postfork_rt_setup();
+    }
+
+    // Only child runs after this point
+    pid = getpid();
+
+    // Kill is used to stop all processes
+    ::signal(SIGKILL, SIG_DFL);
+
+    //setupDaemon();      // After readConfiguration()!, this changes directory
+    setupLogging();
+    postfork_nrt_setup();
+    startServers();
+    rv = runForever();
+    stopServers();
+
+    ::exit(rv);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::runForever()
+{
+    int sig, rv;
+    sigset_t mask;
+    log4cplus::Logger log = log4cplus::Logger::getRoot();
+
+    // Set signal mask
+    if (::sigemptyset(&mask)
+            or ::sigaddset(&mask, SIGHUP)      // Reread configuration
+            or ::sigaddset(&mask, SIGINT)      // Ctrl-C
+            or ::sigaddset(&mask, SIGTERM)) {  // standard kill signal
+        rv = errno;
+        LOG4CPLUS_FATAL(log,
+                LOG4CPLUS_TEXT("Failed to set correct signal mask"));
+        goto out;
+    }
+
+
+    if (::sigprocmask(SIG_BLOCK, &mask, NULL) == -1) {
+        rv = errno;
+        LOG4CPLUS_FATAL(log,
+                LOG4CPLUS_TEXT("Setting sigprocmask() failed: ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(errno)));
+        goto out;
+    }
+
+    while (!(errno = sigwait(&mask, &sig))) {
+        switch (sig) {
+            case SIGHUP:
+                LOG4CPLUS_INFO(log,
+                        LOG4CPLUS_TEXT("SIGUP received. Reloading configuration"));
+                readConfiguration();
+                break;
+
+            default:
+                LOG4CPLUS_INFO(log,
+                        LOG4CPLUS_TEXT("Killed with ")
+                        << LOG4CPLUS_TEXT(::strsignal(sig)));
+                return 0;
+        }
+    }
+
+out:
+    return rv;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::readConfiguration()
+{
+    const char *env;
+
+    // Load custom configuration file
+    if (!configFile.empty()) {
+        const char *err = config.load(configFile.c_str());
+        if (err)
+            std::cout
+                << "Error loading configuration file "
+                << configFile << " specified on command line: " << err << std::endl;
+        else {
+            log_debug("Loaded specified configuration file %s",
+                    configFile.c_str());
+        }
+    }
+    else if ((env = ::getenv("PDSERV_CONFIG")) and ::strlen(env)) {
+        // Try to load environment configuration file
+        const char *err = config.load(env);
+
+        if (err)
+            std::cout << "Error loading config file " << env
+                << " specified in environment variable PDSERV_CONFIG: "
+                << err << std::endl;
+        else {
+            log_debug("Loaded ENV config %s", env);
+        }
+    }
+    else {
+        // Try to load default configuration file
+        const char *f = QUOTE(SYSCONFDIR) "/pdserv.conf";
+        const char *err = config.load(f);
+        if (err) {
+            std::cout << "Error loading default config file " << f << ": "
+                << (::access(f, R_OK)
+                        ? ": File is not readable"
+                        : err)
+                << std::endl;
+        }
+        else {
+            log_debug("Loaded default configuration file %s", f);
+        }
+    }
+
+    if (!config) {
+        log_debug("No configuration loaded");
+    }
+
+    PdServ::Main::setConfig(config);
+
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -114,12 +244,6 @@ Task* Main::addTask(double sampleTime, const char *name)
         tSampleMin = 1U;
 
     return t;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Task *Main::getTask(size_t index) const
-{
-    return static_cast<Task*>(task[index]);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -258,7 +382,7 @@ void Main::processPoll(unsigned int delay_ms,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::run()
+int Main::prefork_init()
 {
     size_t numTasks = task.size();
     size_t taskMemSize[numTasks];
@@ -339,12 +463,6 @@ int Main::run()
     sdo     = ptr_align<struct SDOStruct>(shmem);
     sdoData = ptr_align<char>(ptr_align<double>(sdo + parameters.size() + 1));
 
-//     cerr_debug() << "shmemlen=" << shmem_len
-//         << " shmem=" << shmem
-//         << " sdo=" << sdo
-// //        << " sdoTaskTime=" << sdoTaskTime
-//         << " sdoData=" << (void*)sdoData;
-
     for (PdServ::Main::ProcessParameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {
         const Parameter *p = static_cast<const Parameter*>(*it);
@@ -376,178 +494,26 @@ int Main::run()
             eventData[i].index = j;
         }
     }
-//    log_debug("%zu %p %p %zu", eventCount, eventDataWp+1, (char*)shmem + shmem_len, shmem_len);
-
-    return daemonize();
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::consoleLogging()
+int Main::postfork_rt_setup()
 {
-    log4cplus::BasicConfigurator::doConfigure();
-//    log4cplus::SharedAppenderPtr cerr(new log4cplus::ConsoleAppender(true));
-//    cerr->setLayout(
-//        std::auto_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(
-//                LOG4CPLUS_TEXT("%D %p %c %x: %m"))));
-//
-//    log4cplus::Logger::getRoot().addAppender(cerr);
+    // Parent here; go back to the caller
+    for (TaskList::iterator it = task.begin();
+            it != task.end(); ++it)
+        static_cast<Task*>(*it)->rt_init();
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::syslogLogging()
+int Main::postfork_nrt_setup()
 {
-    log4cplus::helpers::Properties p;
-    p.setProperty(LOG4CPLUS_TEXT("ident"),
-            LOG4CPLUS_STRING_TO_TSTRING(name));
-    p.setProperty(LOG4CPLUS_TEXT("facility"),LOG4CPLUS_TEXT("local0"));
-
-    log4cplus::SharedAppenderPtr appender( new log4cplus::SysLogAppender(p));
-    appender->setLayout(
-            std::auto_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(
-                    LOG4CPLUS_TEXT("%-5p %c <%x>: %m"))));
-
-    log4cplus::Logger root = log4cplus::Logger::getRoot();
-    root.addAppender(appender);
-    root.setLogLevel(log4cplus::INFO_LOG_LEVEL);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::configureLogging(const PdServ::Config& config)
-{
-    if (!config) {
-        syslogLogging();
-        return;
-    }
-
-    typedef std::basic_istringstream<log4cplus::tchar> tistringstream;
-    tistringstream is(LOG4CPLUS_STRING_TO_TSTRING(config.toString()));
-    log4cplus::PropertyConfigurator(is).configure();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int Main::daemonize()
-{
-    pid = ::fork();
-    if (pid < 0) {
-        // Some error occurred
-        ::perror("fork()");
-        return pid;
-    }
-    else if (pid) {
-        // Parent here; go back to the caller
-        for (TaskList::iterator it = task.begin();
-                it != task.end(); ++it)
-            static_cast<Task*>(*it)->rt_init();
-        return 0;
-    }
-
-    const char *env = ::getenv("PDSERV_CONFIG");
-
-    // Load custom configuration file
-    if (!configFile.empty()) {
-        const char *err = config.load(configFile.c_str());
-        if (err)
-            std::cout << "Load config: " << err << std::endl;
-        else {
-            log_debug("Loaded specified configuration file %s",
-                    configFile.c_str());
-        }
-    }
-    else if (env and ::strlen(env)) {
-        // Try to load environment configuration file
-        const char *err = config.load(env);
-
-        if (err)
-            std::cout << "Error loading config file " << env
-                << ": " << err << std::endl;
-        else {
-            log_debug("Loaded ENV config %s", env);
-        }
-    }
-    else {
-        // Try to load default configuration file
-        const char *f = QUOTE(SYSCONFDIR) "/pdserv.conf";
-        const char *err = config.load(f);
-        if (err) {
-            if (::access(f, R_OK))
-                log_debug("Could not access configuration file %s: %s",
-                        f, ::strerror(errno));
-            else
-                std::cout << "Load config error: " << err << std::endl;
-        }
-        else {
-            log_debug("Loaded default configuration file %s", f);
-        }
-    }
-
-    if (!config) {
-        log_debug("No configuration loaded");
-    }
-
-    // Only child runs after this point
-    pid = getpid();
-
-    // Go to root
-#ifndef PDS_DEBUG
-    ::chdir("/");
-    ::umask(0777);
-#endif
-
-    // Reset signal handlers
-    ::signal(SIGHUP,  SIG_DFL);
-    ::signal(SIGINT,  SIG_DFL);
-    ::signal(SIGTERM, SIG_DFL);
-
-    // close all file handles
-    // sysconf() usually returns one more than max file handle
-    long int fd_max = ::sysconf(_SC_OPEN_MAX);
-    if (fd_max < _POSIX_OPEN_MAX)
-        fd_max = _POSIX_OPEN_MAX;
-    else if (fd_max > 100000)
-        fd_max = 512;   // no rediculous values please
-    while (fd_max--) {
-#ifdef PDS_DEBUG
-        if (fd_max == 2)
-            break;
-#endif
-        ::close(fd_max);
-    }
-
-#ifndef PDS_DEBUG
-    // Reopen STDIN, STDOUT and STDERR
-    if (STDIN_FILENO == ::open("/dev/null", O_RDWR)) {
-        dup2(STDIN_FILENO, STDOUT_FILENO);
-        dup2(STDIN_FILENO, STDERR_FILENO);
-
-        fcntl( STDIN_FILENO, F_SETFL, O_RDONLY);
-        fcntl(STDOUT_FILENO, F_SETFL, O_WRONLY);
-        fcntl(STDERR_FILENO, F_SETFL, O_WRONLY);
-    }
-#endif
-
-    // Initialize non-real time tasks
-    for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
+    // Parent here; go back to the caller
+    for (TaskList::iterator it = task.begin();
+            it != task.end(); ++it)
         static_cast<Task*>(*it)->nrt_init();
-
-#ifdef PDS_DEBUG
-    consoleLogging();
-#endif
-
-    // Do the logging configuration. Note that logging may open file handles
-    configureLogging(config["logging"]);
-
-    LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),
-            LOG4CPLUS_TEXT("Started application ")
-            << LOG4CPLUS_STRING_TO_TSTRING(name)
-            << LOG4CPLUS_TEXT(", Version ")
-            << LOG4CPLUS_STRING_TO_TSTRING(version));
-
-    PdServ::Main::startServers(config);
-
-    // Hang here forever
-    while (true) {
-        pause();
-    }
     return 0;
 }
 

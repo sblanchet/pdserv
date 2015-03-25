@@ -35,7 +35,8 @@ class Config {
         Config();
         ~Config();
 
-        const char * load(const char *file);
+        const char *   load(const char *file);
+        const char * reload();
         const std::string& fileName() const;
 
         Config operator[](const std::string&) const;

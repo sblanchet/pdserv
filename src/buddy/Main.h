@@ -42,10 +42,10 @@ class EventQ;
 
 class Main: public PdServ::Main {
     public:
-        Main(const struct app_properties&,
+        Main(const struct app_properties& p,
                 const PdServ::Config& config, int fd);
 
-        void serve();
+        int serve();
 
         int setParameter( const Parameter *p, const char* dataPtr,
                 size_t len, struct timespec *) const;
@@ -53,11 +53,11 @@ class Main: public PdServ::Main {
     private:
         const struct app_properties &app_properties;
         log4cplus::Logger log;
+        PdServ::Config config;
+        const int pid;
+        const int fd;
 
         mutable ost::Semaphore paramMutex;
-
-        int fd;
-        int pid;
 
         Task *mainTask;
 
@@ -80,18 +80,11 @@ class Main: public PdServ::Main {
         typedef std::set<int> EventSet;
         EventSet eventSet;
 
-        void setupLogging(const PdServ::Config & config);
-//        void setupTTYLog(log4cpp::Category& log);
-//        void setupSyslog(log4cpp::Category& log,
-//                PdServ::Config const& config);
-//        void setupFileLog(log4cpp::Category& log,
-//                PdServ::Config const& config);
-
         // Reimplemented from PdServ::Main
+        int postfork_nrt_setup();
         void processPoll(unsigned int delay_ms,
                 const PdServ::Signal * const *s, size_t nelem,
                 void * const * pollDest, struct timespec *t) const;
-        int gettime(struct timespec *) const;
         PdServ::Main::Events getEvents() const;
         void prepare(PdServ::Session *session) const;
         void cleanup(const PdServ::Session *session) const;

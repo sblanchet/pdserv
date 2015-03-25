@@ -79,12 +79,9 @@ Task::Task(Main *main, double ts, const char * /*name*/):
 /////////////////////////////////////////////////////////////////////////////
 Task::~Task()
 {
-    delete copyList[0];
-    delete signalCopyList[0];
-    delete signalPosition;
-
-    for (Signals::iterator it = signals.begin(); it != signals.end(); ++it)
-        delete *it;
+    delete[] copyList[0];
+    delete[] signalCopyList[0];
+    delete[] signalPosition;
 }
 
 /////////////////////////////////////////////////////////////////////////////

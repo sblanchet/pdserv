@@ -105,6 +105,8 @@ LIST (APPEND CPACK_SOURCE_IGNORE_FILES
 INCLUDE (CPack)
 ADD_CUSTOM_TARGET (dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
 
+FIND_PACKAGE (Threads)
+
 # Search for mercurial, used to add ID information to the library
 FIND_PACKAGE (Mercurial)
 IF (MERCURIAL_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.hg")
@@ -129,15 +131,6 @@ ADD_SUBDIRECTORY (src)
 ADD_SUBDIRECTORY (include)
 ADD_SUBDIRECTORY (test)
 
-# include (ExternalProject)
-# ExternalProject_Add(
-#     iniparser
-#     URL ${CMAKE_CURRENT_SOURCE_DIR}/iniparser-3.0.tar.gz
-#     CONFIGURE_COMMAND ""
-#     BUILD_IN_SOURCE 1
-#     INSTALL_COMMAND ""
-# )
-
 OPTION ( DEBUG "Debugging output" OFF )
 SET  (PDS_DEBUG ${DEBUG})
 
@@ -156,4 +149,6 @@ CONFIGURE_FILE (
     )
 
 INSTALL (FILES "${CMAKE_CURRENT_SOURCE_DIR}/pdserv.conf"
-    DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}")
+    DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}"
+    RENAME "pdserv.conf.orig"
+    )

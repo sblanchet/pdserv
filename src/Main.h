@@ -24,12 +24,13 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include <cc++/thread.h>
-#include <log4cplus/logger.h>
-
 #include <list>
 #include <vector>
 #include <string>
+#include <cc++/thread.h>
+#include <log4cplus/logger.h>
+
+#include "Config.h"
 
 struct timespec;
 
@@ -56,12 +57,16 @@ class Main {
         Main(const std::string& name, const std::string& version);
         virtual ~Main();
 
+        void startServers();
+        void stopServers();
+        void setConfig(const Config& c);
+
         const std::string name;         /**< Application name */
         const std::string version;      /**< Application version */
 
         // Get the current system time.
         // Reimplement this method in the class specialization
-        virtual int gettime(struct timespec *) const = 0;
+        virtual int gettime(struct timespec *) const;
 
         size_t numTasks() const;
         const Task *getTask(size_t n) const;
@@ -86,13 +91,12 @@ class Main {
                 size_t *index, bool *state, struct timespec *t) const = 0;
 
     protected:
+        void setupLogging();
 
         typedef std::vector<Task*> TaskList;
         TaskList task;
 
         ProcessParameters parameters;
-
-        void startServers(const Config &);
 
         static int localtime(struct timespec *);
 
@@ -102,14 +106,21 @@ class Main {
                 struct timespec *t) const = 0;
 
     private:
+
         mutable ost::Semaphore mutex;
 
         const log4cplus::Logger parameterLog;
+
+        PdServ::Config config;
 
         MsrProto::Server *msrproto;
         Supervisor::Server *supervisor;
 //        EtlProto::Server etlproto(this);
 
+//         int setupDaemon();
+
+        void consoleLogging();
+        void syslogLogging();
 };
 
 }
