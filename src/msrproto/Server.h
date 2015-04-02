@@ -94,6 +94,7 @@ class Server: public ost::Thread {
         DirectoryNode* insertRoot;
 
         Events events;
+        size_t maxConnections;
 
         Channels channels;
         Parameters parameters;

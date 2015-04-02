@@ -59,6 +59,10 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
         insertRoot = variableDirectory.create(
                 config["pathprefix"].toString(main->name));
 
+    maxConnections = config["maxconnections"].toUInt();
+    if (!maxConnections)
+        maxConnections = ~0U;
+
     for (size_t i = 0; i < main->numTasks(); ++i)
         createChannels(insertRoot, i);
 
@@ -207,6 +211,11 @@ void Server::run()
     } while (!server);
 
     while (server->isPendingConnection()) {
+        if (sessions.size() == maxConnections) {
+            server->reject();
+            continue;
+        }
+
         try {
             LOG4CPLUS_TRACE_STR(log,
                     LOG4CPLUS_TEXT("New client connection"));
