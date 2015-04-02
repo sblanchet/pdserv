@@ -81,11 +81,11 @@ Session::Session( Server *server, ost::TCPSocket *socket):
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
+    server->sessionClosed(this);
+
     for (SubscriptionManagerVector::iterator it = subscriptionManager.begin();
             it != subscriptionManager.end(); ++it)
         delete *it;
-
-    server->sessionClosed(this);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -187,7 +187,13 @@ void Session::run()
     ssize_t n;
     XmlParser inbuf;
 
-    while (xmlstream.good()) {
+    while (*server->active) {
+        if (!xmlstream.good()) {
+            LOG4CPLUS_FATAL_STR(server->log,
+                    LOG4CPLUS_TEXT("Error occurred in output stream"));
+            return;
+        }
+
         tcp.pubsync();
 
         try {
@@ -311,9 +317,6 @@ void Session::run()
             Event::toXml( tcp, mainEvent, index, state, t);
         }
     }
-
-    LOG4CPLUS_FATAL_STR(server->log,
-            LOG4CPLUS_TEXT("Error occurred in output stream"));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -776,11 +779,6 @@ Session::TCPStream::TCPStream( ost::TCPSocket *server):
     std::ostringstream os;
     os << peer << ':' << port;
     this->peer = os.str();
-
-    if (!server->onAccept(peer, port)) {
-        error(errConnectRejected);
-        return;
-    }
 
     file = ::fdopen(so, "w");
     if (!file) {

@@ -49,7 +49,9 @@ DirectoryNode::DirectoryNode(DirectoryNode* parent, const std::string& name):
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode::~DirectoryNode()
 {
-    erase();
+    for (ChildMap::iterator it = children.begin();
+            it != children.end(); ++it)
+        delete it->second;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -187,14 +189,6 @@ void DirectoryNode::adopt (DirectoryNode *child, const std::string& name)
 bool DirectoryNode::isRoot() const
 {
     return parent == this;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-// Method on the parent to erase a child
-void DirectoryNode::erase()
-{
-    if (!isRoot())
-        parent->children.erase(*name);
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -215,22 +215,21 @@ const Main::ProcessParameters& Main::getParameters() const
 /////////////////////////////////////////////////////////////////////////////
 void Main::startServers()
 {
-    supervisor = new Supervisor::Server(this, config["supervisor"]);
+    LOG4CPLUS_INFO(log4cplus::Logger::getRoot(), "Starting servers");
 
+    supervisor = new Supervisor::Server(this, config["supervisor"]);
     msrproto = new MsrProto::Server(this, config["msr"]);
 
 //    EtlProto::Server etlproto(this);
-    LOG4CPLUS_INFO(log4cplus::Logger::getRoot(), "Started servers");
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::stopServers()
 {
-    LOG4CPLUS_INFO(log4cplus::Logger::getRoot(), "Shutting down servers");
-
     delete msrproto;
     delete supervisor;
 
+    LOG4CPLUS_INFO(log4cplus::Logger::getRoot(), "Shut down servers");
     log4cplus::Logger::shutdown();
 }
 

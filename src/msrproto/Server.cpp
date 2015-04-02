@@ -46,6 +46,7 @@ using namespace MsrProto;
 Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     main(main),
     log(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("msr"))),
+    active(&_active),
     mutex(1)
 {
     port = config["port"].toUInt();
@@ -70,17 +71,10 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
 /////////////////////////////////////////////////////////////////////////////
 Server::~Server()
 {
-    for (std::set<Session*>::iterator it = sessions.begin();
-            it != sessions.end(); it++)
-        delete *it;
+    terminate();
 
-    for (Parameters::iterator it = parameters.begin();
-            it != parameters.end(); ++it)
-        delete *it;
-
-    for (Channels::iterator it = channels.begin();
-            it != channels.end(); ++it)
-        delete *it;
+    // Parameters and Channels are deleted when variable tree
+    // is deleted
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -99,7 +93,7 @@ void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
     channels.reserve(channels.size() + signals.size() + 4);
 
     for (PdServ::Task::Signals::const_iterator it = signals.begin();
-            it != signals.end(); it++) {
+            it != signals.end(); ++it) {
         const PdServ::Signal *signal = *it;
 
         LOG4CPLUS_TRACE(log, LOG4CPLUS_TEXT(signal->path)
@@ -169,11 +163,17 @@ void Server::createParameters(DirectoryNode* baseDir)
 void Server::initial()
 {
     LOG4CPLUS_INFO_STR(log, LOG4CPLUS_TEXT("Initializing MSR server"));
+    _active = true;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Server::final()
 {
+    _active = false;
+
+    while (!sessions.empty())
+        Thread::sleep(100);
+
     LOG4CPLUS_INFO_STR(log, LOG4CPLUS_TEXT("Exiting MSR server"));
 }
 
@@ -187,6 +187,8 @@ void Server::run()
     do {
         try {
             server = new ost::TCPSocket(ost::IPV4Address("0.0.0.0"), port);
+            LOG4CPLUS_INFO(log,
+                    LOG4CPLUS_TEXT("Server started on port ") << port);
         }
         catch (ost::Socket *s) {
             long err = s->getSystemError();
@@ -199,20 +201,17 @@ void Server::run()
             }
             LOG4CPLUS_DEBUG(log,
                     LOG4CPLUS_TEXT("Port ") << port
-                    << LOG4CPLUS_TEXT(" is busy"));
+                    << LOG4CPLUS_TEXT(" is busy. Trying next one..."));
             port++;
         }
     } while (!server);
 
-    LOG4CPLUS_INFO(log, LOG4CPLUS_TEXT("Server started on port ") << port);
     while (server->isPendingConnection()) {
         try {
             LOG4CPLUS_TRACE_STR(log,
                     LOG4CPLUS_TEXT("New client connection"));
-            Session *s = new Session(this, server);
-
             ost::SemaphoreLock lock(mutex);
-            sessions.insert(s);
+            sessions.insert(new Session(this, server));
         }
         catch (ost::Socket *s) {
             LOG4CPLUS_FATAL(log,
@@ -229,7 +228,7 @@ void Server::broadcast(Session *s, const struct timespec& ts,
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
-            it != sessions.end(); it++)
+            it != sessions.end(); ++it)
         (*it)->broadcast(s, ts, action, message);
 }
 
@@ -246,7 +245,7 @@ void Server::getSessionStatistics(
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
-            it != sessions.end(); it++) {
+            it != sessions.end(); ++it) {
         PdServ::SessionStatistics s;
         (*it)->getSessionStatistics(s);
         stats.push_back(s);
@@ -258,7 +257,7 @@ void Server::setAic(const Parameter *p)
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
-            it != sessions.end(); it++)
+            it != sessions.end(); ++it)
         (*it)->setAIC(p);
 }
 
@@ -270,7 +269,7 @@ void Server::parameterChanged(const PdServ::Parameter *mainParam,
 
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
-            it != sessions.end(); it++)
+            it != sessions.end(); ++it)
         p->inform(*it, offset, offset + count);
 }
 

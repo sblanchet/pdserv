@@ -64,6 +64,7 @@ class Server: public ost::Thread {
 
         const PdServ::Main * const main;
         const log4cplus::Logger log;
+        const bool* const active;
 
         typedef std::vector<const Channel*> Channels;
         typedef std::vector<const Parameter*> Parameters;
@@ -87,6 +88,7 @@ class Server: public ost::Thread {
         std::set<Session*> sessions;
         int port;
         bool itemize;   // Split multidimensional variables to scalars
+        bool _active;
 
         DirectoryNode variableDirectory;
         DirectoryNode* insertRoot;

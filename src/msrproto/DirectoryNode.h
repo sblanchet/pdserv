@@ -88,7 +88,6 @@ class DirectoryNode {
         typedef std::queue<std::string> DirQ;
         void insert(Variable* node, DirQ&);
 
-        void erase();
         bool isRoot() const;
         static std::string split(const std::string& path, size_t& pos);
 };
