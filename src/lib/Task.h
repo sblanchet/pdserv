@@ -55,8 +55,6 @@ class Task: public PdServ::Task {
 
         size_t getShmemSpace(double t) const;
 
-        SessionTaskData* newSession(PdServ::Session *session);
-
         void prepare(void *start, void *end);
         void rt_init();
         void nrt_init();
@@ -119,6 +117,12 @@ class Task: public PdServ::Task {
         void cleanup(const PdServ::SessionTask *) const;
         bool rxPdo(PdServ::SessionTask *, const struct timespec **tasktime,
                 const PdServ::TaskStatistics **taskStatistics) const;
+
+        // These methods are used in real time context
+        void processPollRequest(const struct timespec* t);
+        void processSignalList();
+        void calculateCopyList();
+        void copyData(const struct timespec* t);
 };
 
 #endif // LIB_TASK_H
