@@ -24,7 +24,6 @@
 #ifndef MSRPARAMETER_H
 #define MSRPARAMETER_H
 
-#include <string>
 #include "Variable.h"
 
 namespace PdServ {
@@ -58,6 +57,7 @@ class Parameter: public Variable {
                 const char *, size_t startindex, size_t &count) const;
 
         const PdServ::Parameter * const mainParam;
+        bool persistent;
 
     private:
         const bool dependent;

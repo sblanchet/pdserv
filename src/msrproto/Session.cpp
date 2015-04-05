@@ -433,7 +433,7 @@ void Session::readChannel(const XmlParser::Element& cmd)
     if (c) {
         char buf[c->signal->memSize];
 
-        c->signal->getValue(this, buf);
+        static_cast<const PdServ::Variable*>(c->signal)->getValue(this, buf);
 
         XmlElement channel(tcp.createElement("channel"));
         c->setXmlAttributes(channel, shortReply, buf, 16, false);

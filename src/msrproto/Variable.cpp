@@ -24,8 +24,6 @@
 #include "Variable.h"
 #include "XmlElement.h"
 
-#include <sstream>
-
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////

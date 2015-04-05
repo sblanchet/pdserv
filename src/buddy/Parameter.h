@@ -36,11 +36,9 @@ class Parameter: public PdServ::ProcessParameter {
         Parameter ( const Main *main, char *parameterData,
                 const SignalInfo& si);
 
-        ~Parameter();
-
+    private:
         const Main * const main;
 
-    private:
         char * const valueBuf;      // Pointer to the real address
 
         const SignalInfo si;

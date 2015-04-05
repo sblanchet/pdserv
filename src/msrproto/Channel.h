@@ -24,7 +24,6 @@
 #ifndef MSRCHANNEL_H
 #define MSRCHANNEL_H
 
-#include <string>
 #include "Variable.h"
 
 namespace PdServ {
@@ -46,7 +45,7 @@ class Channel: public Variable {
         void setXmlAttributes(XmlElement&, bool shortReply,
                 const char *signalBuf, size_t precision, bool isdir) const;
 
-        const PdServ::Signal *signal;
+        const PdServ::Signal* const signal;
         const size_t taskIdx;
 };
 

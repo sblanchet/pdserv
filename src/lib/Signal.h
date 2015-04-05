@@ -28,7 +28,6 @@
 #include <cc++/thread.h>
 
 #include "../Signal.h"
-#include "../DataType.h"
 
 namespace PdServ {
     class Session;

@@ -28,7 +28,6 @@
 #include <cstddef>
 #include <cc++/thread.h>
 
-#include "../Variable.h"
 #include "../Task.h"
 #include "../TaskStatistics.h"
 

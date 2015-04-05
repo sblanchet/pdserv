@@ -27,7 +27,6 @@
 #include <set>
 
 #include "../Main.h"
-#include "../Variable.h"
 
 namespace PdServ {
     class Signal;

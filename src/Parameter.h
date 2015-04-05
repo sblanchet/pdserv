@@ -45,11 +45,10 @@ class Parameter: public Variable {
         virtual ~Parameter();
 
         const unsigned int mode;
-        bool persistent;
 
         // Set the value of the Parameter
-        virtual int setValue(const Session *, const char *buf,
-                size_t offset, size_t count) const = 0;
+        virtual int setValue(const Session *session,
+                const char *buf, size_t offset, size_t count) const = 0;
 };
 
 }

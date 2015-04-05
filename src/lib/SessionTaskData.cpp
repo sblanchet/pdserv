@@ -49,7 +49,7 @@ SessionTaskData::~SessionTaskData ()
     for (SignalSet::const_iterator it = pdoSignals.begin();
             it != pdoSignals.end(); it++) {
         //log_debug("Auto unsubscribe from %s", (*it)->path.c_str());
-        static_cast<const PdServ::Signal*>(*it) ->unsubscribe(sessionTask);
+        static_cast<const PdServ::Signal*>(*it)->unsubscribe(sessionTask);
     }
 }
 

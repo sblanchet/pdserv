@@ -37,11 +37,6 @@ Parameter::Parameter( const Main *main, char *parameterData,
 }
 
 //////////////////////////////////////////////////////////////////////
-Parameter::~Parameter()
-{
-}
-
-//////////////////////////////////////////////////////////////////////
 int Parameter::setValue(const char* src, size_t offset, size_t count) const
 {
     ost::SemaphoreLock lock(mutex);

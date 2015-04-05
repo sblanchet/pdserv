@@ -26,24 +26,28 @@
 
 #include <set>
 #include <list>
+#include <string>
 #include <cc++/thread.h>
 #include <log4cplus/logger.h>
 
 #include "../SessionStatistics.h"
 #include "../Config.h"
-#include "Parameter.h"
-#include "Channel.h"
+#include "../DataType.h"
+#include "DirectoryNode.h"
 
 namespace PdServ {
     class Main;
     class Task;
     class Parameter;
+    class Signal;
 }
 
 namespace MsrProto {
 
 class Session;
 class Event;
+class Parameter;
+class Channel;
 
 class Server: public ost::Thread {
     public:

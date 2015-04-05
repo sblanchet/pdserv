@@ -41,8 +41,6 @@ class Parameter: public PdServ::ProcessParameter {
                 size_t ndims = 1,
                 const size_t *dim = 0);
 
-        ~Parameter();
-
         char * const addr;      // Pointer to the real address
         const Main * const main;
 

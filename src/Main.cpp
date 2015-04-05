@@ -265,7 +265,7 @@ int Main::setParameter(const Session *, const ProcessParameter *param,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::poll( Session *session, const Signal * const *s,
+void Main::poll(const Session *session, const Signal * const *s,
         size_t nelem, void *buf, struct timespec *t) const
 {
     ost::SemaphoreLock lock(mutex);

@@ -24,9 +24,6 @@
 #ifndef MSRVARIABLE_H
 #define MSRVARIABLE_H
 
-#include <string>
-#include <list>
-#include <ostream>
 #include "../Variable.h"
 #include "DirectoryNode.h"
 

@@ -26,7 +26,6 @@
 
 #include <stdint.h>
 #include <cstddef>
-#include <map>
 #include <list>
 #include <string>
 
@@ -45,8 +44,6 @@ class XmlParser {
 
         typedef std::pair<const char*, const char*> Attribute;
         typedef std::list<Attribute> AttributeList;
-        //typedef std::map<size_t, size_t> AttributePos;
-        //typedef std::map<char, AttributePos> AttributeMap;
 
         class Element {
             public:

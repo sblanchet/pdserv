@@ -24,7 +24,7 @@
 #ifndef BUDDY_SIGNALINFO
 #define BUDDY_SIGNALINFO
 
-#include "../Variable.h"
+#include "../DataType.h"
 #include <etl_data_info.h>
 
 class SignalInfo {

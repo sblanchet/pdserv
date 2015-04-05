@@ -33,7 +33,6 @@
 #include "../Parameter.h"
 
 #include <locale>
-#include <iostream>
 
 using namespace MsrProto;
 

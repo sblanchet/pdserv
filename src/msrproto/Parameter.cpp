@@ -106,7 +106,7 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
             << flags + (dependent ? 0x100 : 0);
 
         // persistent=
-        if (mainParam->persistent)
+        if (persistent)
             XmlElement::Attribute(element, "persistent") << 1;
     }
 

@@ -25,7 +25,6 @@
 #define EVENT_H
 
 #include <string>
-#include <map>
 
 namespace PdServ {
 

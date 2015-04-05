@@ -27,7 +27,7 @@
 #ifndef XMLDOC_H
 #define XMLDOC_H
 
-#include <sstream>
+#include <ostream>
 #include <string>
 
 namespace PdServ {

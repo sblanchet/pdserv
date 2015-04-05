@@ -22,13 +22,10 @@
  *****************************************************************************/
 
 #include "XmlElement.h"
-#include "../Variable.h"
-#include "../Debug.h"
 #include "Variable.h"
-#include "Parameter.h"
-#include "Channel.h"
-//#include "FindFirstOf.h"
+#include "../Debug.h"
 
+#include <sstream>
 #include <iomanip>
 #include <algorithm>
 #include <cstring>      // strpbrk()

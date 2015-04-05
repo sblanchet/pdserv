@@ -79,7 +79,7 @@ class Main {
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 
         // Poll the current value of a list of signals
-        void poll( Session *session, const Signal * const *s,
+        void poll(const Session *session, const Signal * const *s,
                 size_t nelem, void *buf, struct timespec *t) const;
 
         typedef std::vector<const Event*> Events;

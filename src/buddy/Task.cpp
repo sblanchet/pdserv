@@ -57,7 +57,7 @@ void Task::cleanup (const PdServ::SessionTask *st) const
 }
 
 //////////////////////////////////////////////////////////////////////
-bool Task::rxPdo (PdServ::SessionTask *st, const struct ::timespec **time,
+bool Task::rxPdo (PdServ::SessionTask *st, const struct timespec **time,
         const PdServ::TaskStatistics **stat) const
 {
     return st->sessionTaskData->rxPdo(time, stat);

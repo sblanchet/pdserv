@@ -87,12 +87,12 @@ double Signal::poll(const PdServ::Session *,
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::getValue( const PdServ::Session*, void *dest,
+void Signal::getValue( const PdServ::Session* session, void *dest,
         struct timespec *t) const
 {
     const PdServ::Signal *signal = this;
 
-    static_cast<const Task*>(task)->main->poll(0, &signal, 1, dest, t);
+    static_cast<const Task*>(task)->main->poll(session , &signal, 1, dest, t);
 }
 
 //////////////////////////////////////////////////////////////////////

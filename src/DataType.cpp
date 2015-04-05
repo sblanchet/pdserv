@@ -24,7 +24,6 @@
 #include "DataType.h"
 #include "Debug.h"
 #include <stdint.h>
-#include <ostream>
 #include <functional>   // std::multiplies
 #include <numeric>      // std::accumulate
 

@@ -24,10 +24,7 @@
 #include "Channel.h"
 #include "XmlElement.h"
 #include "../Signal.h"
-#include "../DataType.h"
 #include "../Task.h"
-
-#include <sstream>
 
 using namespace MsrProto;
 
