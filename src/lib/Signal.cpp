@@ -44,9 +44,9 @@ Signal::Signal( Task *task,
         const void *addr,
         size_t ndims,
         const size_t *dim):
-    PdServ::Signal(path, task, decimation, dtype, ndims, dim),
+    PdServ::Signal(path, task->sampleTime * decimation, dtype, ndims, dim),
     addr(reinterpret_cast<const char *>(addr)),
-    index(index),
+    index(index), task(task),
     mutex(1)
 {
 }
@@ -58,7 +58,7 @@ void Signal::subscribe(PdServ::SessionTask *s) const
 
     if (sessions.empty()) {
 //        log_debug("Request signal from RT task %p", s);
-        static_cast<const Task*>(task)->subscribe(this, true);
+        task->subscribe(this, true);
     }
     else if (s->sessionTaskData->isBusy(this)) {
 //        log_debug("Signal already transferred");
@@ -74,16 +74,16 @@ void Signal::unsubscribe(PdServ::SessionTask *s) const
     ost::SemaphoreLock lock(mutex);
 
     if (sessions.erase(s) and sessions.empty())
-        static_cast<const Task*>(task)->subscribe(this, false);
+        task->subscribe(this, false);
 }
 
 //////////////////////////////////////////////////////////////////////
 double Signal::poll(const PdServ::Session *,
         void *dest, struct timespec *) const
 {
-    static_cast<const Task*>(task)->pollPrepare(this, dest);
+    task->pollPrepare(this, dest);
 
-    return static_cast<const Task*>(task)->sampleTime / 2;
+    return task->sampleTime / 2;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -92,7 +92,7 @@ void Signal::getValue( const PdServ::Session* session, void *dest,
 {
     const PdServ::Signal *signal = this;
 
-    static_cast<const Task*>(task)->main->poll(session , &signal, 1, dest, t);
+    task->main->poll(session, &signal, 1, dest, t);
 }
 
 //////////////////////////////////////////////////////////////////////

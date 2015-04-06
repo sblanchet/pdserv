@@ -60,13 +60,15 @@ class Main: public PdServ::Main {
         Parameter* addParameter( const char *path,
                 unsigned int mode, const PdServ::DataType& datatype,
                 void *addr, size_t n, const size_t *dim);
+        int setParameter(const Parameter *param,
+                size_t offset, size_t count, struct timespec *mtime) const;
+        void parameterChanged(const PdServ::Session* session,
+                const Parameter *param,
+                const char *buf, size_t offset, size_t count) const;
 
         Signal* addSignal( Task *task, unsigned int decimation,
                 const char *path, const PdServ::DataType& datatype,
                 const void *addr, size_t n, const size_t *dim);
-        int setParameter(const Parameter *p, size_t offset,
-                size_t count, const char *data,
-                struct timespec *) const;
 
         static const double bufferTime;
 

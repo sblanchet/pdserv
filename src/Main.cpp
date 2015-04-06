@@ -40,7 +40,7 @@
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
-#include "ProcessParameter.h"
+#include "Parameter.h"
 #include "Config.h"
 //#include "etlproto/Server.h"
 #include "msrproto/Server.h"
@@ -64,7 +64,7 @@ Main::~Main()
     for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
         delete *it;
 
-    for (ProcessParameters::iterator it = parameters.begin();
+    for (Parameters::iterator it = parameters.begin();
             it != parameters.end(); ++it)
         delete *it;
 }
@@ -207,7 +207,7 @@ const Task* Main::getTask(size_t n) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const Main::ProcessParameters& Main::getParameters() const
+const Main::Parameters& Main::getParameters() const
 {
     return parameters;
 }
@@ -234,15 +234,13 @@ void Main::stopServers()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(const Session *, const ProcessParameter *param,
-        size_t offset, size_t count, const char *data) const
+void Main::parameterChanged(const Session* /*session*/, const Parameter *param,
+        const char* data, size_t offset, size_t count) const
 {
-    int rv = param->setValue(data, offset, count);
-
-    if (rv)
-        return rv;
-
     msrproto->parameterChanged(param, offset, count);
+
+    if (!parameterLog.isEnabledFor(log4cplus::INFO_LOG_LEVEL))
+        return;
 
     std::ostringstream os;
     os.imbue(std::locale::classic());
@@ -257,11 +255,10 @@ int Main::setParameter(const Session *, const ProcessParameter *param,
 
     os << " = ";
 
-    param->dtype.print(os, data - offset, data, data + count);
+    param->dtype.print(os, data, data + offset, data + offset + count);
 
-    LOG4CPLUS_INFO(parameterLog, os.str());
-
-    return 0;
+    parameterLog.forcedLog(log4cplus::INFO_LOG_LEVEL,
+            LOG4CPLUS_STRING_TO_TSTRING(os.str()));
 }
 
 /////////////////////////////////////////////////////////////////////////////

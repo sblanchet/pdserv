@@ -36,8 +36,8 @@ Parameter::Parameter(
         void *addr,
         size_t ndims,
         const size_t *dim):
-    PdServ::ProcessParameter(main, path, mode, dtype, ndims, dim),
-    addr(reinterpret_cast<char*>(addr)), main(main), mutex(1)
+    PdServ::Parameter(path, mode, dtype, ndims, dim),
+    addr(reinterpret_cast<char*>(addr)), main(main)
 {
     trigger = copy;
 
@@ -46,21 +46,43 @@ Parameter::Parameter(
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::setValue(const char* src, size_t offset, size_t count) const
+int Parameter::setValue(const PdServ::Session* session,
+        const char *buf, size_t offset, size_t count) const
 {
-    ost::SemaphoreLock lock(mutex);
+    char copy[memSize];
+    {
+        ost::WriteLock lock(mutex);
 
-    return main->setParameter(this, offset, count, src, &mtime);
+        // Make a backup of the data to be changed
+        std::copy(valueBuf + offset, valueBuf + offset + count, copy);
+
+        // Copy in new data to valueBuf
+        std::copy(buf, buf + count, valueBuf + offset);
+
+        int rv = main->setParameter(this, offset, count, &mtime);
+        if (rv) {
+            // Restore valueBuf and return
+            std::copy(copy, copy + count, valueBuf + offset);
+            return rv;
+        }
+
+        // Copy new data
+        std::copy(valueBuf, valueBuf + memSize, copy);
+    }
+
+    // Tell main that the value has changed, with a copy of the value
+    main->parameterChanged(session, this, copy, offset, count);
+
+    return 0;
 }
 
 //////////////////////////////////////////////////////////////////////
-void Parameter::getValue(const PdServ::Session*,
-        void* valueBuf,  struct timespec *time) const
+void Parameter::getValue(const PdServ::Session* /*session*/,
+        void* buf,  struct timespec *time) const
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::ReadLock lock(mutex);
 
-    std::copy(this->valueBuf, this->valueBuf + memSize,
-            reinterpret_cast<char*>(valueBuf));
+    std::copy(valueBuf, valueBuf + memSize, reinterpret_cast<char*>(buf));
     if (time)
         *time = mtime;
 }

@@ -376,7 +376,7 @@ void Main::processPoll(unsigned int /*delay_ms*/,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter( const Parameter * /*param*/, const char *dataPtr,
+int Main::setParameter(const char* dataPtr,
         size_t count, struct timespec *mtime) const
 {
     ost::SemaphoreLock lock(paramMutex);
@@ -386,13 +386,22 @@ int Main::setParameter( const Parameter * /*param*/, const char *dataPtr,
     delta.pos = dataPtr - parameterBuf;
     delta.len = count;
     delta.count = 0;
-    gettime(mtime);
 
     if (ioctl(fd, CHANGE_PARAM, &delta)) {
         return errno;
     }
 
+    gettime(mtime);
+
     return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::parameterChanged(const PdServ::Session* session,
+        const Parameter *param,
+        const char *buf, size_t offset, size_t count) const
+{
+    PdServ::Main::parameterChanged(session, param, buf, offset, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -26,12 +26,12 @@
 
 #include <ctime>
 #include <cc++/thread.h>
-#include "../ProcessParameter.h"
+#include "../Parameter.h"
 #include "SignalInfo.h"
 
 class Main;
 
-class Parameter: public PdServ::ProcessParameter {
+class Parameter: public PdServ::Parameter {
     public:
         Parameter ( const Main *main, char *parameterData,
                 const SignalInfo& si);
@@ -43,12 +43,12 @@ class Parameter: public PdServ::ProcessParameter {
 
         const SignalInfo si;
 
-        mutable ost::Semaphore mutex;
+        mutable ost::ThreadLock mutex;
         mutable struct timespec mtime;
 
-        // Reimplemented from PdServ::ProcessParameter
-        int setValue(const char *buf,
-                size_t startIndex, size_t nelem) const;
+        // Reimplemented from PdServ::Parameter
+        int setValue(const PdServ::Session* session,
+                const char *buf, size_t startIndex, size_t nelem) const;
 
         // Reimplemented from PdServ::Variable
         void getValue(const PdServ::Session *, void *buf,

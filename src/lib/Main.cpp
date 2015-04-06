@@ -335,17 +335,16 @@ bool Main::setEvent(const Event* event,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(const Parameter *p, size_t offset,
-        size_t count, const char *data, struct timespec *mtime) const
+int Main::setParameter(const Parameter *param,
+        size_t offset, size_t count, struct timespec *mtime) const
 {
     ost::SemaphoreLock lock(sdoMutex);
 
     // Write the parameters into the shared memory sorted from widest
     // to narrowest data type size. This ensures that the data is
     // always aligned correctly.
-    sdo->parameter = p;
+    sdo->parameter = param;
     sdo->offset = offset;
-    std::copy(data, data + count, p->valueBuf + sdo->offset);
 
     // Now write the length to trigger the action
     sdo->count = count;
@@ -354,10 +353,20 @@ int Main::setParameter(const Parameter *p, size_t offset,
         ost::Thread::sleep(tSampleMin);
     } while (sdo->count);
 
-    if (!sdo->rv)
-        *mtime = sdo->time;
+    if (!sdo->rv) {
+        mtime->tv_sec = sdo->time.tv_sec;
+        mtime->tv_nsec = sdo->time.tv_nsec;
+    }
 
     return sdo->rv;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::parameterChanged(const PdServ::Session* session,
+        const Parameter *param,
+        const char *buf, size_t offset, size_t count) const
+{
+    PdServ::Main::parameterChanged(session, param, buf, offset, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -407,7 +416,7 @@ int Main::prefork_init()
     // don't need variableSet any more
     variableSet.clear();
 
-    for (PdServ::Main::ProcessParameters::iterator it = parameters.begin();
+    for (PdServ::Main::Parameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {
         const Parameter *p = static_cast<const Parameter*>(*it);
 
@@ -463,7 +472,7 @@ int Main::prefork_init()
     sdo     = ptr_align<struct SDOStruct>(shmem);
     sdoData = ptr_align<char>(ptr_align<double>(sdo + parameters.size() + 1));
 
-    for (PdServ::Main::ProcessParameters::iterator it = parameters.begin();
+    for (PdServ::Main::Parameters::iterator it = parameters.begin();
             it != parameters.end(); it++) {
         const Parameter *p = static_cast<const Parameter*>(*it);
         p->valueBuf =
@@ -560,7 +569,8 @@ void Main::getParameters(Task *task, const struct timespec *t) const
     for (struct SDOStruct *s = sdo; s->count; s++) {
         const Parameter *p = s->parameter;
         const PdServ::Variable *v = p;
-        s->time = *t;
+        s->time.tv_sec = t->tv_sec;
+        s->time.tv_nsec = t->tv_nsec;
         s->rv = p->trigger(reinterpret_cast<struct pdtask *>(task),
                 reinterpret_cast<const struct pdvariable *>(v),
                 p->addr + s->offset,

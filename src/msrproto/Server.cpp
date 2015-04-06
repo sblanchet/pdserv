@@ -33,7 +33,7 @@
 #include "../Main.h"
 #include "../Task.h"
 #include "../Signal.h"
-#include "../ProcessParameter.h"
+#include "../Parameter.h"
 
 #include <cerrno>
 #include <algorithm>
@@ -150,11 +150,11 @@ void Server::createParameters(DirectoryNode* baseDir)
     LOG4CPLUS_TRACE(log,
             LOG4CPLUS_TEXT("Create parameters"));
 
-    const PdServ::Main::ProcessParameters& mainParam = main->getParameters();
+    const PdServ::Main::Parameters& mainParam = main->getParameters();
 
     parameters.reserve(parameters.size() + mainParam.size());
 
-    PdServ::Main::ProcessParameters::const_iterator it;
+    PdServ::Main::Parameters::const_iterator it;
     for (it = mainParam.begin(); it != mainParam.end(); ++it) {
         const PdServ::Parameter *param = *it;
         PdServ::DataType::Iterator<CreateParameter>(

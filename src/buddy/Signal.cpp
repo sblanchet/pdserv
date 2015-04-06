@@ -32,8 +32,9 @@
 
 //////////////////////////////////////////////////////////////////////
 Signal::Signal( const Task *task, const SignalInfo& si):
-    PdServ::Signal(si.path(), task, 1, si.dataType(), si.ndim(), si.getDim()),
-    main(task->main), offset(si.si->offset), info(si), task(task)
+    PdServ::Signal(si.path(), task->sampleTime,
+            si.dataType(), si.ndim(), si.getDim()),
+    main(task->main), offset(si.si->offset), info(si)
 {
 }
 

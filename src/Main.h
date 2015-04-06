@@ -46,7 +46,7 @@ namespace PdServ {
 
 class Signal;
 class Event;
-class ProcessParameter;
+class Parameter;
 class Task;
 class Session;
 class Config;
@@ -71,10 +71,8 @@ class Main {
         size_t numTasks() const;
         const Task *getTask(size_t n) const;
 
-        typedef std::list<const ProcessParameter*> ProcessParameters;
-        const ProcessParameters& getParameters() const;
-        int setParameter(const Session *, const ProcessParameter *p,
-                size_t offset, size_t count, const char *data) const;
+        typedef std::list<const Parameter*> Parameters;
+        const Parameters& getParameters() const;
 
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 
@@ -96,7 +94,7 @@ class Main {
         typedef std::vector<Task*> TaskList;
         TaskList task;
 
-        ProcessParameters parameters;
+        Parameters parameters;
 
         static int localtime(struct timespec *);
 
@@ -104,6 +102,8 @@ class Main {
                 unsigned int delay_ms, const Signal * const *s,
                 size_t nelem, void * const * pollDest,
                 struct timespec *t) const = 0;
+        void parameterChanged(const Session* session, const Parameter *p,
+                const char* data, size_t offset, size_t count) const;
 
     private:
 

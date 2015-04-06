@@ -47,8 +47,11 @@ class Main: public PdServ::Main {
 
         int serve();
 
-        int setParameter( const Parameter *p, const char* dataPtr,
-                size_t len, struct timespec *) const;
+        int setParameter(const char* dataPtr,
+                size_t len, struct timespec *mtime) const;
+        void parameterChanged(const PdServ::Session* session,
+                const Parameter *param,
+                const char *buf, size_t offset, size_t count) const;
 
     private:
         const struct app_properties &app_properties;
