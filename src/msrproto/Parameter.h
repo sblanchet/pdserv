@@ -46,7 +46,7 @@ class Parameter: public Variable {
 
         void setXmlAttributes(XmlElement&, const char *buf,
                 struct timespec const& ts, bool shortReply,
-                bool hex, size_t precision, bool isdir) const;
+                bool hex, size_t precision) const;
 
         bool inform(Session* session, size_t begin, size_t end) const;
         void addChild(const Parameter* child);

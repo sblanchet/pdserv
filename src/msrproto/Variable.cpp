@@ -104,7 +104,7 @@ void Variable::addCompoundFields(XmlElement &element,
     for (PdServ::DataType::FieldList::const_iterator it = fieldList.begin();
             it != fieldList.end(); ++it) {
         XmlElement field(element.createChild("field"));
-        XmlElement::Attribute(field, "name").setEscaped((*it)->name.c_str());
+        XmlElement::Attribute(field, "name").setEscaped((*it)->name);
         XmlElement::Attribute(field, "offset") << (*it)->offset;
 
         setDataType(element, (*it)->type, (*it)->dim);
@@ -115,13 +115,13 @@ void Variable::addCompoundFields(XmlElement &element,
 
 /////////////////////////////////////////////////////////////////////////////
 void Variable::setAttributes(
-        XmlElement &element, bool shortReply, bool isdir) const
+        XmlElement &element, bool shortReply) const
 {
     // name=
     // value=
     // index=
     XmlElement::Attribute(element, "index") << index;
-    XmlElement::Attribute(element, "name").setEscaped(path().c_str());
+    XmlElement::Attribute(element, "name").setEscaped(path());
 
     if (shortReply)
         return;
@@ -140,7 +140,7 @@ void Variable::setAttributes(
     if (!variable->comment.empty())
         XmlElement::Attribute(element, "text") << variable->comment;
 
-    if (isdir)
+    if (childCount())
         XmlElement::Attribute(element, "dir") << 1;
 
     // hide=

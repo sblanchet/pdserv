@@ -92,14 +92,14 @@ void Parameter::addChild(const Parameter* child)
 /////////////////////////////////////////////////////////////////////////////
 void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
         struct timespec const& mtime, bool shortReply, bool hex,
-        size_t precision, bool isdir) const
+        size_t precision) const
 {
     unsigned int flags = MSR_R | MSR_W | MSR_WOP;
 
     // <parameter name="/lan/Control/EPC/EnableMotor/Value/2"
     //            index="30" value="0"/>
 
-    setAttributes(element, shortReply, isdir);
+    setAttributes(element, shortReply);
 
     if (!shortReply) {
         XmlElement::Attribute(element, "flags")

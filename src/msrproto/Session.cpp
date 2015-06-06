@@ -237,8 +237,8 @@ void Session::run()
 
                 if (!tcp.commandId.empty()) {
                     XmlElement ack(tcp.createElement("ack"));
-                    XmlElement::Attribute(ack,"id").setEscaped(
-                            tcp.commandId.c_str());
+                    XmlElement::Attribute(ack,"id")
+                        .setEscaped(tcp.commandId);
 
                     tcp.commandId.clear();
                 }
@@ -294,12 +294,12 @@ void Session::run()
                 XmlElement::Attribute(broadcast, "time") << (*it)->ts;
 
                 if (!(*it)->action.empty())
-                    XmlElement::Attribute(broadcast, "action").setEscaped(
-                            (*it)->action.c_str());
+                    XmlElement::Attribute(broadcast, "action")
+                        .setEscaped((*it)->action);
 
                 if (!(*it)->message.empty())
-                    XmlElement::Attribute(broadcast, "text").setEscaped(
-                            (*it)->message.c_str());
+                    XmlElement::Attribute(broadcast, "text")
+                        .setEscaped((*it)->message);
 
                 delete *it;
             }
@@ -436,7 +436,7 @@ void Session::readChannel(const XmlParser::Element& cmd)
         static_cast<const PdServ::Variable*>(c->signal)->getValue(this, buf);
 
         XmlElement channel(tcp.createElement("channel"));
-        c->setXmlAttributes(channel, shortReply, buf, 16, false);
+        c->setXmlAttributes(channel, shortReply, buf, 16);
 
         return;
     }
@@ -449,7 +449,7 @@ void Session::readChannel(const XmlParser::Element& cmd)
             continue;
 
         XmlElement el(channels.createChild("channel"));
-        (*it)->setXmlAttributes( el, shortReply, 0, 16, false);
+        (*it)->setXmlAttributes( el, shortReply, 0, 16);
     }
 }
 
@@ -495,7 +495,7 @@ void Session::readParameter(const XmlParser::Element& cmd)
         cmd.getString("id", id);
 
         XmlElement xml(tcp.createElement("parameter"));
-        p->setXmlAttributes(xml, buf, ts, shortReply, hex, 16, false);
+        p->setXmlAttributes(xml, buf, ts, shortReply, hex, 16);
 
         return;
     }
@@ -518,7 +518,7 @@ void Session::readParameter(const XmlParser::Element& cmd)
 
         while (it != parameters.end() and mainParam == (*it)->mainParam) {
             XmlElement xml(parametersElement.createChild("parameter"));
-            (*it++)->setXmlAttributes(xml, buf, ts, shortReply, hex, 16, false);
+            (*it++)->setXmlAttributes(xml, buf, ts, shortReply, hex, 16);
         }
     }
 }
@@ -565,10 +565,10 @@ void Session::readStatistics(const XmlParser::Element& /*cmd*/)
     for (StatList::const_iterator it = stats.begin();
             it != stats.end(); it++) {
         XmlElement client(clients.createChild("client"));
-        XmlElement::Attribute(client,"name").setEscaped(
-                (*it).remote.size() ? (*it).remote.c_str() : "unknown");
-        XmlElement::Attribute(client,"apname").setEscaped(
-                (*it).client.size() ? (*it).client.c_str() : "unknown");
+        XmlElement::Attribute(client,"name")
+            .setEscaped((*it).remote.size() ? (*it).remote : "unknown");
+        XmlElement::Attribute(client,"apname")
+            .setEscaped((*it).client.size() ? (*it).client : "unknown");
         XmlElement::Attribute(client,"countin") << (*it).countIn;
         XmlElement::Attribute(client,"countout") << (*it).countOut;
         XmlElement::Attribute(client,"connectedtime") << (*it).connectedTime;

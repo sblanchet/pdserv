@@ -39,7 +39,7 @@ void Event::toXml(Session::TCPStream &tcp, const PdServ::Event* event,
 {
     XmlElement msg(tcp.createElement(levelString(event)));
 
-    XmlElement::Attribute(msg, "path").setEscaped(event->path.c_str());
+    XmlElement::Attribute(msg, "path").setEscaped(event->path);
     XmlElement::Attribute(msg, "index") << index;
     XmlElement::Attribute(msg, "state") << state;
     XmlElement::Attribute(msg, "time") << t;

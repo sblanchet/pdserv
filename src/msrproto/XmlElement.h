@@ -64,7 +64,7 @@ class XmlElement {
 
                 /** Set string attribute, checking for characters
                  * that need to be escaped */
-                void setEscaped( const char *value);
+                void setEscaped( const std::string& value);
 
                 void csv(const Variable* var, const char *buf,
                         size_t nblocks, size_t precision);

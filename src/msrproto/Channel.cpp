@@ -41,9 +41,9 @@ Channel::Channel(size_t taskIdx, const PdServ::Signal *s, size_t index,
 
 /////////////////////////////////////////////////////////////////////////////
 void Channel::setXmlAttributes( XmlElement &element, bool shortReply,
-        const char *data, size_t precision, bool isdir) const
+        const char *data, size_t precision) const
 {
-    setAttributes(element, shortReply, isdir);
+    setAttributes(element, shortReply);
 
     if (!shortReply) {
         // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"

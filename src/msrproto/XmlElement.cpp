@@ -50,7 +50,7 @@ XmlElement::~XmlElement()
         os << std::string(level, ' ') << "</" << name;
     else {
         if (id and !id->empty())
-            Attribute(*this,"id").setEscaped(id->c_str());
+            Attribute(*this,"id").setEscaped(*id);
         os << '/';
     }
 
@@ -62,7 +62,7 @@ XmlElement XmlElement::createChild(const char* name)
 {
     if (!printed) {
         if (id and !id->empty())
-            Attribute(*this,"id").setEscaped(id->c_str());
+            Attribute(*this,"id").setEscaped(*id);
 
         os << ">\r\n";
     }
@@ -106,14 +106,14 @@ std::ostream& XmlElement::Attribute::operator <<( struct timespec const& ts)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void XmlElement::Attribute::setEscaped( const char *v)
+void XmlElement::Attribute::setEscaped( const std::string& str)
 {
     const char *escape = "<>&\"'";
-    const char *p;
+    size_t start = 0, pos;
 
-    while ((p = strpbrk(v, escape))) {
-        os << std::string(v, p);
-        switch (*p) {
+    while (std::string::npos != (pos = str.find_first_of(escape, start))) {
+        os << str.substr(start, pos - start);
+        switch (str[pos]) {
             case '<':
                 os << "&lt;";
                 break;
@@ -135,10 +135,10 @@ void XmlElement::Attribute::setEscaped( const char *v)
                 break;
         }
 
-        v = p + 1;
+        start = pos + 1;
     }
 
-    os << v;
+    os << str.substr(start);
 }
 
 /////////////////////////////////////////////////////////////////////////////

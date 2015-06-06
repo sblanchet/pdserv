@@ -218,14 +218,6 @@ void DirectoryNode::list( PdServ::Session *session, XmlElement& parent,
     }
 
     for (it = children.begin(); it != children.end(); ++it) {
-
-        // If there are children, report this node as a directory
-        if (it->second and !it->second->children.empty()) {
-            XmlElement el(parent.createChild("dir"));
-            XmlElement::Attribute(el, "path")
-                << (this->path() + '/' + it->first);
-        }
-
         const Parameter *param = dynamic_cast<const Parameter *>(it->second);
         if (param and !param->hidden) {
             char buf[param->mainParam->memSize];
@@ -234,15 +226,20 @@ void DirectoryNode::list( PdServ::Session *session, XmlElement& parent,
             param->mainParam->getValue(session, buf, &ts);
 
             XmlElement xml(parent.createChild("parameter"));
-            param->setXmlAttributes(
-                    xml, buf, ts, 0, 0, 16, param->childCount());
+            param->setXmlAttributes(xml, buf, ts, 0, 0, 16);
         }
 
         const Channel *channel = dynamic_cast<const Channel   *>(it->second);
         if (channel and !channel->hidden) {
             XmlElement xml(parent.createChild("channel"));
-            channel->setXmlAttributes(
-                    xml, 0, 0, 0, channel->childCount());
+            channel->setXmlAttributes(xml, 0, 0, 0);
+        }
+
+        // If there are children, report this node as a directory
+        if (!channel and !param) {
+            XmlElement el(parent.createChild("dir"));
+            XmlElement::Attribute(el, "path")
+                .setEscaped(this->path() + '/' + it->first);
         }
     }
 }
