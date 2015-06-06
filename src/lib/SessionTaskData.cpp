@@ -171,6 +171,9 @@ bool SessionTaskData::rxPdo (const struct timespec **time,
         }
     }
 
+    *time = &pdo->time;
+    *statistics = &pdo->taskStatistics;
+
     return false;
 
 out:
