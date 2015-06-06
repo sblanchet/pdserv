@@ -92,6 +92,9 @@ int Main::run()
 {
     int rv;
 
+    if (configFile.empty())
+        readConfiguration();
+
     // Initialize library
     rv = prefork_init();
     if (rv)
