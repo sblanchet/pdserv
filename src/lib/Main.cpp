@@ -33,6 +33,8 @@
 #include <sys/types.h>  // kill()
 #include <signal.h>     // kill()
 
+#include <log4cplus/loggingmacros.h>
+
 #include "pdserv.h"
 #include "Main.h"
 #include "Task.h"
