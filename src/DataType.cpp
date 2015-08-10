@@ -251,6 +251,18 @@ DataType::Primary DataType::primary () const
 }
 
 //////////////////////////////////////////////////////////////////////
+bool DataType::operator==(const DataType& other) const
+{
+    return this == &other;
+}
+
+//////////////////////////////////////////////////////////////////////
+bool DataType::operator!=(const DataType& other) const
+{
+    return this != &other;
+}
+
+//////////////////////////////////////////////////////////////////////
 void DataType::print(std::ostream& os,
         const char *data, const char *start, const char *end) const
 {

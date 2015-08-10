@@ -49,6 +49,7 @@ class Config {
             bool get(T& value) const;
 
         operator bool() const;
+        bool isMapping() const;
 
         int             toInt() const;
         unsigned int    toUInt() const;

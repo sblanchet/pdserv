@@ -182,6 +182,12 @@ Config Config::operator[](size_t index) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+bool Config::isMapping() const
+{
+    return node and node->type == YAML_MAPPING_NODE;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 std::string Config::toString(const std::string& defaultString) const
 {
     if (!node or node->type != YAML_SCALAR_NODE)
