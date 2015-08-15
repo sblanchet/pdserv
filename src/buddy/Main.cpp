@@ -61,7 +61,7 @@ Main::Main(const struct app_properties& p,
     config(config), pid(::getpid()), fd(fd),
     paramMutex(1), parameterBuf(0)
 {
-    setConfig(config[name]);
+    setConfig(config);
 }
 
 /////////////////////////////////////////////////////////////////////////////

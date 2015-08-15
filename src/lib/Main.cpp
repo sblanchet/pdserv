@@ -86,7 +86,6 @@ Main::~Main()
 void Main::setConfigFile(const char *file)
 {
     configFile = file;
-    readConfiguration();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -94,8 +93,7 @@ int Main::run()
 {
     int rv;
 
-    if (configFile.empty())
-        readConfiguration();
+    readConfiguration();
 
     // Initialize library
     rv = prefork_init();
@@ -126,7 +124,6 @@ int Main::run()
     // Kill is used to stop all processes
     ::signal(SIGKILL, SIG_DFL);
 
-    //setupDaemon();      // After readConfiguration()!, this changes directory
     setupLogging();
     postfork_nrt_setup();
     startServers();
@@ -187,10 +184,11 @@ out:
 int Main::readConfiguration()
 {
     const char *env;
+    const char *err = 0;
 
     // Load custom configuration file
     if (!configFile.empty()) {
-        const char *err = config.load(configFile.c_str());
+        err = config.load(configFile.c_str());
         if (err)
             std::cout
                 << "Error loading configuration file "
@@ -202,7 +200,7 @@ int Main::readConfiguration()
     }
     else if ((env = ::getenv("PDSERV_CONFIG")) and ::strlen(env)) {
         // Try to load environment configuration file
-        const char *err = config.load(env);
+        err = config.load(env);
 
         if (err)
             std::cout << "Error loading config file " << env
@@ -215,7 +213,7 @@ int Main::readConfiguration()
     else {
         // Try to load default configuration file
         const char *f = QUOTE(SYSCONFDIR) "/pdserv.conf";
-        const char *err = config.load(f);
+        err = config.load(f);
         if (err) {
             std::cout << "Error loading default config file " << f << ": "
                 << (::access(f, R_OK)
@@ -228,11 +226,10 @@ int Main::readConfiguration()
         }
     }
 
-    if (!config) {
+    if (!config or err)
         log_debug("No configuration loaded");
-    }
-
-    PdServ::Main::setConfig(config);
+    else
+        PdServ::Main::setConfig(config);
 
     return 0;
 }

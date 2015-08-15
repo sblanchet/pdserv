@@ -154,7 +154,7 @@ int serve(const std::string& file, const PdServ::Config& config,
         // Child
         //daemon_signal_done();
         ::close(mainfd);
-        ::exit(Main(app_properties, config, fd).serve());
+        ::exit(Main(app_properties, config[app_properties.name], fd).serve());
     }
     else if (rv < 0) {
         // Error occurred
