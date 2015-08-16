@@ -364,6 +364,13 @@ void Main::processPoll(unsigned int delay_ms,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// Orangization of shared memory:
+//      struct SDOStruct        sdo
+//      char                    sdoData (binary data of all parameters)
+//      char                    pdoData
+//      struct EventData        eventData
+//      struct EventData        eventDataStart
+//
 int Main::prefork_init()
 {
     size_t numTasks = task.size();
@@ -384,7 +391,7 @@ int Main::prefork_init()
         3 /*0*/, 3 /*1*/, 2 /*2*/, 3 /*3*/,
         1 /*4*/, 3 /*5*/, 3 /*6*/, 3 /*7*/, 0 /*8*/
     };
-    size_t parameterDataOffset[5] = {0, 0, 0, 0, 0};
+    size_t parameterDataOffset[5] = {0, 0, 0, 0, 0};    // need one extra!
 
     // don't need variableSet any more
     variableSet.clear();
@@ -432,6 +439,11 @@ int Main::prefork_init()
         shmem_len += taskMemSize[i++];
     }
 
+    // Fudge factor. Every ptr_align can silently increase the pointer in
+    // shmem by sizeof(unsigned long).
+    // At the moment there are roughly 6 ptr_align's, take 10 to make sure!
+    shmem_len += 10*sizeof(unsigned long);
+
     shmem = ::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
             MAP_SHARED | MAP_ANON, -1, 0);
     if (MAP_FAILED == shmem) {
@@ -463,8 +475,8 @@ int Main::prefork_init()
     }
 
     eventData      = ptr_align<struct EventData>(buf);
-    eventDataStart = ptr_align<struct EventData>(eventData + eventCount);
-    eventDataEnd   = eventDataStart + 2*eventCount;
+    eventDataStart = ptr_align<struct EventData>(eventData + eventCount + 1);
+    eventDataEnd   = ptr_align<struct EventData>((char*)shmem + shmem_len) - 1;
     eventDataWp    = ptr_align<struct EventData*>(eventDataEnd);
     *eventDataWp   = eventDataStart;
 
