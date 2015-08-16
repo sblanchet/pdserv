@@ -75,6 +75,8 @@ class Main: public PdServ::Main {
     private:
         mutable ost::Semaphore mutex;
 
+        int ipc_pipe[2];
+
         int pid;
         std::string configFile;
         PdServ::Config config;

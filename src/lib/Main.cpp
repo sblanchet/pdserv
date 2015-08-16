@@ -30,8 +30,7 @@
 #include <cstdio>       // perror()
 #include <algorithm>    // std::min()
 #include <sys/mman.h>   // mmap(), munmap()
-#include <sys/types.h>  // kill()
-#include <signal.h>     // kill()
+#include <signal.h>     // signal()
 
 #include <log4cplus/loggingmacros.h>
 
@@ -78,7 +77,7 @@ Main::Main( const char *name, const char *version,
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
-    ::kill(pid, SIGTERM);
+    ::close(ipc_pipe[1]);
     ::munmap(shmem, shmem_len);
 }
 
@@ -100,6 +99,14 @@ int Main::run()
     if (rv)
         return rv;
 
+    // Open a pipe between the two processes. This is used to inform the
+    // child that the parent has died
+    if (::pipe(ipc_pipe)) {
+        rv = errno;
+        ::perror("pipe()");
+        return rv;
+    }
+
     // Immediately split off a child. The parent returns to the caller so
     // that he can get on with his job.
     //
@@ -115,69 +122,33 @@ int Main::run()
     }
     else if (pid) {
         // Parent here. Return to the caller
+
+        // Close read end of pipe
+        ::close(ipc_pipe[0]);
+
         return postfork_rt_setup();
     }
+
+    // Close write end of pipe
+    ::close(ipc_pipe[1]);
 
     // Only child runs after this point
     pid = getpid();
 
-    // Kill is used to stop all processes
-    ::signal(SIGKILL, SIG_DFL);
+    // Ignore common signals
+    ::signal(SIGINT, SIG_IGN);
+    ::signal(SIGTERM, SIG_IGN);
 
     setupLogging();
     postfork_nrt_setup();
     startServers();
-    rv = runForever();
+
+    // Run forever, until pipe is closed
+    ::read(ipc_pipe[0], &ipc_pipe[1], 2);
+
     stopServers();
 
     ::exit(rv);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int Main::runForever()
-{
-    int sig, rv;
-    sigset_t mask;
-    log4cplus::Logger log = log4cplus::Logger::getRoot();
-
-    // Set signal mask
-    if (::sigemptyset(&mask)
-            or ::sigaddset(&mask, SIGHUP)      // Reread configuration
-            or ::sigaddset(&mask, SIGINT)      // Ctrl-C
-            or ::sigaddset(&mask, SIGTERM)) {  // standard kill signal
-        rv = errno;
-        LOG4CPLUS_FATAL(log,
-                LOG4CPLUS_TEXT("Failed to set correct signal mask"));
-        goto out;
-    }
-
-
-    if (::sigprocmask(SIG_BLOCK, &mask, NULL) == -1) {
-        rv = errno;
-        LOG4CPLUS_FATAL(log,
-                LOG4CPLUS_TEXT("Setting sigprocmask() failed: ")
-                << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(errno)));
-        goto out;
-    }
-
-    while (!(errno = sigwait(&mask, &sig))) {
-        switch (sig) {
-            case SIGHUP:
-                LOG4CPLUS_INFO(log,
-                        LOG4CPLUS_TEXT("SIGUP received. Reloading configuration"));
-                readConfiguration();
-                break;
-
-            default:
-                LOG4CPLUS_INFO(log,
-                        LOG4CPLUS_TEXT("Killed with ")
-                        << LOG4CPLUS_TEXT(::strsignal(sig)));
-                return 0;
-        }
-    }
-
-out:
-    return rv;
 }
 
 /////////////////////////////////////////////////////////////////////////////
