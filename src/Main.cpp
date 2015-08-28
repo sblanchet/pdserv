@@ -192,7 +192,7 @@ void Main::parameterChanged(const Session* /*session*/, const Parameter *param,
 
     os << " = ";
 
-    param->dtype.print(os, data + offset, count);
+    param->dtype.print(os, data, data + offset, data + offset + count);
 
     parameterLog.forcedLog(log4cplus::INFO_LOG_LEVEL,
             LOG4CPLUS_STRING_TO_TSTRING(os.str()));
