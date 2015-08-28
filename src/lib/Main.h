@@ -27,10 +27,6 @@
 #include <set>
 
 #include "../Main.h"
-#include "../Variable.h"
-#include "../Config.h"
-
-#include <cc++/thread.h>
 
 namespace PdServ {
     class Signal;
@@ -50,12 +46,11 @@ class Main: public PdServ::Main {
         ~Main();
 
         void setConfigFile(const char *file);
-
         int run();
+
         void getParameters(Task *, const struct timespec *) const;
 
         Task* addTask(double sampleTime, const char *name);
-        Task* getTask(size_t index) const;
 
         Event* addEvent(const char *path, int prio,
                 size_t nelem, const char **messages);
@@ -65,23 +60,30 @@ class Main: public PdServ::Main {
         Parameter* addParameter( const char *path,
                 unsigned int mode, const PdServ::DataType& datatype,
                 void *addr, size_t n, const size_t *dim);
+        int setParameter(const Parameter *param,
+                size_t offset, size_t count, struct timespec *mtime) const;
+        void parameterChanged(const PdServ::Session* session,
+                const Parameter *param,
+                const char *buf, size_t offset, size_t count) const;
 
         Signal* addSignal( Task *task, unsigned int decimation,
                 const char *path, const PdServ::DataType& datatype,
                 const void *addr, size_t n, const size_t *dim);
-        int setParameter(const Parameter *p, size_t offset,
-                size_t count, const char *data,
-                struct timespec *) const;
 
         static const double bufferTime;
 
     private:
         mutable ost::Semaphore mutex;
 
+        typedef std::list<Task*> TaskList;
+        TaskList task;
+
+        int ipc_pipe[2];
+
+        int pid;
         std::string configFile;
         PdServ::Config config;
 
-        int pid;
         size_t tSampleMin;      // Minimal sample time in ms
 
         size_t shmem_len;
@@ -111,20 +113,26 @@ class Main: public PdServ::Main {
         typedef std::set<std::string> VariableSet;
         VariableSet variableSet;
 
-        int daemonize();
-        void consoleLogging();
-        void syslogLogging();
-        void configureLogging(const PdServ::Config&);
+        typedef std::list<Parameter*> ParameterList;
+        ParameterList parameters;
+
+        int runForever();
+        int readConfiguration();
 
         // Reimplemented from PdServ::Main
+        int prefork_init();
+        int postfork_rt_setup();
+        int postfork_nrt_setup();
         void processPoll( unsigned int delay_ms,
                 const PdServ::Signal * const *s, size_t nelem,
                 void * const *pollDest, struct timespec *t) const;
         int gettime(struct timespec *) const;
-        PdServ::Main::Events getEvents() const;
+        std::list<const PdServ::Task*> getTasks() const;
+        std::list<const PdServ::Event*> getEvents() const;
+        std::list<const PdServ::Parameter*> getParameters() const;
         void prepare(PdServ::Session *session) const;
         void cleanup(const PdServ::Session *session) const;
-        const PdServ::Event *getNextEvent( const PdServ::Session* session,
+        const PdServ::Event *getNextEvent(const PdServ::Session* session,
                 size_t *index, bool *state, struct timespec *t) const;
 };
 

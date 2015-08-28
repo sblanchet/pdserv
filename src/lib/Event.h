@@ -25,7 +25,6 @@
 #define LIB_EVENT
 
 #include "../Event.h"
-#include "pdserv.h"
 
 class Main;
 struct timespec;

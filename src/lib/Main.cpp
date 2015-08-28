@@ -25,27 +25,13 @@
 
 #include "../Debug.h"
 
-#include <iostream>
-#include <cerrno>
-#include <cstring>
-#include <cstdlib>
-#include <cstdio>
-#include <ctime>
-#include <sstream>
-#include <algorithm>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>             // fork(), getpid(), chdir, sysconf
-#include <signal.h>             // signal()
-#include <fcntl.h>              // open()
-#include <limits.h>             // _POSIX_OPEN_MAX
+#include <unistd.h>     // exit()
+#include <cerrno>       // errno
+#include <cstdio>       // perror()
+#include <algorithm>    // std::min()
+#include <sys/mman.h>   // mmap(), munmap()
+#include <signal.h>     // signal()
 
-#include <log4cplus/logger.h>
-#include <log4cplus/syslogappender.h>
-#include <log4cplus/consoleappender.h>
-#include <log4cplus/streams.h>
-#include <log4cplus/configurator.h>
 #include <log4cplus/loggingmacros.h>
 
 #include "pdserv.h"
@@ -57,7 +43,6 @@
 #include "Pointer.h"
 #include "ShmemDataStructures.h"
 #include "../Session.h"
-#include "../DataType.h"
 #include "../Config.h"
 
 /////////////////////////////////////////////////////////////////////////////
@@ -77,6 +62,7 @@ struct SessionData {
 const double Main::bufferTime = 2.0;
 
 /////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
 Main::Main( const char *name, const char *version,
         int (*gettime)(struct timespec*)):
     PdServ::Main(name, version),
@@ -91,15 +77,142 @@ Main::Main( const char *name, const char *version,
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
-    ::kill(pid, SIGHUP);
-
+    ::close(ipc_pipe[1]);
     ::munmap(shmem, shmem_len);
+
+    while (task.size()) {
+        delete task.front();
+        task.pop_front();
+    }
+
+    while (parameters.size()) {
+        delete parameters.front();
+        parameters.pop_front();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::setConfigFile(const char *file)
 {
     configFile = file;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::run()
+{
+    int rv;
+
+    readConfiguration();
+
+    // Initialize library
+    rv = prefork_init();
+    if (rv)
+        return rv;
+
+    // Open a pipe between the two processes. This is used to inform the
+    // child that the parent has died
+    if (::pipe(ipc_pipe)) {
+        rv = errno;
+        ::perror("pipe()");
+        return rv;
+    }
+
+    // Immediately split off a child. The parent returns to the caller so
+    // that he can get on with his job.
+    //
+    // The child continues from here.
+    //
+    // It is intentional that the child has the same process group as
+    // the parent so that it gets all the signals too.
+    pid = ::fork();
+    if (pid < 0) {
+        // Some error occurred
+        ::perror("fork()");
+        return pid;
+    }
+    else if (pid) {
+        // Parent here. Return to the caller
+
+        // Close read end of pipe
+        ::close(ipc_pipe[0]);
+
+        return postfork_rt_setup();
+    }
+
+    // Close write end of pipe
+    ::close(ipc_pipe[1]);
+
+    // Only child runs after this point
+    pid = getpid();
+
+    // Ignore common signals
+    ::signal(SIGINT, SIG_IGN);
+    ::signal(SIGTERM, SIG_IGN);
+
+    setupLogging();
+    postfork_nrt_setup();
+    startServers();
+
+    // Run forever, until pipe is closed
+    ::read(ipc_pipe[0], &ipc_pipe[1], 2);
+
+    stopServers();
+
+    ::exit(rv);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::readConfiguration()
+{
+    const char *env;
+    const char *err = 0;
+
+    // Load custom configuration file
+    if (!configFile.empty()) {
+        err = config.load(configFile.c_str());
+        if (err)
+            std::cout
+                << "Error loading configuration file "
+                << configFile << " specified on command line: " << err << std::endl;
+        else {
+            log_debug("Loaded specified configuration file %s",
+                    configFile.c_str());
+        }
+    }
+    else if ((env = ::getenv("PDSERV_CONFIG")) and ::strlen(env)) {
+        // Try to load environment configuration file
+        err = config.load(env);
+
+        if (err)
+            std::cout << "Error loading config file " << env
+                << " specified in environment variable PDSERV_CONFIG: "
+                << err << std::endl;
+        else {
+            log_debug("Loaded ENV config %s", env);
+        }
+    }
+    else {
+        // Try to load default configuration file
+        const char *f = QUOTE(SYSCONFDIR) "/pdserv.conf";
+        err = config.load(f);
+        if (err) {
+            std::cout << "Error loading default config file " << f << ": "
+                << (::access(f, R_OK)
+                        ? ": File is not readable"
+                        : err)
+                << std::endl;
+        }
+        else {
+            log_debug("Loaded default configuration file %s", f);
+        }
+    }
+
+    if (!config or err)
+        log_debug("No configuration loaded");
+    else
+        PdServ::Main::setConfig(config);
+
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -114,12 +227,6 @@ Task* Main::addTask(double sampleTime, const char *name)
         tSampleMin = 1U;
 
     return t;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-Task *Main::getTask(size_t index) const
-{
-    return static_cast<Task*>(task[index]);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -211,17 +318,16 @@ bool Main::setEvent(const Event* event,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(const Parameter *p, size_t offset,
-        size_t count, const char *data, struct timespec *mtime) const
+int Main::setParameter(const Parameter *param,
+        size_t offset, size_t count, struct timespec *mtime) const
 {
     ost::SemaphoreLock lock(sdoMutex);
 
     // Write the parameters into the shared memory sorted from widest
     // to narrowest data type size. This ensures that the data is
     // always aligned correctly.
-    sdo->parameter = p;
+    sdo->parameter = param;
     sdo->offset = offset;
-    std::copy(data, data + count, p->valueBuf + sdo->offset);
 
     // Now write the length to trigger the action
     sdo->count = count;
@@ -230,10 +336,20 @@ int Main::setParameter(const Parameter *p, size_t offset,
         ost::Thread::sleep(tSampleMin);
     } while (sdo->count);
 
-    if (!sdo->rv)
-        *mtime = sdo->time;
+    if (!sdo->rv) {
+        mtime->tv_sec = sdo->time.tv_sec;
+        mtime->tv_nsec = sdo->time.tv_nsec;
+    }
 
     return sdo->rv;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::parameterChanged(const PdServ::Session* session,
+        const Parameter *param,
+        const char *buf, size_t offset, size_t count) const
+{
+    PdServ::Main::parameterChanged(session, param, buf, offset, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -258,7 +374,14 @@ void Main::processPoll(unsigned int delay_ms,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::run()
+// Orangization of shared memory:
+//      struct SDOStruct        sdo
+//      char                    sdoData (binary data of all parameters)
+//      char                    pdoData
+//      struct EventData        eventData
+//      struct EventData        eventDataStart
+//
+int Main::prefork_init()
 {
     size_t numTasks = task.size();
     size_t taskMemSize[numTasks];
@@ -278,14 +401,14 @@ int Main::run()
         3 /*0*/, 3 /*1*/, 2 /*2*/, 3 /*3*/,
         1 /*4*/, 3 /*5*/, 3 /*6*/, 3 /*7*/, 0 /*8*/
     };
-    size_t parameterDataOffset[5] = {0, 0, 0, 0, 0};
+    size_t parameterDataOffset[5] = {0, 0, 0, 0, 0};    // need one extra!
 
     // don't need variableSet any more
     variableSet.clear();
 
-    for (PdServ::Main::ProcessParameters::iterator it = parameters.begin();
+    for (ParameterList::iterator it = parameters.begin();
             it != parameters.end(); it++) {
-        const Parameter *p = static_cast<const Parameter*>(*it);
+        const Parameter *p = *it;
 
         // Push the next smaller data type forward by the parameter's
         // memory requirement
@@ -326,6 +449,11 @@ int Main::run()
         shmem_len += taskMemSize[i++];
     }
 
+    // Fudge factor. Every ptr_align can silently increase the pointer in
+    // shmem by sizeof(unsigned long).
+    // At the moment there are roughly 6 ptr_align's, take 10 to make sure!
+    shmem_len += 10*sizeof(unsigned long);
+
     shmem = ::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
             MAP_SHARED | MAP_ANON, -1, 0);
     if (MAP_FAILED == shmem) {
@@ -339,15 +467,9 @@ int Main::run()
     sdo     = ptr_align<struct SDOStruct>(shmem);
     sdoData = ptr_align<char>(ptr_align<double>(sdo + parameters.size() + 1));
 
-//     cerr_debug() << "shmemlen=" << shmem_len
-//         << " shmem=" << shmem
-//         << " sdo=" << sdo
-// //        << " sdoTaskTime=" << sdoTaskTime
-//         << " sdoData=" << (void*)sdoData;
-
-    for (PdServ::Main::ProcessParameters::iterator it = parameters.begin();
+    for (ParameterList::iterator it = parameters.begin();
             it != parameters.end(); it++) {
-        const Parameter *p = static_cast<const Parameter*>(*it);
+        Parameter *p = *it;
         p->valueBuf =
             sdoData + parameterDataOffset[dataTypeIndex[p->dtype.align()]];
         parameterDataOffset[dataTypeIndex[p->dtype.align()]] += p->memSize;
@@ -363,8 +485,8 @@ int Main::run()
     }
 
     eventData      = ptr_align<struct EventData>(buf);
-    eventDataStart = ptr_align<struct EventData>(eventData + eventCount);
-    eventDataEnd   = eventDataStart + 2*eventCount;
+    eventDataStart = ptr_align<struct EventData>(eventData + eventCount + 1);
+    eventDataEnd   = ptr_align<struct EventData>((char*)shmem + shmem_len) - 1;
     eventDataWp    = ptr_align<struct EventData*>(eventDataEnd);
     *eventDataWp   = eventDataStart;
 
@@ -376,185 +498,46 @@ int Main::run()
             eventData[i].index = j;
         }
     }
-//    log_debug("%zu %p %p %zu", eventCount, eventDataWp+1, (char*)shmem + shmem_len, shmem_len);
-
-    return daemonize();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::consoleLogging()
-{
-    log4cplus::BasicConfigurator::doConfigure();
-//    log4cplus::SharedAppenderPtr cerr(new log4cplus::ConsoleAppender(true));
-//    cerr->setLayout(
-//        std::auto_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(
-//                LOG4CPLUS_TEXT("%D %p %c %x: %m"))));
-//
-//    log4cplus::Logger::getRoot().addAppender(cerr);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::syslogLogging()
-{
-    log4cplus::helpers::Properties p;
-    p.setProperty(LOG4CPLUS_TEXT("ident"),
-            LOG4CPLUS_STRING_TO_TSTRING(name));
-    p.setProperty(LOG4CPLUS_TEXT("facility"),LOG4CPLUS_TEXT("local0"));
-
-    log4cplus::SharedAppenderPtr appender( new log4cplus::SysLogAppender(p));
-    appender->setLayout(
-            std::auto_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(
-                    LOG4CPLUS_TEXT("%-5p %c <%x>: %m"))));
-
-    log4cplus::Logger root = log4cplus::Logger::getRoot();
-    root.addAppender(appender);
-    root.setLogLevel(log4cplus::INFO_LOG_LEVEL);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::configureLogging(const PdServ::Config& config)
-{
-    if (!config) {
-        syslogLogging();
-        return;
-    }
-
-    typedef std::basic_istringstream<log4cplus::tchar> tistringstream;
-    tistringstream is(LOG4CPLUS_STRING_TO_TSTRING(config.toString()));
-    log4cplus::PropertyConfigurator(is).configure();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int Main::daemonize()
-{
-    pid = ::fork();
-    if (pid < 0) {
-        // Some error occurred
-        ::perror("fork()");
-        return pid;
-    }
-    else if (pid) {
-        // Parent here; go back to the caller
-        for (TaskList::iterator it = task.begin();
-                it != task.end(); ++it)
-            static_cast<Task*>(*it)->rt_init();
-        return 0;
-    }
-
-    const char *env = ::getenv("PDSERV_CONFIG");
-
-    // Load custom configuration file
-    if (!configFile.empty()) {
-        const char *err = config.load(configFile.c_str());
-        if (err)
-            std::cout << "Load config: " << err << std::endl;
-        else {
-            log_debug("Loaded specified configuration file %s",
-                    configFile.c_str());
-        }
-    }
-    else if (env and ::strlen(env)) {
-        // Try to load environment configuration file
-        const char *err = config.load(env);
-
-        if (err)
-            std::cout << "Error loading config file " << env
-                << ": " << err << std::endl;
-        else {
-            log_debug("Loaded ENV config %s", env);
-        }
-    }
-    else {
-        // Try to load default configuration file
-        const char *f = QUOTE(SYSCONFDIR) "/pdserv.conf";
-        const char *err = config.load(f);
-        if (err) {
-            if (::access(f, R_OK))
-                log_debug("Could not access configuration file %s: %s",
-                        f, ::strerror(errno));
-            else
-                std::cout << "Load config error: " << err << std::endl;
-        }
-        else {
-            log_debug("Loaded default configuration file %s", f);
-        }
-    }
-
-    if (!config) {
-        log_debug("No configuration loaded");
-    }
-
-    // Only child runs after this point
-    pid = getpid();
-
-    // Go to root
-#ifndef PDS_DEBUG
-    ::chdir("/");
-    ::umask(0777);
-#endif
-
-    // Reset signal handlers
-    ::signal(SIGHUP,  SIG_DFL);
-    ::signal(SIGINT,  SIG_DFL);
-    ::signal(SIGTERM, SIG_DFL);
-
-    // close all file handles
-    // sysconf() usually returns one more than max file handle
-    long int fd_max = ::sysconf(_SC_OPEN_MAX);
-    if (fd_max < _POSIX_OPEN_MAX)
-        fd_max = _POSIX_OPEN_MAX;
-    else if (fd_max > 100000)
-        fd_max = 512;   // no rediculous values please
-    while (fd_max--) {
-#ifdef PDS_DEBUG
-        if (fd_max == 2)
-            break;
-#endif
-        ::close(fd_max);
-    }
-
-#ifndef PDS_DEBUG
-    // Reopen STDIN, STDOUT and STDERR
-    if (STDIN_FILENO == ::open("/dev/null", O_RDWR)) {
-        dup2(STDIN_FILENO, STDOUT_FILENO);
-        dup2(STDIN_FILENO, STDERR_FILENO);
-
-        fcntl( STDIN_FILENO, F_SETFL, O_RDONLY);
-        fcntl(STDOUT_FILENO, F_SETFL, O_WRONLY);
-        fcntl(STDERR_FILENO, F_SETFL, O_WRONLY);
-    }
-#endif
-
-    // Initialize non-real time tasks
-    for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
-        static_cast<Task*>(*it)->nrt_init();
-
-#ifdef PDS_DEBUG
-    consoleLogging();
-#endif
-
-    // Do the logging configuration. Note that logging may open file handles
-    configureLogging(config["logging"]);
-
-    LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),
-            LOG4CPLUS_TEXT("Started application ")
-            << LOG4CPLUS_STRING_TO_TSTRING(name)
-            << LOG4CPLUS_TEXT(", Version ")
-            << LOG4CPLUS_STRING_TO_TSTRING(version));
-
-    PdServ::Main::startServers(config);
-
-    // Hang here forever
-    while (true) {
-        pause();
-    }
     return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-PdServ::Main::Events Main::getEvents() const
+int Main::postfork_rt_setup()
 {
-    return Events(events.begin(), events.end());
+    // Parent here; go back to the caller
+    for (TaskList::iterator it = task.begin();
+            it != task.end(); ++it)
+        static_cast<Task*>(*it)->rt_init();
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::postfork_nrt_setup()
+{
+    // Parent here; go back to the caller
+    for (TaskList::iterator it = task.begin();
+            it != task.end(); ++it)
+        static_cast<Task*>(*it)->nrt_init();
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::list<const PdServ::Parameter*> Main::getParameters() const
+{
+    return std::list<const PdServ::Parameter*>(
+            parameters.begin(), parameters.end());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::list<const PdServ::Event*> Main::getEvents() const
+{
+    return std::list<const PdServ::Event*>(events.begin(), events.end());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::list<const PdServ::Task*> Main::getTasks() const
+{
+    return std::list<const PdServ::Task*>(task.begin(), task.end());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -594,7 +577,8 @@ void Main::getParameters(Task *task, const struct timespec *t) const
     for (struct SDOStruct *s = sdo; s->count; s++) {
         const Parameter *p = s->parameter;
         const PdServ::Variable *v = p;
-        s->time = *t;
+        s->time.tv_sec = t->tv_sec;
+        s->time.tv_nsec = t->tv_nsec;
         s->rv = p->trigger(reinterpret_cast<struct pdtask *>(task),
                 reinterpret_cast<const struct pdvariable *>(v),
                 p->addr + s->offset,

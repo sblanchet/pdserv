@@ -24,12 +24,13 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include <cc++/thread.h>
-#include <log4cplus/logger.h>
-
 #include <list>
 #include <vector>
 #include <string>
+#include <cc++/thread.h>
+#include <log4cplus/logger.h>
+
+#include "Config.h"
 
 struct timespec;
 
@@ -45,7 +46,7 @@ namespace PdServ {
 
 class Signal;
 class Event;
-class ProcessParameter;
+class Parameter;
 class Task;
 class Session;
 class Config;
@@ -59,40 +60,31 @@ class Main {
         const std::string name;         /**< Application name */
         const std::string version;      /**< Application version */
 
+        void startServers();
+        void stopServers();
+        void setConfig(const Config& c);
+
         // Get the current system time.
         // Reimplement this method in the class specialization
-        virtual int gettime(struct timespec *) const = 0;
-
-        size_t numTasks() const;
-        const Task *getTask(size_t n) const;
-
-        typedef std::list<const ProcessParameter*> ProcessParameters;
-        const ProcessParameters& getParameters() const;
-        int setParameter(const Session *, const ProcessParameter *p,
-                size_t offset, size_t count, const char *data) const;
+        virtual int gettime(struct timespec *) const;
 
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 
         // Poll the current value of a list of signals
-        void poll( Session *session, const Signal * const *s,
+        void poll(const Session *session, const Signal * const *s,
                 size_t nelem, void *buf, struct timespec *t) const;
 
-        typedef std::vector<const Event*> Events;
-        virtual Events getEvents() const = 0;
 
+        virtual std::list<const Task*> getTasks() const = 0;
+        virtual std::list<const Event*> getEvents() const = 0;
+        virtual std::list<const Parameter*> getParameters() const = 0;
         virtual void prepare(Session *session) const = 0;
         virtual void cleanup(const Session *session) const = 0;
         virtual const Event *getNextEvent(const Session* session,
                 size_t *index, bool *state, struct timespec *t) const = 0;
 
     protected:
-
-        typedef std::vector<Task*> TaskList;
-        TaskList task;
-
-        ProcessParameters parameters;
-
-        void startServers(const Config &);
+        void setupLogging();
 
         static int localtime(struct timespec *);
 
@@ -100,16 +92,25 @@ class Main {
                 unsigned int delay_ms, const Signal * const *s,
                 size_t nelem, void * const * pollDest,
                 struct timespec *t) const = 0;
+        void parameterChanged(const Session* session, const Parameter *p,
+                const char* data, size_t offset, size_t count) const;
 
     private:
+
         mutable ost::Semaphore mutex;
 
         const log4cplus::Logger parameterLog;
+
+        PdServ::Config config;
 
         MsrProto::Server *msrproto;
         Supervisor::Server *supervisor;
 //        EtlProto::Server etlproto(this);
 
+//         int setupDaemon();
+
+        void consoleLogging();
+        void syslogLogging();
 };
 
 }

@@ -56,7 +56,8 @@ class DirectoryNode {
         // Method on a parent to insert a node at a specific position
         void pathInsert(Variable* node, const std::string& path);
         void traditionalPathInsert(Variable* node,
-                const std::string& path, char& hidden);
+                const std::string& path,
+                char& hidden, char& persistent);
 
         DirectoryNode* create(const std::string& name);
 
@@ -88,7 +89,6 @@ class DirectoryNode {
         typedef std::queue<std::string> DirQ;
         void insert(Variable* node, DirQ&);
 
-        void erase();
         bool isRoot() const;
         static std::string split(const std::string& path, size_t& pos);
 };

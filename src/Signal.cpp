@@ -28,13 +28,12 @@ using namespace PdServ;
 //////////////////////////////////////////////////////////////////////
 Signal::Signal(
         const std::string& path,
-        const Task* task,
-        unsigned int decimation,
+        double sampleTime,
         const DataType& dtype,
         size_t ndims,
         const size_t *dim):
     Variable(path, dtype, ndims, dim),
-    task(task), decimation(decimation)
+    sampleTime(sampleTime)
 {
 }
 

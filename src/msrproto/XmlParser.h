@@ -26,7 +26,6 @@
 
 #include <stdint.h>
 #include <cstddef>
-#include <map>
 #include <list>
 #include <string>
 
@@ -45,8 +44,6 @@ class XmlParser {
 
         typedef std::pair<const char*, const char*> Attribute;
         typedef std::list<Attribute> AttributeList;
-        //typedef std::map<size_t, size_t> AttributePos;
-        //typedef std::map<char, AttributePos> AttributeMap;
 
         class Element {
             public:
@@ -56,7 +53,7 @@ class XmlParser {
                 operator bool() const;
 
                 const char *getCommand() const;
-                bool find(const char *name, const char *&value) const;
+                bool find(const char *name, const char **value = 0) const;
                 bool isEqual(const char *name, const char *s) const;
                 bool isTrue(const char *name) const;
                 bool getString(const char *name, std::string &s) const;

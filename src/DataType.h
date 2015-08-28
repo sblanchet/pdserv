@@ -98,6 +98,7 @@ class DataType {
         const FieldList& getFieldList() const;
 
         bool operator==(const DataType& other) const;
+        bool operator!=(const DataType& other) const;
         void (* const setValue)(char *&, double);
 
         static const DataType& boolean;

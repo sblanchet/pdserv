@@ -56,14 +56,15 @@ Session::Session( Server *server, ost::TCPSocket *socket):
 {
     timeTask = 0;
 
-    subscriptionManager.resize(main->numTasks());
-    for (size_t i = 0; i < main->numTasks(); ++i) {
-        const PdServ::Task *task = main->getTask(i);
+    std::list<const PdServ::Task*> taskList(main->getTasks());
+    subscriptionManager.reserve(taskList.size());
+    for (; taskList.size(); taskList.pop_front()) {
+        const PdServ::Task *task = taskList.front();
 
-        subscriptionManager[i] = new SubscriptionManager(this, task);
+        subscriptionManager.push_back(new SubscriptionManager(this, task));
 
         if (!timeTask or timeTask->task->sampleTime > task->sampleTime)
-            timeTask = subscriptionManager[i];
+            timeTask = subscriptionManager.back();
     }
 
     // Setup some internal variables
@@ -81,11 +82,11 @@ Session::Session( Server *server, ost::TCPSocket *socket):
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
+    server->sessionClosed(this);
+
     for (SubscriptionManagerVector::iterator it = subscriptionManager.begin();
             it != subscriptionManager.end(); ++it)
         delete *it;
-
-    server->sessionClosed(this);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -187,7 +188,13 @@ void Session::run()
     ssize_t n;
     XmlParser inbuf;
 
-    while (xmlstream.good()) {
+    while (*server->active) {
+        if (!xmlstream.good()) {
+            LOG4CPLUS_FATAL_STR(server->log,
+                    LOG4CPLUS_TEXT("Error occurred in output stream"));
+            return;
+        }
+
         tcp.pubsync();
 
         try {
@@ -231,8 +238,8 @@ void Session::run()
 
                 if (!tcp.commandId.empty()) {
                     XmlElement ack(tcp.createElement("ack"));
-                    XmlElement::Attribute(ack,"id").setEscaped(
-                            tcp.commandId.c_str());
+                    XmlElement::Attribute(ack,"id")
+                        .setEscaped(tcp.commandId);
 
                     tcp.commandId.clear();
                 }
@@ -288,12 +295,12 @@ void Session::run()
                 XmlElement::Attribute(broadcast, "time") << (*it)->ts;
 
                 if (!(*it)->action.empty())
-                    XmlElement::Attribute(broadcast, "action").setEscaped(
-                            (*it)->action.c_str());
+                    XmlElement::Attribute(broadcast, "action")
+                        .setEscaped((*it)->action);
 
                 if (!(*it)->message.empty())
-                    XmlElement::Attribute(broadcast, "text").setEscaped(
-                            (*it)->message.c_str());
+                    XmlElement::Attribute(broadcast, "text")
+                        .setEscaped((*it)->message);
 
                 delete *it;
             }
@@ -311,9 +318,6 @@ void Session::run()
             Event::toXml( tcp, mainEvent, index, state, t);
         }
     }
-
-    LOG4CPLUS_FATAL_STR(server->log,
-            LOG4CPLUS_TEXT("Error occurred in output stream"));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -430,10 +434,10 @@ void Session::readChannel(const XmlParser::Element& cmd)
     if (c) {
         char buf[c->signal->memSize];
 
-        c->signal->getValue(this, buf);
+        static_cast<const PdServ::Variable*>(c->signal)->getValue(this, buf);
 
         XmlElement channel(tcp.createElement("channel"));
-        c->setXmlAttributes(channel, shortReply, buf, 16, false);
+        c->setXmlAttributes(channel, shortReply, buf, 16);
 
         return;
     }
@@ -446,7 +450,7 @@ void Session::readChannel(const XmlParser::Element& cmd)
             continue;
 
         XmlElement el(channels.createChild("channel"));
-        (*it)->setXmlAttributes( el, shortReply, 0, 16, false);
+        (*it)->setXmlAttributes( el, shortReply, 0, 16);
     }
 }
 
@@ -455,7 +459,7 @@ void Session::listDirectory(const XmlParser::Element& cmd)
 {
     const char *path;
 
-    if (!cmd.find("path", path))
+    if (!cmd.find("path", &path))
         return;
 
     XmlElement element(tcp.createElement("listing"));
@@ -492,7 +496,7 @@ void Session::readParameter(const XmlParser::Element& cmd)
         cmd.getString("id", id);
 
         XmlElement xml(tcp.createElement("parameter"));
-        p->setXmlAttributes(xml, buf, ts, shortReply, hex, 16, false);
+        p->setXmlAttributes(xml, buf, ts, shortReply, hex, 16);
 
         return;
     }
@@ -515,7 +519,7 @@ void Session::readParameter(const XmlParser::Element& cmd)
 
         while (it != parameters.end() and mainParam == (*it)->mainParam) {
             XmlElement xml(parametersElement.createChild("parameter"));
-            (*it++)->setXmlAttributes(xml, buf, ts, shortReply, hex, 16, false);
+            (*it++)->setXmlAttributes(xml, buf, ts, shortReply, hex, 16);
         }
     }
 }
@@ -562,10 +566,10 @@ void Session::readStatistics(const XmlParser::Element& /*cmd*/)
     for (StatList::const_iterator it = stats.begin();
             it != stats.end(); it++) {
         XmlElement client(clients.createChild("client"));
-        XmlElement::Attribute(client,"name").setEscaped(
-                (*it).remote.size() ? (*it).remote.c_str() : "unknown");
-        XmlElement::Attribute(client,"apname").setEscaped(
-                (*it).client.size() ? (*it).client.c_str() : "unknown");
+        XmlElement::Attribute(client,"name")
+            .setEscaped((*it).remote.size() ? (*it).remote : "unknown");
+        XmlElement::Attribute(client,"apname")
+            .setEscaped((*it).client.size() ? (*it).client : "unknown");
         XmlElement::Attribute(client,"countin") << (*it).countIn;
         XmlElement::Attribute(client,"countout") << (*it).countOut;
         XmlElement::Attribute(client,"connectedtime") << (*it).connectedTime;
@@ -625,12 +629,11 @@ void Session::writeParameter(const XmlParser::Element& cmd)
 
     int errnum;
     const char *s;
-    size_t count;
-    if (cmd.find("hexvalue", s)) {
-        errnum = p->setHexValue(this, s, startindex, count);
+    if (cmd.find("hexvalue", &s)) {
+        errnum = p->setHexValue(this, s, startindex);
     }
-    else if (cmd.find("value", s)) {
-        errnum = p->setDoubleValue(this, s, startindex, count);
+    else if (cmd.find("value", &s)) {
+        errnum = p->setDoubleValue(this, s, startindex);
     }
     else
         return;
@@ -718,20 +721,16 @@ void Session::xsad(const XmlParser::Element& cmd)
                 // If user did not supply a reduction, limit to a
                 // max of 10Hz automatically
                 reduction = static_cast<unsigned>(
-				0.1 / mainSignal->task->sampleTime
-                                / mainSignal->decimation + 0.5);
+				0.1/mainSignal->sampleTime + 0.5);
         }
         else if (!foundReduction) {
             // Quite possibly user input; choose reduction for 1Hz
             reduction = static_cast<unsigned>(
-                    1.0 / mainSignal->task->sampleTime
-                    / mainSignal->decimation
-                    / blocksize + 0.5);
+                    1.0/mainSignal->sampleTime / blocksize + 0.5);
         }
 
-        subscriptionManager[c->taskIdx]->subscribe(c, group,
-                reduction * mainSignal->decimation,
-                blocksize, base64, precision);
+        subscriptionManager[c->taskIdx]->subscribe(
+                c, group, reduction, blocksize, base64, precision);
     }
 }
 
@@ -776,11 +775,6 @@ Session::TCPStream::TCPStream( ost::TCPSocket *server):
     std::ostringstream os;
     os << peer << ':' << port;
     this->peer = os.str();
-
-    if (!server->onAccept(peer, port)) {
-        error(errConnectRejected);
-        return;
-    }
 
     file = ::fdopen(so, "w");
     if (!file) {

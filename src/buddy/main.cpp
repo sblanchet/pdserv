@@ -24,71 +24,24 @@
 #include "config.h"
 #include "../Debug.h"
 
-#include <daemon.h>
-#include <sstream>
-#include <iostream>
-#include <cerrno>
-#include <cstring>
-#include <sys/types.h>          // wait()
-#include <sys/wait.h>           // wait()
-#include <sys/ioctl.h>          // ioctl()
-#include <fcntl.h>              // open()
-#include <unistd.h>             // getopt()
-#include <signal.h>             // getopt()
-#include <cstdlib>              // atoi()
-
-#include <log4cplus/consoleappender.h>
+#include <daemon.h>         // daemon_*()
+#include <cerrno>           // errno
+#include <sstream>          // ostringstream
+#include <sys/types.h>      // wait(), kill()
+#include <sys/wait.h>       // wait()
+#include <sys/ioctl.h>      // ioctl()
+#include <fcntl.h>          // open()
+#include <unistd.h>         // getopt(), sleep()
+#include <signal.h>         // kill()
+#include <cstdlib>          // atoi()
 
 #include "Main.h"
 #include "../Config.h"
 
 int debug = 3;
-pid_t app[MAX_APPS];
-
-const char *device_node = "/dev/etl";
-
-/////////////////////////////////////////////////////////////////////////////
-void cleanup(int,void*)
-{
-    ::daemon_pid_file_remove();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void sighandler(int signal)
-{
-    int status;
-    pid_t pid;
-    switch (signal) {
-        case SIGCHLD:
-            pid = ::wait(&status);
-            if (pid > 0) {
-                for (size_t i = 0; i < MAX_APPS; ++i) {
-                    if (app[i] == pid)
-                        app[i] = 0;
-                }
-            }
-            log_debug("Child killed %i", status);
-            break;
-
-        case SIGUSR1:
-            debug++;
-            break;
-
-        case SIGUSR2:
-            if (debug)
-                debug--;
-            break;
-
-        default:
-            LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),
-                    LOG4CPLUS_TEXT("PID ") << getpid()
-                    << LOG4CPLUS_TEXT(" received signal ") << signal
-                    << LOG4CPLUS_TEXT(". Exiting."));
-
-            ::kill(0, SIGTERM);
-            ::exit(EXIT_FAILURE);
-    }
-}
+bool fg = false;
+const char* configFile;
+const char* default_config = QUOTE(SYSCONFDIR) "/buddy.conf";
 
 /////////////////////////////////////////////////////////////////////////////
 void printhelp(const char *exe, const std::string &default_config)
@@ -103,10 +56,8 @@ void printhelp(const char *exe, const std::string &default_config)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void parse_command_line (int argc, char **argv,
-        bool &fg, std::string &configFile)
+void parse_command_line (int argc, char **argv)
 {
-    std::string default_config = configFile;
     int opt;
 
     // Parse command line options
@@ -120,8 +71,16 @@ void parse_command_line (int argc, char **argv,
 
             case 'k':
                 // Kill daemon
-                if (daemon_pid_file_kill(SIGTERM)) {
-                    std::cerr << "ERROR: No running process" << std::endl;
+                if (daemon_pid_file_kill_wait(SIGTERM,5) < 0) {
+                    int rv = errno;
+                    std::cerr << "Failed to terminate daemon: "
+                        << strerror(errno)
+                        << std::endl;
+                    if (rv != ENOENT and rv != ESRCH) {
+                        std::cerr << "Killing it with SIGKILL" << std::endl;
+                        daemon_pid_file_kill(SIGKILL);
+                        daemon_pid_file_remove();
+                    }
                     ::exit(EXIT_FAILURE);
                 }
                 else
@@ -134,7 +93,7 @@ void parse_command_line (int argc, char **argv,
                 break;
 
             case 'c':
-                if (::access(optarg, R_OK)) {
+                if (optarg[0] and ::access(optarg, R_OK)) {
                     int rv = errno;
                     std::cerr << "Error: Cannot read configuration " << optarg
                         << ": " << strerror(rv) << std::endl;
@@ -152,197 +111,300 @@ void parse_command_line (int argc, char **argv,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void console_logging(bool fg)
+int serve(const std::string& file, const PdServ::Config& config,
+        int mainfd)
 {
-    if (!fg)
-        return;
+    struct app_properties app_properties;
+    int fd, rv;
 
-    log4cplus::SharedAppenderPtr cerr(new log4cplus::ConsoleAppender(true));
-    cerr->setLayout(
-            std::auto_ptr<log4cplus::Layout>(new log4cplus::SimpleLayout()));
+    const char* const file_cstr = file.c_str();
 
-    log4cplus::Logger::getRoot().addAppender(cerr);
+    // Wait until the file is available
+    for (fd = 1; ::access(file_cstr, F_OK); ++fd) {
+        rv = -errno;
+        daemon_log(LOG_WARNING,
+                "Could not access device file %s; Waiting...", file_cstr);
+        if (fd > 10)
+            goto out;
+
+        ::sleep(1);
+    }
+
+    // Open the application's file handle
+    fd = ::open(file_cstr, O_NONBLOCK | O_RDONLY);
+    if (fd == -1) {
+        rv = -errno;
+        daemon_log(LOG_ERR,
+                "Could not open device %s: %s", file_cstr, strerror(errno));
+        goto out;
+    }
+    daemon_log(LOG_INFO, "Successfully opened %s", file_cstr);
+
+    // Get the properties
+    if (::ioctl(fd, GET_APP_PROPERTIES, &app_properties)) {
+        rv = -errno;
+        daemon_log(LOG_ERR,
+                "Could not get process information for %s: %s",
+                file_cstr, strerror(errno));
+        goto out;
+    }
+
+    rv = fork();
+    if (!rv) {
+        // Child
+        //daemon_signal_done();
+        ::close(mainfd);
+        ::exit(Main(app_properties, config[app_properties.name], fd).serve());
+    }
+    else if (rv < 0) {
+        // Error occurred
+        daemon_log(LOG_ERR, "fork(): %s", strerror(errno));
+    }
+
+    // Parent continuing here
+
+out:
+    ::close(fd);
+
+    return rv;
 }
+
+#define MAX(a,b) ((a) > (b) ? (a) : (b))
 
 /////////////////////////////////////////////////////////////////////////////
 int main(int argc, char **argv)
 {
-    std::string configFile;
     PdServ::Config config;
     pid_t pid;
-    bool fg = 0;
-
-    daemon_pid_file_ident = daemon_ident_from_argv0(argv[0]);
-
-    // Set default configuration file
-    configFile
-        .append(QUOTE(SYSCONFDIR))
-        .append("/buddy.conf");
-
-    parse_command_line(argc, argv, fg, configFile);
-
-    bool configAccess = !::access(configFile.c_str(), R_OK);
-    if (configAccess) {
-        const char *err = config.load(configFile.c_str());
-        if (err) {
-            std::cerr << err << std::endl;
-            exit(EXIT_FAILURE);
-        }
-        log_debug("Loaded configuration file %s", configFile.c_str());
-    }
-    else if (!::access(configFile.c_str(), F_OK)) {
-        fprintf(stderr, "Configuration file %s is not readable",
-                configFile.c_str());
-    }
-
-    // Get the logging configutation
-//    configure_logging(config["logging"]);
-    console_logging(fg);
-
+    int sigfd, maxfd, rv, etl_main;
     log4cplus::Logger log = log4cplus::Logger::getRoot();
+    const char *device_node = "/dev/etl";
+    int app[MAX_APPS];
+    std::string path;
 
-    if (configAccess)
-        LOG4CPLUS_INFO(log,
-                LOG4CPLUS_TEXT("Configuration file ")
-                << LOG4CPLUS_STRING_TO_TSTRING(configFile));
+    memset(app, 0, sizeof(app));
 
-    // Make sure no other instance is running
-    if ((pid = daemon_pid_file_is_running()) > 0) {
-        LOG4CPLUS_ERROR(log,
-                LOG4CPLUS_TEXT("Process already running with pid " << pid));
-        ::exit(EBUSY);
+    daemon_pid_file_ident = daemon_log_ident =
+        daemon_ident_from_argv0(argv[0]);
+
+    // First parse command lines
+    parse_command_line(argc, argv);
+
+    // Do console logging when in foreground
+#if DAEMON_SET_VERBOSITY_AVAILABLE
+    if (fg) {
+        //daemon_log_use = DAEMON_LOG_SDERR;
+        daemon_set_verbosity(debug);
     }
+#endif
 
-    // Foreground or daemon
     if (!fg) {
-        pid = daemon_fork();
+        // Make sure no other instance is running
+        if ((pid = daemon_pid_file_is_running()) > 0) {
+            daemon_log(LOG_ERR,
+                    "Process already running with pid %i", pid);
+            return EBUSY;
+        }
 
-        if (pid) {
-            LOG4CPLUS_INFO(log,
-                    LOG4CPLUS_TEXT("Daemon started with pid ") << pid);
-            ::exit(EXIT_SUCCESS);
+        // Prepare pipe for daemon to pass return value
+        if (daemon_retval_init() < 0) {
+            daemon_log(LOG_ERR,
+                    "Failed to create communication channel with daemon");
+            return errno;
+        }
+
+        // Fork off the child
+        pid = daemon_fork();
+        if (pid < 0) {
+            daemon_log(LOG_CRIT, "Failed to fork daemon. Exiting...");
+            return errno;
+        }
+        else if (pid) { /* The parent */
+            int rv = daemon_retval_wait(10);
+
+            if (rv < 0) {
+                rv = errno;
+                daemon_log(LOG_ERR,
+                        "Could not receive return value "
+                        "from daemon process %i: %s",
+                        pid, strerror(errno));
+            }
+            else if (rv) {
+                daemon_log(LOG_ERR,
+                        "Daemon process had problems starting: %s",
+                        strerror(rv));
+            }
+
+            daemon_retval_done();
+            return rv;
+        }
+
+        // Remove and create new pid files
+        if (daemon_pid_file_create() < 0) {
+            // Warn in the logger, but otherwise carry on
+            daemon_log(LOG_WARNING,
+                    "Could not create pid file %s: %s",
+                    daemon_pid_file_proc_default(), strerror(errno));
+        }
+
+        // Install some signal handlers
+        //  SIGCHLD: when a child finishes
+        //  SIGHUP: reload configuration file
+        //  SIGTERM: called to finish processes
+        if (daemon_signal_init(SIGCHLD, SIGHUP, SIGTERM, -1) < 0) {
+            rv = errno;
+            daemon_log(LOG_ERR, "Could not install daemon signal handlers");
+            goto finished;
+        }
+
+        /* The daemon */
+        daemon_log(LOG_INFO, "Daemon started with pid %i", getpid());
+    }
+    else {
+        // In foreground mode, only catch SIGCHLD
+        if (daemon_signal_init(SIGCHLD, -1) < 0) {
+            rv = errno;
+            daemon_log(LOG_ERR, "Could not install daemon signal handlers");
+            goto finished;
         }
     }
 
-    // Install some signal handlers
-    if (::signal(SIGTERM, sighandler) == SIG_ERR
-            or ::signal(SIGHUP,  sighandler) == SIG_ERR
-            or ::signal(SIGINT,  sighandler) == SIG_ERR
-            or ::signal(SIGCHLD, sighandler) == SIG_ERR) {
-        LOG4CPLUS_WARN(log,
-                LOG4CPLUS_TEXT("Could not set signal handler: ")
-                << LOG4CPLUS_C_STR_TO_TSTRING(strerror(errno)));
+    // Use default configuration file if it exists and nothing has been
+    // specified on the command line
+    if (!configFile and !::access(default_config, R_OK))
+        configFile = default_config;
+
+    // Load configuration file
+    if (configFile and configFile[0]) {
+        const char *err = config.load(configFile);
+        if (err) {
+            rv = EACCES;
+            daemon_log(LOG_ERR, "%s", err);
+            goto finished;
+        }
+        daemon_log(LOG_INFO, "Successfully loaded configuration file %s",
+                configFile);
     }
 
-    // Cleanup on normal exit
-    ::on_exit(cleanup, 0);
-
-    // Remove and create new pid files
-    daemon_pid_file_remove();
-    if (daemon_pid_file_create() and !fg) {
-        LOG4CPLUS_WARN(log,
-                LOG4CPLUS_TEXT("Could not create log file ")
-                << LOG4CPLUS_C_STR_TO_TSTRING(daemon_pid_file_proc_default()));
-    }
-
-    std::string path;
-    path = device_node;
-    path.append(1, '0');
-    int etl_main = ::open(path.c_str(), O_NONBLOCK | O_RDWR);
+    // Open main etherlab file
+    path.append(device_node).append(1, '0');
+    etl_main = ::open(path.c_str(), O_NONBLOCK | O_RDWR);
     if (etl_main < 0) {
-        LOG4CPLUS_FATAL(log,
-                LOG4CPLUS_TEXT("Could not open main device ")
-                << LOG4CPLUS_STRING_TO_TSTRING(path));
-        return errno;
+        rv = errno;
+        daemon_log(LOG_ERR, "Could not open main etherlab device %s: %s",
+                path.c_str(), strerror(errno));
+        goto finished;
     }
-    log_debug("open(%s) = %i", path.c_str(), etl_main);
 
-    do {
-        uint32_t apps;
+    if (!fg) {
+        // Finished all initializing. Can send parent to sleep now
+        daemon_retval_send(0);
+        daemon_retval_done();
+    }
 
-        ioctl(etl_main, RTAC_GET_ACTIVE_APPS, &apps);
-        for (unsigned i = 0; i < MAX_APPS; ++i, apps >>= 1) {
-            if ((apps & 0x01) and !app[i]) {
+    // Setup file handles for select()
+    sigfd = daemon_signal_fd();
+    if (sigfd < 0) {
+        rv = errno;
+        daemon_log(LOG_ERR, "Could not get file descriptor for signals: %s",
+                strerror(errno));
+        goto finished;
+    }
+    maxfd = MAX(sigfd,etl_main) + 1;
+
+    while (true) {
+        uint32_t apps = 0;
+
+        ::ioctl(etl_main, RTAC_GET_ACTIVE_APPS, &apps);
+        for (unsigned app_id = 0;
+                apps and app_id < MAX_APPS; ++app_id, apps >>= 1) {
+            if ((apps & 0x01) and !app[app_id]) {
                 // A new application started
-                log_debug("New application instance %i", i);
+                daemon_log(LOG_INFO, "New application instance %i", app_id);
 
-                struct app_properties app_properties;
-                std::string file;
-                int fd;
+                std::ostringstream path;
+                path << device_node << app_id + 1;
 
-                {
-                    std::ostringstream os;
-                    os << device_node << (i+1);
-                    file = os.str();
+                app[app_id] = serve(path.str(), config, etl_main);
+                if (app[app_id] <= 0) {
+                    daemon_log(LOG_ERR,
+                            "Could not install buddy "
+                            "for real time instance %i", app_id);
+                    app[app_id] = 0;
                 }
-
-                // Wait until the file is available
-                while (::access(file.c_str(), F_OK)) {
-                    LOG4CPLUS_INFO(log,
-                            LOG4CPLUS_TEXT("Could not access device file ")
-                            << LOG4CPLUS_STRING_TO_TSTRING(file)
-                            << LOG4CPLUS_TEXT("; waiting..."));
-                    sleep(1);
-                }
-
-                // Open the application's file handle
-                fd = ::open(file.c_str(), O_NONBLOCK | O_RDONLY);
-
-                if (fd == -1) {
-                    LOG4CPLUS_ERROR(log,
-                            LOG4CPLUS_TEXT("Could not open device ")
-                            << LOG4CPLUS_STRING_TO_TSTRING(file));
-                    continue;
-                }
-                log_debug("open(%s) = %i", file.c_str(), fd);
-
-                // Get the properties
-                if (!::ioctl(fd, GET_APP_PROPERTIES, &app_properties)) {
-                    app[i] = fork();
-                    if (!app[i]) {
-                        // Swap the file descriptors fd and etl_main
-                        if (::dup2(fd, etl_main) != -1) {
-                            ::close(fd);
-                            fd = etl_main;
-                        }
-
-                        Main(app_properties, config[app_properties.name], fd)
-                            .serve();
-                    }
-                }
-                else
-                    LOG4CPLUS_ERROR(log, LOG4CPLUS_TEXT(
-                                "Could not get process information for ")
-                            << LOG4CPLUS_STRING_TO_TSTRING(file));
-                ::close(fd);
             }
-            else if (!(apps & 0x01) and app[i]) {
-                LOG4CPLUS_INFO(log,
-                        LOG4CPLUS_TEXT("Finished serving application pid ")
-                        << app[i]);
-                ::kill(app[i], SIGTERM);
-                app[i] = 0;
+            else if (!(apps & 0x01) and app[app_id]) {
+                daemon_log(LOG_INFO,
+                        "Finished with application instance %i pid %i",
+                        app_id, app[app_id]);
+                ::kill(app[app_id], SIGTERM);
+                app[app_id] = 0;
             }
         }
 
         // Wait until the status of a child or that of the main changes
-        int n;
+        fd_set fds;
+        FD_ZERO(&fds);
+
         do {
-            fd_set fds;
-
-            FD_ZERO(&fds);
             FD_SET(etl_main, &fds);
+            FD_SET(sigfd, &fds);
 
-            n = ::select(etl_main + 1, &fds, 0, 0, 0);
-            log_debug("select(etl_main) = %i", n);
-            if (n < 0 and errno != EINTR) {
-                // Some error occurred in select()
-                n = errno;
+            if (::select(maxfd, &fds, 0, 0, 0) < 0) {
+                // Interrupt by signal handler
+                if (errno == EINTR)
+                    continue;
 
-                // Kill all the children
-                ::kill(0, SIGKILL);
-                return n;
+                daemon_log(LOG_CRIT, "select() failed: %s", strerror(errno));
+                goto finished;
             }
-        } while (n <= 0);
-    } while (true);
+
+            if (FD_ISSET(sigfd, &fds)) {
+                int sig = daemon_signal_next();
+
+                switch (sig) {
+                    case SIGHUP:
+                        daemon_log(LOG_INFO, "hup");
+                        for (unsigned i = 0; i < MAX_APPS; ++i) {
+                            if (app[i]) // app[i] is never negative
+                                ::kill(app[i], SIGHUP);
+                        }
+                        break;
+
+                    case SIGCHLD:
+                        // One of the children finished
+                        pid = wait(&rv);
+                        daemon_log(LOG_INFO,
+                                "Child %i finished with return value %i",
+                                pid, rv);
+                        break;
+
+                    case SIGTERM:
+                    case SIGINT:
+                        goto finished;
+
+                    case 0:
+                        daemon_log(LOG_ERR, "daemon_signal_next() failed: %s",
+                                strerror(errno));
+                        goto finished;
+
+                    default:
+                        daemon_log(LOG_INFO,
+                                "Received unknown signal %i(%s)",
+                                sig, strsignal(sig));
+                        break;
+                }
+            }
+        } while (!FD_ISSET(etl_main, &fds)); // ETL main has a new event
+    }
+
+finished:
+    // Send everyone a term
+    ::kill(0, SIGTERM);
+
+    daemon_pid_file_remove();
+
+    daemon_log(LOG_NOTICE, "Exiting...");
+
+    return 0;
 }

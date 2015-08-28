@@ -30,12 +30,8 @@
 #include <sys/ioctl.h>          // ioctl()
 #include <unistd.h>             // fork()
 #include <sys/mman.h>
-#include <sys/select.h>
-#include <sys/wait.h>           // waitpid()
-#include <log4cplus/configurator.h>
-#include <log4cplus/syslogappender.h>
-#include <log4cplus/layout.h>
-#include <log4cplus/configurator.h>
+#include <sys/select.h>         // select()
+#include <sys/signalfd.h>       // signalfd()
 
 
 #include "Main.h"
@@ -57,17 +53,147 @@ struct SessionData {
 Main::Main(const struct app_properties& p,
         const PdServ::Config& config, int fd):
     PdServ::Main(p.name, p.version),
-    app_properties(p),
-    log(log4cplus::Logger::getRoot()),
+    app_properties(p), log(log4cplus::Logger::getRoot()),
+    config(config), pid(::getpid()), fd(fd),
     paramMutex(1), parameterBuf(0)
 {
-    pid = ::getpid();
+    setConfig(config);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Main::~Main()
+{
+    delete mainTask;
+
+    while (parameters.size()) {
+        delete parameters.front();
+        parameters.pop_front();
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::serve()
+{
+    sigset_t mask;
+    fd_set fds;
+    int maxfd, sfd, rv;
+
+    setupLogging();
+    postfork_nrt_setup();
+    startServers();
+
+    // Set signal mask
+    if (::sigemptyset(&mask)
+            or ::sigaddset(&mask, SIGHUP)      // Reread configuration
+            or ::sigaddset(&mask, SIGINT)      // Ctrl-C
+            or ::sigaddset(&mask, SIGTERM)     // standard kill signal
+            or ::sigprocmask(SIG_BLOCK, &mask, NULL)) { 
+        rv = errno;
+        LOG4CPLUS_FATAL_STR(log,
+                LOG4CPLUS_TEXT("Failed to set correct signal mask"));
+        goto out;
+    }
+
+    // Get a file descriptor for reading signals
+    sfd = ::signalfd(-1, &mask, SFD_NONBLOCK);
+    if (sfd == -1) {
+        rv = errno;
+        LOG4CPLUS_FATAL(log,
+                LOG4CPLUS_TEXT("Getting signal file descriptor failed: ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(errno)));
+        goto out;
+    }
+
+    maxfd = (sfd > fd ? sfd : fd) + 1;
+
+    FD_ZERO(&fds);
+    while (true) {
+        int n;
+
+        FD_SET(fd, &fds);
+        FD_SET(sfd, &fds);
+
+        n = ::select(maxfd, &fds, 0, 0, 0);
+        if (n <= 0) {
+            // Some error occurred in select()
+            rv = errno;
+            LOG4CPLUS_FATAL(log,
+                    LOG4CPLUS_TEXT("Received fatal error in select() = "
+                        << errno));
+            goto out;
+        }
+
+        if (FD_ISSET(fd, &fds)) {
+            // New data pages
+            struct data_p data_p;
+            ioctl(fd, GET_WRITE_PTRS, &data_p);
+
+            if (data_p.wp == -ENOSPC) {
+                readPointer = ioctl(fd, RESET_BLOCKIO_RP);
+                continue;
+            }
+
+            for (int i = readPointer; i < data_p.wp; ++i) {
+
+                // Mark photo as ready
+                photoReady[i] = photoCount++;
+
+                // Go through event list to see if something happened
+                for (EventList::const_iterator it = events.begin();
+                        it != events.end(); ++it)
+                    eventQ->test(*it, i);
+            }
+
+            // Tell kernel that reading has finished
+            readPointer = ioctl(fd, SET_BLOCKIO_RP, data_p.wp);
+        }
+
+        if (FD_ISSET(sfd, &fds)) {
+            // Signal received
+            struct signalfd_siginfo fdsi;
+
+            printf("Child %i got signal\n", pid);
+            ssize_t s = ::read(sfd, &fdsi, sizeof(struct signalfd_siginfo));
+            if (s != sizeof(struct signalfd_siginfo)) {
+                rv = errno;
+                LOG4CPLUS_FATAL_STR(log,
+                        LOG4CPLUS_TEXT("Received incorrect length when "
+                            "reading signal file descriptor"));
+                goto out;
+            }
+
+            switch (fdsi.ssi_signo) {
+                case SIGHUP:
+                    LOG4CPLUS_INFO_STR(log,
+                            LOG4CPLUS_TEXT("SIGUP received. Reloading config"));
+                    config.reload();
+                    setConfig(config[name]);
+                    break;
+
+                default:
+                    LOG4CPLUS_INFO(log,
+                            LOG4CPLUS_TEXT("Terminating on ")
+                            << LOG4CPLUS_C_STR_TO_TSTRING(
+                                strsignal(fdsi.ssi_signo))); 
+                    stopServers();
+                    return 0;
+            }
+        }
+    }
+
+out:
+    LOG4CPLUS_FATAL(log,
+            LOG4CPLUS_TEXT("Failed: ")
+            << LOG4CPLUS_C_STR_TO_TSTRING(strerror(errno)));
+    stopServers();
+    return rv;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::postfork_nrt_setup()
+{
     size_t shmem_len;
     size_t eventCount = 0;
-
-    this->fd = fd;
-
-    setupLogging(config["logging"]);
 
     LOG4CPLUS_INFO(log,
             LOG4CPLUS_TEXT("Started new application server (pid=")
@@ -110,18 +236,18 @@ Main::Main(const struct app_properties& p,
 
     // Get a copy of the parameters
     parameterBuf = new char[app_properties.rtP_size];
-    if (ioctl(fd, GET_PARAM, parameterBuf))
+    if (::ioctl(fd, GET_PARAM, parameterBuf))
         goto out;
 
     char path[app_properties.variable_path_len+1];
     struct signal_info si;
     si.path = path;
     si.path_buf_len = app_properties.variable_path_len + 1;
-    LOG4CPLUS_DEBUG(log, LOG4CPLUS_TEXT("Adding parameters:"));
+    LOG4CPLUS_DEBUG_STR(log, LOG4CPLUS_TEXT("Adding parameters:"));
     for (size_t i = 0; i < app_properties.param_count; i++) {
 
         si.index = i;
-        if (ioctl(fd, GET_PARAM_INFO, &si) or !si.dim[0]) {
+        if (::ioctl(fd, GET_PARAM_INFO, &si) or !si.dim[0]) {
             LOG4CPLUS_WARN(log,
                     LOG4CPLUS_TEXT("Getting parameter properties for ")
                     << i << LOG4CPLUS_TEXT(" failed."));
@@ -131,7 +257,7 @@ Main::Main(const struct app_properties& p,
         Parameter *p = new Parameter( this, parameterBuf + si.offset,
                 SignalInfo(app_properties.name, &si));
         parameters.push_back(p);
-        LOG4CPLUS_DEBUG(log, LOG4CPLUS_STRING_TO_TSTRING(p->path));
+        LOG4CPLUS_DEBUG_STR(log, LOG4CPLUS_STRING_TO_TSTRING(p->path));
     }
 
     photoReady = new unsigned int[app_properties.rtB_count];
@@ -151,7 +277,6 @@ Main::Main(const struct app_properties& p,
 
     mainTask = new Task(this, 1.0e-6 * app_properties.sample_period,
             photoReady, photoAlbum, &app_properties);
-    task.push_back(mainTask);
     LOG4CPLUS_DEBUG(log,
             LOG4CPLUS_TEXT("Added Task with sample time ")
             << mainTask->sampleTime);
@@ -216,7 +341,7 @@ Main::Main(const struct app_properties& p,
             it->second = PdServ::Config();
         }
 
-        LOG4CPLUS_DEBUG(log, LOG4CPLUS_STRING_TO_TSTRING(s->path));
+        LOG4CPLUS_DEBUG_STR(log, LOG4CPLUS_STRING_TO_TSTRING(s->path));
     }
 
     // Report whether some events were not discovered
@@ -233,89 +358,7 @@ Main::Main(const struct app_properties& p,
 
     readPointer = ioctl(fd, RESET_BLOCKIO_RP);
 
-    startServers(config);
-
-    return;
-
-out:
-    LOG4CPLUS_FATAL(log,
-            LOG4CPLUS_TEXT("Failed: ")
-            << LOG4CPLUS_C_STR_TO_TSTRING(strerror(errno)));
-    ::exit(errno);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::setupLogging(const PdServ::Config& config)
-{
-    if (config) {
-        typedef std::basic_istringstream<log4cplus::tchar> tistringstream;
-        tistringstream is(LOG4CPLUS_STRING_TO_TSTRING(config.toString()));
-        log4cplus::PropertyConfigurator(is).configure();
-        return;
-    }
-
-    log4cplus::helpers::Properties p;
-    p.setProperty(LOG4CPLUS_TEXT("ident"),
-            LOG4CPLUS_TEXT("etherlab_buddy"));
-    p.setProperty(LOG4CPLUS_TEXT("facility"),LOG4CPLUS_TEXT("local0"));
-
-    log4cplus::SharedAppenderPtr appender( new log4cplus::SysLogAppender(p));
-    appender->setLayout(
-            std::auto_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(
-                    LOG4CPLUS_TEXT("%-5p %c <%x>: %m"))));
-
-    log4cplus::Logger root = log4cplus::Logger::getRoot();
-    root.addAppender(appender);
-    root.setLogLevel(log4cplus::INFO_LOG_LEVEL);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::serve()
-{
-    while (true) {
-        fd_set fds;
-        int n;
-
-        FD_ZERO(&fds);
-        FD_SET(fd, &fds);
-
-        n = ::select(fd + 1, &fds, 0, 0, 0);
-        if (n < 0) {
-            // Some error occurred in select()
-            LOG4CPLUS_FATAL(log,
-                    LOG4CPLUS_TEXT("Received fatal error in select() = "
-                        << -errno));
-            goto out;
-        }
-        else if (!n) {
-            // Signal was caught, check whether the children are still there
-            LOG4CPLUS_WARN_STR(log, LOG4CPLUS_TEXT(
-                        "Received misterious interrupt during select()"));
-            continue;
-        }
-
-        struct data_p data_p;
-        ioctl(fd, GET_WRITE_PTRS, &data_p);
-
-        if (data_p.wp == -ENOSPC) {
-            readPointer = ioctl(fd, RESET_BLOCKIO_RP);
-            continue;
-        }
-
-        for (int i = readPointer; i < data_p.wp; ++i) {
-
-            // Mark photo as ready
-            photoReady[i] = photoCount++;
-
-            // Go through event list to see if something happened
-            for (EventList::const_iterator it = events.begin();
-                    it != events.end(); ++it)
-                eventQ->test(*it, i);
-        }
-
-        // Tell kernel that reading has finished
-        readPointer = ioctl(fd, SET_BLOCKIO_RP, data_p.wp);
-    }
+    return 0;
 
 out:
     LOG4CPLUS_FATAL(log,
@@ -334,25 +377,14 @@ void Main::processPoll(unsigned int /*delay_ms*/,
     for (size_t i = 0; i < nelem; ++i) {
         const Signal *signal = dynamic_cast<const Signal *>(s[i]);
         if (signal)
-            signal->info.read( pollDest[i], data + signal->offset);
+            std::copy(data + signal->offset,
+                    data + signal->offset + signal->memSize,
+                    reinterpret_cast<char*>(pollDest[i]));
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::gettime(struct timespec *ts) const
-{
-    struct timeval tv;
-    if (gettimeofday(&tv, 0))
-        return -1;
-
-    ts->tv_sec = tv.tv_sec;
-    ts->tv_nsec = tv.tv_usec * 1000;
-
-    return 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-int Main::setParameter( const Parameter * /*param*/, const char *dataPtr,
+int Main::setParameter(const char* dataPtr,
         size_t count, struct timespec *mtime) const
 {
     ost::SemaphoreLock lock(paramMutex);
@@ -362,19 +394,43 @@ int Main::setParameter( const Parameter * /*param*/, const char *dataPtr,
     delta.pos = dataPtr - parameterBuf;
     delta.len = count;
     delta.count = 0;
-    gettime(mtime);
 
     if (ioctl(fd, CHANGE_PARAM, &delta)) {
         return errno;
     }
 
+    gettime(mtime);
+
     return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-PdServ::Main::Events Main::getEvents() const
+void Main::parameterChanged(const PdServ::Session* session,
+        const Parameter *param,
+        const char *buf, size_t offset, size_t count) const
 {
-    return Events(events.begin(), events.end());
+    PdServ::Main::parameterChanged(session, param, buf, offset, count);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::list<const PdServ::Task*> Main::getTasks() const
+{
+    std::list<const PdServ::Task*> taskList;
+    taskList.push_back(mainTask);
+    return taskList;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::list<const PdServ::Event*> Main::getEvents() const
+{
+    return std::list<const PdServ::Event*>(events.begin(), events.end());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::list<const PdServ::Parameter*> Main::getParameters() const
+{
+    return std::list<const PdServ::Parameter*>(
+            parameters.begin(), parameters.end());
 }
 
 /////////////////////////////////////////////////////////////////////////////

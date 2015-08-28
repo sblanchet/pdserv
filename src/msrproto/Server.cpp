@@ -33,7 +33,7 @@
 #include "../Main.h"
 #include "../Task.h"
 #include "../Signal.h"
-#include "../ProcessParameter.h"
+#include "../Parameter.h"
 
 #include <cerrno>
 #include <algorithm>
@@ -46,6 +46,7 @@ using namespace MsrProto;
 Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     main(main),
     log(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("msr"))),
+    active(&_active),
     mutex(1)
 {
     port = config["port"].toUInt();
@@ -58,8 +59,15 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
         insertRoot = variableDirectory.create(
                 config["pathprefix"].toString(main->name));
 
-    for (size_t i = 0; i < main->numTasks(); ++i)
-        createChannels(insertRoot, i);
+    maxConnections = config["maxconnections"].toUInt();
+    if (!maxConnections)
+        maxConnections = ~0U;
+
+    size_t taskIdx = 0;
+    for (std::list<const PdServ::Task*> taskList(main->getTasks());
+            taskList.size(); taskList.pop_front()) {
+        createChannels(insertRoot, taskList.front(), taskIdx++);
+    }
 
     createParameters(insertRoot);
     createEvents();
@@ -70,37 +78,29 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
 /////////////////////////////////////////////////////////////////////////////
 Server::~Server()
 {
-    for (std::set<Session*>::iterator it = sessions.begin();
-            it != sessions.end(); it++)
-        delete *it;
+    terminate();
 
-    for (Parameters::iterator it = parameters.begin();
-            it != parameters.end(); ++it)
-        delete *it;
-
-    for (Channels::iterator it = channels.begin();
-            it != channels.end(); ++it)
-        delete *it;
+    // Parameters and Channels are deleted when variable tree
+    // is deleted
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
+void Server::createChannels(DirectoryNode* baseDir,
+        const PdServ::Task* task, size_t taskIdx)
 {
-    const PdServ::Task *task = main->getTask(taskIdx);
     Channel* c;
 
     LOG4CPLUS_TRACE(log,
             LOG4CPLUS_TEXT("Create channels for task ") << taskIdx
             << LOG4CPLUS_TEXT(", Ts=") << task->sampleTime);
 
-    const PdServ::Task::Signals& signals = task->getSignals();
+    std::list<const PdServ::Signal*> signals(task->getSignals());
 
     // Reserve at least signal count and additionally 4 Taskinfo signals
     channels.reserve(channels.size() + signals.size() + 4);
 
-    for (PdServ::Task::Signals::const_iterator it = signals.begin();
-            it != signals.end(); it++) {
-        const PdServ::Signal *signal = *it;
+    for (; signals.size(); signals.pop_front()) {
+        const PdServ::Signal *signal = signals.front();
 
         LOG4CPLUS_TRACE(log, LOG4CPLUS_TEXT(signal->path)
                 << signal->dtype.name);
@@ -138,12 +138,11 @@ void Server::createEvents ()
     LOG4CPLUS_TRACE(log,
             LOG4CPLUS_TEXT("Create events"));
 
-    const PdServ::Main::Events mainEvents = main->getEvents();
+    std::list<const PdServ::Event*> mainEvents(main->getEvents());
     this->events.reserve(mainEvents.size());
 
-    for (PdServ::Main::Events::const_iterator it = mainEvents.begin();
-            it != mainEvents.end(); ++it)
-        this->events.push_back(new Event(*it));
+    for (; mainEvents.size(); mainEvents.pop_front())
+        this->events.push_back(new Event(mainEvents.front()));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -152,13 +151,12 @@ void Server::createParameters(DirectoryNode* baseDir)
     LOG4CPLUS_TRACE(log,
             LOG4CPLUS_TEXT("Create parameters"));
 
-    const PdServ::Main::ProcessParameters& mainParam = main->getParameters();
+    std::list<const PdServ::Parameter*> mainParam(main->getParameters());
 
     parameters.reserve(parameters.size() + mainParam.size());
 
-    PdServ::Main::ProcessParameters::const_iterator it;
-    for (it = mainParam.begin(); it != mainParam.end(); ++it) {
-        const PdServ::Parameter *param = *it;
+    for (; mainParam.size(); mainParam.pop_front()) {
+        const PdServ::Parameter *param = mainParam.front();
         PdServ::DataType::Iterator<CreateParameter>(
                 param->dtype, param->dim,
                 CreateParameter(this, baseDir, param));
@@ -169,11 +167,17 @@ void Server::createParameters(DirectoryNode* baseDir)
 void Server::initial()
 {
     LOG4CPLUS_INFO_STR(log, LOG4CPLUS_TEXT("Initializing MSR server"));
+    _active = true;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Server::final()
 {
+    _active = false;
+
+    while (!sessions.empty())
+        Thread::sleep(100);
+
     LOG4CPLUS_INFO_STR(log, LOG4CPLUS_TEXT("Exiting MSR server"));
 }
 
@@ -187,6 +191,8 @@ void Server::run()
     do {
         try {
             server = new ost::TCPSocket(ost::IPV4Address("0.0.0.0"), port);
+            LOG4CPLUS_INFO(log,
+                    LOG4CPLUS_TEXT("Server started on port ") << port);
         }
         catch (ost::Socket *s) {
             long err = s->getSystemError();
@@ -199,20 +205,22 @@ void Server::run()
             }
             LOG4CPLUS_DEBUG(log,
                     LOG4CPLUS_TEXT("Port ") << port
-                    << LOG4CPLUS_TEXT(" is busy"));
+                    << LOG4CPLUS_TEXT(" is busy. Trying next one..."));
             port++;
         }
     } while (!server);
 
-    LOG4CPLUS_INFO(log, LOG4CPLUS_TEXT("Server started on port ") << port);
     while (server->isPendingConnection()) {
+        if (sessions.size() == maxConnections) {
+            server->reject();
+            continue;
+        }
+
         try {
             LOG4CPLUS_TRACE_STR(log,
                     LOG4CPLUS_TEXT("New client connection"));
-            Session *s = new Session(this, server);
-
             ost::SemaphoreLock lock(mutex);
-            sessions.insert(s);
+            sessions.insert(new Session(this, server));
         }
         catch (ost::Socket *s) {
             LOG4CPLUS_FATAL(log,
@@ -229,7 +237,7 @@ void Server::broadcast(Session *s, const struct timespec& ts,
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
-            it != sessions.end(); it++)
+            it != sessions.end(); ++it)
         (*it)->broadcast(s, ts, action, message);
 }
 
@@ -246,7 +254,7 @@ void Server::getSessionStatistics(
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
-            it != sessions.end(); it++) {
+            it != sessions.end(); ++it) {
         PdServ::SessionStatistics s;
         (*it)->getSessionStatistics(s);
         stats.push_back(s);
@@ -258,7 +266,7 @@ void Server::setAic(const Parameter *p)
 {
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
-            it != sessions.end(); it++)
+            it != sessions.end(); ++it)
         (*it)->setAIC(p);
 }
 
@@ -270,7 +278,7 @@ void Server::parameterChanged(const PdServ::Parameter *mainParam,
 
     ost::SemaphoreLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
-            it != sessions.end(); it++)
+            it != sessions.end(); ++it)
         p->inform(*it, offset, offset + count);
 }
 
@@ -402,7 +410,8 @@ bool Server::CreateChannel::createVariable(const PdServ::DataType& dtype,
 
     if (server->itemize) {
         char hidden = 0;
-        baseDir->traditionalPathInsert(c, path(), hidden);
+        char persist = 0;
+        baseDir->traditionalPathInsert(c, path(), hidden, persist);
         c->hidden = hidden == 'c' or hidden == 'k' or hidden == 1;
 
         rv = c->hidden;
@@ -436,8 +445,10 @@ bool Server::CreateParameter::createVariable(const PdServ::DataType& dtype,
 
     if (server->itemize) {
         char hidden = 0;
-        baseDir->traditionalPathInsert(p, path(), hidden);
+        char persist = 0;
+        baseDir->traditionalPathInsert(p, path(), hidden, persist);
         p->hidden = hidden == 'p' or hidden == 1;
+        p->persistent = persist;
 
         rv = p->hidden;
     }

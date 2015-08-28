@@ -28,7 +28,6 @@
 #include <cc++/thread.h>
 
 #include "../Signal.h"
-#include "../DataType.h"
 
 namespace PdServ {
     class Session;
@@ -55,6 +54,7 @@ class Signal: public PdServ::Signal {
         const size_t index;
 
     private:
+        Task* const task;
         mutable ost::Semaphore mutex;
 
         typedef std::set<const PdServ::SessionTask*> SessionSet;

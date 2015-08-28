@@ -32,8 +32,9 @@
 
 //////////////////////////////////////////////////////////////////////
 Signal::Signal( const Task *task, const SignalInfo& si):
-    PdServ::Signal(si.path(), task, 1, si.dataType(), si.ndim(), si.getDim()),
-    main(task->main), offset(si.si->offset), info(si), task(task)
+    PdServ::Signal(si.path(), task->sampleTime,
+            si.dataType(), si.ndim(), si.getDim()),
+    main(task->main), offset(si.si->offset), info(si)
 {
 }
 
@@ -55,12 +56,12 @@ double Signal::poll(const PdServ::Session *, void *, struct timespec *) const
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::getValue( const PdServ::Session *, void *dest,
+void Signal::getValue( const PdServ::Session *session, void *dest,
         struct timespec *t) const
 {
     const PdServ::Signal *signal = this;
 
-    main->poll(0, &signal, 1, dest, t);
+    main->poll(session, &signal, 1, dest, t);
 }
 
 //////////////////////////////////////////////////////////////////////

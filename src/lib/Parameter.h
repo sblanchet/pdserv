@@ -26,12 +26,12 @@
 
 #include <ctime>
 #include <cc++/thread.h>
-#include "../ProcessParameter.h"
+#include "../Parameter.h"
 #include "pdserv.h"
 
 class Main;
 
-class Parameter: public PdServ::ProcessParameter {
+class Parameter: public PdServ::Parameter {
     public:
         Parameter ( Main const* main,
                 const char *path,
@@ -41,10 +41,7 @@ class Parameter: public PdServ::ProcessParameter {
                 size_t ndims = 1,
                 const size_t *dim = 0);
 
-        ~Parameter();
-
         char * const addr;      // Pointer to the real address
-        const Main * const main;
 
         paramtrigger_t trigger;
         void *priv_data;
@@ -52,14 +49,16 @@ class Parameter: public PdServ::ProcessParameter {
         mutable char *valueBuf;
 
     private:
-        mutable ost::Semaphore mutex;
+        const Main * const main;
+        mutable ost::ThreadLock mutex;
         mutable struct timespec mtime;
 
-        // Reimplemented from PdServ::ProcessParameter
-        int setValue(const char *buf, size_t offset, size_t count) const;
+        // Reimplemented from PdServ::Parameter
+        int setValue(const PdServ::Session* session,
+                const char *buf, size_t offset, size_t count) const;
 
         // Reimplemented from PdServ::Variable
-        void getValue(const PdServ::Session*,
+        void getValue(const PdServ::Session* session,
                 void *buf, struct timespec* t = 0) const;
 
         // A default function used when paramcheck or paramupdate are not

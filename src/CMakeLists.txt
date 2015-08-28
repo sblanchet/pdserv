@@ -56,7 +56,6 @@ SET (main_src
     Signal.cpp          Signal.h
     Event.cpp           Event.h
     Parameter.cpp       Parameter.h
-    ProcessParameter.cpp ProcessParameter.h
     Debug.cpp           Debug.h
 
     supervisor/Server.cpp         supervisor/Server.h
@@ -137,7 +136,9 @@ IF (RT_APP_H AND ENABLE_BUDDY)
         DESTINATION "${CMAKE_INSTALL_BINDIR}" RUNTIME)
 
     INSTALL (FILES "${CMAKE_CURRENT_SOURCE_DIR}/buddy/buddy.conf"
-        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}")
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}"
+        RENAME "buddy.conf.orig"
+        )
 ENDIF ()
 
 ADD_LIBRARY( ${PROJECT_NAME} SHARED

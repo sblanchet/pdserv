@@ -47,6 +47,9 @@ SubscriptionManager::SubscriptionManager(
     taskStatistics = &dummyTaskStatistics;
 
     unsubscribedCount = 0;
+
+    // Call rxPdo() once so that taskTime and taskStatistics are updated
+    task->rxPdo(this, &taskTime, &taskStatistics);
 }
 
 /////////////////////////////////////////////////////////////////////////////

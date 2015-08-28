@@ -25,7 +25,6 @@
 #include "DataType.h"
 
 #include <stdint.h>
-#include <sstream>
 
 using namespace PdServ;
 

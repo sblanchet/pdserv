@@ -24,7 +24,6 @@
 #include "DataType.h"
 #include "Debug.h"
 #include <stdint.h>
-#include <ostream>
 #include <functional>   // std::multiplies
 #include <numeric>      // std::accumulate
 
@@ -249,6 +248,18 @@ bool DataType::isPrimary () const
 DataType::Primary DataType::primary () const
 {
     return compound_T;
+}
+
+//////////////////////////////////////////////////////////////////////
+bool DataType::operator==(const DataType& other) const
+{
+    return this == &other;
+}
+
+//////////////////////////////////////////////////////////////////////
+bool DataType::operator!=(const DataType& other) const
+{
+    return this != &other;
 }
 
 //////////////////////////////////////////////////////////////////////

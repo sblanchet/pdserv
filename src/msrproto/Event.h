@@ -24,8 +24,11 @@
 #ifndef MSREVENT_H
 #define MSREVENT_H
 
-#include "../Event.h"
 #include "Session.h"
+
+namespace PdServ {
+    class Event;
+}
 
 namespace MsrProto {
 

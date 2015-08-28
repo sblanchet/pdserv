@@ -79,14 +79,37 @@ Task::Task(Main *main, double ts, const char * /*name*/):
 /////////////////////////////////////////////////////////////////////////////
 Task::~Task()
 {
-    delete copyList[0];
-    delete signalCopyList[0];
-    delete signalPosition;
+    delete[] copyList[0];
+    delete[] signalCopyList[0];
+    delete[] signalPosition;
 
-    for (Signals::iterator it = signals.begin(); it != signals.end(); ++it)
-        delete *it;
+    for (size_t i = 0; i < signals.size(); ++i)
+        delete signals[i];
 }
 
+/////////////////////////////////////////////////////////////////////////////
+Signal* Task::addSignal( unsigned int decimation,
+        const char *path, const PdServ::DataType& datatype,
+        const void *addr, size_t n, const size_t *dim)
+{
+    Signal *s = new Signal(this, signals.size(),
+            decimation, path, datatype, addr, n, dim);
+
+    signals.push_back(s);
+    signalTypeCount[s->dataTypeIndex[s->dtype.align()]]++;
+    signalMemSize += s->memSize;
+
+    return s;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::list<const PdServ::Signal*> Task::getSignals() const
+{
+    return std::list<const PdServ::Signal*>(signals.begin(), signals.end());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// Initialization methods
 /////////////////////////////////////////////////////////////////////////////
 size_t Task::getShmemSpace(double T) const
 {
@@ -103,15 +126,9 @@ size_t Task::getShmemSpace(double T) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-SessionTaskData* Task::newSession(PdServ::Session * /*session*/)
-{
-    return 0; //new SessionTaskData(session, this, txMemBegin, txMemEnd);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Task::prepare(void *shmem, void *shmem_end)
 {
-    log_debug("S(%p): shmem=%p shmem_end=%p", this, shmem, shmem_end);
+    //log_debug("S(%p): shmem=%p shmem_end=%p", this, shmem, shmem_end);
     size_t n = signals.size();
 
     signalListRp = ptr_align<struct SignalList*>(shmem);
@@ -125,10 +142,7 @@ void Task::prepare(void *shmem, void *shmem_end)
 
     txMemBegin = ptr_align<struct Pdo>(poll->data + n);
     txMemEnd = shmem_end;
-    log_debug("S(%p): txMemBegin=%p", this, txMemBegin);
-//    cerr_debug() << "signallen=" << signalMemSize << " txpdosize="
-//        << sizeof(*txPdo) << " space="
-//        << ((const char*)txMemEnd - (const char *)txMemBegin);
+    //log_debug("S(%p): txMemBegin=%p", this, txMemBegin);
 
     txPdo = txMemBegin;
     nextTxPdo = ptr_align<struct Pdo*>(shmem_end) - 2;
@@ -153,13 +167,6 @@ void Task::rt_init()
 /////////////////////////////////////////////////////////////////////////////
 void Task::nrt_init()
 {
-    signalVector.resize(signals.size());
-    for (Signals::const_iterator it = signals.begin();
-            it != signals.end(); ++it) {
-        const Signal *s = static_cast<const Signal*>(*it);
-        signalVector[s->index] = s;
-    }
-
     signalPosition = new unsigned int[signals.size()];
 
     signalCopyList[0] = new const Signal*[signals.size()];
@@ -170,26 +177,7 @@ void Task::nrt_init()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Signal* Task::addSignal( unsigned int decimation,
-        const char *path, const PdServ::DataType& datatype,
-        const void *addr, size_t n, const size_t *dim)
-{
-    Signal *s = new Signal(this, signals.size(),
-            decimation, path, datatype, addr, n, dim);
-
-    signals.push_back(s);
-    signalTypeCount[s->dataTypeIndex[s->dtype.align()]]++;
-    signalMemSize += s->memSize;
-
-    return s;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-size_t Task::signalCount() const
-{
-    return signals.size();
-}
-
+// Non-real time methods
 /////////////////////////////////////////////////////////////////////////////
 void Task::getSignalList(const Signal **signalList, size_t *nelem,
         unsigned int *signalListId) const
@@ -215,28 +203,20 @@ void Task::subscribe(const Signal* s, bool insert) const
     while (wp == *signalListRp)
         ost::Thread::sleep(static_cast<unsigned>(sampleTime * 1000 / 2 + 1));
 
-    //log_debug("%i %s", insert, s->path.c_str());
-
     size_t w = s->dataTypeIndex[s->dtype.align()];
     const Signal **scl = signalCopyList[w];
 
     wp->signal = s;
 
     if (insert) {
-
         wp->action = SignalList::Insert;
 
         size_t i = signalTypeCount[w]++;
         scl[i] = s;
         signalPosition[s->index] = i;
-
-//        log_debug("insert %s @ %zu[%zu]", s->path.c_str(), w, i);
-//        debug() << "insert" << s->path << w << i << (void*)signalCopyList[w];
     }
     else {
         size_t pos = signalPosition[s->index];
-
-//        log_debug("erase %s @ %zu", s->path.c_str(), pos);
 
         wp->action = SignalList::Remove;
         wp->signalPosition = pos;
@@ -245,18 +225,9 @@ void Task::subscribe(const Signal* s, bool insert) const
         s = scl[--signalTypeCount[w]];
         scl[pos] = s;
         signalPosition[s->index] = pos;
-
-//        debug() << "erase" << s->path << w << signalPosition[s->index]
-//            << "copy("
-//            << (void*)(signalCopyList[w])
-//            << signalPosition[s->index] + 1
-//            << signalTypeCount[w]
-//            << signalPosition[s->index];
     }
 
     wp->signalListId = ++signalListId;
-//    cout << __func__ << s->index << ' ' << insert
-//        << " pos=" << wp->signalPosition << endl;
 
     *signalListWp = wp;
 }
@@ -313,123 +284,147 @@ void Task::updateStatistics(
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Task::prepare (PdServ::SessionTask *s) const
+{
+    s->sessionTaskData =
+        new SessionTaskData(s, this, &signals, txMemBegin, txMemEnd);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::cleanup (const PdServ::SessionTask *s) const
+{
+    delete s->sessionTaskData;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Task::rxPdo (PdServ::SessionTask *s, const struct timespec **time,
+        const PdServ::TaskStatistics **stat) const
+{
+    return s->sessionTaskData->rxPdo(time, stat);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// Real time methods
+/////////////////////////////////////////////////////////////////////////////
 void Task::update(const struct timespec *t)
 {
-    if (poll->request != poll->reply) {
-        if (txPdo->data + poll->length >= txMemEnd) {
-            txPdo = txMemBegin;
-            txPdo->type = Pdo::Empty;
-            txPdo->next = 0;
-        }
+    while (poll->request != poll->reply)
+        processPollRequest(t);
 
-        char *dst = txPdo->data;
+    if (*signalListRp != *signalListWp) {
+        while (*signalListRp != *signalListWp)
+            processSignalList();
 
-        if (t)
-            poll->time = *t;
-        else
-            poll->time.tv_sec = poll->time.tv_nsec = 0;
-
-        poll->addr = dst;
-
-        for (size_t i = 0; i < poll->count; ++i) {
-            const Signal *s = poll->data[i].signal;
-            std::copy(s->addr, s->addr + s->memSize, dst);
-            dst += s->memSize;
-        }
-
-        txPdo = ptr_align<Pdo>(dst);
-
-        if (poll->addr == txMemBegin->data) {
-            txPdo->next = 0;
-            txPdo->type = Pdo::Empty;
-            txMemBegin->next = txPdo;
-        }
-
-        poll->reply = poll->request;
-        //log_debug("S(%p): poll", this);
+        calculateCopyList();
     }
 
-    struct SignalList *sp = 0;
+    copyData(t);
+}
 
-    while (*signalListRp != *signalListWp) {
-        sp = *signalListRp + 1;
-        if (sp == signalListEnd)
-            sp = signalList;
-
-        signalListId = sp->signalListId;
-        const Signal *signal = sp->signal;
-        size_t w = signal->dataTypeIndex[signal->dtype.align()];
-        struct CopyList *cl;
-//        cout << "Signal " << signal->index << " pos=" << sp->signalPosition;
-
-        switch (sp->action) {
-            case SignalList::Insert:
-                // Insert the signal at list end
-//                log_debug("RT insert %s @ %zu", signal->path.c_str(),
-//                        signalTypeCount[w]);
-
-                cl = copyList[w] + signalTypeCount[w]++;
-
-                cl->src = signal->addr;
-                cl->len = signal->memSize;
-                cl->signal = signal;
-
-                signalMemSize += signal->memSize;
-
-
-//                cout << " added" << endl;
-                break;
-
-            case SignalList::Remove:
-                // Move signal at list end to the deleted position
-                cl = copyList[w] + --signalTypeCount[w];
-                copyList[w][sp->signalPosition] = *cl;
-                cl->src = 0;    // End of copy list indicator
-
-                signalMemSize -= signal->memSize;
-
-//                log_debug("RT remove %s @ %zu", signal->path.c_str(),
-//                        signalTypeCount[w]);
-
-//                cout << " removed" << endl;
-                break;
-        }
-
-        *signalListRp = sp;
+/////////////////////////////////////////////////////////////////////////////
+void Task::processPollRequest(const struct timespec *t)
+{
+    // Rewind pointers
+    if (txPdo->data + poll->length >= txMemEnd) {
+        txPdo = txMemBegin;
+        txPdo->type = Pdo::Empty;
+        txPdo->next = 0;
     }
-//    cout << sp << endl;
 
-    if (sp) {
-        size_t n = std::accumulate(signalTypeCount, signalTypeCount + 4, 0);
-//        cout << "New signals " << n << ' ' << "signalMemSize=" << signalMemSize;
+    char *dst = txPdo->data;
 
-        if ((txPdo->signal + n) >= txMemEnd)
-            txPdo = txMemBegin;
+    if (t)
+        poll->time = *t;
+    else
+        poll->time.tv_sec = poll->time.tv_nsec = 0;
 
+    poll->addr = dst;
+
+    for (size_t i = 0; i < poll->count; ++i) {
+        const Signal *s = poll->data[i].signal;
+        std::copy(s->addr, s->addr + s->memSize, dst);
+        dst += s->memSize;
+    }
+
+    txPdo = ptr_align<Pdo>(dst);
+
+    if (poll->addr == txMemBegin->data) {
         txPdo->next = 0;
         txPdo->type = Pdo::Empty;
-        txPdo->signalListId = signalListId;
-        txPdo->count = n;
-        size_t *sp = txPdo->signal;
-        for (int i = 0; i < 4; i++) {
-            for (CopyList *cl = copyList[i]; cl->src; ++cl)
-                *sp++ = cl->signal->index;
-        }
-        txPdo->type = Pdo::SignalList;
-//        cout << endl;
-
-        *nextTxPdo = txPdo;
-
-        //log_debug("S(%p): TxPdo=%p (signalList)<- %p", this, txPdo, nextTxPdo);
-
-        nextTxPdo = &txPdo->next;
-        txPdo = ptr_align<Pdo>(sp);
+        txMemBegin->next = txPdo;
     }
 
-    if ( txPdo->data + signalMemSize >= txMemEnd) {
+    poll->reply = poll->request;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::processSignalList()
+{
+    struct SignalList *sp = *signalListRp + 1;
+
+    if (sp == signalListEnd)
+        sp = signalList;
+
+    signalListId = sp->signalListId;
+    const Signal *signal = sp->signal;
+    size_t w = signal->dataTypeIndex[signal->dtype.align()];
+    struct CopyList *cl;
+
+    switch (sp->action) {
+        case SignalList::Insert:
+            // Insert the signal at list end
+            cl = copyList[w] + signalTypeCount[w]++;
+
+            cl->src = signal->addr;
+            cl->len = signal->memSize;
+            cl->signal = signal;
+
+            signalMemSize += signal->memSize;
+            break;
+
+        case SignalList::Remove:
+            // Move signal at list end to the deleted position
+            cl = copyList[w] + --signalTypeCount[w];
+            copyList[w][sp->signalPosition] = *cl;
+            cl->src = 0;    // End of copy list indicator
+
+            signalMemSize -= signal->memSize;
+            break;
+    }
+
+    *signalListRp = sp;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::calculateCopyList()
+{
+    size_t n = std::accumulate(signalTypeCount, signalTypeCount + 4, 0);
+
+    if ((txPdo->signal + n) >= txMemEnd)
         txPdo = txMemBegin;
-//        cout << "wrap" << endl;
+
+    txPdo->next = 0;
+    txPdo->type = Pdo::Empty;
+    txPdo->signalListId = signalListId;
+    txPdo->count = n;
+    size_t *sp = txPdo->signal;
+    for (int i = 0; i < 4; i++) {
+        for (CopyList *cl = copyList[i]; cl->src; ++cl)
+            *sp++ = cl->signal->index;
     }
+    txPdo->type = Pdo::SignalList;
+
+    *nextTxPdo = txPdo;
+
+    nextTxPdo = &txPdo->next;
+    txPdo = ptr_align<Pdo>(sp);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::copyData(const struct timespec *t)
+{
+    if ( txPdo->data + signalMemSize >= txMemEnd)
+        txPdo = txMemBegin;
 
     txPdo->next = 0;
     txPdo->type = Pdo::Empty;
@@ -446,40 +441,16 @@ void Task::update(const struct timespec *t)
 
     char *p = txPdo->data;
     for (int i = 0; i < 4; ++i) {
-//        cout << i << ": ";
         for (CopyList *cl = copyList[i]; cl->src; ++cl) {
             std::copy(cl->src, cl->src + cl->len, p);
             p += cl->len;
-//            cout << cl->signal->index << ' ' << cl->len << ' ';
         }
     }
     txPdo->type = Pdo::Data;
-//    cout << '=' << p - txPdo->data << endl;
 
     txPdo->count = p - txPdo->data;
     *nextTxPdo = txPdo;
 
-    //log_debug("S(%p): TxPdo=%p<-%p", this, txPdo, nextTxPdo);
     nextTxPdo = &txPdo->next;
     txPdo = ptr_align<Pdo>(p);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Task::prepare (PdServ::SessionTask *s) const
-{
-    s->sessionTaskData =
-        new SessionTaskData(s, this, signalVector, txMemBegin, txMemEnd);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Task::cleanup (const PdServ::SessionTask *s) const
-{
-    delete s->sessionTaskData;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-bool Task::rxPdo (PdServ::SessionTask *s, const struct timespec **time,
-        const PdServ::TaskStatistics **stat) const
-{
-    return s->sessionTaskData->rxPdo(time, stat);
 }

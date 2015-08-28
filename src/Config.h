@@ -35,7 +35,8 @@ class Config {
         Config();
         ~Config();
 
-        const char * load(const char *file);
+        const char *   load(const char *file);
+        const char * reload();
         const std::string& fileName() const;
 
         Config operator[](const std::string&) const;
@@ -48,6 +49,7 @@ class Config {
             bool get(T& value) const;
 
         operator bool() const;
+        bool isMapping() const;
 
         int             toInt() const;
         unsigned int    toUInt() const;

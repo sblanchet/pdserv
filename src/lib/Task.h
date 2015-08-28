@@ -28,7 +28,6 @@
 #include <cstddef>
 #include <cc++/thread.h>
 
-#include "../Variable.h"
 #include "../Task.h"
 #include "../TaskStatistics.h"
 
@@ -48,14 +47,11 @@ class Task: public PdServ::Task {
 
         Main * const main;
 
-        typedef std::vector<const Signal*> SignalVector;
         Signal* addSignal( unsigned int decimation,
                 const char *path, const PdServ::DataType& datatype,
                 const void *addr, size_t n, const size_t *dim);
 
         size_t getShmemSpace(double t) const;
-
-        SessionTaskData* newSession(PdServ::Session *session);
 
         void prepare(void *start, void *end);
         void rt_init();
@@ -70,7 +66,6 @@ class Task: public PdServ::Task {
         bool pollFinished( const PdServ::Signal * const *s, size_t nelem,
                 void * const *pollDest, struct timespec *t) const;
 
-        size_t signalCount() const;
         void getSignalList(const Signal ** s, size_t *n,
                 unsigned int *signalListId) const;
 
@@ -90,7 +85,7 @@ class Task: public PdServ::Task {
         // Only allocated for non-realtime task
         unsigned int *signalPosition;
 
-        SignalVector signalVector;
+        std::vector<Signal*> signals;
 
         unsigned int seqNo;
         mutable unsigned int signalListId;
@@ -115,10 +110,17 @@ class Task: public PdServ::Task {
         struct PollData *poll;
 
         // Reimplemented from PdServ::Task
+        std::list<const PdServ::Signal*> getSignals() const;
         void prepare(PdServ::SessionTask *) const;
         void cleanup(const PdServ::SessionTask *) const;
         bool rxPdo(PdServ::SessionTask *, const struct timespec **tasktime,
                 const PdServ::TaskStatistics **taskStatistics) const;
+
+        // These methods are used in real time context
+        void processPollRequest(const struct timespec* t);
+        void processSignalList();
+        void calculateCopyList();
+        void copyData(const struct timespec* t);
 };
 
 #endif // LIB_TASK_H

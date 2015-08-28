@@ -63,7 +63,14 @@ void Config::clear()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const char * Config::load(const char *file)
+const char * Config::reload()
+{
+    std::string file(this->file);
+    return load(file.c_str());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const char * Config::load(const char *filename)
 {
     yaml_parser_t parser;
     FILE *fh;
@@ -74,10 +81,10 @@ const char * Config::load(const char *file)
         return error;
     }
 
-    fh = ::fopen(file, "r");
+    fh = ::fopen(filename, "r");
     if (!fh) {
         ::snprintf(error, sizeof(error), "Could not open config file %s: %s",
-                file, strerror(errno));
+                filename, strerror(errno));
         return error;
     }
 
@@ -86,12 +93,13 @@ const char * Config::load(const char *file)
 
     clear();
     document = new yaml_document_t;
-    this->file = file;
+    this->file = filename;
 
     /* START new code */
     if (!yaml_parser_load(&parser, document)) {
         snprintf(error, sizeof(error), "YAML parser failure at line %zu: %s",
             parser.problem_mark.line, parser.problem);
+        clear();
         return error;
     }
 
@@ -171,6 +179,12 @@ Config Config::operator[](size_t index) const
     }
 
     return Config();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Config::isMapping() const
+{
+    return node and node->type == YAML_MAPPING_NODE;
 }
 
 /////////////////////////////////////////////////////////////////////////////

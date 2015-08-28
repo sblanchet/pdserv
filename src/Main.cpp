@@ -25,15 +25,22 @@
 #include "Debug.h"
 
 #include <cerrno>
-#include <cstdlib>
-#include <syslog.h>
-#include <log4cplus/logger.h>
+#include <unistd.h>     // fork(), getpid(), chdir, sysconf, close
+#include <signal.h>     // signal()
+#include <limits.h>     // _POSIX_OPEN_MAX
+#include <sys/types.h>  // umask()
+#include <sys/stat.h>   // umask()
+
+#include <log4cplus/syslogappender.h>
+#include <log4cplus/consoleappender.h>
+#include <log4cplus/streams.h>
+#include <log4cplus/configurator.h>
 #include <log4cplus/loggingmacros.h>
 
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
-#include "ProcessParameter.h"
+#include "Parameter.h"
 #include "Config.h"
 //#include "etlproto/Server.h"
 #include "msrproto/Server.h"
@@ -54,12 +61,72 @@ Main::Main(const std::string& name, const std::string& version):
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
-    for (ProcessParameters::iterator it = parameters.begin();
-            it != parameters.end(); ++it)
-        delete *it;
+}
 
-    delete msrproto;
-    delete supervisor;
+/////////////////////////////////////////////////////////////////////////////
+void Main::setConfig(const Config& c)
+{
+    config = c;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::setupLogging()
+{
+#ifdef PDS_DEBUG
+    consoleLogging();
+#endif
+
+    if (config["logging"]) {
+        typedef std::basic_istringstream<log4cplus::tchar> tistringstream;
+        tistringstream is(
+                LOG4CPLUS_STRING_TO_TSTRING(config["logging"].toString()));
+        log4cplus::PropertyConfigurator(is).configure();
+    }
+    else {
+        syslogLogging();
+    }
+
+    LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),
+            LOG4CPLUS_TEXT("Started application ")
+            << LOG4CPLUS_STRING_TO_TSTRING(name)
+            << LOG4CPLUS_TEXT(", Version ")
+            << LOG4CPLUS_STRING_TO_TSTRING(version));
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::consoleLogging()
+{
+    log4cplus::BasicConfigurator::doConfigure();
+//    log4cplus::SharedAppenderPtr cerr(new log4cplus::ConsoleAppender(true));
+//    cerr->setLayout(
+//        std::auto_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(
+//                LOG4CPLUS_TEXT("%D %p %c %x: %m"))));
+//
+//    log4cplus::Logger::getRoot().addAppender(cerr);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::syslogLogging()
+{
+    log4cplus::helpers::Properties p;
+    p.setProperty(LOG4CPLUS_TEXT("ident"),
+            LOG4CPLUS_STRING_TO_TSTRING(name));
+    p.setProperty(LOG4CPLUS_TEXT("facility"),LOG4CPLUS_TEXT("local0"));
+
+    log4cplus::SharedAppenderPtr appender( new log4cplus::SysLogAppender(p));
+    appender->setLayout(
+            std::auto_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(
+                    LOG4CPLUS_TEXT("%-5p %c <%x>: %m"))));
+
+    log4cplus::Logger root = log4cplus::Logger::getRoot();
+    root.addAppender(appender);
+    root.setLogLevel(log4cplus::INFO_LOG_LEVEL);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::gettime(struct timespec* t) const
+{
+    return localtime(t);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -83,44 +150,34 @@ void Main::getSessionStatistics(std::list<SessionStatistics>& stats) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-size_t Main::numTasks() const
+void Main::startServers()
 {
-    return task.size();
-}
+    LOG4CPLUS_INFO(log4cplus::Logger::getRoot(), "Starting servers");
 
-/////////////////////////////////////////////////////////////////////////////
-const Task* Main::getTask(size_t n) const
-{
-    return task[n];
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Main::ProcessParameters& Main::getParameters() const
-{
-    return parameters;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::startServers(const Config& config)
-{
     supervisor = new Supervisor::Server(this, config["supervisor"]);
-
     msrproto = new MsrProto::Server(this, config["msr"]);
 
 //    EtlProto::Server etlproto(this);
-
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(const Session *, const ProcessParameter *param,
-        size_t offset, size_t count, const char *data) const
+void Main::stopServers()
 {
-    int rv = param->setValue(data, offset, count);
+    delete msrproto;
+    delete supervisor;
 
-    if (rv)
-        return rv;
+    LOG4CPLUS_INFO(log4cplus::Logger::getRoot(), "Shut down servers");
+    log4cplus::Logger::shutdown();
+}
 
+/////////////////////////////////////////////////////////////////////////////
+void Main::parameterChanged(const Session* /*session*/, const Parameter *param,
+        const char* data, size_t offset, size_t count) const
+{
     msrproto->parameterChanged(param, offset, count);
+
+    if (!parameterLog.isEnabledFor(log4cplus::INFO_LOG_LEVEL))
+        return;
 
     std::ostringstream os;
     os.imbue(std::locale::classic());
@@ -135,15 +192,14 @@ int Main::setParameter(const Session *, const ProcessParameter *param,
 
     os << " = ";
 
-    param->dtype.print(os, data - offset, data, data + count);
+    param->dtype.print(os, data, data + offset, data + offset + count);
 
-    LOG4CPLUS_INFO(parameterLog, os.str());
-
-    return 0;
+    parameterLog.forcedLog(log4cplus::INFO_LOG_LEVEL,
+            LOG4CPLUS_STRING_TO_TSTRING(os.str()));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::poll( Session *session, const Signal * const *s,
+void Main::poll(const Session *session, const Signal * const *s,
         size_t nelem, void *buf, struct timespec *t) const
 {
     ost::SemaphoreLock lock(mutex);

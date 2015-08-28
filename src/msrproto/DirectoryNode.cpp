@@ -33,7 +33,6 @@
 #include "../Parameter.h"
 
 #include <locale>
-#include <iostream>
 
 using namespace MsrProto;
 
@@ -49,7 +48,9 @@ DirectoryNode::DirectoryNode(DirectoryNode* parent, const std::string& name):
 /////////////////////////////////////////////////////////////////////////////
 DirectoryNode::~DirectoryNode()
 {
-    erase();
+    for (ChildMap::iterator it = children.begin();
+            it != children.end(); ++it)
+        delete it->second;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -73,7 +74,7 @@ void DirectoryNode::insert(DirectoryNode* node, const std::string& name)
 
 /////////////////////////////////////////////////////////////////////////////
 void DirectoryNode::traditionalPathInsert(Variable* var,
-        const std::string& path, char& hidden)
+        const std::string& path, char& hidden, char& persistent)
 {
     DirQ dirQ;
     size_t pos = 0;
@@ -96,11 +97,14 @@ void DirectoryNode::traditionalPathInsert(Variable* var,
                 const char *value;
                 if (element.isTrue("hide"))
                     hidden = 1;
-                else if (element.find("hide", value))
+                else if (element.find("hide", &value))
                     hidden = *value;
 
                 if (element.isTrue("unhide"))
                     hidden = 0;
+
+                if (element.find("persistent"))
+                    persistent = element.isTrue("persistent");
 
                 while (nameEnd
                         and std::isspace(name[nameEnd-1],
@@ -190,14 +194,6 @@ bool DirectoryNode::isRoot() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// Method on the parent to erase a child
-void DirectoryNode::erase()
-{
-    if (!isRoot())
-        parent->children.erase(*name);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void DirectoryNode::rename (const std::string* name, DirectoryNode *parent)
 {
     this->parent = parent;
@@ -225,14 +221,6 @@ void DirectoryNode::list( PdServ::Session *session, XmlElement& parent,
     }
 
     for (it = children.begin(); it != children.end(); ++it) {
-
-        // If there are children, report this node as a directory
-        if (it->second and !it->second->children.empty()) {
-            XmlElement el(parent.createChild("dir"));
-            XmlElement::Attribute(el, "path")
-                << (this->path() + '/' + it->first);
-        }
-
         const Parameter *param = dynamic_cast<const Parameter *>(it->second);
         if (param and !param->hidden) {
             char buf[param->mainParam->memSize];
@@ -241,15 +229,20 @@ void DirectoryNode::list( PdServ::Session *session, XmlElement& parent,
             param->mainParam->getValue(session, buf, &ts);
 
             XmlElement xml(parent.createChild("parameter"));
-            param->setXmlAttributes(
-                    xml, buf, ts, 0, 0, 16, param->childCount());
+            param->setXmlAttributes(xml, buf, ts, 0, 0, 16);
         }
 
         const Channel *channel = dynamic_cast<const Channel   *>(it->second);
         if (channel and !channel->hidden) {
             XmlElement xml(parent.createChild("channel"));
-            channel->setXmlAttributes(
-                    xml, 0, 0, 0, channel->childCount());
+            channel->setXmlAttributes(xml, 0, 0, 0);
+        }
+
+        // If there are children, report this node as a directory
+        if (!channel and !param) {
+            XmlElement el(parent.createChild("dir"));
+            XmlElement::Attribute(el, "path")
+                .setEscaped(this->path() + '/' + it->first);
         }
     }
 }

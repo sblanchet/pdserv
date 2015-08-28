@@ -26,7 +26,6 @@
 
 #include <cstddef>
 #include <string>
-#include <vector>
 #include "DataType.h"
 
 struct timespec;
@@ -44,9 +43,6 @@ class Variable {
 
         virtual ~Variable();
 
-//        void print(std::ostream& os,
-//                const char *data, size_t nelem = 0) const;
-
         const std::string path;         /**< Variable path */
 
         const DataType& dtype;          /**< Data type */
@@ -63,7 +59,7 @@ class Variable {
         virtual void getValue(
                 const Session*,         /**< Calling session */
                 void *buf,              /**< Buffer where data is copied to */
-                struct ::timespec * = 0   /**< Optional timespec stamp */
+                struct timespec * = 0   /**< Optional timespec stamp */
                 ) const = 0;
 
     private:

@@ -109,8 +109,6 @@ int main(int argc, const char *argv[])
         0
     };
 
-    pdserv_config_file(pdserv, "pdserv.conf");
-
     pdserv_compound_add_field(s1_t, "d",
             pd_double_T, offsetof(struct s1, d), 5, NULL);
     pdserv_compound_add_field(s1_t, "c",
@@ -151,6 +149,14 @@ int main(int argc, const char *argv[])
     struct pdvariable *p = pdserv_parameter(pdserv, "/path/to<hide>/param", 0666,
             pd_uint32_T, param, 4, 0, copy_param, (void*)10);
     assert(p);
+
+    struct pdvariable *p4 = pdserv_parameter(pdserv, "/path /to<persistent>/param",
+            0666, pd_uint16_T, var1, 2, 0, 0, 0);
+    assert(p4);
+
+    struct pdvariable *p5 = pdserv_parameter(pdserv, "/path /to<persistent>/param/p1<persistent=\"0\"/Value>",
+            0666, pd_uint16_T, var1, 2, 0, 0, 0);
+    assert(p5);
 
     assert(!pdserv_prepare(pdserv));
 

@@ -44,14 +44,12 @@ class Signal: public PdServ::Signal {
         const SignalInfo info;
 
     private:
-        const Task * const task;
-
         // Reimplemented from PdServ::Signal
         void subscribe(PdServ::SessionTask *) const;
         void unsubscribe(PdServ::SessionTask *) const;
         double sampleTime() const;
         double poll(const PdServ::Session *s,
-                void *buf, struct ::timespec *t) const;
+                void *buf, struct timespec *t) const;
         const char *getValue(const PdServ::SessionTask*) const;
 
         // Reimplemented from PdServ::Variable

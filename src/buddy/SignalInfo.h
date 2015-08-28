@@ -24,7 +24,7 @@
 #ifndef BUDDY_SIGNALINFO
 #define BUDDY_SIGNALINFO
 
-#include "../Variable.h"
+#include "../DataType.h"
 #include <etl_data_info.h>
 
 class SignalInfo {
@@ -36,10 +36,6 @@ class SignalInfo {
         const size_t *getDim() const;
         const PdServ::DataType& dataType() const;
 
-        void read( void *dst, const void *src) const;
-        void write( void *dst, const void *src,
-                size_t *offset, size_t *count) const;
-
         const struct signal_info * const si;
 
     private:
@@ -50,20 +46,6 @@ class SignalInfo {
         size_t rows;
 
         size_t memsize;
-
-        typedef void (*CopyFunc)(void *dst, const void *src,
-                size_t *offset, size_t *count, size_t nelem, size_t cols);
-        CopyFunc readFunc;
-        CopyFunc writeFunc;
-
-
-        template <class T, char dir>
-            static void copy( void *dst, const void *src,
-                    size_t *offset, size_t *count, size_t nelem, size_t cols);
-
-        template <class T, char dir>
-            static void transpose( void *dst, const void *src,
-                    size_t *offset, size_t *count, size_t nelem, size_t cols);
 };
 
 #endif //BUDDY_SIGNALINFO

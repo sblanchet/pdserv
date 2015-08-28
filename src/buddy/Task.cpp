@@ -36,11 +36,26 @@ Task::Task( Main *main, double sampleTime,
 }
 
 //////////////////////////////////////////////////////////////////////
+Task::~Task()
+{
+    while (signals.size()) {
+        delete signals.front();
+        signals.pop_front();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////
 const Signal *Task::addSignal(const SignalInfo& si)
 {
     Signal *s = new Signal(this, si);
     signals.push_back(s);
     return s;
+}
+
+//////////////////////////////////////////////////////////////////////
+std::list<const PdServ::Signal*> Task::getSignals() const
+{
+    return std::list<const PdServ::Signal*>(signals.begin(), signals.end());
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -57,7 +72,7 @@ void Task::cleanup (const PdServ::SessionTask *st) const
 }
 
 //////////////////////////////////////////////////////////////////////
-bool Task::rxPdo (PdServ::SessionTask *st, const struct ::timespec **time,
+bool Task::rxPdo (PdServ::SessionTask *st, const struct timespec **time,
         const PdServ::TaskStatistics **stat) const
 {
     return st->sessionTaskData->rxPdo(time, stat);

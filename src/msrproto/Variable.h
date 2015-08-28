@@ -24,9 +24,6 @@
 #ifndef MSRVARIABLE_H
 #define MSRVARIABLE_H
 
-#include <string>
-#include <list>
-#include <ostream>
 #include "../Variable.h"
 #include "DirectoryNode.h"
 
@@ -56,7 +53,7 @@ class Variable: public DirectoryNode {
         bool hidden;
 
         void setAttributes(XmlElement &element,
-                bool shortReply, bool isdir) const;
+                bool shortReply) const;
         void addCompoundFields(XmlElement &element,
                 const PdServ::DataType& ) const;
 

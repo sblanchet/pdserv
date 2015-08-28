@@ -30,35 +30,26 @@ namespace PdServ {
 
 class Session;
 class SessionTask;
-class Task;
 
 class Signal: public Variable {
     public:
         Signal( const std::string& path,
-                const Task* task,
-                unsigned int decimation,
+                double sampleTime,
                 const DataType& dtype,
                 size_t ndims = 1,
                 const size_t *dim = 0);
 
         virtual ~Signal();
 
-        const Task * const task;
-        const unsigned int decimation;
+        const double sampleTime;
 
         virtual void subscribe(SessionTask *) const = 0;
         virtual void unsubscribe(SessionTask *) const = 0;
 
         virtual double poll(const Session *s,
-                void *buf, struct ::timespec *t) const = 0;
+                void *buf, struct timespec *t) const = 0;
 
         virtual const char *getValue(const SessionTask*) const = 0;
-
-        // Reimplemented from PdServ::Variable
-        virtual void getValue(const Session*, void *buf,
-                struct ::timespec * = 0) const = 0;
-    private:
-
 };
 
 }

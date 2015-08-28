@@ -26,24 +26,28 @@
 
 #include <set>
 #include <list>
+#include <string>
 #include <cc++/thread.h>
 #include <log4cplus/logger.h>
 
 #include "../SessionStatistics.h"
 #include "../Config.h"
-#include "Parameter.h"
-#include "Channel.h"
+#include "../DataType.h"
+#include "DirectoryNode.h"
 
 namespace PdServ {
     class Main;
     class Task;
     class Parameter;
+    class Signal;
 }
 
 namespace MsrProto {
 
 class Session;
 class Event;
+class Parameter;
+class Channel;
 
 class Server: public ost::Thread {
     public:
@@ -64,6 +68,7 @@ class Server: public ost::Thread {
 
         const PdServ::Main * const main;
         const log4cplus::Logger log;
+        const bool* const active;
 
         typedef std::vector<const Channel*> Channels;
         typedef std::vector<const Parameter*> Parameters;
@@ -87,11 +92,13 @@ class Server: public ost::Thread {
         std::set<Session*> sessions;
         int port;
         bool itemize;   // Split multidimensional variables to scalars
+        bool _active;
 
         DirectoryNode variableDirectory;
         DirectoryNode* insertRoot;
 
         Events events;
+        size_t maxConnections;
 
         Channels channels;
         Parameters parameters;
@@ -107,7 +114,8 @@ class Server: public ost::Thread {
         void run();
         void final();
 
-        void createChannels(DirectoryNode* baseDir, size_t taskNum);
+        void createChannels(DirectoryNode* baseDir,
+                const PdServ::Task*, size_t taskIdx);
         void createParameters(DirectoryNode* baseDir);
         void createEvents();
 

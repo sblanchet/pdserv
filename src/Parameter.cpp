@@ -34,8 +34,8 @@ Parameter::Parameter(
         const DataType& dtype,
         size_t ndims,
         const size_t *dim):
-    Variable(path, dtype, ndims, dim), mode(mode),
-    persistent(false)
+    Variable(path, dtype, ndims, dim),
+    mode(mode)
 {
 }
 

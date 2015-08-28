@@ -42,22 +42,26 @@ class EventQ;
 
 class Main: public PdServ::Main {
     public:
-        Main(const struct app_properties&,
+        Main(const struct app_properties& p,
                 const PdServ::Config& config, int fd);
+        ~Main();
 
-        void serve();
+        int serve();
 
-        int setParameter( const Parameter *p, const char* dataPtr,
-                size_t len, struct timespec *) const;
+        int setParameter(const char* dataPtr,
+                size_t len, struct timespec *mtime) const;
+        void parameterChanged(const PdServ::Session* session,
+                const Parameter *param,
+                const char *buf, size_t offset, size_t count) const;
 
     private:
         const struct app_properties &app_properties;
         log4cplus::Logger log;
+        PdServ::Config config;
+        const int pid;
+        const int fd;
 
         mutable ost::Semaphore paramMutex;
-
-        int fd;
-        int pid;
 
         Task *mainTask;
 
@@ -80,23 +84,21 @@ class Main: public PdServ::Main {
         typedef std::set<int> EventSet;
         EventSet eventSet;
 
-        void setupLogging(const PdServ::Config & config);
-//        void setupTTYLog(log4cpp::Category& log);
-//        void setupSyslog(log4cpp::Category& log,
-//                PdServ::Config const& config);
-//        void setupFileLog(log4cpp::Category& log,
-//                PdServ::Config const& config);
+        std::list<Parameter*> parameters;
+
+        int postfork_nrt_setup();
 
         // Reimplemented from PdServ::Main
+        std::list<const PdServ::Task*> getTasks() const;
+        std::list<const PdServ::Event*> getEvents() const;
+        std::list<const PdServ::Parameter*> getParameters() const;
+        void prepare(PdServ::Session *session) const;
+        void cleanup(const PdServ::Session *session) const;
+        const PdServ::Event *getNextEvent(const PdServ::Session* session,
+                size_t *index, bool *state, struct timespec *t) const;
         void processPoll(unsigned int delay_ms,
                 const PdServ::Signal * const *s, size_t nelem,
                 void * const * pollDest, struct timespec *t) const;
-        int gettime(struct timespec *) const;
-        PdServ::Main::Events getEvents() const;
-        void prepare(PdServ::Session *session) const;
-        void cleanup(const PdServ::Session *session) const;
-        const PdServ::Event *getNextEvent( const PdServ::Session* session,
-                size_t *index, bool *state, struct timespec *t) const;
 };
 
 #endif // BUDDY_MAIN_H
