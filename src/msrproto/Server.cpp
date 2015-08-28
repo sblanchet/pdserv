@@ -410,7 +410,8 @@ bool Server::CreateChannel::createVariable(const PdServ::DataType& dtype,
 
     if (server->itemize) {
         char hidden = 0;
-        baseDir->traditionalPathInsert(c, path(), hidden);
+        char persist = 0;
+        baseDir->traditionalPathInsert(c, path(), hidden, persist);
         c->hidden = hidden == 'c' or hidden == 'k' or hidden == 1;
 
         rv = c->hidden;
@@ -444,8 +445,10 @@ bool Server::CreateParameter::createVariable(const PdServ::DataType& dtype,
 
     if (server->itemize) {
         char hidden = 0;
-        baseDir->traditionalPathInsert(p, path(), hidden);
+        char persist = 0;
+        baseDir->traditionalPathInsert(p, path(), hidden, persist);
         p->hidden = hidden == 'p' or hidden == 1;
+        p->persistent = persist;
 
         rv = p->hidden;
     }

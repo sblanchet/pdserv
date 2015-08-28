@@ -74,7 +74,7 @@ void DirectoryNode::insert(DirectoryNode* node, const std::string& name)
 
 /////////////////////////////////////////////////////////////////////////////
 void DirectoryNode::traditionalPathInsert(Variable* var,
-        const std::string& path, char& hidden)
+        const std::string& path, char& hidden, char& persistent)
 {
     DirQ dirQ;
     size_t pos = 0;
@@ -102,6 +102,9 @@ void DirectoryNode::traditionalPathInsert(Variable* var,
 
                 if (element.isTrue("unhide"))
                     hidden = 0;
+
+                if (element.find("persistent"))
+                    persistent = element.isTrue("persistent");
 
                 while (nameEnd
                         and std::isspace(name[nameEnd-1],

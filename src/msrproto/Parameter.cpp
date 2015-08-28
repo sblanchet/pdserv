@@ -59,11 +59,13 @@ Parameter::Parameter(const PdServ::Parameter *p, size_t index,
                 size_t offset, Parameter *parent):
     Variable(p, index, dtype, dim, offset),
     mainParam(p),
+    persistent(false),
     dependent(parent)
 {
     if (parent) {
         parent->addChild(this);
         hidden = parent->hidden;
+        persistent = parent->persistent;
     }
 }
 
