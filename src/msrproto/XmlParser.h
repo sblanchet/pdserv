@@ -53,7 +53,7 @@ class XmlParser {
                 operator bool() const;
 
                 const char *getCommand() const;
-                bool find(const char *name, const char *&value) const;
+                bool find(const char *name, const char **value = 0) const;
                 bool isEqual(const char *name, const char *s) const;
                 bool isTrue(const char *name) const;
                 bool getString(const char *name, std::string &s) const;

@@ -135,7 +135,7 @@ int main(int , const char *[])
     assert( command.isTrue("truestr"));
     assert(!command.isTrue("falsestr"));
     assert( command.isTrue("onstr"));
-    assert(command.find("and", s));
+    assert(command.find("and", &s));
     assert(!strcmp(s, "quoted /> > &quot; &apos;"));
     std::string str;
     assert(command.getString("and", str));
@@ -150,7 +150,7 @@ int main(int , const char *[])
     assert(command.getCommand());
     assert(!strcmp(command.getCommand(), "tag"));
     assert(command.isTrue("tag"));        // "tag" is also an attribute
-    assert(command.find("with", s));
+    assert(command.find("with", &s));
     assert(!strcmp(s, "no-quot"));
     assert(!inbuf.nextElement());
 
@@ -160,7 +160,7 @@ int main(int , const char *[])
     inbuf.newData(strlen(s));
     assert((command = inbuf.nextElement()));
     assert(command.getCommand());        // There is no command
-    assert(command.find("with", s));
+    assert(command.find("with", &s));
     assert(!strcmp(s, "no-quot-attr"));
     assert(!inbuf.nextElement());
     return 0;

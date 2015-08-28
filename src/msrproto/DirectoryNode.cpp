@@ -97,7 +97,7 @@ void DirectoryNode::traditionalPathInsert(Variable* var,
                 const char *value;
                 if (element.isTrue("hide"))
                     hidden = 1;
-                else if (element.find("hide", value))
+                else if (element.find("hide", &value))
                     hidden = *value;
 
                 if (element.isTrue("unhide"))

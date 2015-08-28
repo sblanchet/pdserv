@@ -315,12 +315,13 @@ const char *XmlParser::Element::getCommand() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool XmlParser::Element::find(const char *name, const char *&value) const
+bool XmlParser::Element::find(const char *name, const char **value) const
 {
     for (AttributeList::const_iterator it = attribute->begin();
             it != attribute->end(); ++it) {
         if (!strcasecmp(name, it->first)) {
-            value = it->second;
+            if (value)
+                *value = it->second;
             return true;
         }
     }
@@ -333,7 +334,7 @@ bool XmlParser::Element::isEqual(const char *name, const char *s) const
 {
     const char *value;
 
-    if (find(name, value) and value)
+    if (find(name, &value) and value)
         return !strcasecmp(value, s);
 
     return false;
@@ -344,7 +345,7 @@ bool XmlParser::Element::isTrue(const char *name) const
 {
     const char *value;
 
-    if (!(find(name, value)))
+    if (!(find(name, &value)))
         return false;
 
     // Binary attribute, e.g <xsad sync>
@@ -375,7 +376,7 @@ bool XmlParser::Element::getString(const char *name, std::string &s) const
 
     s.clear();
 
-    if (!(find(name, value) and value))
+    if (!(find(name, &value) and value))
         return false;
 
     const char *pptr, *eptr = value + strlen(value);
@@ -421,7 +422,7 @@ bool XmlParser::Element::getUnsigned(const char *name, unsigned int &i) const
 {
     const char *value;
 
-    if (!(find(name, value)) or !value)
+    if (!(find(name, &value)) or !value)
         return false;
 
     i = strtoul(value, 0, 0);
@@ -434,7 +435,7 @@ bool XmlParser::Element::getUnsignedList(const char *name,
 {
     const char *value;
 
-    if (!(find(name, value)) or !value)
+    if (!(find(name, &value)) or !value)
         return false;
 
     std::istringstream is(value);
