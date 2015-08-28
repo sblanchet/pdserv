@@ -264,29 +264,22 @@ bool DataType::operator!=(const DataType& other) const
 
 //////////////////////////////////////////////////////////////////////
 void DataType::print(std::ostream& os,
-        const char *data, const char *start, const char *end) const
+        const char *data, size_t count) const
 {
     char delim = 0;
+    const char* end = data + count;
 
     for (; data < end; data += this->size) {
         for (FieldList::const_iterator it = fieldList.begin();
                 it != fieldList.end(); ++it) {
 
-            const char *p1 = data + (*it)->offset;
-            if (p1 < start)
-                continue;
-
             if (delim)
                 os << delim;
             delim = ',';
 
-            const char *p2 = p1 + (*it)->dim.nelem * (*it)->type.size;
-            if (p2 < end)
-                (*it)->type.print(os, p1, start, p2);
-            else {
-                (*it)->type.print(os, p1, start, end);
-                return;
-            }
+            (*it)->type.print( os,
+                    data + (*it)->offset,
+                    (*it)->dim.nelem * (*it)->type.size);
         }
     }
 }
