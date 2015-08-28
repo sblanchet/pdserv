@@ -70,17 +70,19 @@ Parameter::Parameter(const PdServ::Parameter *p, size_t index,
 /////////////////////////////////////////////////////////////////////////////
 bool Parameter::inform(Session* session, size_t begin, size_t end) const
 {
-    if (offset > end or begin > (offset + memSize))
+    if (begin >= offset + memSize)
         return false;
+    else if (offset >= end)
+        return true;
 
     session->parameterChanged(this);
     for (List::const_iterator it = children.begin();
             it != children.end(); ++it) {
-        if (!(*it)->inform(session, begin, end))
+        if ((*it)->inform(session, begin, end))
             break;
     }
 
-    return true;
+    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
