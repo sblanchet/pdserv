@@ -31,47 +31,6 @@
 #include "SignalInfo.h"
 
 //////////////////////////////////////////////////////////////////////
-template <typename T, char dir>
-void SignalInfo::copy(void *_dst, const void *_src,
-        size_t *offset, size_t *count, size_t , size_t)
-{
-    const T *src = reinterpret_cast<const T*>(_src);
-
-    std::copy(src, src + *count / sizeof(T),
-            reinterpret_cast<T*>(_dst) + *offset / sizeof(T));
-}
-
-//////////////////////////////////////////////////////////////////////
-template <typename T, char dir>
-void SignalInfo::transpose( void *_dst, const void *_src,
-        size_t *offset, size_t *count, size_t nelem, size_t cols)
-{
-    const T* src = reinterpret_cast<const T*>(_src);
-    T* dst = reinterpret_cast<T*>(_dst);
-
-    const size_t rows = nelem / cols;
-    size_t i = (rows * (*offset % cols) + (*offset / cols)) / sizeof(T);
-    size_t n = *count / sizeof(T);
-
-    if (dir == 'W') {
-        *offset = i * sizeof(T);
-        *count  = ((n - 1) * rows + 1) * sizeof(T);
-    }
-
-    nelem--;
-    while (n--) {
-
-        if      (dir == 'W')    dst[i] = *src++;
-        else if (dir == 'R')    *dst++ = src[i];
-
-        i += cols;
-        if (i > nelem)
-            i -= nelem;
-    }
-
-}
-
-//////////////////////////////////////////////////////////////////////
 SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
     si(si), model(model)
 {
@@ -80,55 +39,17 @@ SignalInfo::SignalInfo( const char *model, const struct signal_info *si):
     nelem = si->dim[0] * si->dim[1];
     memsize = type_size * nelem;
 
-    readFunc = 0;
-
     if (si->dim[0] == 1 or si->dim[1] == 1) {
         dim[0] = nelem;
         dim[1] = 0;
     }
-    else {
-        std::copy(si->dim, si->dim + 2, dim);
-        if (si->orientation == si_matrix_col_major) {
-            switch (type_size) {
-                case 1:
-                    readFunc  = transpose<uint8_t,'R'>;
-                    writeFunc = transpose<uint8_t,'W'>;
-                    break;
-                case 2:
-                    readFunc  = transpose<uint16_t,'R'>;
-                    writeFunc = transpose<uint16_t,'W'>;
-                    break;
-                case 4:
-                    readFunc  = transpose<uint32_t,'R'>;
-                    writeFunc = transpose<uint32_t,'W'>;
-                    break;
-                case 8:
-                    readFunc  = transpose<uint64_t,'R'>;
-                    writeFunc = transpose<uint64_t,'W'>;
-                    break;
-            }
-        }
+    else if (si->orientation == si_matrix_col_major) {
+        dim[0] = si->dim[1];
+        dim[1] = si->dim[0];
     }
-
-    if (!readFunc) {
-        switch (type_size) {
-            case 1:
-                readFunc  = copy<uint8_t,'R'>;
-                writeFunc = copy<uint8_t,'W'>;
-                break;
-            case 2:
-                readFunc  = copy<uint16_t,'R'>;
-                writeFunc = copy<uint16_t,'W'>;
-                break;
-            case 4:
-                readFunc  = copy<uint32_t,'R'>;
-                writeFunc = copy<uint32_t,'W'>;
-                break;
-            case 8:
-                readFunc  = copy<uint64_t,'R'>;
-                writeFunc = copy<uint64_t,'W'>;
-                break;
-        }
+    else {
+        dim[0] = si->dim[0];
+        dim[1] = si->dim[1];
     }
 }
 
@@ -183,20 +104,3 @@ const PdServ::DataType& SignalInfo::dataType() const
         default:           return PdServ::DataType::float64;
     }
 }
-
-//////////////////////////////////////////////////////////////////////
-void SignalInfo::read( void *dst, const void *src) const
-{
-    size_t i = 0;
-    size_t n = memsize;
-
-    readFunc(dst, src, &i, &n, nelem, dim[1]);
-}
-
-//////////////////////////////////////////////////////////////////////
-void SignalInfo::write( void *dst, const void *src,
-        size_t *offset, size_t *count) const
-{
-    writeFunc(dst, src, offset, count, nelem, dim[1]);
-}
-

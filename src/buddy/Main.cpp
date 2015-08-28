@@ -377,7 +377,9 @@ void Main::processPoll(unsigned int /*delay_ms*/,
     for (size_t i = 0; i < nelem; ++i) {
         const Signal *signal = dynamic_cast<const Signal *>(s[i]);
         if (signal)
-            signal->info.read( pollDest[i], data + signal->offset);
+            std::copy(data + signal->offset,
+                    data + signal->offset + signal->memSize,
+                    reinterpret_cast<char*>(pollDest[i]));
     }
 }
 

@@ -45,20 +45,20 @@ int Parameter::setValue(const PdServ::Session* session,
         ost::WriteLock lock(mutex);
 
         // Make a backup of the data to be changed
-        std::copy(valueBuf, valueBuf + memSize, copy);
+        std::copy(valueBuf + offset, valueBuf + offset + count, copy);
 
         // Copy in new data to valueBuf
-        si.write(valueBuf, src, &offset, &count);
+        std::copy(src, src + count, valueBuf + offset);
 
         int rv = main->setParameter(valueBuf + offset, count, &mtime);
         if (rv) {
             // Restore valueBuf and return
-            std::copy(copy, copy + memSize, valueBuf);
+            std::copy(copy, copy + count, valueBuf + offset);
             return rv;
         }
 
-        // Read new data
-        si.read(copy, valueBuf);
+        // Copy new data
+        std::copy(valueBuf, valueBuf + memSize, copy);
     }
 
     // Tell main that the value has changed, with a copy of the value
@@ -72,7 +72,7 @@ void Parameter::getValue(const PdServ::Session *, void* dst,
         struct timespec *time) const
 {
     ost::ReadLock lock(mutex);
-    si.read(dst, valueBuf);
+    std::copy(valueBuf, valueBuf + memSize, reinterpret_cast<char*>(dst));
     if (time)
         *time = mtime;
 }
