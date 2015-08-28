@@ -52,9 +52,9 @@ class Parameter: public Variable {
         void addChild(const Parameter* child);
 
         int setHexValue(const Session *,
-                const char *str, size_t startindex, size_t &count) const;
+                const char *str, size_t startindex) const;
         int setDoubleValue(const Session *,
-                const char *, size_t startindex, size_t &count) const;
+                const char *, size_t startindex) const;
 
         const PdServ::Parameter * const mainParam;
         bool persistent;

@@ -629,12 +629,11 @@ void Session::writeParameter(const XmlParser::Element& cmd)
 
     int errnum;
     const char *s;
-    size_t count;
     if (cmd.find("hexvalue", &s)) {
-        errnum = p->setHexValue(this, s, startindex, count);
+        errnum = p->setHexValue(this, s, startindex);
     }
     else if (cmd.find("value", &s)) {
-        errnum = p->setDoubleValue(this, s, startindex, count);
+        errnum = p->setDoubleValue(this, s, startindex);
     }
     else
         return;

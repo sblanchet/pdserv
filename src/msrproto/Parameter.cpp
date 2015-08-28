@@ -132,7 +132,7 @@ void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
 
 /////////////////////////////////////////////////////////////////////////////
 int Parameter::setHexValue(const Session *session,
-        const char *s, size_t startindex, size_t &count) const
+        const char *s, size_t startindex) const
 {
     char valueBuf[memSize];
     const char *valueEnd = valueBuf + memSize;
@@ -154,9 +154,8 @@ int Parameter::setHexValue(const Session *session,
     // FIXME: actually the setting operation must also check for
     // endianness!
 
-    count = c - valueBuf;
     return mainParam->setValue( session, valueBuf,
-            offset + startindex * dtype.size, count);
+            offset + startindex * dtype.size, c - valueBuf);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -201,7 +200,7 @@ int Parameter::setElements(std::istream& is,
 
 /////////////////////////////////////////////////////////////////////////////
 int Parameter::setDoubleValue(const Session *session,
-        const char *buf, size_t startindex, size_t &count) const
+        const char *buf, size_t startindex) const
 {
     char valueBuf[memSize];
     char *dataBuf = valueBuf;
@@ -210,7 +209,7 @@ int Parameter::setDoubleValue(const Session *session,
     is.imbue(std::locale::classic());
 
     //log_debug("buf=%s", buf);
-    count = 0;
+    size_t count = 0;
     int rv = setElements(is, dtype, dim, dataBuf, count);
 
 //    log_debug("rv=%i startindex=%zu offset=%zu count=%zu",
