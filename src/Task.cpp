@@ -35,13 +35,4 @@ Task::Task(double sampleTime):
 /////////////////////////////////////////////////////////////////////////////
 Task::~Task()
 {
-    for (Signals::iterator it = signals.begin();
-            it != signals.end(); ++it)
-        delete *it;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Task::Signals& Task::getSignals() const
-{
-    return signals;
 }

@@ -56,14 +56,15 @@ Session::Session( Server *server, ost::TCPSocket *socket):
 {
     timeTask = 0;
 
-    subscriptionManager.resize(main->numTasks());
-    for (size_t i = 0; i < main->numTasks(); ++i) {
-        const PdServ::Task *task = main->getTask(i);
+    std::list<const PdServ::Task*> taskList(main->getTasks());
+    subscriptionManager.reserve(taskList.size());
+    for (; taskList.size(); taskList.pop_front()) {
+        const PdServ::Task *task = taskList.front();
 
-        subscriptionManager[i] = new SubscriptionManager(this, task);
+        subscriptionManager.push_back(new SubscriptionManager(this, task));
 
         if (!timeTask or timeTask->task->sampleTime > task->sampleTime)
-            timeTask = subscriptionManager[i];
+            timeTask = subscriptionManager.back();
     }
 
     // Setup some internal variables

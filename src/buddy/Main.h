@@ -44,6 +44,7 @@ class Main: public PdServ::Main {
     public:
         Main(const struct app_properties& p,
                 const PdServ::Config& config, int fd);
+        ~Main();
 
         int serve();
 
@@ -83,16 +84,21 @@ class Main: public PdServ::Main {
         typedef std::set<int> EventSet;
         EventSet eventSet;
 
-        // Reimplemented from PdServ::Main
+        std::list<Parameter*> parameters;
+
         int postfork_nrt_setup();
+
+        // Reimplemented from PdServ::Main
+        std::list<const PdServ::Task*> getTasks() const;
+        std::list<const PdServ::Event*> getEvents() const;
+        std::list<const PdServ::Parameter*> getParameters() const;
+        void prepare(PdServ::Session *session) const;
+        void cleanup(const PdServ::Session *session) const;
+        const PdServ::Event *getNextEvent(const PdServ::Session* session,
+                size_t *index, bool *state, struct timespec *t) const;
         void processPoll(unsigned int delay_ms,
                 const PdServ::Signal * const *s, size_t nelem,
                 void * const * pollDest, struct timespec *t) const;
-        PdServ::Main::Events getEvents() const;
-        void prepare(PdServ::Session *session) const;
-        void cleanup(const PdServ::Session *session) const;
-        const PdServ::Event *getNextEvent( const PdServ::Session* session,
-                size_t *index, bool *state, struct timespec *t) const;
 };
 
 #endif // BUDDY_MAIN_H

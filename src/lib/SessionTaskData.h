@@ -43,8 +43,8 @@ struct Pdo;
 
 class SessionTaskData {
     public:
-        SessionTaskData(PdServ::SessionTask *session, const Task* t,
-                const Task::SignalVector& signals,
+        SessionTaskData(PdServ::SessionTask *session,
+                const Task* t, const std::vector<Signal*>* signals,
                 struct Pdo *txMemBegin, const void *txMemEnd);
         ~SessionTaskData();
 
@@ -59,11 +59,10 @@ class SessionTaskData {
     private:
         const Task * const task;
         PdServ::SessionTask * const sessionTask;
+        const std::vector<Signal*>* const signals;
 
         typedef std::set<const Signal*> SignalSet;
         SignalSet pdoSignals;
-
-        const Task::SignalVector& signals;
 
         struct Pdo * const txMemBegin;
         void const * const txMemEnd;

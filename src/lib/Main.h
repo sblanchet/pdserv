@@ -75,6 +75,9 @@ class Main: public PdServ::Main {
     private:
         mutable ost::Semaphore mutex;
 
+        typedef std::list<Task*> TaskList;
+        TaskList task;
+
         int ipc_pipe[2];
 
         int pid;
@@ -110,6 +113,9 @@ class Main: public PdServ::Main {
         typedef std::set<std::string> VariableSet;
         VariableSet variableSet;
 
+        typedef std::list<Parameter*> ParameterList;
+        ParameterList parameters;
+
         int runForever();
         int readConfiguration();
 
@@ -121,10 +127,12 @@ class Main: public PdServ::Main {
                 const PdServ::Signal * const *s, size_t nelem,
                 void * const *pollDest, struct timespec *t) const;
         int gettime(struct timespec *) const;
-        PdServ::Main::Events getEvents() const;
+        std::list<const PdServ::Task*> getTasks() const;
+        std::list<const PdServ::Event*> getEvents() const;
+        std::list<const PdServ::Parameter*> getParameters() const;
         void prepare(PdServ::Session *session) const;
         void cleanup(const PdServ::Session *session) const;
-        const PdServ::Event *getNextEvent( const PdServ::Session* session,
+        const PdServ::Event *getNextEvent(const PdServ::Session* session,
                 size_t *index, bool *state, struct timespec *t) const;
 };
 

@@ -63,8 +63,11 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     if (!maxConnections)
         maxConnections = ~0U;
 
-    for (size_t i = 0; i < main->numTasks(); ++i)
-        createChannels(insertRoot, i);
+    size_t taskIdx = 0;
+    for (std::list<const PdServ::Task*> taskList(main->getTasks());
+            taskList.size(); taskList.pop_front()) {
+        createChannels(insertRoot, taskList.front(), taskIdx++);
+    }
 
     createParameters(insertRoot);
     createEvents();
@@ -82,23 +85,22 @@ Server::~Server()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::createChannels(DirectoryNode* baseDir, size_t taskIdx)
+void Server::createChannels(DirectoryNode* baseDir,
+        const PdServ::Task* task, size_t taskIdx)
 {
-    const PdServ::Task *task = main->getTask(taskIdx);
     Channel* c;
 
     LOG4CPLUS_TRACE(log,
             LOG4CPLUS_TEXT("Create channels for task ") << taskIdx
             << LOG4CPLUS_TEXT(", Ts=") << task->sampleTime);
 
-    const PdServ::Task::Signals& signals = task->getSignals();
+    std::list<const PdServ::Signal*> signals(task->getSignals());
 
     // Reserve at least signal count and additionally 4 Taskinfo signals
     channels.reserve(channels.size() + signals.size() + 4);
 
-    for (PdServ::Task::Signals::const_iterator it = signals.begin();
-            it != signals.end(); ++it) {
-        const PdServ::Signal *signal = *it;
+    for (; signals.size(); signals.pop_front()) {
+        const PdServ::Signal *signal = signals.front();
 
         LOG4CPLUS_TRACE(log, LOG4CPLUS_TEXT(signal->path)
                 << signal->dtype.name);
@@ -136,12 +138,11 @@ void Server::createEvents ()
     LOG4CPLUS_TRACE(log,
             LOG4CPLUS_TEXT("Create events"));
 
-    const PdServ::Main::Events mainEvents = main->getEvents();
+    std::list<const PdServ::Event*> mainEvents(main->getEvents());
     this->events.reserve(mainEvents.size());
 
-    for (PdServ::Main::Events::const_iterator it = mainEvents.begin();
-            it != mainEvents.end(); ++it)
-        this->events.push_back(new Event(*it));
+    for (; mainEvents.size(); mainEvents.pop_front())
+        this->events.push_back(new Event(mainEvents.front()));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -150,13 +151,12 @@ void Server::createParameters(DirectoryNode* baseDir)
     LOG4CPLUS_TRACE(log,
             LOG4CPLUS_TEXT("Create parameters"));
 
-    const PdServ::Main::Parameters& mainParam = main->getParameters();
+    std::list<const PdServ::Parameter*> mainParam(main->getParameters());
 
     parameters.reserve(parameters.size() + mainParam.size());
 
-    PdServ::Main::Parameters::const_iterator it;
-    for (it = mainParam.begin(); it != mainParam.end(); ++it) {
-        const PdServ::Parameter *param = *it;
+    for (; mainParam.size(); mainParam.pop_front()) {
+        const PdServ::Parameter *param = mainParam.front();
         PdServ::DataType::Iterator<CreateParameter>(
                 param->dtype, param->dim,
                 CreateParameter(this, baseDir, param));

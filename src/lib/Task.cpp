@@ -82,6 +82,9 @@ Task::~Task()
     delete[] copyList[0];
     delete[] signalCopyList[0];
     delete[] signalPosition;
+
+    for (size_t i = 0; i < signals.size(); ++i)
+        delete signals[i];
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -100,9 +103,9 @@ Signal* Task::addSignal( unsigned int decimation,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-size_t Task::signalCount() const
+std::list<const PdServ::Signal*> Task::getSignals() const
 {
-    return signals.size();
+    return std::list<const PdServ::Signal*>(signals.begin(), signals.end());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -164,13 +167,6 @@ void Task::rt_init()
 /////////////////////////////////////////////////////////////////////////////
 void Task::nrt_init()
 {
-    signalVector.resize(signals.size());
-    for (Signals::const_iterator it = signals.begin();
-            it != signals.end(); ++it) {
-        const Signal *s = static_cast<const Signal*>(*it);
-        signalVector[s->index] = s;
-    }
-
     signalPosition = new unsigned int[signals.size()];
 
     signalCopyList[0] = new const Signal*[signals.size()];
@@ -291,7 +287,7 @@ void Task::updateStatistics(
 void Task::prepare (PdServ::SessionTask *s) const
 {
     s->sessionTaskData =
-        new SessionTaskData(s, this, signalVector, txMemBegin, txMemEnd);
+        new SessionTaskData(s, this, &signals, txMemBegin, txMemEnd);
 }
 
 /////////////////////////////////////////////////////////////////////////////

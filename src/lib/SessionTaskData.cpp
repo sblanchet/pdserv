@@ -29,8 +29,8 @@
 #include "Signal.h"
 
 ////////////////////////////////////////////////////////////////////////////
-SessionTaskData::SessionTaskData (PdServ::SessionTask *st, const Task* t,
-        const Task::SignalVector& signals,
+SessionTaskData::SessionTaskData (PdServ::SessionTask *st,
+        const Task* t, const std::vector<Signal*>* signals,
         struct Pdo *txMemBegin, const void *txMemEnd):
     task(t), sessionTask(st), signals(signals),
     txMemBegin(txMemBegin), txMemEnd(txMemEnd)
@@ -38,7 +38,7 @@ SessionTaskData::SessionTaskData (PdServ::SessionTask *st, const Task* t,
     signalListId = 0;
     pdoSize = 0;
 
-    signalPosition.resize(task->signalCount());
+    signalPosition.resize(signals->size());
 
     init();
 }
@@ -125,7 +125,7 @@ bool SessionTaskData::rxPdo (const struct timespec **time,
         switch (pdo->type) {
             case Pdo::SignalList:
                 {
-                    const Signal *sp[signals.size()];
+                    const Signal *sp[signals->size()];
 
                     if (pdo->signal + n > txMemEnd) {
                         goto out;
@@ -133,10 +133,10 @@ bool SessionTaskData::rxPdo (const struct timespec **time,
 
                     for (size_t i = 0; i < n; ++i) {
                         size_t idx = pdo->signal[i];
-                        if (idx >= signals.size()) {
+                        if (idx >= signals->size()) {
                             goto out;
                         }
-                        sp[i] = static_cast<const Signal*>(signals[idx]);
+                        sp[i] = signals->operator[](idx);
                         sessionTask->newSignal(sp[i]);
                     }
                     loadSignalList(sp, n, pdo->signalListId);

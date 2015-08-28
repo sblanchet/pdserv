@@ -79,6 +79,16 @@ Main::~Main()
 {
     ::close(ipc_pipe[1]);
     ::munmap(shmem, shmem_len);
+
+    while (task.size()) {
+        delete task.front();
+        task.pop_front();
+    }
+
+    while (parameters.size()) {
+        delete parameters.front();
+        parameters.pop_front();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -396,9 +406,9 @@ int Main::prefork_init()
     // don't need variableSet any more
     variableSet.clear();
 
-    for (PdServ::Main::Parameters::iterator it = parameters.begin();
+    for (ParameterList::iterator it = parameters.begin();
             it != parameters.end(); it++) {
-        const Parameter *p = static_cast<const Parameter*>(*it);
+        const Parameter *p = *it;
 
         // Push the next smaller data type forward by the parameter's
         // memory requirement
@@ -457,9 +467,9 @@ int Main::prefork_init()
     sdo     = ptr_align<struct SDOStruct>(shmem);
     sdoData = ptr_align<char>(ptr_align<double>(sdo + parameters.size() + 1));
 
-    for (PdServ::Main::Parameters::iterator it = parameters.begin();
+    for (ParameterList::iterator it = parameters.begin();
             it != parameters.end(); it++) {
-        const Parameter *p = static_cast<const Parameter*>(*it);
+        Parameter *p = *it;
         p->valueBuf =
             sdoData + parameterDataOffset[dataTypeIndex[p->dtype.align()]];
         parameterDataOffset[dataTypeIndex[p->dtype.align()]] += p->memSize;
@@ -512,9 +522,22 @@ int Main::postfork_nrt_setup()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-PdServ::Main::Events Main::getEvents() const
+std::list<const PdServ::Parameter*> Main::getParameters() const
 {
-    return Events(events.begin(), events.end());
+    return std::list<const PdServ::Parameter*>(
+            parameters.begin(), parameters.end());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::list<const PdServ::Event*> Main::getEvents() const
+{
+    return std::list<const PdServ::Event*>(events.begin(), events.end());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::list<const PdServ::Task*> Main::getTasks() const
+{
+    return std::list<const PdServ::Task*>(task.begin(), task.end());
 }
 
 /////////////////////////////////////////////////////////////////////////////

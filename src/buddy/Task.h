@@ -35,17 +35,21 @@ class Task: public PdServ::Task {
         Task(Main *main, double sampleTime,
                 const unsigned int* photoReady, const char *album,
                 const struct app_properties *app_properties);
+        ~Task();
 
         const Signal *addSignal(const SignalInfo& si);
 
         const Main * const main;
 
     private:
+        std::list<Signal*> signals;
+
         const unsigned int* const photoReady;
         const char * const album;
         const struct app_properties* const app_properties;
 
         // Reimplemented from PdServ::Task
+        std::list<const PdServ::Signal*> getSignals() const;
         void prepare(PdServ::SessionTask *) const;
         void cleanup(const PdServ::SessionTask *) const;
         bool rxPdo(PdServ::SessionTask *, const struct timespec **tasktime,

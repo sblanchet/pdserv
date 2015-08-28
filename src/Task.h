@@ -41,18 +41,12 @@ class Task {
 
         const double sampleTime;
 
-        typedef std::list<const Signal*> Signals;
-        const Signals& getSignals() const;
+        virtual std::list<const Signal*> getSignals() const = 0;
 
         virtual void prepare(SessionTask *) const = 0;
         virtual void cleanup(const SessionTask *) const = 0;
         virtual bool rxPdo(SessionTask *, const struct timespec **tasktime,
                 const PdServ::TaskStatistics **taskStatistics) const = 0;
-
-    protected:
-        Signals signals;
-
-    private:
 };
 
 }

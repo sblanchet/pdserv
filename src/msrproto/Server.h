@@ -114,7 +114,8 @@ class Server: public ost::Thread {
         void run();
         void final();
 
-        void createChannels(DirectoryNode* baseDir, size_t taskNum);
+        void createChannels(DirectoryNode* baseDir,
+                const PdServ::Task*, size_t taskIdx);
         void createParameters(DirectoryNode* baseDir);
         void createEvents();
 

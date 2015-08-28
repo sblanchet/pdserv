@@ -47,7 +47,6 @@ class Task: public PdServ::Task {
 
         Main * const main;
 
-        typedef std::vector<const Signal*> SignalVector;
         Signal* addSignal( unsigned int decimation,
                 const char *path, const PdServ::DataType& datatype,
                 const void *addr, size_t n, const size_t *dim);
@@ -67,7 +66,6 @@ class Task: public PdServ::Task {
         bool pollFinished( const PdServ::Signal * const *s, size_t nelem,
                 void * const *pollDest, struct timespec *t) const;
 
-        size_t signalCount() const;
         void getSignalList(const Signal ** s, size_t *n,
                 unsigned int *signalListId) const;
 
@@ -87,7 +85,7 @@ class Task: public PdServ::Task {
         // Only allocated for non-realtime task
         unsigned int *signalPosition;
 
-        SignalVector signalVector;
+        std::vector<Signal*> signals;
 
         unsigned int seqNo;
         mutable unsigned int signalListId;
@@ -112,6 +110,7 @@ class Task: public PdServ::Task {
         struct PollData *poll;
 
         // Reimplemented from PdServ::Task
+        std::list<const PdServ::Signal*> getSignals() const;
         void prepare(PdServ::SessionTask *) const;
         void cleanup(const PdServ::SessionTask *) const;
         bool rxPdo(PdServ::SessionTask *, const struct timespec **tasktime,

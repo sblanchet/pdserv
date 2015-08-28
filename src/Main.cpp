@@ -61,52 +61,7 @@ Main::Main(const std::string& name, const std::string& version):
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
-    for (TaskList::iterator it = task.begin(); it != task.end(); ++it)
-        delete *it;
-
-    for (Parameters::iterator it = parameters.begin();
-            it != parameters.end(); ++it)
-        delete *it;
 }
-
-// /////////////////////////////////////////////////////////////////////////////
-// int Main::setupDaemon()
-// {
-//     // Go to root
-// #ifndef PDS_DEBUG
-//     ::chdir("/");
-//     ::umask(0777);
-// #endif
-// 
-//     // close all file handles
-//     // sysconf() usually returns one more than max file handle
-//     long int fd_max = ::sysconf(_SC_OPEN_MAX);
-//     if (fd_max < _POSIX_OPEN_MAX)
-//         fd_max = _POSIX_OPEN_MAX;
-//     else if (fd_max > 100000)
-//         fd_max = 512;   // no rediculous values please
-//     while (fd_max--) {
-// #ifdef PDS_DEBUG
-//         if (fd_max == 2)
-//             break;
-// #endif
-//         ::close(fd_max);
-//     }
-// 
-// #ifndef PDS_DEBUG
-//     // Reopen STDIN, STDOUT and STDERR
-//     if (STDIN_FILENO == ::open("/dev/null", O_RDWR)) {
-//         dup2(STDIN_FILENO, STDOUT_FILENO);
-//         dup2(STDIN_FILENO, STDERR_FILENO);
-// 
-//         fcntl( STDIN_FILENO, F_SETFL, O_RDONLY);
-//         fcntl(STDOUT_FILENO, F_SETFL, O_WRONLY);
-//         fcntl(STDERR_FILENO, F_SETFL, O_WRONLY);
-//     }
-// #endif
-// 
-//     return 0;
-// }
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::setConfig(const Config& c)
@@ -192,24 +147,6 @@ void Main::getSessionStatistics(std::list<SessionStatistics>& stats) const
 {
     msrproto->getSessionStatistics(stats);
     //etlproto->getSessionStatistics(stats);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-size_t Main::numTasks() const
-{
-    return task.size();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Task* Main::getTask(size_t n) const
-{
-    return task[n];
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Main::Parameters& Main::getParameters() const
-{
-    return parameters;
 }
 
 /////////////////////////////////////////////////////////////////////////////

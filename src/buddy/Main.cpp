@@ -32,10 +32,6 @@
 #include <sys/mman.h>
 #include <sys/select.h>         // select()
 #include <sys/signalfd.h>       // signalfd()
-//#include <log4cplus/configurator.h>
-//#include <log4cplus/syslogappender.h>
-//#include <log4cplus/layout.h>
-//#include <log4cplus/configurator.h>
 
 
 #include "Main.h"
@@ -62,6 +58,17 @@ Main::Main(const struct app_properties& p,
     paramMutex(1), parameterBuf(0)
 {
     setConfig(config);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Main::~Main()
+{
+    delete mainTask;
+
+    while (parameters.size()) {
+        delete parameters.front();
+        parameters.pop_front();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -270,7 +277,6 @@ int Main::postfork_nrt_setup()
 
     mainTask = new Task(this, 1.0e-6 * app_properties.sample_period,
             photoReady, photoAlbum, &app_properties);
-    task.push_back(mainTask);
     LOG4CPLUS_DEBUG(log,
             LOG4CPLUS_TEXT("Added Task with sample time ")
             << mainTask->sampleTime);
@@ -405,9 +411,24 @@ void Main::parameterChanged(const PdServ::Session* session,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-PdServ::Main::Events Main::getEvents() const
+std::list<const PdServ::Task*> Main::getTasks() const
 {
-    return Events(events.begin(), events.end());
+    std::list<const PdServ::Task*> taskList;
+    taskList.push_back(mainTask);
+    return taskList;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::list<const PdServ::Event*> Main::getEvents() const
+{
+    return std::list<const PdServ::Event*>(events.begin(), events.end());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::list<const PdServ::Parameter*> Main::getParameters() const
+{
+    return std::list<const PdServ::Parameter*>(
+            parameters.begin(), parameters.end());
 }
 
 /////////////////////////////////////////////////////////////////////////////

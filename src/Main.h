@@ -57,22 +57,16 @@ class Main {
         Main(const std::string& name, const std::string& version);
         virtual ~Main();
 
+        const std::string name;         /**< Application name */
+        const std::string version;      /**< Application version */
+
         void startServers();
         void stopServers();
         void setConfig(const Config& c);
 
-        const std::string name;         /**< Application name */
-        const std::string version;      /**< Application version */
-
         // Get the current system time.
         // Reimplement this method in the class specialization
         virtual int gettime(struct timespec *) const;
-
-        size_t numTasks() const;
-        const Task *getTask(size_t n) const;
-
-        typedef std::list<const Parameter*> Parameters;
-        const Parameters& getParameters() const;
 
         void getSessionStatistics(std::list<SessionStatistics>&) const;
 
@@ -80,9 +74,10 @@ class Main {
         void poll(const Session *session, const Signal * const *s,
                 size_t nelem, void *buf, struct timespec *t) const;
 
-        typedef std::vector<const Event*> Events;
-        virtual Events getEvents() const = 0;
 
+        virtual std::list<const Task*> getTasks() const = 0;
+        virtual std::list<const Event*> getEvents() const = 0;
+        virtual std::list<const Parameter*> getParameters() const = 0;
         virtual void prepare(Session *session) const = 0;
         virtual void cleanup(const Session *session) const = 0;
         virtual const Event *getNextEvent(const Session* session,
@@ -90,11 +85,6 @@ class Main {
 
     protected:
         void setupLogging();
-
-        typedef std::vector<Task*> TaskList;
-        TaskList task;
-
-        Parameters parameters;
 
         static int localtime(struct timespec *);
 
