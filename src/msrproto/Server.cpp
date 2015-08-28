@@ -65,9 +65,8 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
 
     size_t taskIdx = 0;
     for (std::list<const PdServ::Task*> taskList(main->getTasks());
-            taskList.size(); taskList.pop_front()) {
+            taskList.size(); taskList.pop_front())
         createChannels(insertRoot, taskList.front(), taskIdx++);
-    }
 
     createParameters(insertRoot);
     createEvents();

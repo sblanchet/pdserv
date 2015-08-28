@@ -40,7 +40,7 @@
 #include "Main.h"
 #include "Task.h"
 #include "Signal.h"
-#include "Parameter.h"
+#include "ProcessParameter.h"
 #include "Config.h"
 //#include "etlproto/Server.h"
 #include "msrproto/Server.h"
@@ -50,7 +50,7 @@ using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
 Main::Main(const std::string& name, const std::string& version):
-    name(name), version(version), mutex(1),
+    name(name), version(version), mutex(1), parameterMutex(1),
     parameterLog(log4cplus::Logger::getInstance(
                 LOG4CPLUS_STRING_TO_TSTRING("parameter")))
 {
@@ -171,31 +171,39 @@ void Main::stopServers()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::parameterChanged(const Session* /*session*/, const Parameter *param,
-        const char* data, size_t offset, size_t count) const
+int Main::setParameter(const Parameter* p,
+        const Session* /*session*/, size_t offset, size_t count) const
 {
-    msrproto->parameterChanged(param, offset, count);
+    ost::SemaphoreLock lock(parameterMutex);
 
-    if (!parameterLog.isEnabledFor(log4cplus::INFO_LOG_LEVEL))
-        return;
+    // Ask the implementation to change value
+    int rv = setParameter(p, offset, count);
+    if (rv)
+        return rv;
 
-    std::ostringstream os;
-    os.imbue(std::locale::classic());
-    os << param->path;
+    msrproto->parameterChanged(p, offset, count);
 
-    if (count < param->memSize) {
-        os << '[' << offset;
-        if (count > 1)
-            os << ".." << (offset + count - 1);
-        os << ']';
+    if (parameterLog.isEnabledFor(log4cplus::INFO_LOG_LEVEL)) {
+        std::ostringstream os;
+        os.imbue(std::locale::classic());
+        os << p->path;
+
+        if (count < p->memSize) {
+            os << '[' << offset;
+            if (count > 1)
+                os << ".." << (offset + count - 1);
+            os << ']';
+        }
+
+        os << " = ";
+
+        static_cast<const ProcessParameter*>(p)->print(os, offset, count);
+
+        parameterLog.forcedLog(log4cplus::INFO_LOG_LEVEL,
+                LOG4CPLUS_STRING_TO_TSTRING(os.str()));
     }
 
-    os << " = ";
-
-    param->dtype.print(os, data, data + offset, data + offset + count);
-
-    parameterLog.forcedLog(log4cplus::INFO_LOG_LEVEL,
-            LOG4CPLUS_STRING_TO_TSTRING(os.str()));
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////

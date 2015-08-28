@@ -26,53 +26,12 @@
 #include "Main.h"
 
 //////////////////////////////////////////////////////////////////////
-Parameter::Parameter( const Main *main, char *parameterData,
+Parameter::Parameter( Main *main, char *parameterData,
         const SignalInfo &si):
-    PdServ::Parameter(
+    PdServ::ProcessParameter(main, &valueBuf, &mtime,
             si.path(), 0x666, si.dataType(), si.ndim(), si.getDim()),
-    main(main), valueBuf(parameterData), si(si)
+    valueBuf(parameterData)
 {
     mtime.tv_sec = 0;
     mtime.tv_nsec = 0;
-}
-
-//////////////////////////////////////////////////////////////////////
-int Parameter::setValue(const PdServ::Session* session,
-        const char* src, size_t offset, size_t count) const
-{
-    char copy[memSize];
-    {
-        ost::WriteLock lock(mutex);
-
-        // Make a backup of the data to be changed
-        std::copy(valueBuf + offset, valueBuf + offset + count, copy);
-
-        // Copy in new data to valueBuf
-        std::copy(src, src + count, valueBuf + offset);
-
-        int rv = main->setParameter(valueBuf + offset, count, &mtime);
-        if (rv) {
-            // Restore valueBuf and return
-            std::copy(copy, copy + count, valueBuf + offset);
-            return rv;
-        }
-
-        // Copy new data
-        std::copy(valueBuf, valueBuf + memSize, copy);
-    }
-
-    // Tell main that the value has changed, with a copy of the value
-    main->parameterChanged(session, this, copy, offset, count);
-
-    return 0;
-}
-
-//////////////////////////////////////////////////////////////////////
-void Parameter::getValue(const PdServ::Session *, void* dst,
-        struct timespec *time) const
-{
-    ost::ReadLock lock(mutex);
-    std::copy(valueBuf, valueBuf + memSize, reinterpret_cast<char*>(dst));
-    if (time)
-        *time = mtime;
 }

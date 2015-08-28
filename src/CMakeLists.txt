@@ -56,6 +56,7 @@ SET (main_src
     Signal.cpp          Signal.h
     Event.cpp           Event.h
     Parameter.cpp       Parameter.h
+    ProcessParameter.cpp ProcessParameter.h
     Debug.cpp           Debug.h
 
     supervisor/Server.cpp         supervisor/Server.h

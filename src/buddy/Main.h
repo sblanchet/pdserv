@@ -50,9 +50,6 @@ class Main: public PdServ::Main {
 
         int setParameter(const char* dataPtr,
                 size_t len, struct timespec *mtime) const;
-        void parameterChanged(const PdServ::Session* session,
-                const Parameter *param,
-                const char *buf, size_t offset, size_t count) const;
 
     private:
         const struct app_properties &app_properties;
@@ -60,8 +57,6 @@ class Main: public PdServ::Main {
         PdServ::Config config;
         const int pid;
         const int fd;
-
-        mutable ost::Semaphore paramMutex;
 
         Task *mainTask;
 
@@ -96,9 +91,12 @@ class Main: public PdServ::Main {
         void cleanup(const PdServ::Session *session) const;
         const PdServ::Event *getNextEvent(const PdServ::Session* session,
                 size_t *index, bool *state, struct timespec *t) const;
-        void processPoll(unsigned int delay_ms,
-                const PdServ::Signal * const *s, size_t nelem,
-                void * const * pollDest, struct timespec *t) const;
+        int setParameter(const PdServ::Parameter* p,
+                size_t offset, size_t count) const;
+        void processPoll(
+                unsigned int delay_ms, const PdServ::Signal * const *s,
+                size_t nelem, void * const * pollDest,
+                struct timespec *t) const;
 };
 
 #endif // BUDDY_MAIN_H

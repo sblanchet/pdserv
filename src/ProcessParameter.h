@@ -21,39 +21,45 @@
  *
  *****************************************************************************/
 
-#ifndef LIB_PARAMETER
-#define LIB_PARAMETER
+#ifndef PROCESSPARAMETER_H
+#define PROCESSPARAMETER_H
 
-#include "../ProcessParameter.h"
-#include "pdserv.h"
+#include <ctime>
+#include <cc++/thread.h>
+#include "Parameter.h"
+
+namespace PdServ{
 
 class Main;
 
-class Parameter: public PdServ::ProcessParameter {
+class ProcessParameter: public Parameter {
     public:
-        Parameter ( Main* main,
-                void *addr,
-                const char *path,
+        ProcessParameter ( Main* main,
+                char * const* addr,
+                const struct timespec* mtime,
+                const std::string& path,
                 unsigned int mode,
                 const PdServ::DataType& dtype,
                 size_t ndims = 1,
                 const size_t *dim = 0);
 
-        // Address in RT task (not accessible from NRT)
-        char* const addr;
-
-        char* shmAddr; // Address in shared memory
-        mutable struct timespec mtime;
-
-        paramtrigger_t trigger;
-        void* priv_data;
+        void print(std::ostream& os, size_t offset, size_t count) const;
 
     private:
-        // A default function used when paramcheck or paramupdate are not
-        // specified by the user
-        static int copy(struct pdtask *task,
-                const struct pdvariable *parameter, void *dst,
-                const void *src, size_t len, void *priv_data);
+        const Main * const main;
+        char* const* const valueBuf;
+        const struct timespec* const mtime;
+
+        mutable ost::ThreadLock mutex;
+
+        // Reimplemented from PdServ::Parameter
+        int setValue(const PdServ::Session* session,
+                const char *buf, size_t offset, size_t count) const;
+
+        // Reimplemented from PdServ::Variable
+        void getValue(const PdServ::Session* session,
+                void *buf, struct timespec* t = 0) const;
 };
 
-#endif //LIB_PARAMETER
+}
+#endif //PROCESSPARAMETER_H

@@ -24,35 +24,18 @@
 #ifndef BUDDY_PARAMETER
 #define BUDDY_PARAMETER
 
-#include <ctime>
-#include <cc++/thread.h>
-#include "../Parameter.h"
+#include "../ProcessParameter.h"
 #include "SignalInfo.h"
 
 class Main;
 
-class Parameter: public PdServ::Parameter {
+class Parameter: public PdServ::ProcessParameter {
     public:
-        Parameter ( const Main *main, char *parameterData,
+        Parameter (Main *main, char *parameterData,
                 const SignalInfo& si);
 
-    private:
-        const Main * const main;
-
-        char * const valueBuf;      // Pointer to the real address
-
-        const SignalInfo si;
-
-        mutable ost::ThreadLock mutex;
         mutable struct timespec mtime;
-
-        // Reimplemented from PdServ::Parameter
-        int setValue(const PdServ::Session* session,
-                const char *buf, size_t startIndex, size_t nelem) const;
-
-        // Reimplemented from PdServ::Variable
-        void getValue(const PdServ::Session *, void *buf,
-                struct timespec* t = 0) const;
+        char * const valueBuf;      // Pointer to the real address
 };
 
 #endif //BUDDY_PARAMETER

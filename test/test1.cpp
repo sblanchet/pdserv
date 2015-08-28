@@ -154,7 +154,7 @@ int main(int argc, const char *argv[])
             0666, pd_uint16_T, var1, 2, 0, 0, 0);
     assert(p4);
 
-    struct pdvariable *p5 = pdserv_parameter(pdserv, "/path /to<persistent>/param/p1<persistent=\"0\"/Value>",
+    struct pdvariable *p5 = pdserv_parameter(pdserv, "/path /to<persistent>/param/p1<persistent=\"0\">/Value",
             0666, pd_uint16_T, var1, 2, 0, 0, 0);
     assert(p5);
 

@@ -55,7 +55,7 @@ Main::Main(const struct app_properties& p,
     PdServ::Main(p.name, p.version),
     app_properties(p), log(log4cplus::Logger::getRoot()),
     config(config), pid(::getpid()), fd(fd),
-    paramMutex(1), parameterBuf(0)
+    parameterBuf(0)
 {
     setConfig(config);
 }
@@ -384,14 +384,14 @@ void Main::processPoll(unsigned int /*delay_ms*/,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(const char* dataPtr,
-        size_t count, struct timespec *mtime) const
+int Main::setParameter(const PdServ::Parameter* p,
+        size_t offset, size_t count) const
 {
-    ost::SemaphoreLock lock(paramMutex);
     struct param_change delta;
 
+    delta.pos =
+        static_cast<const Parameter*>(p)->valueBuf + offset - parameterBuf;
     delta.rtP = parameterBuf;
-    delta.pos = dataPtr - parameterBuf;
     delta.len = count;
     delta.count = 0;
 
@@ -399,17 +399,9 @@ int Main::setParameter(const char* dataPtr,
         return errno;
     }
 
-    gettime(mtime);
+    gettime(&static_cast<const Parameter*>(p)->mtime);
 
     return 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::parameterChanged(const PdServ::Session* session,
-        const Parameter *param,
-        const char *buf, size_t offset, size_t count) const
-{
-    PdServ::Main::parameterChanged(session, param, buf, offset, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////

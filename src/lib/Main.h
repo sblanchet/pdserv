@@ -60,11 +60,6 @@ class Main: public PdServ::Main {
         Parameter* addParameter( const char *path,
                 unsigned int mode, const PdServ::DataType& datatype,
                 void *addr, size_t n, const size_t *dim);
-        int setParameter(const Parameter *param,
-                size_t offset, size_t count, struct timespec *mtime) const;
-        void parameterChanged(const PdServ::Session* session,
-                const Parameter *param,
-                const char *buf, size_t offset, size_t count) const;
 
         Signal* addSignal( Task *task, unsigned int decimation,
                 const char *path, const PdServ::DataType& datatype,
@@ -99,7 +94,6 @@ class Main: public PdServ::Main {
         mutable ost::Semaphore eventMutex;
 
         struct SDOStruct *sdo;
-        mutable ost::Semaphore sdoMutex;
         char *sdoData;
 
         int (* const rttime)(struct timespec*);
@@ -123,9 +117,6 @@ class Main: public PdServ::Main {
         int prefork_init();
         int postfork_rt_setup();
         int postfork_nrt_setup();
-        void processPoll( unsigned int delay_ms,
-                const PdServ::Signal * const *s, size_t nelem,
-                void * const *pollDest, struct timespec *t) const;
         int gettime(struct timespec *) const;
         std::list<const PdServ::Task*> getTasks() const;
         std::list<const PdServ::Event*> getEvents() const;
@@ -134,6 +125,12 @@ class Main: public PdServ::Main {
         void cleanup(const PdServ::Session *session) const;
         const PdServ::Event *getNextEvent(const PdServ::Session* session,
                 size_t *index, bool *state, struct timespec *t) const;
+        int setParameter(const PdServ::Parameter* p,
+                size_t offset, size_t count) const;
+        void processPoll(
+                unsigned int delay_ms, const PdServ::Signal * const *s,
+                size_t nelem, void * const * pollDest,
+                struct timespec *t) const;
 };
 
 #endif // LIB_MAIN_H

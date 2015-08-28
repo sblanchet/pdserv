@@ -74,6 +74,8 @@ class Main {
         void poll(const Session *session, const Signal * const *s,
                 size_t nelem, void *buf, struct timespec *t) const;
 
+        int setParameter(const Parameter* p, const Session *session,
+                size_t offset, size_t count) const;
 
         virtual std::list<const Task*> getTasks() const = 0;
         virtual std::list<const Event*> getEvents() const = 0;
@@ -82,6 +84,8 @@ class Main {
         virtual void cleanup(const Session *session) const = 0;
         virtual const Event *getNextEvent(const Session* session,
                 size_t *index, bool *state, struct timespec *t) const = 0;
+        virtual int setParameter(const Parameter* p,
+                size_t offset, size_t count) const = 0;
 
     protected:
         void setupLogging();
@@ -92,12 +96,11 @@ class Main {
                 unsigned int delay_ms, const Signal * const *s,
                 size_t nelem, void * const * pollDest,
                 struct timespec *t) const = 0;
-        void parameterChanged(const Session* session, const Parameter *p,
-                const char* data, size_t offset, size_t count) const;
 
     private:
 
         mutable ost::Semaphore mutex;
+        mutable ost::Semaphore parameterMutex;
 
         const log4cplus::Logger parameterLog;
 

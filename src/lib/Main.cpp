@@ -66,7 +66,7 @@ const double Main::bufferTime = 2.0;
 Main::Main( const char *name, const char *version,
         int (*gettime)(struct timespec*)):
     PdServ::Main(name, version),
-    mutex(1), eventMutex(1), sdoMutex(1),
+    mutex(1), eventMutex(1),
     rttime(gettime ? gettime : &PdServ::Main::localtime)
 {
     shmem_len = 0;
@@ -271,7 +271,7 @@ Parameter* Main::addParameter( const char *path,
     if (variableSet.find(path) != variableSet.end())
         return 0;
 
-    Parameter *p = new Parameter(this, path, mode, datatype, addr, n, dim);
+    Parameter *p = new Parameter(this, addr, path, mode, datatype, n, dim);
 
     variableSet.insert(path);
     parameters.push_back(p);
@@ -318,10 +318,10 @@ bool Main::setEvent(const Event* event,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(const Parameter *param,
-        size_t offset, size_t count, struct timespec *mtime) const
+int Main::setParameter(
+        const PdServ::Parameter *p, size_t offset, size_t count) const
 {
-    ost::SemaphoreLock lock(sdoMutex);
+    const Parameter* param = static_cast<const Parameter*>(p);
 
     // Write the parameters into the shared memory sorted from widest
     // to narrowest data type size. This ensures that the data is
@@ -336,20 +336,10 @@ int Main::setParameter(const Parameter *param,
         ost::Thread::sleep(tSampleMin);
     } while (sdo->count);
 
-    if (!sdo->rv) {
-        mtime->tv_sec = sdo->time.tv_sec;
-        mtime->tv_nsec = sdo->time.tv_nsec;
-    }
+    if (sdo->rv)
+        param->mtime = sdo->time;
 
     return sdo->rv;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Main::parameterChanged(const PdServ::Session* session,
-        const Parameter *param,
-        const char *buf, size_t offset, size_t count) const
-{
-    PdServ::Main::parameterChanged(session, param, buf, offset, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -470,11 +460,11 @@ int Main::prefork_init()
     for (ParameterList::iterator it = parameters.begin();
             it != parameters.end(); it++) {
         Parameter *p = *it;
-        p->valueBuf =
+        p->shmAddr =
             sdoData + parameterDataOffset[dataTypeIndex[p->dtype.align()]];
         parameterDataOffset[dataTypeIndex[p->dtype.align()]] += p->memSize;
 
-        std::copy(p->addr, p->addr + p->memSize, p->valueBuf);
+        std::copy(p->addr, p->addr + p->memSize, p->shmAddr);
     }
 
     char* buf = ptr_align<char>(sdoData + parameterDataOffset[4]);
@@ -582,7 +572,7 @@ void Main::getParameters(Task *task, const struct timespec *t) const
         s->rv = p->trigger(reinterpret_cast<struct pdtask *>(task),
                 reinterpret_cast<const struct pdvariable *>(v),
                 p->addr + s->offset,
-                p->valueBuf + s->offset, s->count, p->priv_data);
+                p->shmAddr + s->offset, s->count, p->priv_data);
         s->count = 0;
     }
 }
