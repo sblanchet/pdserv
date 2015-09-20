@@ -121,18 +121,21 @@ void Session::broadcast(Session *, const struct timespec& ts,
 {
     ost::SemaphoreLock lock(mutex);
 
-    Broadcast *b = new Broadcast;
-    b->ts = ts;
-    b->action = action;
-    b->message = message;
-    broadcastList.push_back(b);
+    if (!polite) {
+        Broadcast *b = new Broadcast;
+        b->ts = ts;
+        b->action = action;
+        b->message = message;
+        broadcastList.push_back(b);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void Session::setAIC(const Parameter *p)
 {
     ost::SemaphoreLock lock(mutex);
-    aic.insert(p->mainParam);
+    if (!polite)
+        aic.insert(p->mainParam);
 
     if (!aicDelay)
         aicDelay = 5;  // 2Hz AIC
@@ -142,7 +145,8 @@ void Session::setAIC(const Parameter *p)
 void Session::parameterChanged(const Parameter *p)
 {
     ost::SemaphoreLock lock(mutex);
-    changedParameter.insert(p);
+    if (!polite)
+        changedParameter.insert(p);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -244,15 +248,6 @@ void Session::run()
                     tcp.commandId.clear();
                 }
             }
-        }
-
-        // End here for polite conversations
-        if (polite) {
-            ost::SemaphoreLock lock(mutex);
-            changedParameter.clear();
-            broadcastList.clear();
-            aic.clear();
-            continue;
         }
 
         // Collect all asynchronous events while holding mutex
@@ -579,12 +574,29 @@ void Session::readStatistics(const XmlParser::Element& /*cmd*/)
 /////////////////////////////////////////////////////////////////////////////
 void Session::remoteHost(const XmlParser::Element& cmd)
 {
+
     cmd.getString("name", peer);
 
     cmd.getString("applicationname", client);
 
     writeAccess = cmd.isEqual("access", "allow") or cmd.isTrue("access");
-    polite = cmd.isTrue("polite");
+
+    // Check whether stream should be polite, i.e. not send any data
+    // when not requested by the client.
+    // This is used for passive clients that do not check their streams
+    // on a regular basis causing the TCP stream to congest.
+    {
+        ost::SemaphoreLock lock(mutex);
+        polite = cmd.isTrue("polite");
+        if (polite) {
+            changedParameter.clear();
+            aic.clear();
+            while (!broadcastList.empty()) {
+                delete broadcastList.front();
+                broadcastList.pop_front();
+            }
+        }
+    }
 
     LOG4CPLUS_INFO(server->log,
             LOG4CPLUS_TEXT("Logging in ")
