@@ -336,7 +336,7 @@ int Main::setParameter(
         ost::Thread::sleep(tSampleMin);
     } while (sdo->count);
 
-    if (sdo->rv)
+    if (!sdo->rv)
         param->mtime = sdo->time;
 
     return sdo->rv;
