@@ -100,7 +100,7 @@ void pdserv_update_statistics(struct pdtask* task,
 /////////////////////////////////////////////////////////////////////////////
 void pdserv_update(struct pdtask* task, const struct timespec *t)
 {
-    reinterpret_cast<Task*>(task)->update(t);
+    reinterpret_cast<Task*>(task)->rt_update(t);
 }
 
 /////////////////////////////////////////////////////////////////////////////

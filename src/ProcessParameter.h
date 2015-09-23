@@ -28,7 +28,7 @@
 #include <cc++/thread.h>
 #include "Parameter.h"
 
-namespace PdServ{
+namespace PdServ {
 
 class Main;
 
@@ -45,8 +45,10 @@ class ProcessParameter: public Parameter {
 
         void print(std::ostream& os, size_t offset, size_t count) const;
 
+        int setValue(const char *buf, size_t offset, size_t count) const;
+
     private:
-        const Main * const main;
+        Main * const main;
         char* const* const valueBuf;
         const struct timespec* const mtime;
 

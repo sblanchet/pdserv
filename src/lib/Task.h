@@ -25,11 +25,13 @@
 #define LIB_TASK_H
 
 #include <vector>
+#include <set>
 #include <cstddef>
 #include <cc++/thread.h>
 
 #include "../Task.h"
 #include "../TaskStatistics.h"
+#include "../SessionTask.h"
 
 namespace PdServ {
     class SessionTask;
@@ -38,6 +40,7 @@ namespace PdServ {
 
 class Main;
 class Signal;
+class Parameter;
 class SessionTaskData;
 
 class Task: public PdServ::Task {
@@ -50,6 +53,9 @@ class Task: public PdServ::Task {
         Signal* addSignal( unsigned int decimation,
                 const char *path, const PdServ::DataType& datatype,
                 const void *addr, size_t n, const size_t *dim);
+        void makePersistent(const Signal* s);
+        bool getPersistentValue(const PdServ::Signal* s,
+                char* buf, const struct timespec** t) const;
 
         size_t getShmemSpace(double t) const;
 
@@ -58,7 +64,8 @@ class Task: public PdServ::Task {
         void nrt_init();
         void updateStatistics(
                 double exec_time, double cycle_time, unsigned int overrun);
-        void update(const struct timespec *);
+        void rt_update(const struct timespec *);
+        void nrt_update();
 
         void subscribe(const Signal* s, bool insert) const;
 
@@ -121,6 +128,21 @@ class Task: public PdServ::Task {
         void processSignalList();
         void calculateCopyList();
         void copyData(const struct timespec* t);
+
+        typedef std::set<const PdServ::Signal*> PersistentSet;
+        PersistentSet persistentSet;
+        const struct timespec* time;
+
+        struct Persistent: PdServ::SessionTask {
+            Persistent(Task* t);
+
+            // Reimplemented from PdServ::SessionTask
+            void newSignal( const PdServ::Signal *);
+
+            PersistentSet active;
+        };
+
+        Persistent *persist;
 };
 
 #endif // LIB_TASK_H

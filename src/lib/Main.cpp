@@ -25,13 +25,13 @@
 
 #include "../Debug.h"
 
-#include <unistd.h>     // exit()
+#include <unistd.h>     // exit(), sleep()
 #include <cerrno>       // errno
 #include <cstdio>       // perror()
 #include <algorithm>    // std::min()
 #include <sys/mman.h>   // mmap(), munmap()
 #include <signal.h>     // signal()
-
+#include <log4cplus/logger.h>
 #include <log4cplus/loggingmacros.h>
 
 #include "pdserv.h"
@@ -44,6 +44,7 @@
 #include "ShmemDataStructures.h"
 #include "../Session.h"
 #include "../Config.h"
+#include "../Database.h"
 
 /////////////////////////////////////////////////////////////////////////////
 struct SDOStruct {
@@ -77,9 +78,6 @@ Main::Main( const char *name, const char *version,
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
-    ::close(ipc_pipe[1]);
-    ::munmap(shmem, shmem_len);
-
     while (task.size()) {
         delete task.front();
         task.pop_front();
@@ -89,6 +87,9 @@ Main::~Main()
         delete parameters.front();
         parameters.pop_front();
     }
+
+    ::close(ipc_pipe[1]);
+    ::munmap(shmem, shmem_len);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -101,8 +102,13 @@ void Main::setConfigFile(const char *file)
 int Main::run()
 {
     int rv;
+    time_t persistTimeout;
+    fd_set fds;
+    struct timeval timeout, now, delay;
 
     readConfiguration();
+    setupLogging();
+    persistTimeout = setupPersistent();
 
     // Initialize library
     rv = prefork_init();
@@ -128,7 +134,7 @@ int Main::run()
     if (pid < 0) {
         // Some error occurred
         ::perror("fork()");
-        return pid;
+        return errno;
     }
     else if (pid) {
         // Parent here. Return to the caller
@@ -136,27 +142,65 @@ int Main::run()
         // Close read end of pipe
         ::close(ipc_pipe[0]);
 
+        // Send a signal to the child that parent is running
+        ::write(ipc_pipe[1], &pid, 1);
+
         return postfork_rt_setup();
     }
-
-    // Close write end of pipe
-    ::close(ipc_pipe[1]);
 
     // Only child runs after this point
     pid = getpid();
 
-    // Ignore common signals
+    // Close write end of pipe
+    ::close(ipc_pipe[1]);
+
+    // Wait till main thread is initialized
+    if (::read(ipc_pipe[0], &rv, 1) != 1)
+        exit(errno);
+
+    // Ignore common terminating signals
     ::signal(SIGINT, SIG_IGN);
     ::signal(SIGTERM, SIG_IGN);
 
-    setupLogging();
     postfork_nrt_setup();
+
     startServers();
 
-    // Run forever, until pipe is closed
-    ::read(ipc_pipe[0], &ipc_pipe[1], 2);
+    ::gettimeofday(&timeout, 0);
+
+    FD_ZERO(&fds);
+
+    // Stay in this loop until real-time thread exits, in which case
+    // ipc_pipe[0] becomes readable
+    do {
+        for (TaskList::iterator it = task.begin();
+                it != task.end(); ++it)
+            static_cast<Task*>(*it)->nrt_update();
+
+        if (::gettimeofday(&now, 0)) {
+            rv = errno;
+            break;
+        }
+        if (timercmp(&now, &timeout, <))
+            timeout = now;
+
+        if (persistTimeout and now.tv_sec >= timeout.tv_sec) {
+            timeout.tv_sec += persistTimeout;
+            savePersistent();
+        }
+
+        FD_SET(ipc_pipe[0], &fds);
+        delay.tv_sec = 1;
+        rv = ::select(ipc_pipe[0] + 1, &fds, 0, 0, &delay);
+    } while (!rv);
+
+    // Ignore rv if ipc_pipe[0] is readable
+    if (rv == 1)
+        rv = 0;
 
     stopServers();
+
+    savePersistent();
 
     ::exit(rv);
 }
@@ -239,9 +283,6 @@ int Main::gettime(struct timespec* t) const
 Event* Main::addEvent (
         const char *path, int prio, size_t nelem, const char **messages)
 {
-    if (variableSet.find(path) != variableSet.end())
-        return 0;
-
     PdServ::Event::Priority eventPrio;
     switch (prio) {
         case 1: eventPrio = PdServ::Event::Alert;       break;
@@ -257,7 +298,6 @@ Event* Main::addEvent (
     }
     Event *e = new Event(this, path, eventPrio, nelem, messages);
 
-    variableSet.insert(path);
     events.push_back(e);
 
     return e;
@@ -268,12 +308,8 @@ Parameter* Main::addParameter( const char *path,
         unsigned int mode, const PdServ::DataType& datatype,
         void *addr, size_t n, const size_t *dim)
 {
-    if (variableSet.find(path) != variableSet.end())
-        return 0;
-
     Parameter *p = new Parameter(this, addr, path, mode, datatype, n, dim);
 
-    variableSet.insert(path);
     parameters.push_back(p);
 
     return p;
@@ -284,12 +320,7 @@ Signal* Main::addSignal( Task *task, unsigned int decimation,
         const char *path, const PdServ::DataType& datatype,
         const void *addr, size_t n, const size_t *dim)
 {
-    if (variableSet.find(path) != variableSet.end())
-        return 0;
-
     Signal *s = task->addSignal(decimation, path, datatype, addr, n, dim);
-
-    variableSet.insert(path);
 
     return s;
 }
@@ -318,8 +349,8 @@ bool Main::setEvent(const Event* event,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(
-        const PdServ::Parameter *p, size_t offset, size_t count) const
+int Main::setParameter(const PdServ::ProcessParameter *p,
+        size_t offset, size_t count) const
 {
     const Parameter* param = static_cast<const Parameter*>(p);
 
@@ -337,9 +368,39 @@ int Main::setParameter(
     } while (sdo->count);
 
     if (!sdo->rv)
+        // Save time of update
         param->mtime = sdo->time;
 
     return sdo->rv;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::initializeParameter(const PdServ::Parameter* p,
+        const char* data, const struct timespec* mtime,
+        const PdServ::Signal* s)
+{
+    const Parameter *parameter = static_cast<const Parameter*>(p);
+    std::copy(data, data + parameter->memSize, parameter->addr);
+    parameter->mtime = *mtime;
+
+    if (s) {
+        const Signal* signal = static_cast<const Signal*>(s);
+        signal->task->makePersistent(signal);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Main::getPersistentSignalValue(const PdServ::Signal *s,
+        char* buf, struct timespec* time)
+{
+    const struct timespec* t;
+    bool rv = static_cast<const Signal*>(s)->task->getPersistentValue(
+            s, buf, &t);
+
+    if (rv and time)
+        *time = *t;
+
+    return rv;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -393,12 +454,9 @@ int Main::prefork_init()
     };
     size_t parameterDataOffset[5] = {0, 0, 0, 0, 0};    // need one extra!
 
-    // don't need variableSet any more
-    variableSet.clear();
-
     for (ParameterList::iterator it = parameters.begin();
             it != parameters.end(); it++) {
-        const Parameter *p = *it;
+        const Parameter *p = static_cast<const Parameter*>(*it);
 
         // Push the next smaller data type forward by the parameter's
         // memory requirement
@@ -450,7 +508,7 @@ int Main::prefork_init()
         // log(LOGCRIT, "could not mmap
         // err << "mmap(): " << strerror(errno);
         ::perror("mmap()");
-        return -errno;
+        return errno;
     }
     ::memset(shmem, 0, shmem_len);
 

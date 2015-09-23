@@ -47,22 +47,7 @@ ProcessParameter::ProcessParameter(
 int ProcessParameter::setValue(const PdServ::Session* session,
         const char *buf, size_t offset, size_t count) const
 {
-    ost::WriteLock lock(mutex);
-
-    char* addr = *valueBuf + offset;
-
-    // Save a copy of data to be changed
-    char copy[count];
-    std::copy(addr, addr + count, copy);
-
-    // Copy data to parameter area
-    std::copy(buf, buf + count, addr);
-
-    int rv = main->setParameter(this, session, offset, count);
-    if (rv)
-        std::copy(copy, copy + count, addr);
-
-    return rv;
+    return main->setValue(this, session, buf, offset, count);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -74,6 +59,30 @@ void ProcessParameter::getValue(const PdServ::Session* /*session*/,
     std::copy(*valueBuf, *valueBuf + memSize, reinterpret_cast<char*>(buf));
     if (time)
         *time = *mtime;
+}
+
+//////////////////////////////////////////////////////////////////////
+int ProcessParameter::setValue(
+        const char *buf, size_t offset, size_t count) const
+{
+    ost::WriteLock lock(mutex);
+
+    char *dst = *valueBuf + offset;
+
+    // Backup data in case of failure
+    char backup[count];
+    std::copy(dst, dst + count, backup);
+
+    // Copy data into shared memory
+    std::copy(buf, buf + count, dst);
+
+    int rv = main->setParameter(this, offset, count);
+
+    if (rv)
+        // There was a error, restore backup
+        std::copy(backup, backup + count, dst);
+
+    return rv;
 }
 
 //////////////////////////////////////////////////////////////////////

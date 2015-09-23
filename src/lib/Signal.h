@@ -47,6 +47,8 @@ class Signal: public PdServ::Signal {
                 size_t ndims = 1,
                 const size_t *dim = 0);
 
+        Task* const task;
+
         const char * const addr;
 
         static const size_t dataTypeIndex[PdServ::DataType::maxWidth+1];
@@ -54,7 +56,6 @@ class Signal: public PdServ::Signal {
         const size_t index;
 
     private:
-        Task* const task;
         mutable ost::Semaphore mutex;
 
         typedef std::set<const PdServ::SessionTask*> SessionSet;

@@ -22,7 +22,6 @@
  *****************************************************************************/
 
 #include "Variable.h"
-#include "DataType.h"
 
 #include <stdint.h>
 

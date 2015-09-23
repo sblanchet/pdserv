@@ -21,41 +21,39 @@
  *
  *****************************************************************************/
 
-#ifndef LIB_PARAMETER
-#define LIB_PARAMETER
+#ifndef PERSISTENT_DATABASE_H
+#define PERSISTENT_DATABASE_H
 
-#include "../ProcessParameter.h"
-#include "pdserv.h"
+#include <string>
+#include <set>
+#include <db.h>
+#include <log4cplus/logger.h>
 
-class Main;
-class Signal;
-class Persistent;
+namespace PdServ {
 
-class Parameter: public PdServ::ProcessParameter {
+class Parameter;
+
+class Database {
     public:
-        Parameter ( Main* main,
-                void *addr,
-                const char *path,
-                unsigned int mode,
-                const PdServ::DataType& dtype,
-                size_t ndims = 1,
-                const size_t *dim = 0);
+        Database(const log4cplus::Logger& log, const std::string& path);
+        ~Database();
 
-        // Address in RT task (not accessible from NRT)
-        char* const addr;
+        operator bool() const;
 
-        char* shmAddr; // Address in shared memory
-        mutable struct timespec mtime;
-
-        paramtrigger_t trigger;
-        void* priv_data;
+        bool read(const Parameter* p,
+                const char** buf, const struct timespec** time) const;
+        void save(const Parameter* p,
+                const char* data, const struct timespec* time);
+        void checkKeys(const std::set<std::string>& keys);
 
     private:
-        // A default function used when paramcheck or paramupdate are not
-        // specified by the user
-        static int copy(struct pdtask *task,
-                const struct pdvariable *parameter, void *dst,
-                const void *src, size_t len, void *priv_data);
+
+        DB* db;
+        const log4cplus::Logger& log;
+
+        void close();
 };
 
-#endif //LIB_PARAMETER
+}
+
+#endif //PERSISTENT_DATABASE_H

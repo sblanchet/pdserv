@@ -25,6 +25,7 @@
 #define LIB_MAIN_H
 
 #include <set>
+#include <list>
 
 #include "../Main.h"
 
@@ -104,13 +105,9 @@ class Main: public PdServ::Main {
         typedef std::set<int> EventSet;
         EventSet eventSet;
 
-        typedef std::set<std::string> VariableSet;
-        VariableSet variableSet;
-
         typedef std::list<Parameter*> ParameterList;
         ParameterList parameters;
 
-        int runForever();
         int readConfiguration();
 
         // Reimplemented from PdServ::Main
@@ -125,8 +122,13 @@ class Main: public PdServ::Main {
         void cleanup(const PdServ::Session *session) const;
         const PdServ::Event *getNextEvent(const PdServ::Session* session,
                 size_t *index, bool *state, struct timespec *t) const;
-        int setParameter(const PdServ::Parameter* p,
+        int setParameter(const PdServ::ProcessParameter* p,
                 size_t offset, size_t count) const;
+        void initializeParameter(const PdServ::Parameter* p,
+                const char* data, const struct timespec* mtime,
+                const PdServ::Signal* s);
+        bool getPersistentSignalValue(const PdServ::Signal *s,
+                char* buf, struct timespec* time);
         void processPoll(
                 unsigned int delay_ms, const PdServ::Signal * const *s,
                 size_t nelem, void * const * pollDest,

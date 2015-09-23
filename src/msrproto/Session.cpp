@@ -205,7 +205,7 @@ void Session::run()
             n = tcp.read(inbuf.bufptr(), inbuf.free(), 40); // ms
 
             if (!n) {
-                LOG4CPLUS_DEBUG_STR(server->log,
+                LOG4CPLUS_INFO_STR(server->log,
                         LOG4CPLUS_TEXT("Client closed connection"));
                 return;
             }
@@ -228,7 +228,7 @@ void Session::run()
         }
 
         if (n > 0) {
-            LOG4CPLUS_DEBUG(server->log,
+            LOG4CPLUS_TRACE(server->log,
                     LOG4CPLUS_TEXT("Rx: ")
                     << LOG4CPLUS_STRING_TO_TSTRING(
                         std::string(inbuf.bufptr(), n)));
@@ -357,7 +357,7 @@ void Session::processCommand(const XmlParser::Element& cmd)
         if (commandLen == cmds[idx].len
                 and !strcmp(cmds[idx].name, command)) {
 
-            LOG4CPLUS_TRACE(server->log,
+            LOG4CPLUS_TRACE_STR(server->log,
                     LOG4CPLUS_C_STR_TO_TSTRING(cmds[idx].name));
 
             // Call the method

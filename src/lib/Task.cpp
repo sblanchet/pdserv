@@ -74,11 +74,14 @@ Task::Task(Main *main, double ts, const char * /*name*/):
     std::fill_n(signalTypeCount, 4, 0);
     signalCopyList[0] = 0;
     copyList[0] = 0;
+    persist = 0;
+    time = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Task::~Task()
 {
+    delete persist;
     delete[] copyList[0];
     delete[] signalCopyList[0];
     delete[] signalPosition;
@@ -174,6 +177,46 @@ void Task::nrt_init()
         signalCopyList[i+1] = signalCopyList[i] + signalTypeCount[i];
 
     std::fill_n(signalTypeCount, 4, 0);
+
+    if (!persistentSet.empty()) {
+        persist = new Persistent(this);
+
+        for (PersistentSet::iterator it = persistentSet.begin();
+                it != persistentSet.end(); ++it)
+            static_cast<const PdServ::Signal*>(*it)->subscribe(persist);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::makePersistent(const Signal* s)
+{
+    persistentSet.insert(s);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Task::getPersistentValue(const PdServ::Signal* s,
+        char* buf, const struct timespec** t) const
+{
+    if (persist->active.find(s) != persist->active.end()) {
+        const char *value = s->getValue(persist);
+        std::copy(value, value + s->memSize, buf);
+        *t = time;
+    }
+
+    return time;        // time will be non-zero rxPdo is called at least once
+}
+
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+Task::Persistent::Persistent(Task* task):
+    PdServ::SessionTask(task)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::Persistent::newSignal(const PdServ::Signal *signal)
+{
+    active.insert(static_cast<const PdServ::Signal*>(signal));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -304,9 +347,19 @@ bool Task::rxPdo (PdServ::SessionTask *s, const struct timespec **time,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Task::nrt_update()
+{
+    if (!persist)
+        return;
+
+    const PdServ::TaskStatistics *stat;
+    while (rxPdo(persist, &time, &stat));
+}
+
+/////////////////////////////////////////////////////////////////////////////
 // Real time methods
 /////////////////////////////////////////////////////////////////////////////
-void Task::update(const struct timespec *t)
+void Task::rt_update(const struct timespec *t)
 {
     while (poll->request != poll->reply)
         processPollRequest(t);

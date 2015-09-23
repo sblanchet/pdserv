@@ -53,6 +53,7 @@ SET (main_src
     Main.cpp            Main.h
     Variable.cpp        Variable.h
     DataType.cpp        DataType.h
+    Database.cpp        Database.h
     Signal.cpp          Signal.h
     Event.cpp           Event.h
     Parameter.cpp       Parameter.h
@@ -78,13 +79,13 @@ IF (RT_APP_H AND ENABLE_BUDDY)
         app_taskstats.h HAVE_TIMESPEC)
     CHECK_STRUCT_HAS_MEMBER("struct task_stats" time.tv_usec
         app_taskstats.h HAVE_TIMEVAL)
-    CHECK_STRUCT_HAS_MEMBER("struct rt_app" port rt_app.h HAVE_SIMULINK_PORT)
-
     IF (HAVE_TIMEVAL)
         MESSAGE (STATUS "Using timeval for etherlab_buddy2")
+        SET_SOURCE_FILES_PROPERTIES ( buddy/SessionTaskData.cpp buddy/Main.cpp
+              PROPERTIES COMPILE_DEFINITIONS HAVE_TIMEVAL)
     ELSEIF (HAVE_TIMESPEC)
         MESSAGE (STATUS "Using timespec for etherlab_buddy2")
-        SET_SOURCE_FILES_PROPERTIES (buddy/SessionTaskData.cpp
+        SET_SOURCE_FILES_PROPERTIES ( buddy/SessionTaskData.cpp buddy/Main.cpp
             PROPERTIES COMPILE_DEFINITIONS HAVE_TIMESPEC)
     ELSE ()
         MESSAGE ("Compiler output:")
@@ -93,15 +94,12 @@ IF (RT_APP_H AND ENABLE_BUDDY)
             "Not all header files for etherlab_buddy are available")
     ENDIF()
 
+    CHECK_STRUCT_HAS_MEMBER("struct rt_app" port rt_app.h HAVE_SIMULINK_PORT)
     IF (HAVE_SIMULINK_PORT)
         MESSAGE (STATUS "etherlab_buddy2 understands port= option")
         SET_SOURCE_FILES_PROPERTIES (buddy/SignalInfo.cpp
             PROPERTIES COMPILE_DEFINITIONS HAVE_SIMULINK_PORT)
     ENDIF ()
-
-    #MESSAGE("TIMESPEC=${HAVE_TIMESPEC}")
-    #MESSAGE("TIMEVAL=${HAVE_TIMEVAL}")
-    #MESSAGE("PORT=${HAVE_SIMULINK_PORT}")
 
     FIND_PACKAGE (LibDaemon REQUIRED)
     FIND_PACKAGE (Threads REQUIRED)
@@ -129,6 +127,7 @@ IF (RT_APP_H AND ENABLE_BUDDY)
         ${YAML_LIBRARIES}
         ${LOG4CPLUS_LIBRARIES}
         ${CMAKE_THREAD_LIBS_INIT}
+        ${BerkeleyDB_LIBRARIES}
         )
 
     INCLUDE_DIRECTORIES (${LIBDAEMON_INCLUDE_DIRS})
@@ -163,7 +162,7 @@ SET_TARGET_PROPERTIES ( ${PROJECT_NAME} PROPERTIES
     CLEAN_DIRECT_OUTPUT 1)
 
 TARGET_LINK_LIBRARIES (${PROJECT_NAME} ${LIBCCEXT2_LDFLAGS}
-    ${YAML_LIBRARIES} ${LOG4CPLUS_LIBRARIES})
+    ${YAML_LIBRARIES} ${LOG4CPLUS_LIBRARIES} ${BerkeleyDB_LIBRARIES})
 INSTALL (TARGETS ${PROJECT_NAME} DESTINATION "${CMAKE_INSTALL_LIBDIR}" LIBRARY)
 
 # pkgconfig files

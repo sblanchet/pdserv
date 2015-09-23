@@ -101,8 +101,8 @@ void Server::createChannels(DirectoryNode* baseDir,
     for (; signals.size(); signals.pop_front()) {
         const PdServ::Signal *signal = signals.front();
 
-        LOG4CPLUS_TRACE(log, LOG4CPLUS_TEXT(signal->path)
-                << signal->dtype.name);
+//        LOG4CPLUS_TRACE(log, LOG4CPLUS_TEXT(signal->path)
+//                << signal->dtype.name);
         PdServ::DataType::Iterator<CreateChannel>(
                 signal->dtype, signal->dim,
                 CreateChannel(this, baseDir, taskIdx, signal));
@@ -134,7 +134,7 @@ void Server::createChannels(DirectoryNode* baseDir,
 /////////////////////////////////////////////////////////////////////////////
 void Server::createEvents ()
 {
-    LOG4CPLUS_TRACE(log,
+    LOG4CPLUS_TRACE_STR(log,
             LOG4CPLUS_TEXT("Create events"));
 
     std::list<const PdServ::Event*> mainEvents(main->getEvents());
@@ -147,7 +147,7 @@ void Server::createEvents ()
 /////////////////////////////////////////////////////////////////////////////
 void Server::createParameters(DirectoryNode* baseDir)
 {
-    LOG4CPLUS_TRACE(log,
+    LOG4CPLUS_TRACE_STR(log,
             LOG4CPLUS_TEXT("Create parameters"));
 
     std::list<const PdServ::Parameter*> mainParam(main->getParameters());
@@ -202,7 +202,7 @@ void Server::run()
                         << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(err)));
                 return;
             }
-            LOG4CPLUS_DEBUG(log,
+            LOG4CPLUS_INFO(log,
                     LOG4CPLUS_TEXT("Port ") << port
                     << LOG4CPLUS_TEXT(" is busy. Trying next one..."));
             port++;
@@ -216,7 +216,7 @@ void Server::run()
         }
 
         try {
-            LOG4CPLUS_TRACE_STR(log,
+            LOG4CPLUS_DEBUG_STR(log,
                     LOG4CPLUS_TEXT("New client connection"));
             ost::SemaphoreLock lock(mutex);
             sessions.insert(new Session(this, server));

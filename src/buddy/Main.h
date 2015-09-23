@@ -36,6 +36,7 @@ namespace PdServ {
 }
 
 class Parameter;
+class ProcessParameter;
 class Task;
 class Event;
 class EventQ;
@@ -91,8 +92,13 @@ class Main: public PdServ::Main {
         void cleanup(const PdServ::Session *session) const;
         const PdServ::Event *getNextEvent(const PdServ::Session* session,
                 size_t *index, bool *state, struct timespec *t) const;
-        int setParameter(const PdServ::Parameter* p,
+        int setParameter(const PdServ::ProcessParameter* p,
                 size_t offset, size_t count) const;
+        void initializeParameter(const PdServ::Parameter* p,
+                const char* data, const struct timespec* mtime,
+                const PdServ::Signal* s);
+        bool getPersistentSignalValue(const PdServ::Signal *s,
+                char* buf, struct timespec* time);
         void processPoll(
                 unsigned int delay_ms, const PdServ::Signal * const *s,
                 size_t nelem, void * const * pollDest,

@@ -25,7 +25,7 @@
 #define MAIN_H
 
 #include <list>
-#include <vector>
+#include <map>
 #include <string>
 #include <cc++/thread.h>
 #include <log4cplus/logger.h>
@@ -47,6 +47,8 @@ namespace PdServ {
 class Signal;
 class Event;
 class Parameter;
+class ProcessParameter;
+class Variable;
 class Task;
 class Session;
 class Config;
@@ -74,8 +76,6 @@ class Main {
         void poll(const Session *session, const Signal * const *s,
                 size_t nelem, void *buf, struct timespec *t) const;
 
-        int setParameter(const Parameter* p, const Session *session,
-                size_t offset, size_t count) const;
 
         virtual std::list<const Task*> getTasks() const = 0;
         virtual std::list<const Event*> getEvents() const = 0;
@@ -84,7 +84,25 @@ class Main {
         virtual void cleanup(const Session *session) const = 0;
         virtual const Event *getNextEvent(const Session* session,
                 size_t *index, bool *state, struct timespec *t) const = 0;
-        virtual int setParameter(const Parameter* p,
+
+        // Setting a parameter has various steps:
+        // 1) client calls parameter->setValue(session, ...)
+        //    This virtual method is implemented by ProcessParameter
+        // 2) ProcessParameter calls
+        //        main->setValue(processParameter, session, ...)
+        //    so that main can check whether session is allowed to set it
+        // 3) main calls processParameter->setValue(...)
+        //    so that ProcessParameter can obtain write lock
+        // 4) processParameter calls main->setParameter(processParameter, ...)
+        //    virtual method to do the setting
+        // 5) When the thread of execution returns in 3) successfully,
+        //    main can do various functions, e.g.
+        //      - inform clients of a value change
+        //      - save persistent parameter
+        //      - etc
+        int setValue(const ProcessParameter* p, const Session *session,
+                const char* buf, size_t offset, size_t count);
+        virtual int setParameter(const ProcessParameter* p,
                 size_t offset, size_t count) const = 0;
 
     protected:
@@ -97,14 +115,28 @@ class Main {
                 size_t nelem, void * const * pollDest,
                 struct timespec *t) const = 0;
 
+        unsigned int setupPersistent();
+        void savePersistent();
+        virtual void initializeParameter(const Parameter* p,
+                const char* data, const struct timespec* mtime,
+                const Signal* s) = 0;
+        virtual bool getPersistentSignalValue(const Signal *s,
+                char* buf, struct timespec* time) = 0;
+
     private:
 
         mutable ost::Semaphore mutex;
-        mutable ost::Semaphore parameterMutex;
 
         const log4cplus::Logger parameterLog;
 
         PdServ::Config config;
+
+        bool persistentLogTraceOn;
+        log4cplus::Logger persistentLog;
+        log4cplus::Logger persistentLogTrace;
+        PdServ::Config persistentConfig;
+        typedef std::map<const Parameter*, const Signal*> PersistentMap;
+        PersistentMap persistentMap;
 
         MsrProto::Server *msrproto;
         Supervisor::Server *supervisor;
