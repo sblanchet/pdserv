@@ -32,9 +32,8 @@
 #include <unistd.h>             // fork()
 #include <sys/mman.h>
 #include <sys/select.h>         // select()
-#include <sys/signalfd.h>       // signalfd()
 #include <app_taskstats.h>
-
+#include <log4cplus/loggingmacros.h>
 
 #include "Main.h"
 #include "Task.h"
@@ -44,6 +43,20 @@
 #include "Parameter.h"
 #include "../Config.h"
 #include "../Session.h"
+
+#ifdef HAVE_SIGNALFD
+#   include <sys/signalfd.h>       // signalfd()
+#else   // HAVE_SIGNALFD
+
+#include <signal.h>             // signal()
+#include <unistd.h>             // pipe(), write()
+static int pipefd[2];
+static void sighandler(int signum)
+{
+    write(pipefd[1], &signum, sizeof(signum));
+}
+
+#endif  // HAVE_SIGNALFD
 
 /////////////////////////////////////////////////////////////////////////////
 struct SessionData {
@@ -76,7 +89,9 @@ Main::~Main()
 /////////////////////////////////////////////////////////////////////////////
 int Main::serve()
 {
+#ifdef HAVE_SIGNALFD
     sigset_t mask;
+#endif
     fd_set fds;
     int maxfd, sfd, rv;
     time_t persistTimeout;
@@ -90,6 +105,7 @@ int Main::serve()
     photoPtr = readPointer;
     startServers();
 
+#ifdef HAVE_SIGNALFD
     // Set signal mask
     if (::sigemptyset(&mask)
             or ::sigaddset(&mask, SIGHUP)      // Reread configuration
@@ -111,6 +127,27 @@ int Main::serve()
                 << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(errno)));
         goto out;
     }
+#else
+    if (pipe(pipefd)) {
+        rv = errno;
+        LOG4CPLUS_FATAL(log,
+                LOG4CPLUS_TEXT("pipe(): ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(errno)));
+        goto out;
+    }
+
+    if (signal(SIGHUP, sighandler) == SIG_ERR
+            or signal(SIGINT, sighandler) == SIG_ERR
+            or signal(SIGTERM, sighandler) == SIG_ERR) {
+        rv = errno;
+        LOG4CPLUS_FATAL(log,
+                LOG4CPLUS_TEXT("sigal(): ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(errno)));
+        goto out_signal;
+    }
+
+    sfd = pipefd[0];
+#endif
 
     maxfd = (sfd > fd ? sfd : fd) + 1;
 
@@ -160,6 +197,9 @@ int Main::serve()
         }
 
         if (FD_ISSET(sfd, &fds)) {
+            int signo;
+
+#ifdef HAVE_SIGNALFD
             // Signal received
             struct signalfd_siginfo fdsi;
 
@@ -171,8 +211,18 @@ int Main::serve()
                             "reading signal file descriptor"));
                 goto out;
             }
+            signo = fdsi.ssi_signo;
+#else
+            if ((rv = read(sfd, &signo, sizeof(signo))) != sizeof(signo)) {
+                rv = errno;
+                LOG4CPLUS_FATAL_STR(log,
+                        LOG4CPLUS_TEXT("Received incorrect length when "
+                            "reading signal file descriptor"));
+                goto out_signal;
+            }
+#endif
 
-            switch (fdsi.ssi_signo) {
+            switch (signo) {
                 case SIGHUP:
                     LOG4CPLUS_INFO_STR(log,
                             LOG4CPLUS_TEXT("SIGUP received. Reloading config"));
@@ -184,8 +234,12 @@ int Main::serve()
                     LOG4CPLUS_INFO(log,
                             LOG4CPLUS_TEXT("Terminating on ")
                             << LOG4CPLUS_C_STR_TO_TSTRING(
-                                strsignal(fdsi.ssi_signo))); 
+                                strsignal(signo))); 
                     stopServers();
+#ifndef HAVE_SIGNALFD
+                    close(pipefd[0]);
+                    close(pipefd[1]);
+#endif
                     return 0;
             }
         }
@@ -205,6 +259,11 @@ int Main::serve()
         }
     }
 
+#ifndef HAVE_SIGNALFD
+out_signal:
+    close(pipefd[0]);
+    close(pipefd[1]);
+#endif
 out:
     LOG4CPLUS_FATAL(log,
             LOG4CPLUS_TEXT("Failed: ")

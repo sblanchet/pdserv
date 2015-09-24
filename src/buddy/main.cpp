@@ -34,6 +34,7 @@
 #include <unistd.h>         // getopt(), sleep()
 #include <signal.h>         // kill()
 #include <cstdlib>          // atoi()
+#include <iostream>
 
 #include "Main.h"
 #include "../Config.h"

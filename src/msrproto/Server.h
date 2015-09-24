@@ -123,6 +123,7 @@ class Server: public ost::Thread {
             CreateVariable(Server* server, DirectoryNode* baseDir,
                     const PdServ::Variable* var);
             CreateVariable(const CreateVariable& other);
+            virtual ~CreateVariable() {}
 
             void newDimension(
                     const PdServ::DataType& dtype,

@@ -25,6 +25,7 @@
 
 #include "../Debug.h"
 
+#include <iostream>
 #include <unistd.h>     // exit(), sleep()
 #include <cerrno>       // errno
 #include <cstdio>       // perror()

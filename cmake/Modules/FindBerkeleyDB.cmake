@@ -66,8 +66,19 @@ find_path(BerkeleyDB_INCLUDE_DIR
 
 if (BerkeleyDB_INCLUDE_DIR)
 
+    # In some cases, one db.h just includes another in a lower directory.
+    # Search all db.h for the string DB_VERSION_STRING, ending when found
+    file (GLOB_RECURSE HEADERS FOLLOW_SYMLINKS "${BerkeleyDB_INCLUDE_DIR}/db.h")
+    list (SORT HEADERS)
+    foreach (F ${HEADERS})
+        file(READ "${F}" DB_H_FILE)
+        string(REGEX MATCH DB_VERSION_STRING P "${DB_H_FILE}")
+        if (NOT P STREQUAL "")
+            break ()
+        endif ()
+    endforeach ()
+    
     # retrieve version information from the header
-    file(READ "${BerkeleyDB_INCLUDE_DIR}/db.h" DB_H_FILE)
 
     string(REGEX REPLACE ".*#define[ \t]+DB_VERSION_STRING[ \t]+\"([^\"]+)\".*" "\\1" BerkeleyDB_VERSION       "${DB_H_FILE}")
     string(REGEX REPLACE ".*#define[ \t]+DB_VERSION_MAJOR[ \t]+([0-9]+).*"      "\\1" BerkeleyDB_VERSION_MAJOR "${DB_H_FILE}")

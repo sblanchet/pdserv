@@ -79,19 +79,22 @@ IF (RT_APP_H AND ENABLE_BUDDY)
         app_taskstats.h HAVE_TIMESPEC)
     CHECK_STRUCT_HAS_MEMBER("struct task_stats" time.tv_usec
         app_taskstats.h HAVE_TIMEVAL)
+
     IF (HAVE_TIMEVAL)
         MESSAGE (STATUS "Using timeval for etherlab_buddy2")
-        SET_SOURCE_FILES_PROPERTIES ( buddy/SessionTaskData.cpp buddy/Main.cpp
+        LIST (APPEND MAIN_PROPERTIES "HAVE_TIMEVAL")
+        SET_SOURCE_FILES_PROPERTIES (buddy/SessionTaskData.cpp
               PROPERTIES COMPILE_DEFINITIONS HAVE_TIMEVAL)
     ELSEIF (HAVE_TIMESPEC)
         MESSAGE (STATUS "Using timespec for etherlab_buddy2")
-        SET_SOURCE_FILES_PROPERTIES ( buddy/SessionTaskData.cpp buddy/Main.cpp
+        LIST (APPEND MAIN_PROPERTIES "HAVE_TIMESPEC")
+        SET_SOURCE_FILES_PROPERTIES (buddy/SessionTaskData.cpp
             PROPERTIES COMPILE_DEFINITIONS HAVE_TIMESPEC)
     ELSE ()
-        MESSAGE ("Compiler output:")
-        MESSAGE (${HAVE_TIMESPEC_OUTPUT})
         MESSAGE (FATAL_ERROR
-            "Not all header files for etherlab_buddy are available")
+            "Could not find out whether app_taskstats.h "
+            "uses struct timespec or struct timeval. "
+            "Maybe the header file is not found.")
     ENDIF()
 
     CHECK_STRUCT_HAS_MEMBER("struct rt_app" port rt_app.h HAVE_SIMULINK_PORT)
@@ -100,6 +103,16 @@ IF (RT_APP_H AND ENABLE_BUDDY)
         SET_SOURCE_FILES_PROPERTIES (buddy/SignalInfo.cpp
             PROPERTIES COMPILE_DEFINITIONS HAVE_SIMULINK_PORT)
     ENDIF ()
+
+    # Test for headers
+    INCLUDE (CheckIncludeFile)
+    CHECK_INCLUDE_FILE ("sys/signalfd.h" HAVE_SIGNALFD)
+    IF (HAVE_SIGNALFD)
+        LIST (APPEND MAIN_PROPERTIES "HAVE_SIGNALFD")
+    ENDIF ()
+
+    SET_SOURCE_FILES_PROPERTIES (buddy/Main.cpp
+        PROPERTIES COMPILE_DEFINITIONS "${MAIN_PROPERTIES}")
 
     FIND_PACKAGE (LibDaemon REQUIRED)
     FIND_PACKAGE (Threads REQUIRED)
