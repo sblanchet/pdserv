@@ -34,6 +34,7 @@
 #include <sys/select.h>         // select()
 #include <app_taskstats.h>
 #include <log4cplus/loggingmacros.h>
+#include <dsignal.h>
 
 #include "Main.h"
 #include "Task.h"
@@ -43,20 +44,6 @@
 #include "Parameter.h"
 #include "../Config.h"
 #include "../Session.h"
-
-#ifdef HAVE_SIGNALFD
-#   include <sys/signalfd.h>       // signalfd()
-#else   // HAVE_SIGNALFD
-
-#include <signal.h>             // signal()
-#include <unistd.h>             // pipe(), write()
-static int pipefd[2];
-static void sighandler(int signum)
-{
-    write(pipefd[1], &signum, sizeof(signum));
-}
-
-#endif  // HAVE_SIGNALFD
 
 /////////////////////////////////////////////////////////////////////////////
 struct SessionData {
@@ -89,9 +76,6 @@ Main::~Main()
 /////////////////////////////////////////////////////////////////////////////
 int Main::serve()
 {
-#ifdef HAVE_SIGNALFD
-    sigset_t mask;
-#endif
     fd_set fds;
     int maxfd, sfd, rv;
     time_t persistTimeout;
@@ -105,50 +89,13 @@ int Main::serve()
     photoPtr = readPointer;
     startServers();
 
-#ifdef HAVE_SIGNALFD
-    // Set signal mask
-    if (::sigemptyset(&mask)
-            or ::sigaddset(&mask, SIGHUP)      // Reread configuration
-            or ::sigaddset(&mask, SIGINT)      // Ctrl-C
-            or ::sigaddset(&mask, SIGTERM)     // standard kill signal
-            or ::sigprocmask(SIG_BLOCK, &mask, NULL)) { 
+    // In foreground mode, only catch SIGCHLD
+    if (daemon_signal_init(SIGHUP, SIGINT, SIGTERM, -1) < 0) {
         rv = errno;
-        LOG4CPLUS_FATAL_STR(log,
-                LOG4CPLUS_TEXT("Failed to set correct signal mask"));
         goto out;
     }
 
-    // Get a file descriptor for reading signals
-    sfd = ::signalfd(-1, &mask, SFD_NONBLOCK);
-    if (sfd == -1) {
-        rv = errno;
-        LOG4CPLUS_FATAL(log,
-                LOG4CPLUS_TEXT("Getting signal file descriptor failed: ")
-                << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(errno)));
-        goto out;
-    }
-#else
-    if (pipe(pipefd)) {
-        rv = errno;
-        LOG4CPLUS_FATAL(log,
-                LOG4CPLUS_TEXT("pipe(): ")
-                << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(errno)));
-        goto out;
-    }
-
-    if (signal(SIGHUP, sighandler) == SIG_ERR
-            or signal(SIGINT, sighandler) == SIG_ERR
-            or signal(SIGTERM, sighandler) == SIG_ERR) {
-        rv = errno;
-        LOG4CPLUS_FATAL(log,
-                LOG4CPLUS_TEXT("sigal(): ")
-                << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(errno)));
-        goto out_signal;
-    }
-
-    sfd = pipefd[0];
-#endif
-
+    sfd = daemon_signal_fd();
     maxfd = (sfd > fd ? sfd : fd) + 1;
 
     ::gettimeofday(&timeout, 0);
@@ -197,37 +144,15 @@ int Main::serve()
         }
 
         if (FD_ISSET(sfd, &fds)) {
-            int signo;
-
-#ifdef HAVE_SIGNALFD
-            // Signal received
-            struct signalfd_siginfo fdsi;
-
-            ssize_t s = ::read(sfd, &fdsi, sizeof(struct signalfd_siginfo));
-            if (s != sizeof(struct signalfd_siginfo)) {
-                rv = errno;
-                LOG4CPLUS_FATAL_STR(log,
-                        LOG4CPLUS_TEXT("Received incorrect length when "
-                            "reading signal file descriptor"));
-                goto out;
-            }
-            signo = fdsi.ssi_signo;
-#else
-            if ((rv = read(sfd, &signo, sizeof(signo))) != sizeof(signo)) {
-                rv = errno;
-                LOG4CPLUS_FATAL_STR(log,
-                        LOG4CPLUS_TEXT("Received incorrect length when "
-                            "reading signal file descriptor"));
-                goto out_signal;
-            }
-#endif
+            int signo = daemon_signal_next();
 
             switch (signo) {
                 case SIGHUP:
                     LOG4CPLUS_INFO_STR(log,
-                            LOG4CPLUS_TEXT("SIGUP received. Reloading config"));
+                            LOG4CPLUS_TEXT("SIGHUP received. Reloading config"));
                     config.reload();
                     setConfig(config[name]);
+                    savePersistent();
                     break;
 
                 default:
@@ -236,10 +161,8 @@ int Main::serve()
                             << LOG4CPLUS_C_STR_TO_TSTRING(
                                 strsignal(signo))); 
                     stopServers();
-#ifndef HAVE_SIGNALFD
-                    close(pipefd[0]);
-                    close(pipefd[1]);
-#endif
+                    savePersistent();
+                    daemon_signal_done();
                     return 0;
             }
         }
@@ -259,16 +182,12 @@ int Main::serve()
         }
     }
 
-#ifndef HAVE_SIGNALFD
-out_signal:
-    close(pipefd[0]);
-    close(pipefd[1]);
-#endif
 out:
     LOG4CPLUS_FATAL(log,
             LOG4CPLUS_TEXT("Failed: ")
             << LOG4CPLUS_C_STR_TO_TSTRING(strerror(errno)));
     stopServers();
+    daemon_signal_done();
 
     return rv;
 }

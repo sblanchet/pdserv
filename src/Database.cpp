@@ -220,6 +220,9 @@ void Database::checkKeys(const std::set<std::string>& keySet)
     DBC *dbcp;
     int ret;
 
+    if (!db)
+        return;
+
     LOG4CPLUS_TRACE(log, LOG4CPLUS_TEXT("Cleaning up database"));
 
     if ((ret = db->cursor(db, NULL, &dbcp, 0)) != 0) {

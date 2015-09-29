@@ -82,14 +82,10 @@ IF (RT_APP_H AND ENABLE_BUDDY)
 
     IF (HAVE_TIMEVAL)
         MESSAGE (STATUS "Using timeval for etherlab_buddy2")
-        LIST (APPEND MAIN_PROPERTIES "HAVE_TIMEVAL")
-        SET_SOURCE_FILES_PROPERTIES (buddy/SessionTaskData.cpp
-              PROPERTIES COMPILE_DEFINITIONS HAVE_TIMEVAL)
+        LIST (APPEND DEFS HAVE_TIMEVAL)
     ELSEIF (HAVE_TIMESPEC)
         MESSAGE (STATUS "Using timespec for etherlab_buddy2")
-        LIST (APPEND MAIN_PROPERTIES "HAVE_TIMESPEC")
-        SET_SOURCE_FILES_PROPERTIES (buddy/SessionTaskData.cpp
-            PROPERTIES COMPILE_DEFINITIONS HAVE_TIMESPEC)
+        LIST (APPEND DEFS HAVE_TIMESPEC)
     ELSE ()
         MESSAGE (FATAL_ERROR
             "Could not find out whether app_taskstats.h "
@@ -100,19 +96,8 @@ IF (RT_APP_H AND ENABLE_BUDDY)
     CHECK_STRUCT_HAS_MEMBER("struct rt_app" port rt_app.h HAVE_SIMULINK_PORT)
     IF (HAVE_SIMULINK_PORT)
         MESSAGE (STATUS "etherlab_buddy2 understands port= option")
-        SET_SOURCE_FILES_PROPERTIES (buddy/SignalInfo.cpp
-            PROPERTIES COMPILE_DEFINITIONS HAVE_SIMULINK_PORT)
+        LIST (APPEND DEFS HAVE_SIMULINK_PORT)
     ENDIF ()
-
-    # Test for headers
-    INCLUDE (CheckIncludeFile)
-    CHECK_INCLUDE_FILE ("sys/signalfd.h" HAVE_SIGNALFD)
-    IF (HAVE_SIGNALFD)
-        LIST (APPEND MAIN_PROPERTIES "HAVE_SIGNALFD")
-    ENDIF ()
-
-    SET_SOURCE_FILES_PROPERTIES (buddy/Main.cpp
-        PROPERTIES COMPILE_DEFINITIONS "${MAIN_PROPERTIES}")
 
     FIND_PACKAGE (LibDaemon REQUIRED)
     FIND_PACKAGE (Threads REQUIRED)
@@ -133,6 +118,8 @@ IF (RT_APP_H AND ENABLE_BUDDY)
         ${msrproto_src}
         ${main_src}
         )
+    SET_TARGET_PROPERTIES ( etherlab_buddy2 PROPERTIES
+        COMPILE_DEFINITIONS "${DEFS}")
 
     SET (BUDDY_LIBS
         ${LIBCCEXT2_LIBRARIES}
