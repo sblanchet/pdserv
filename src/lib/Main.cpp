@@ -168,6 +168,7 @@ int Main::run()
     startServers();
 
     ::gettimeofday(&timeout, 0);
+    timeout.tv_sec += persistTimeout;
 
     FD_ZERO(&fds);
 
@@ -178,16 +179,16 @@ int Main::run()
                 it != task.end(); ++it)
             static_cast<Task*>(*it)->nrt_update();
 
-        if (::gettimeofday(&now, 0)) {
-            rv = errno;
-            break;
-        }
-        if (timercmp(&now, &timeout, <))
-            timeout = now;
+        if (persistTimeout) {
+            if (::gettimeofday(&now, 0)) {
+                rv = errno;
+                break;
+            }
 
-        if (persistTimeout and now.tv_sec >= timeout.tv_sec) {
-            timeout.tv_sec += persistTimeout;
-            savePersistent();
+            if ( now.tv_sec >= timeout.tv_sec) {
+                timeout.tv_sec += persistTimeout;
+                savePersistent();
+            }
         }
 
         FD_SET(ipc_pipe[0], &fds);
@@ -380,9 +381,12 @@ void Main::initializeParameter(const PdServ::Parameter* p,
         const char* data, const struct timespec* mtime,
         const PdServ::Signal* s)
 {
-    const Parameter *parameter = static_cast<const Parameter*>(p);
-    std::copy(data, data + parameter->memSize, parameter->addr);
-    parameter->mtime = *mtime;
+    if (data) {
+        log_debug("Restoring %s", p->path.c_str());
+        const Parameter *parameter = static_cast<const Parameter*>(p);
+        std::copy(data, data + parameter->memSize, parameter->addr);
+        parameter->mtime = *mtime;
+    }
 
     if (s) {
         const Signal* signal = static_cast<const Signal*>(s);

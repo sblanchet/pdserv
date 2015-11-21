@@ -422,6 +422,8 @@ unsigned int Main::setupPersistent()
         const char* value;
         if (dataBase.read(param, &value, &mtime))
             initializeParameter(param, value, mtime, signal);
+        else if (signal)
+            initializeParameter(param, 0, 0, signal);
     }
 
     // Purge unneeded parameters from database, unless disabled by
@@ -460,6 +462,7 @@ void Main::savePersistent()
         char buf[param->memSize];
         struct timespec time;
 
+        log_debug("Save %s", signal->path.c_str());
         if (getPersistentSignalValue(signal, buf, &time)) {
             db.save(param, buf, &time);
 
