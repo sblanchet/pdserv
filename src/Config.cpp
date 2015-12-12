@@ -41,7 +41,14 @@ Config::Config(): node(0)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Config::Config(yaml_document_t *d, yaml_node_t *n): document(d), node(n)
+Config::Config(const Config& other):
+    document(other.document), node(other.node)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Config::Config(yaml_document_t *d, yaml_node_t *n):
+    document(d), node(n)
 {
 }
 
@@ -109,6 +116,15 @@ const char * Config::load(const char *filename)
     node = yaml_document_get_root_node(document);
 
     return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Config& Config::operator=(const Config& other)
+{
+    document = other.document;
+    node     = other.node;
+
+    return *this;
 }
 
 /////////////////////////////////////////////////////////////////////////////

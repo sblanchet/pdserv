@@ -33,12 +33,15 @@ namespace PdServ {
 class Config {
     public:
         Config();
+        Config(const Config& other);
+
         ~Config();
 
         const char *   load(const char *file);
         const char * reload();
         const std::string& fileName() const;
 
+        Config& operator=(const Config& other);
         Config operator[](const std::string&) const;
         Config operator[](const char *) const;
         Config operator[](char *) const;
