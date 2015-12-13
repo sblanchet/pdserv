@@ -56,10 +56,9 @@ Main::Main(const struct app_properties& p,
         const PdServ::Config& config, int fd):
     PdServ::Main(p.name, p.version),
     app_properties(p), log(log4cplus::Logger::getRoot()),
-    config(config), pid(::getpid()), fd(fd),
+    m_config(config), pid(::getpid()), fd(fd),
     parameterBuf(0)
 {
-    setConfig(config);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -150,8 +149,7 @@ int Main::serve()
                 case SIGHUP:
                     LOG4CPLUS_INFO_STR(log,
                             LOG4CPLUS_TEXT("SIGHUP received. Reloading config"));
-                    config.reload();
-                    setConfig(config[name]);
+                    m_config.reload();
                     savePersistent();
                     break;
 
@@ -223,7 +221,7 @@ int Main::postfork_nrt_setup()
 
     // Go through the list of events and set up a map path->id
     // of paths and their corresponding id's to watch
-    const PdServ::Config eventList = config["events"];
+    const PdServ::Config eventList = m_config["events"];
     typedef std::map<std::string, PdServ::Config> EventMap;
     EventMap eventMap;
     PdServ::Config eventConf;
@@ -453,6 +451,12 @@ bool Main::getPersistentSignalValue(const PdServ::Signal *s,
     void* dst = buf;
     processPoll(0, &s, 1, &dst, time);
     return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+PdServ::Config Main::config(const char* key) const
+{
+    return m_config[key];
 }
 
 /////////////////////////////////////////////////////////////////////////////

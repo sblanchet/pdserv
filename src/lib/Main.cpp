@@ -215,7 +215,7 @@ int Main::readConfiguration()
 
     // Load custom configuration file
     if (!configFile.empty()) {
-        err = config.load(configFile.c_str());
+        err = m_config.load(configFile.c_str());
         if (err)
             std::cout
                 << "Error loading configuration file "
@@ -227,7 +227,7 @@ int Main::readConfiguration()
     }
     else if ((env = ::getenv("PDSERV_CONFIG")) and ::strlen(env)) {
         // Try to load environment configuration file
-        err = config.load(env);
+        err = m_config.load(env);
 
         if (err)
             std::cout << "Error loading config file " << env
@@ -240,7 +240,7 @@ int Main::readConfiguration()
     else {
         // Try to load default configuration file
         const char *f = QUOTE(SYSCONFDIR) "/pdserv.conf";
-        err = config.load(f);
+        err = m_config.load(f);
         if (err) {
             std::cout << "Error loading default config file " << f << ": "
                 << (::access(f, R_OK)
@@ -253,12 +253,17 @@ int Main::readConfiguration()
         }
     }
 
-    if (!config or err)
+    if (!m_config or err) {
         log_debug("No configuration loaded");
-    else
-        PdServ::Main::setConfig(config);
+    }
 
     return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+PdServ::Config Main::config(const char* key) const
+{
+    return m_config[key];
 }
 
 /////////////////////////////////////////////////////////////////////////////

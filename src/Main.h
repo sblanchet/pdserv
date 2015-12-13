@@ -51,7 +51,6 @@ class ProcessParameter;
 class Variable;
 class Task;
 class Session;
-class Config;
 class SessionStatistics;
 
 class Main {
@@ -64,7 +63,6 @@ class Main {
 
         void startServers();
         void stopServers();
-        void setConfig(const Config& c);
 
         // Get the current system time.
         // Reimplement this method in the class specialization
@@ -122,14 +120,13 @@ class Main {
                 const Signal* s) = 0;
         virtual bool getPersistentSignalValue(const Signal *s,
                 char* buf, struct timespec* time) = 0;
+        virtual Config config(const char* section) const = 0;
 
     private:
 
         mutable ost::Semaphore mutex;
 
         const log4cplus::Logger parameterLog;
-
-        PdServ::Config config;
 
         bool persistentLogTraceOn;
         log4cplus::Logger persistentLog;

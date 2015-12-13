@@ -78,7 +78,7 @@ class Main: public PdServ::Main {
 
         int pid;
         std::string configFile;
-        PdServ::Config config;
+        PdServ::Config m_config;
 
         size_t tSampleMin;      // Minimal sample time in ms
 
@@ -133,6 +133,7 @@ class Main: public PdServ::Main {
                 unsigned int delay_ms, const PdServ::Signal * const *s,
                 size_t nelem, void * const * pollDest,
                 struct timespec *t) const;
+        PdServ::Config config(const char*) const;
 };
 
 #endif // LIB_MAIN_H

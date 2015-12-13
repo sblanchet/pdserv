@@ -65,22 +65,16 @@ Main::~Main()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::setConfig(const Config& c)
-{
-    config = c;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Main::setupLogging()
 {
 #ifdef PDS_DEBUG
     consoleLogging();
 #endif
 
-    if (config["logging"]) {
+    if (config("logging")) {
         typedef std::basic_istringstream<log4cplus::tchar> tistringstream;
         tistringstream is(
-                LOG4CPLUS_STRING_TO_TSTRING(config["logging"].toString()));
+                LOG4CPLUS_STRING_TO_TSTRING(config("logging").toString()));
         log4cplus::PropertyConfigurator(is).configure();
     }
     else {
@@ -156,8 +150,8 @@ void Main::startServers()
     LOG4CPLUS_INFO_STR(log4cplus::Logger::getRoot(),
             LOG4CPLUS_TEXT("Starting servers"));
 
-    supervisor = new Supervisor::Server(this, config["supervisor"]);
-    msrproto   = new   MsrProto::Server(this, config["msr"]);
+    supervisor = new Supervisor::Server(this, config("supervisor"));
+    msrproto   = new   MsrProto::Server(this, config("msr"));
 
 //    EtlProto::Server etlproto(this);
 }
@@ -265,7 +259,7 @@ unsigned int Main::setupPersistent()
 {
     std::set<std::string> keys;
 
-    persistentConfig = config["persistent"];
+    persistentConfig = config("persistent");
     if (!persistentConfig)
         return 0;
 

@@ -55,7 +55,7 @@ class Main: public PdServ::Main {
     private:
         const struct app_properties &app_properties;
         log4cplus::Logger log;
-        PdServ::Config config;
+        PdServ::Config m_config;
         const int pid;
         const int fd;
 
@@ -103,6 +103,7 @@ class Main: public PdServ::Main {
                 unsigned int delay_ms, const PdServ::Signal * const *s,
                 size_t nelem, void * const * pollDest,
                 struct timespec *t) const;
+        PdServ::Config config(const char*) const;
 };
 
 #endif // BUDDY_MAIN_H
