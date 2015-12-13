@@ -426,6 +426,9 @@ void Main::initializeParameter(const PdServ::Parameter* p,
         const char* data, const struct timespec* mtime,
         const PdServ::Signal* signal)
 {
+    if (!data)
+        return;
+
     const Parameter *parameter = static_cast<const Parameter*>(p);
 
     // Set modify time unconditionally
