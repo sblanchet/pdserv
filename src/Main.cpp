@@ -414,8 +414,21 @@ unsigned int Main::setupPersistent()
         // set parameter
         const struct timespec* mtime;
         const char* value;
-        if (dataBase.read(param, &value, &mtime))
+        if (dataBase.read(param, &value, &mtime)) {
             initializeParameter(param, value, mtime, signal);
+            if (persistentLogTraceOn) {
+                std::ostringstream os;
+                os.imbue(std::locale::classic());
+                os << param->path;
+
+                os << " = ";
+
+                signal->dtype.print(os, value, value, value + signal->memSize);
+
+                LOG4CPLUS_INFO_STR(persistentLogTrace,
+                        LOG4CPLUS_STRING_TO_TSTRING(os.str()));
+            }
+        }
         else if (signal)
             initializeParameter(param, 0, 0, signal);
     }
