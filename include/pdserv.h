@@ -183,7 +183,7 @@ struct pdvariable *pdserv_signal(
 #define NOTICE_EVENT    5
 #define INFO_EVENT      6
 #define DEBUG_EVENT     7
-const struct pdevent *pdserv_event(
+struct pdevent *pdserv_event(
         struct pdserv* pdserv,  /**< Pointer to pdserv structure */
         const char *path,       /**< Event path */
         int priority,           /**< 0 = Emergency

@@ -490,9 +490,12 @@ int Main::prefork_init()
     for (EventList::iterator it = events.begin(); it != events.end(); ++it) {
         eventCount += (*it)->nelem;
     }
+
+    // Increase shared memory by the number of events as well as
+    // enough capacity to store 10 event changes
     shmem_len +=
         sizeof(*eventData) * eventCount
-        + sizeof(*eventDataStart) * 2 * eventCount;
+        + sizeof(*eventDataStart) * 10 * eventCount;
 
     shmem_len += sizeof(*eventDataWp);  // Memory location for write pointer
 
@@ -542,10 +545,10 @@ int Main::prefork_init()
         buf += taskMemSize[i++];
     }
 
-    eventData      = ptr_align<struct EventData>(buf);
-    eventDataStart = ptr_align<struct EventData>(eventData + eventCount + 1);
+    eventDataWp    = ptr_align<struct EventData*>(buf);
+    eventData      = ptr_align<struct EventData>(eventDataWp + 1);
+    eventDataStart = ptr_align<struct EventData>(eventData + eventCount);
     eventDataEnd   = ptr_align<struct EventData>((char*)shmem + shmem_len) - 1;
-    eventDataWp    = ptr_align<struct EventData*>(eventDataEnd);
     *eventDataWp   = eventDataStart;
 
     i = 0;
@@ -556,6 +559,7 @@ int Main::prefork_init()
             eventData[i].index = j;
         }
     }
+
     return 0;
 }
 
