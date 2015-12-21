@@ -58,6 +58,8 @@
 #include <set>
 #include <cstdio>
 
+struct timespec;
+
 namespace PdServ {
     class Parameter;
     class SessionTaskData;
@@ -164,11 +166,6 @@ class Session: public ost::Thread, public PdServ::Session {
         void initial();
         void run();
         void final();
-
-//        // Reimplemented from PdServ::Session
-//        void newSignal(const PdServ::Task *task, const PdServ::Signal *);
-//        void newSignalData(const PdServ::SessionTaskData*,
-//                const struct timespec *);
 
         void processCommand(const XmlParser::Element&);
         // Management variables

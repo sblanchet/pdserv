@@ -31,6 +31,8 @@ Event::Event(const char *path, const Priority& prio,
         size_t nelem, const char **messages):
     path(path),
     priority(prio),
+    setTime(nelem),
+    resetTime(nelem),
     nelem(nelem),
     message(messages)
 {

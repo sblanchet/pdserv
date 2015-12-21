@@ -481,22 +481,11 @@ std::list<const PdServ::Parameter*> Main::getParameters() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::prepare(PdServ::Session *session) const
+void Main::prepare(PdServ::Session* /*session*/) const
 {
-    session->data = new SessionData;
-    eventQ->initialize(session->data->eventReadPointer);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::cleanup(const PdServ::Session *session) const
+void Main::cleanup(const PdServ::Session* /*session*/) const
 {
-    delete session->data;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const PdServ::Event* Main::getNextEvent (const PdServ::Session* session,
-        size_t *index, bool *state, struct timespec *t) const
-{
-    return eventQ->getNextEvent(
-            session->data->eventReadPointer, index, state, t);
 }

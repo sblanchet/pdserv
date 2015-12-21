@@ -38,10 +38,6 @@ namespace MsrProto {
     class Server;
 }
 
-namespace Supervisor {
-    class Server;
-}
-
 namespace PdServ {
 
 class Signal;
@@ -74,14 +70,13 @@ class Main {
         void poll(const Session *session, const Signal * const *s,
                 size_t nelem, void *buf, struct timespec *t) const;
 
-
         virtual std::list<const Task*> getTasks() const = 0;
         virtual std::list<const Event*> getEvents() const = 0;
         virtual std::list<const Parameter*> getParameters() const = 0;
         virtual void prepare(Session *session) const = 0;
         virtual void cleanup(const Session *session) const = 0;
-        virtual const Event *getNextEvent(const Session* session,
-                size_t *index, bool *state, struct timespec *t) const = 0;
+        const Event *getNextEvent(Session* session,
+                size_t *index, bool *state, struct timespec *t) const;
 
         // Setting a parameter has various steps:
         // 1) client calls parameter->setValue(session, ...)
@@ -122,11 +117,24 @@ class Main {
                 char* buf, struct timespec* time) = 0;
         virtual Config config(const char* section) const = 0;
 
+        void newEvent(Event* event,
+                size_t element, bool state, const struct timespec* time);
     private:
 
         mutable ost::Semaphore mutex;
 
+        struct EventData {
+            const Event* event;
+            size_t index;
+            bool state;
+            struct timespec time;
+        };
+        std::vector<EventData> eventList;
+        std::vector<EventData>::iterator eventPtr;
+        mutable ost::ThreadLock eventMutex;
+
         const log4cplus::Logger parameterLog;
+        const log4cplus::Logger eventLog;
 
         bool persistentLogTraceOn;
         log4cplus::Logger persistentLog;
@@ -136,7 +144,6 @@ class Main {
         PersistentMap persistentMap;
 
         MsrProto::Server *msrproto;
-        Supervisor::Server *supervisor;
 //        EtlProto::Server etlproto(this);
 
 //         int setupDaemon();

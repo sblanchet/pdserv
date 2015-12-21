@@ -31,12 +31,18 @@ Event::Event( Main *main, const char* path,
         const PdServ::Event::Priority& prio, size_t nelem,
         const char **messages):
     PdServ::Event(path, prio, nelem, messages),
-    main(main)
+    main(main),
+    state(nelem),
+    rt_state(nelem)
 {
 }
 
 //////////////////////////////////////////////////////////////////////
-void Event::set(size_t elem, bool state, const timespec *t) const
+void Event::set(size_t elem, bool state, const timespec *t)
 {
+    if (rt_state[elem] == state)
+        return;
+
+    rt_state[elem] = state;
     main->setEvent(this, elem, state, t);
 }

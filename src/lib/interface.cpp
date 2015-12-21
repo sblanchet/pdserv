@@ -134,10 +134,10 @@ struct pdevent *pdserv_event (struct pdserv* pdserv, const char *path,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdserv_event_set(const struct pdevent *event,
+void pdserv_event_set(struct pdevent *event,
         size_t element, char state, const timespec *t)
 {
-    reinterpret_cast<const Event*>(event)->set(element, state != 0, t);
+    reinterpret_cast<Event*>(event)->set(element, bool(state), t);
 }
 
 /////////////////////////////////////////////////////////////////////////////

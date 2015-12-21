@@ -56,10 +56,6 @@ struct SDOStruct {
     struct timespec time;
 };
 
-struct SessionData {
-    struct EventData* eventReadPointer;
-};
-
 /////////////////////////////////////////////////////////////////////////////
 const double Main::bufferTime = 2.0;
 
@@ -174,6 +170,7 @@ int Main::run()
 
     // Stay in this loop until real-time thread exits, in which case
     // ipc_pipe[0] becomes readable
+    struct ::EventData* eventData = *eventDataWp;
     do {
         for (TaskList::iterator it = task.begin();
                 it != task.end(); ++it)
@@ -189,6 +186,13 @@ int Main::run()
                 timeout.tv_sec += persistTimeout;
                 savePersistent();
             }
+        }
+
+        while (eventData != *eventDataWp) {
+            newEvent(eventData->event, eventData->index,
+                    eventData->state, &eventData->time);
+            if (++eventData == eventDataEnd)
+                eventData = eventDataStart;
         }
 
         FD_SET(ipc_pipe[0], &fds);
@@ -327,32 +331,24 @@ Signal* Main::addSignal( Task *task, unsigned int decimation,
         const char *path, const PdServ::DataType& datatype,
         const void *addr, size_t n, const size_t *dim)
 {
-    Signal *s = task->addSignal(decimation, path, datatype, addr, n, dim);
-
-    return s;
+    return task->addSignal(decimation, path, datatype, addr, n, dim);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-bool Main::setEvent(const Event* event,
-        size_t element, bool state, const timespec *t) const
+void Main::setEvent(Event* event,
+        size_t element, bool state, const timespec *time) const
 {
     ost::SemaphoreLock lock(eventMutex);
-    struct EventData *eventData = event->data + element;
 
-    if (eventData->state == state)
-        return false;
-
+    struct ::EventData *eventData = *eventDataWp;
+    eventData->event = event;
+    eventData->index = element;
     eventData->state = state;
-    eventData->time = *t;
+    eventData->time  = *time;
 
-    **eventDataWp = *eventData;
-
-    eventData = *eventDataWp;
     if (++eventData == eventDataEnd)
         eventData = eventDataStart;
     *eventDataWp = eventData;
-
-    return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -439,7 +435,6 @@ void Main::processPoll(unsigned int delay_ms,
 //      struct SDOStruct        sdo
 //      char                    sdoData (binary data of all parameters)
 //      char                    pdoData
-//      struct EventData        eventData
 //      struct EventData        eventDataStart
 //
 int Main::prefork_init()
@@ -487,15 +482,12 @@ int Main::prefork_init()
 
     // Now check how much memory is required for events
     eventCount = 0;
-    for (EventList::iterator it = events.begin(); it != events.end(); ++it) {
+    for (EventList::iterator it = events.begin(); it != events.end(); ++it)
         eventCount += (*it)->nelem;
-    }
 
     // Increase shared memory by the number of events as well as
     // enough capacity to store 10 event changes
-    shmem_len +=
-        sizeof(*eventData) * eventCount
-        + sizeof(*eventDataStart) * 10 * eventCount;
+    shmem_len += sizeof(*eventDataStart) * 10 * eventCount;
 
     shmem_len += sizeof(*eventDataWp);  // Memory location for write pointer
 
@@ -545,20 +537,10 @@ int Main::prefork_init()
         buf += taskMemSize[i++];
     }
 
-    eventDataWp    = ptr_align<struct EventData*>(buf);
-    eventData      = ptr_align<struct EventData>(eventDataWp + 1);
-    eventDataStart = ptr_align<struct EventData>(eventData + eventCount);
-    eventDataEnd   = ptr_align<struct EventData>((char*)shmem + shmem_len) - 1;
+    eventDataWp    = ptr_align<struct ::EventData*>(buf);
+    eventDataStart = ptr_align<struct ::EventData>(eventDataWp + 1);
+    eventDataEnd   = ptr_align<struct ::EventData>((char*)shmem + shmem_len) - 1;
     *eventDataWp   = eventDataStart;
-
-    i = 0;
-    for (EventList::iterator it = events.begin(); it != events.end(); ++it) {
-        (*it)->data = eventData + i;
-        for(size_t j = 0; j < (*it)->nelem; ++j, ++i) {
-            eventData[i].event = *it;
-            eventData[i].index = j;
-        }
-    }
 
     return 0;
 }
@@ -603,34 +585,13 @@ std::list<const PdServ::Task*> Main::getTasks() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::prepare(PdServ::Session *session) const
+void Main::prepare(PdServ::Session* /*session*/) const
 {
-    session->data = new SessionData;
-    session->data->eventReadPointer = *eventDataWp;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::cleanup(const PdServ::Session *session) const
+void Main::cleanup(const PdServ::Session* /*session*/) const
 {
-    delete session->data;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const PdServ::Event *Main::getNextEvent( const PdServ::Session* session,
-        size_t *index, bool *state, struct timespec *t) const
-{
-    const EventData* eventData = session->data->eventReadPointer;
-    if (eventData == *eventDataWp)
-        return 0;
-
-    *index = eventData->index;
-    *state = eventData->state;
-    *t = eventData->time;
-
-    if (++session->data->eventReadPointer == eventDataEnd)
-        session->data->eventReadPointer = eventDataStart;
-
-    return eventData->event;
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -29,6 +29,8 @@
 
 #include "../Main.h"
 
+struct EventData;
+
 namespace PdServ {
     class Signal;
     class DataType;
@@ -55,7 +57,7 @@ class Main: public PdServ::Main {
 
         Event* addEvent(const char *path, int prio,
                 size_t nelem, const char **messages);
-        bool setEvent(const Event* event,
+        void setEvent(Event* event,
                 size_t element, bool state, const timespec* t) const;
 
         Parameter* addParameter( const char *path,
@@ -85,13 +87,10 @@ class Main: public PdServ::Main {
         size_t shmem_len;
         void *shmem;
 
-        /* Pointer to event states in shmem */
-        struct EventData *eventData;
-
         /* Structure where event changes are written to in shmem */
-        struct EventData **eventDataWp;   // Pointer to next write location
-        struct EventData *eventDataStart; // First valid block
-        struct EventData *eventDataEnd;   // Last valid block
+        struct ::EventData **eventDataWp;   // Pointer to next write location
+        struct ::EventData *eventDataStart; // First valid block
+        struct ::EventData *eventDataEnd;   // Last valid block
         mutable ost::Semaphore eventMutex;
 
         struct SDOStruct *sdo;
@@ -101,9 +100,6 @@ class Main: public PdServ::Main {
 
         typedef std::list<Event*> EventList;
         EventList events;
-
-        typedef std::set<int> EventSet;
-        EventSet eventSet;
 
         typedef std::list<Parameter*> ParameterList;
         ParameterList parameters;

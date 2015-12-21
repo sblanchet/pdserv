@@ -30,6 +30,7 @@
 #include <limits.h>     // _POSIX_OPEN_MAX
 #include <sys/types.h>  // umask()
 #include <sys/stat.h>   // umask()
+#include <iomanip>      // std::setw(), std::setfill()
 
 #include <log4cplus/syslogappender.h>
 #include <log4cplus/consoleappender.h>
@@ -43,20 +44,21 @@
 #include "ProcessParameter.h"
 #include "Database.h"
 #include "Config.h"
+#include "Event.h"
+#include "Session.h"
 //#include "etlproto/Server.h"
 #include "msrproto/Server.h"
-#include "supervisor/Server.h"
 
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
 Main::Main(const std::string& name, const std::string& version):
     name(name), version(version), mutex(1),
-    parameterLog(log4cplus::Logger::getInstance(
-                LOG4CPLUS_TEXT("parameter")))
+    parameterLog(
+            log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("parameter"))),
+    eventLog(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("event")))
 {
     msrproto = 0;
-    supervisor = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -70,6 +72,12 @@ void Main::setupLogging()
 #ifdef PDS_DEBUG
     consoleLogging();
 #endif
+
+    unsigned int history = config("eventhistory").toUInt();
+    if (!history)
+        history = 100;
+    eventList.resize(history);
+    eventPtr = eventList.begin();
 
     if (config("logging")) {
         typedef std::basic_istringstream<log4cplus::tchar> tistringstream;
@@ -150,7 +158,6 @@ void Main::startServers()
     LOG4CPLUS_INFO_STR(log4cplus::Logger::getRoot(),
             LOG4CPLUS_TEXT("Starting servers"));
 
-    supervisor = new Supervisor::Server(this, config("supervisor"));
     msrproto   = new   MsrProto::Server(this, config("msr"));
 
 //    EtlProto::Server etlproto(this);
@@ -160,7 +167,6 @@ void Main::startServers()
 void Main::stopServers()
 {
     delete msrproto;
-    delete supervisor;
 
     savePersistent();
 
@@ -491,4 +497,92 @@ void Main::savePersistent()
                     << LOG4CPLUS_STRING_TO_TSTRING(param->path));
         }
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::newEvent(Event* event,
+        size_t index, bool state, const struct timespec* time)
+{
+    ost::WriteLock lock(eventMutex);
+
+    if (state) {
+        static const timespec zero = {0,0};
+
+        event->setTime[index] = *time;
+        event->resetTime[index] = zero;
+    }
+    else
+        event->resetTime[index] = *time;
+
+    (*eventPtr).event = event;
+    (*eventPtr).index = index;
+    (*eventPtr).state = state;
+    (*eventPtr).time = *time;
+    if (++eventPtr == eventList.end())
+        eventPtr = eventList.begin();
+
+    log4cplus::LogLevel prio;
+    switch (event->priority) {
+        case PdServ::Event::Emergency:
+        case PdServ::Event::Alert:
+        case PdServ::Event::Critical:
+            prio = log4cplus::FATAL_LOG_LEVEL;
+            break;
+        case PdServ::Event::Error:
+            prio = log4cplus::ERROR_LOG_LEVEL;
+            break;
+        case PdServ::Event::Warning:
+            prio = log4cplus::WARN_LOG_LEVEL;
+            break;
+        case PdServ::Event::Notice:
+        case PdServ::Event::Info:
+            prio = log4cplus::INFO_LOG_LEVEL;
+            break;
+        case PdServ::Event::Debug:
+            prio = log4cplus::DEBUG_LOG_LEVEL;
+            break;
+    }
+
+    log4cplus::tostringstream os;
+
+    os << time->tv_sec << '.'
+        << std::setw(6) << std::setfill('0') << time->tv_nsec/1000
+        << std::setw(0)
+        << LOG4CPLUS_TEXT(": ")
+        << LOG4CPLUS_STRING_TO_TSTRING(event->path);
+
+    if (event->nelem > 1)
+        os << '[' << index << ']';
+
+    os << " = " << state;
+
+    if (event->message and event->message[index])
+        os << LOG4CPLUS_TEXT(" (")
+            << LOG4CPLUS_C_STR_TO_TSTRING(event->message[index])
+            << ')';
+
+    eventLog.log(prio, os.str());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+const Event *Main::getNextEvent(Session* session,
+        size_t *index, bool *state, struct timespec *time) const
+{
+    ost::ReadLock lock(eventMutex);
+
+    if (session->eventId >= eventList.size())
+        session->eventId = eventPtr - eventList.begin();
+
+    if (int(session->eventId) == eventPtr - eventList.begin())
+        return 0;
+
+    const EventData& eventData = eventList[session->eventId];
+    if (++session->eventId == eventList.size())
+        session->eventId = 0;
+
+    *index = eventData.index;
+    *state = eventData.state;
+    *time  = eventData.time;
+
+    return eventData.event;
 }

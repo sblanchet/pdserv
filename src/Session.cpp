@@ -31,6 +31,7 @@ Session::Session(const Main *m): main(m)
 {
     main->gettime(&connectedTime);
     main->prepare(this);
+    eventId = ~0U;
 }
 
 /////////////////////////////////////////////////////////////////////////////

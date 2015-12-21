@@ -45,7 +45,6 @@ namespace PdServ {
 namespace MsrProto {
 
 class Session;
-class Event;
 class Parameter;
 class Channel;
 
@@ -72,7 +71,6 @@ class Server: public ost::Thread {
 
         typedef std::vector<const Channel*> Channels;
         typedef std::vector<const Parameter*> Parameters;
-        typedef std::vector<const Event*> Events;
 
         const Channels& getChannels() const;
         const Channel * getChannel(size_t) const;
@@ -82,8 +80,6 @@ class Server: public ost::Thread {
         const Parameters& getParameters() const;
         const Parameter * getParameter(size_t) const;
         const Parameter * find(const PdServ::Parameter *p) const;
-
-        const Events& getEvents() const;
 
         template <typename T>
             const T * find(const std::string& path) const;
@@ -97,7 +93,6 @@ class Server: public ost::Thread {
         DirectoryNode variableDirectory;
         DirectoryNode* insertRoot;
 
-        Events events;
         size_t maxConnections;
 
         Channels channels;
@@ -117,7 +112,6 @@ class Server: public ost::Thread {
         void createChannels(DirectoryNode* baseDir,
                 const PdServ::Task* task, size_t taskIdx);
         void createParameters(DirectoryNode* baseDir);
-        void createEvents();
 
         struct CreateVariable {
             CreateVariable(Server* server, DirectoryNode* baseDir,

@@ -25,6 +25,8 @@
 #define EVENT_H
 
 #include <string>
+#include <ctime>
+#include <vector>
 
 namespace PdServ {
 
@@ -46,6 +48,9 @@ class Event {
         const std::string path;
 
         const Priority priority;
+
+        std::vector<struct timespec> setTime;
+        std::vector<struct timespec> resetTime;
 
         const size_t nelem;
         const char ** message;

@@ -31,6 +31,7 @@ struct SessionData;
 namespace PdServ {
 
 class Main;
+class Event;
 
 class Session {
     public:
@@ -38,9 +39,7 @@ class Session {
         virtual ~Session();
 
         const Main * const main;
-
-        // opague pointer used by the server
-        SessionData *data;
+        size_t eventId;
 
     protected:
         struct timespec connectedTime;

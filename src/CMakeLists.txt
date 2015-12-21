@@ -59,8 +59,6 @@ SET (main_src
     Parameter.cpp       Parameter.h
     ProcessParameter.cpp ProcessParameter.h
     Debug.cpp           Debug.h
-
-    supervisor/Server.cpp         supervisor/Server.h
     )
 
 # Search for files required by buddy.
@@ -150,7 +148,6 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     lib/Event.cpp           lib/Event.h
     lib/Parameter.cpp       lib/Parameter.h
     lib/SessionTaskData.cpp lib/SessionTaskData.h
-    lib/SessionData.cpp     lib/SessionData.h
 
     ${msrproto_src}
     ${main_src}

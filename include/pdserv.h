@@ -210,7 +210,7 @@ struct pdevent *pdserv_event(
  * the corresponding message to be printed to log and all clients.
  */
 void pdserv_event_set(
-        const struct pdevent *event,
+        struct pdevent *event,
         size_t element,         /**< Event element */
         char state,             /**< boolean value */
         const struct timespec *t /**< Current time */

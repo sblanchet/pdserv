@@ -34,10 +34,6 @@ namespace MsrProto {
 
 class Event {
     public:
-        Event(const PdServ::Event *s);
-
-        const PdServ::Event *event;
-
         static void toXml(Session::TCPStream& tcp, const PdServ::Event* event,
                 size_t index, bool state, const struct timespec& t);
 

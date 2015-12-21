@@ -25,7 +25,6 @@
 
 #include "Server.h"
 #include "Channel.h"
-#include "Event.h"
 #include "TimeSignal.h"
 #include "StatSignal.h"
 #include "Parameter.h"
@@ -69,7 +68,6 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
         createChannels(insertRoot, taskList.front(), taskIdx++);
 
     createParameters(insertRoot);
-    createEvents();
 
     start();
 }
@@ -129,19 +127,6 @@ void Server::createChannels(DirectoryNode* baseDir,
     c = new StatSignal(taskIdx, task, StatSignal::Overrun, channels.size());
     channels.push_back(c);
     t->insert(c, "Overrun");
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Server::createEvents ()
-{
-    LOG4CPLUS_TRACE_STR(log,
-            LOG4CPLUS_TEXT("Create events"));
-
-    std::list<const PdServ::Event*> mainEvents(main->getEvents());
-    this->events.reserve(mainEvents.size());
-
-    for (; mainEvents.size(); mainEvents.pop_front())
-        this->events.push_back(new Event(mainEvents.front()));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -316,12 +301,6 @@ const Server::Parameters& Server::getParameters() const
 const Parameter *Server::find( const PdServ::Parameter *p) const
 {
     return parameterMap.find(p)->second;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Server::Events& Server::getEvents() const
-{
-    return events;
 }
 
 /////////////////////////////////////////////////////////////////////////////

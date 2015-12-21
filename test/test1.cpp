@@ -79,7 +79,7 @@ int main(int argc, const char *argv[])
     double tick = 10;
     uint32_t param[] = {1,2,3,4};
     struct pdtask *task[3];
-    const struct pdevent *event;
+    struct pdevent *event;
 
     struct s1 s1 = {{1,2,3,4,5}, 'a'};
     struct s2 s2[2] = {
