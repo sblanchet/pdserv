@@ -49,6 +49,7 @@ class Task: public PdServ::Task {
         virtual ~Task();
 
         Main * const main;
+        const struct timespec* time;
 
         Signal* addSignal( unsigned int decimation,
                 const char *path, const PdServ::DataType& datatype,
@@ -68,10 +69,6 @@ class Task: public PdServ::Task {
         void nrt_update();
 
         void subscribe(const Signal* s, bool insert) const;
-
-        void pollPrepare( const Signal *, void *buf) const;
-        bool pollFinished( const PdServ::Signal * const *s, size_t nelem,
-                void * const *pollDest, struct timespec *t) const;
 
         void getSignalList(const Signal ** s, size_t *n,
                 unsigned int *signalListId) const;
@@ -113,9 +110,6 @@ class Task: public PdServ::Task {
         struct Pdo *txMemBegin, *txPdo, **nextTxPdo;
         const void *txMemEnd;
 
-        // Poll data communication. Points to shared memory.
-        struct PollData *poll;
-
         // Reimplemented from PdServ::Task
         std::list<const PdServ::Signal*> getSignals() const;
         void prepare(PdServ::SessionTask *) const;
@@ -124,14 +118,12 @@ class Task: public PdServ::Task {
                 const PdServ::TaskStatistics **taskStatistics) const;
 
         // These methods are used in real time context
-        void processPollRequest(const struct timespec* t);
         void processSignalList();
         void calculateCopyList();
         void copyData(const struct timespec* t);
 
         typedef std::set<const PdServ::Signal*> PersistentSet;
         PersistentSet persistentSet;
-        const struct timespec* time;
 
         struct Persistent: PdServ::SessionTask {
             Persistent(Task* t);

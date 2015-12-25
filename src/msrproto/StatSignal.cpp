@@ -103,9 +103,10 @@ const char *StatSignal::getValue(const PdServ::SessionTask* std) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void StatSignal::getValue( const PdServ::Session *session,
+int StatSignal::getValue( const PdServ::Session *session,
         void *buf, struct timespec* t) const
 {
 //    cout << __PRETTY_FUNCTION__ << endl;
     poll(session, buf, t);
+    return 0;
 }

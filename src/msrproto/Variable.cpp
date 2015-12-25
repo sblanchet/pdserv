@@ -117,14 +117,14 @@ void Variable::addCompoundFields(XmlElement &element,
 void Variable::setAttributes(
         XmlElement &element, bool shortReply) const
 {
-    // name=
-    // value=
     // index=
     XmlElement::Attribute(element, "index") << index;
-    XmlElement::Attribute(element, "name").setEscaped(path());
 
     if (shortReply)
         return;
+
+    // name=
+    XmlElement::Attribute(element, "name").setEscaped(path());
 
     // alias=
     // comment=

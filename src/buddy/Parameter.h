@@ -36,6 +36,9 @@ class Parameter: public PdServ::ProcessParameter {
 
         mutable struct timespec mtime;
         char * const valueBuf;      // Pointer to the real address
+
+    private:
+        Main* const main;
 };
 
 #endif //BUDDY_PARAMETER

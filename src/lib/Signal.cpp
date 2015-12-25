@@ -50,6 +50,7 @@ Signal::Signal( Task *task,
     index(index),
     mutex(1)
 {
+    read_cb = copy;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -79,25 +80,35 @@ void Signal::unsubscribe(PdServ::SessionTask *s) const
 }
 
 //////////////////////////////////////////////////////////////////////
-double Signal::poll(const PdServ::Session *,
-        void *dest, struct timespec *) const
+int Signal::getValue(const PdServ::Session* /*session*/,
+        void *dest, struct timespec *t) const
 {
-    task->pollPrepare(this, dest);
-
-    return task->sampleTime / 2;
-}
-
-//////////////////////////////////////////////////////////////////////
-void Signal::getValue( const PdServ::Session* session, void *dest,
-        struct timespec *t) const
-{
-    const PdServ::Signal *signal = this;
-
-    task->main->poll(session, &signal, 1, dest, t);
+    return task->main->getValue(this, dest, t);
 }
 
 //////////////////////////////////////////////////////////////////////
 const char *Signal::getValue(const PdServ::SessionTask* st) const
 {
     return st->sessionTaskData->getValue(this);
+}
+
+//////////////////////////////////////////////////////////////////////
+int Signal::copy(const struct pdvariable *var,
+        void *buf, const void *src, size_t len,
+        struct timespec* time, void *)
+{
+//    cout << __PRETTY_FUNCTION__ << checkOnly << endl;
+    std::copy( reinterpret_cast<const char*>(src),
+            reinterpret_cast<const char*>(src)+len,
+            reinterpret_cast<char*>(buf));
+
+    if (time) {
+        const Task* task =
+            static_cast<const Signal*>(
+                    reinterpret_cast<const PdServ::Variable*>(var))->task;
+        if (task->time)
+            *time = *task->time;
+    }
+
+    return 0;
 }

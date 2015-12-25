@@ -305,13 +305,10 @@ void Session::run()
                 it != subscriptionManager.end(); ++it)
             (*it)->rxPdo(tcp, quiet);
 
-        const PdServ::Event* mainEvent;
-        bool state;
-        struct timespec t;
-        size_t index;
-        while ((mainEvent = main->getNextEvent(this, &index, &state, &t))) {
-            Event::toXml( tcp, mainEvent, index, state, t);
-        }
+        PdServ::EventData e;
+        do {
+            e = main->getNextEvent(this);
+        } while (Event::toXml(tcp, e));
     }
 }
 
@@ -346,6 +343,7 @@ void Session::processCommand(const XmlParser::Element& cmd)
         {12, "read_statics",            &Session::readStatistics        },
         {14, "read_parameter",          &Session::readParameter         },
         {15, "read_statistics",         &Session::readStatistics        },
+        {15, "message_history",         &Session::messageHistory        },
         {15, "write_parameter",         &Session::writeParameter        },
         {17, "read_param_values",       &Session::readParamValues       },
         {0,  0,                         0},
@@ -428,15 +426,17 @@ void Session::readChannel(const XmlParser::Element& cmd)
     // A single signal was requested
     if (c) {
         char buf[c->signal->memSize];
-
-        static_cast<const PdServ::Variable*>(c->signal)->getValue(this, buf);
+        struct timespec time;
+        int rv = static_cast<const PdServ::Variable*>(c->signal)
+            ->getValue(this, buf, &time);
 
         XmlElement channel(tcp.createElement("channel"));
-        c->setXmlAttributes(channel, shortReply, buf, 16);
+        c->setXmlAttributes(channel, shortReply, rv ? 0 : buf, 16, &time);
 
         return;
     }
 
+    // A list of all channels
     const Server::Channels& chanList = server->getChannels();
     XmlElement channels(tcp.createElement("channels"));
     for (Server::Channels::const_iterator it = chanList.begin();
@@ -445,7 +445,7 @@ void Session::readChannel(const XmlParser::Element& cmd)
             continue;
 
         XmlElement el(channels.createChild("channel"));
-        (*it)->setXmlAttributes( el, shortReply, 0, 16);
+        (*it)->setXmlAttributes( el, shortReply, 0, 16, 0);
     }
 }
 
@@ -544,6 +544,17 @@ void Session::readParamValues(const XmlParser::Element& /*cmd*/)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Session::messageHistory(const XmlParser::Element& /*cmd*/)
+{
+    std::list<PdServ::EventData> list(main->getEventHistory(this));
+
+    while (!list.empty()) {
+        Event::toXml(tcp, list.front());
+        list.pop_front();
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Session::readStatistics(const XmlParser::Element& /*cmd*/)
 {
     // <clients>
@@ -555,7 +566,7 @@ void Session::readStatistics(const XmlParser::Element& /*cmd*/)
     // </clients>
     typedef std::list<PdServ::SessionStatistics> StatList;
     StatList stats;
-    main->getSessionStatistics(stats);
+    server->getSessionStatistics(stats);
 
     XmlElement clients(tcp.createElement("clients"));
     for (StatList::const_iterator it = stats.begin();

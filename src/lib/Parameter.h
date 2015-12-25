@@ -47,15 +47,17 @@ class Parameter: public PdServ::ProcessParameter {
         char* shmAddr; // Address in shared memory
         mutable struct timespec mtime;
 
-        paramtrigger_t trigger;
+        write_parameter_t write_cb;
         void* priv_data;
 
     private:
+        Main* const main;
+
         // A default function used when paramcheck or paramupdate are not
         // specified by the user
-        static int copy(struct pdtask *task,
-                const struct pdvariable *parameter, void *dst,
-                const void *src, size_t len, void *priv_data);
+        static int copy(const struct pdvariable *parameter,
+                void *dst, const void *src, size_t len,
+                struct timespec* time, void *priv_data);
 };
 
 #endif //LIB_PARAMETER

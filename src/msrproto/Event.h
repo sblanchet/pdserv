@@ -28,14 +28,15 @@
 
 namespace PdServ {
     class Event;
+    class EventData;
 }
 
 namespace MsrProto {
 
 class Event {
     public:
-        static void toXml(Session::TCPStream& tcp, const PdServ::Event* event,
-                size_t index, bool state, const struct timespec& t);
+        static bool toXml(Session::TCPStream& tcp,
+                const PdServ::EventData& eventData);
 
     private:
         static const char* levelString(const PdServ::Event *e);

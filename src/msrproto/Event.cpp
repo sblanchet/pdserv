@@ -28,18 +28,24 @@
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-void Event::toXml(Session::TCPStream &tcp, const PdServ::Event* event,
-        size_t index, bool state, const struct timespec& t)
+bool Event::toXml(Session::TCPStream &tcp, const PdServ::EventData& eventData)
 {
-    XmlElement msg(tcp.createElement(levelString(event)));
+    const PdServ::Event* event = eventData.event;
 
-    XmlElement::Attribute(msg, "name").setEscaped(event->path);
-    if (event->nelem > 1)
-        XmlElement::Attribute(msg, "index") << index;
-    XmlElement::Attribute(msg, "state") << state;
-    XmlElement::Attribute(msg, "time") << t;
-    if (event->message and state)
-        XmlElement::Attribute(msg, "text").setEscaped(event->message[index]);
+    if (event) {
+        XmlElement msg(tcp.createElement(levelString(event)));
+
+        XmlElement::Attribute(msg, "name").setEscaped(event->path);
+        if (event->nelem > 1)
+            XmlElement::Attribute(msg, "index") << eventData.index;
+        XmlElement::Attribute(msg, "state") << eventData.state;
+        XmlElement::Attribute(msg, "time") << eventData.time;
+        if (event->message and eventData.state)
+            XmlElement::Attribute(msg, "text")
+                .setEscaped(event->message[eventData.index]);
+    }
+
+    return event;
 }
 
 /////////////////////////////////////////////////////////////////////////////

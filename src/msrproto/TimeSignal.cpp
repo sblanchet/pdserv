@@ -80,8 +80,9 @@ const char *TimeSignal::getValue(const PdServ::SessionTask* std) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void TimeSignal::getValue(const PdServ::Session* session,
+int TimeSignal::getValue(const PdServ::Session* session,
         void *buf, struct timespec* t) const
 {
     poll(session, buf, t);
+    return 0;
 }

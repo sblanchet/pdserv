@@ -22,7 +22,8 @@
 #############################################################################
 
 INCLUDE_DIRECTORIES(
-        ${PROJECT_BINARY_DIR}       # for config.h
+        ${PROJECT_BINARY_DIR}           # for config.h
+        ${PROJECT_BINARY_DIR}/include   # for pdserv.h
         ${LIBCCEXT2_INCLUDE_DIRS}
         )
 
@@ -155,7 +156,7 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
 
 SET_TARGET_PROPERTIES ( ${PROJECT_NAME} PROPERTIES
     VERSION ${VERSION}
-    SOVERSION "${SOVERSION}"
+    SOVERSION ${SOVERSION}
     CLEAN_DIRECT_OUTPUT 1)
 
 TARGET_LINK_LIBRARIES (${PROJECT_NAME} ${LIBCCEXT2_LDFLAGS}

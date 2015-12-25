@@ -185,6 +185,7 @@ class Session: public ost::Thread, public PdServ::Session {
         void readParameter(const XmlParser::Element&);
         void readParamValues(const XmlParser::Element&);
         void readStatistics(const XmlParser::Element&);
+        void messageHistory(const XmlParser::Element&);
         void remoteHost(const XmlParser::Element&);
         void writeParameter(const XmlParser::Element&);
         void xsad(const XmlParser::Element&);

@@ -38,22 +38,31 @@ Parameter::Parameter(
         const size_t *dim):
     PdServ::ProcessParameter(main,
             &shmAddr, &mtime, path, mode, dtype, ndims, dim),
-    addr(reinterpret_cast<char*>(addr))
+    addr(reinterpret_cast<char*>(addr)),
+    main(main)
 {
-    trigger = copy;
+    write_cb = copy;
 
     mtime.tv_sec = 0;
     mtime.tv_nsec = 0;
 }
 
 //////////////////////////////////////////////////////////////////////
-int Parameter::copy(struct pdtask *, const struct pdvariable *,
-        void *buf, const void *src, size_t len, void *)
+int Parameter::copy(const struct pdvariable *var,
+        void *buf, const void *src, size_t len,
+        struct timespec* time, void *)
 {
 //    cout << __PRETTY_FUNCTION__ << checkOnly << endl;
     std::copy( reinterpret_cast<const char*>(src),
             reinterpret_cast<const char*>(src)+len,
             reinterpret_cast<char*>(buf));
+
+    if (time) {
+        const PdServ::Main* main =
+            static_cast<const Parameter*>(
+                    reinterpret_cast<const PdServ::Variable*>(var))->main;
+        main->gettime(time);
+    }
 
     return 0;
 }

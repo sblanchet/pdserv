@@ -50,18 +50,11 @@ void Signal::unsubscribe(PdServ::SessionTask *) const
 }
 
 //////////////////////////////////////////////////////////////////////
-double Signal::poll(const PdServ::Session *, void *, struct timespec *) const
+int Signal::getValue(const PdServ::Session* /*session*/,
+        void *dest, struct timespec *t) const
 {
+    main->getValue(this, dest, t);
     return 0;
-}
-
-//////////////////////////////////////////////////////////////////////
-void Signal::getValue( const PdServ::Session *session, void *dest,
-        struct timespec *t) const
-{
-    const PdServ::Signal *signal = this;
-
-    main->poll(session, &signal, 1, dest, t);
 }
 
 //////////////////////////////////////////////////////////////////////

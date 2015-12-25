@@ -368,19 +368,14 @@ out:
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::processPoll(unsigned int /*delay_ms*/,
-        const PdServ::Signal * const *s, size_t nelem,
-        void * const * pollDest, struct timespec *time) const
+void Main::getValue(
+        const Signal *signal, void* dest, struct timespec *time) const
 {
     const char *data = photoAlbum + readPointer * app_properties.rtB_size;
 
-    for (size_t i = 0; i < nelem; ++i) {
-        const Signal *signal = dynamic_cast<const Signal *>(s[i]);
-        if (signal)
-            std::copy(data + signal->offset,
-                    data + signal->offset + signal->memSize,
-                    reinterpret_cast<char*>(pollDest[i]));
-    }
+    std::copy(data + signal->offset,
+            data + signal->offset + signal->memSize,
+            reinterpret_cast<char*>(dest));
 
     if (time) {
         size_t statsOffset =
@@ -399,35 +394,45 @@ void Main::processPoll(unsigned int /*delay_ms*/,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(const PdServ::ProcessParameter* p,
-        size_t offset, size_t count) const
+int Main::setValue(const PdServ::ProcessParameter* p,
+        const char* buf, size_t offset, size_t count)
 {
-    struct param_change delta;
+    const Parameter* parameter = static_cast<const Parameter*>(p);
+    char* addr = parameter->valueBuf + offset;
 
-    delta.pos =
-        static_cast<const Parameter*>(p)->valueBuf + offset - parameterBuf;
+    // Backup old values in case of write failure
+    char backup[count];
+    std::copy(addr, addr + count, backup);
+
+    // Copy new data to shared memory
+    std::copy(buf, buf + count, addr);
+
+    struct param_change delta;
+    delta.pos = addr - parameterBuf;
     delta.rtP = parameterBuf;
     delta.len = count;
     delta.count = 0;
 
     if (ioctl(fd, CHANGE_PARAM, &delta)) {
+        // Write failure. Restore data
+        std::copy(backup, backup + count, addr);
         return errno;
     }
 
-    gettime(&static_cast<const Parameter*>(p)->mtime);
+    gettime(&parameter->mtime);
 
     return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::initializeParameter(const PdServ::Parameter* p,
+void Main::initializeParameter(PdServ::Parameter* p,
         const char* data, const struct timespec* mtime,
         const PdServ::Signal* signal)
 {
     if (!data)
         return;
 
-    const Parameter *parameter = static_cast<const Parameter*>(p);
+    Parameter *parameter = static_cast<Parameter*>(p);
 
     // Set modify time unconditionally
     parameter->mtime = *mtime;
@@ -441,16 +446,26 @@ void Main::initializeParameter(const PdServ::Parameter* p,
     }
 
     std::copy(data, data + parameter->memSize, parameter->valueBuf);
-    setParameter(parameter, 0, parameter->memSize);
+    setValue(static_cast<PdServ::ProcessParameter*>(parameter),
+            parameter->valueBuf, 0, parameter->memSize);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 bool Main::getPersistentSignalValue(const PdServ::Signal *s,
         char* buf, struct timespec* time)
 {
-    void* dst = buf;
-    processPoll(0, &s, 1, &dst, time);
+    getValue(static_cast<const Signal*>(s), buf, time);
     return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+PdServ::Parameter* Main::findParameter(const std::string& path) const
+{
+    for (ParameterList::const_iterator it = parameters.begin();
+            it != parameters.end(); ++it)
+        if ((*it)->path == path)
+            return *it;
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////

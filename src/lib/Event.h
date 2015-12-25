@@ -37,7 +37,7 @@ class Event: public PdServ::Event {
                 const PdServ::Event::Priority& prio, size_t nelem,
                 const char **messages);
 
-        const Main * const main;
+        Main * const main;
 
         void set(size_t element, bool state, const timespec *t);
 

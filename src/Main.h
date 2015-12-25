@@ -31,6 +31,7 @@
 #include <log4cplus/logger.h>
 
 #include "Config.h"
+#include "Event.h"
 
 struct timespec;
 
@@ -64,19 +65,14 @@ class Main {
         // Reimplement this method in the class specialization
         virtual int gettime(struct timespec *) const;
 
-        void getSessionStatistics(std::list<SessionStatistics>&) const;
-
-        // Poll the current value of a list of signals
-        void poll(const Session *session, const Signal * const *s,
-                size_t nelem, void *buf, struct timespec *t) const;
-
         virtual std::list<const Task*> getTasks() const = 0;
         virtual std::list<const Event*> getEvents() const = 0;
         virtual std::list<const Parameter*> getParameters() const = 0;
         virtual void prepare(Session *session) const = 0;
         virtual void cleanup(const Session *session) const = 0;
-        const Event *getNextEvent(Session* session,
-                size_t *index, bool *state, struct timespec *t) const;
+
+        EventData getNextEvent(Session* session) const;
+        std::list<EventData> getEventHistory(Session* session) const;
 
         // Setting a parameter has various steps:
         // 1) client calls parameter->setValue(session, ...)
@@ -84,51 +80,39 @@ class Main {
         // 2) ProcessParameter calls
         //        main->setValue(processParameter, session, ...)
         //    so that main can check whether session is allowed to set it
-        // 3) main calls processParameter->setValue(...)
-        //    so that ProcessParameter can obtain write lock
-        // 4) processParameter calls main->setParameter(processParameter, ...)
-        //    virtual method to do the setting
-        // 5) When the thread of execution returns in 3) successfully,
-        //    main can do various functions, e.g.
+        // 3) main calls Main::setValue(...) virtual method to do the setting
+        // 4) on success, main can do various functions, e.g.
         //      - inform clients of a value change
         //      - save persistent parameter
         //      - etc
         int setValue(const ProcessParameter* p, const Session *session,
                 const char* buf, size_t offset, size_t count);
-        virtual int setParameter(const ProcessParameter* p,
-                size_t offset, size_t count) const = 0;
 
     protected:
         void setupLogging();
 
         static int localtime(struct timespec *);
 
-        virtual void processPoll(
-                unsigned int delay_ms, const Signal * const *s,
-                size_t nelem, void * const * pollDest,
-                struct timespec *t) const = 0;
-
-        unsigned int setupPersistent();
         void savePersistent();
-        virtual void initializeParameter(const Parameter* p,
+        unsigned int setupPersistent();
+
+        void newEvent(Event* event,
+                size_t element, bool state, const struct timespec* time);
+
+        // virtual functions to be implemented in derived classes
+        virtual void initializeParameter(Parameter* p,
                 const char* data, const struct timespec* mtime,
                 const Signal* s) = 0;
         virtual bool getPersistentSignalValue(const Signal *s,
                 char* buf, struct timespec* time) = 0;
         virtual Config config(const char* section) const = 0;
+        virtual Parameter* findParameter(const std::string& path) const = 0;
+        virtual int setValue(const ProcessParameter* p,
+                const char* buf, size_t offset, size_t count) = 0;
 
-        void newEvent(Event* event,
-                size_t element, bool state, const struct timespec* time);
     private:
-
         mutable ost::Semaphore mutex;
 
-        struct EventData {
-            const Event* event;
-            size_t index;
-            bool state;
-            struct timespec time;
-        };
         std::vector<EventData> eventList;
         std::vector<EventData>::iterator eventPtr;
         mutable ost::ThreadLock eventMutex;

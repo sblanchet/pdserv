@@ -235,7 +235,7 @@ void DirectoryNode::list( PdServ::Session *session, XmlElement& parent,
         const Channel *channel = dynamic_cast<const Channel   *>(it->second);
         if (channel and !channel->hidden) {
             XmlElement xml(parent.createChild("channel"));
-            channel->setXmlAttributes(xml, 0, 0, 0);
+            channel->setXmlAttributes(xml, 0, 0, 0, 0);
         }
 
         // If there are children, report this node as a directory

@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id$
+ *  $Id: pdserv.h,v fa0afd9f0a9e 2015/12/21 10:02:02 lerichi $
  *
  *  Copyright 2010 - 2011  Richard Hacker (lerichi at gmx dot net)
  *
@@ -28,6 +28,9 @@
 
 #include <stddef.h>
 #include <time.h>
+
+#define PDSERV_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
+#define PDSERV_VERSION_CODE PDSERV_VERSION(@MAJOR_VERSION@,@MINOR_VERSION@,@PATCH_LEVEL@)
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,6 +61,9 @@ struct pdtask;
 struct pdvariable;
 struct pdevent;
 
+/** Callback function type to get current world time */
+typedef int (*gettime_t)(struct timespec*);
+
 /** Initialise pdserv library.
  *
  * This is the first call that initialises the library. It should be called
@@ -70,12 +76,11 @@ struct pdevent;
 struct pdserv* pdserv_create(
         const char *name,       /**< Name of the process */
         const char *version,    /**< Version string */
-        int (*gettime)(struct timespec*)   /**< Function used by the library
-                                            * when the system time is required.
-                                            * Essentially, this function
-                                            * should call clock_gettime().
-                                            * If NULL, gettimeofday() is
-                                            * used. */
+        gettime_t gettime_cb    /**< Function used by the library
+                                 * when the system time is required.
+                                 * Essentially, this function should call
+                                 * clock_gettime().
+                                 * If NULL, gettimeofday() is used. */
         );
 
 /** Set the path to a configuration file
@@ -134,6 +139,29 @@ void pdserv_compound_add_field(
         const size_t *dim       /**< Dimensions */
         );
 
+/** Callback on a signal value poll
+ *
+ * This function is responsible for copying the data from @src to @dst.
+ *
+ * The function allows the user to synchronize his application to
+ * a synchronous poll of a signal value
+ *
+ * Essentially the function should execute the following:
+ *      lock();
+ *      memcpy(dst, src, len);
+ *      unlock();
+ *
+ * \returns 0 on success
+ */
+typedef int (*read_signal_t)(
+        const struct pdvariable *signal, /**< Pointer to signal */
+        void *dst,              /**< Destination address @addr */
+        const void *src,        /**< Data source */
+        size_t len,             /**< Data length in bytes */
+        struct timespec* time,  /**< Current time */
+        void *priv_data         /**< Optional user variable */
+        );
+
 /** Register a signal
  *
  * This call registers a signal, i.e. Variables that are calculated
@@ -164,8 +192,11 @@ struct pdvariable *pdserv_signal(
         size_t n,                 /**< Element count.
                                    * If @dim != NULL, this is the number
                                    * elements in @dim */
-        const size_t *dim         /**< Dimensions. If NULL, consider the
+        const size_t *dim,        /**< Dimensions. If NULL, consider the
                                    * parameter to be a vector of length @n */
+        read_signal_t read_signal_cb, /**< read signal callback */
+        void* priv_data           /**< private data pointer for user
+                                   * passed when calling read_signal_cb() */
         );
 
 /** Register an event channel
@@ -218,18 +249,24 @@ void pdserv_event_set(
 
 /** Callback on a parameter update event
  *
- * See \pdserv_set_parameter_trigger
+ * This function is responsible for copying the data from @src to @dst.
  *
- * This function is responsible for copying the data from @src to @dst
+ * The function allows the user to synchronize his application to
+ * the external events of setting a parameter.
+ *
+ * Essentially the function should execute the following:
+ *      lock();
+ *      memcpy(dst, src, len);
+ *      unlock();
  *
  * \returns 0 on success
  */
-typedef int (*paramtrigger_t)(
-        struct pdtask *pdtask,  /**< Pointer to pdtask structure */
+typedef int (*write_parameter_t)(
         const struct pdvariable *param, /**< Pointer to parameter */
         void *dst,              /**< Destination address @addr */
         const void *src,        /**< Data source */
         size_t len,             /**< Data length in bytes */
+        struct timespec* time,  /**< Current time */
         void *priv_data         /**< Optional user variable */
         );
 
@@ -268,8 +305,8 @@ struct pdvariable *pdserv_parameter(
                                    * is the number elements in * @dim */
         const size_t *dim,        /**< Dimensions. If NULL, consider the
                                    * parameter to be a vector of length @n */
-        paramtrigger_t trigger,   /**< Callback for updating the parameter
-                                   * inside real time context */
+        write_parameter_t write_cb, /**< Callback for updating the parameter
+                                     * inside real time context */
         void *priv_data           /**< Arbitrary pointer passed to @trigger
                                    * when it is called */
         );
@@ -310,16 +347,6 @@ void pdserv_set_comment(
  */
 int pdserv_prepare(
         struct pdserv* pdserv     /**< Pointer to pdserv structure */
-        );
-
-/** Update parameters
- *
- * Call this function to get parameters
- */
-void pdserv_get_parameters(
-        struct pdserv* pdserv,
-        struct pdtask* pdtask,  /**< Pointer to pdtask structure */
-        const struct timespec *t
         );
 
 /** Update task statistics variables

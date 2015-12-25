@@ -33,6 +33,16 @@ namespace PdServ {
 class Session;
 class SessionTask;
 class Config;
+class Event;
+
+struct EventData {
+    EventData();
+
+    const Event* event;
+    size_t index;
+    bool state;
+    struct timespec time;
+};
 
 class Event {
     public:

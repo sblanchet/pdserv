@@ -29,11 +29,9 @@
 #include <unistd.h>     // exit(), sleep()
 #include <cerrno>       // errno
 #include <cstdio>       // perror()
-#include <algorithm>    // std::min()
 #include <sys/mman.h>   // mmap(), munmap()
 #include <signal.h>     // signal()
-#include <log4cplus/logger.h>
-#include <log4cplus/loggingmacros.h>
+#include <cerrno>       // EIO
 
 #include "pdserv.h"
 #include "Main.h"
@@ -48,12 +46,24 @@
 #include "../Database.h"
 
 /////////////////////////////////////////////////////////////////////////////
-struct SDOStruct {
-    const Parameter *parameter;
-    unsigned int offset;
-    unsigned int count;
-    int rv;
-    struct timespec time;
+struct SDO {
+    enum {ParamChange = 1, PollSignal} type;
+
+    union {
+        struct {
+            const Parameter *parameter;
+            unsigned int offset;
+            unsigned int count;
+        } paramChangeReq;
+
+        struct {
+            int rv;
+            struct timespec time;
+        } paramChangeAck;
+
+        const Signal* signal;
+        struct timespec time;
+    };
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -64,17 +74,18 @@ const double Main::bufferTime = 2.0;
 Main::Main( const char *name, const char *version,
         int (*gettime)(struct timespec*)):
     PdServ::Main(name, version),
-    mutex(1), eventMutex(1),
+    sdoMutex(1), eventMutex(1),
     rttime(gettime ? gettime : &PdServ::Main::localtime)
 {
     shmem_len = 0;
     shmem = 0;
-    tSampleMin = ~0U;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
+    terminate();
+
     while (task.size()) {
         delete task.front();
         task.pop_front();
@@ -85,7 +96,11 @@ Main::~Main()
         parameters.pop_front();
     }
 
-    ::close(ipc_pipe[1]);
+    // close pipes
+    ::close(terminatePipe);
+    ::close(ipcTx);
+    ::close(ipcRx);
+
     ::munmap(shmem, shmem_len);
 }
 
@@ -96,9 +111,10 @@ void Main::setConfigFile(const char *file)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::run()
+int Main::setup()
 {
     int rv;
+    int ipc_pipe[3][2];
     time_t persistTimeout;
     fd_set fds;
     struct timeval timeout, now, delay;
@@ -114,7 +130,7 @@ int Main::run()
 
     // Open a pipe between the two processes. This is used to inform the
     // child that the parent has died
-    if (::pipe(ipc_pipe)) {
+    if (::pipe(ipc_pipe[0]) or ::pipe(ipc_pipe[1]) or ::pipe(ipc_pipe[2])) {
         rv = errno;
         ::perror("pipe()");
         return rv;
@@ -135,25 +151,36 @@ int Main::run()
     }
     else if (pid) {
         // Parent here. Return to the caller
+        ::close(ipc_pipe[0][0]);
+        ipcTx = ipc_pipe[0][1];
 
-        // Close read end of pipe
-        ::close(ipc_pipe[0]);
+        ipcRx = ipc_pipe[1][0];
+        ::close(ipc_pipe[1][1]);
 
-        // Send a signal to the child that parent is running
-        ::write(ipc_pipe[1], &pid, 1);
+        ::close(ipc_pipe[2][0]);
+        terminatePipe = ipc_pipe[2][1];
+
+        // Send PID to the child, indicating that parent is running
+        if (::write(terminatePipe, &pid, sizeof(pid)) != sizeof(pid))
+            std::runtime_error("Main::setup(): pid ::write() failed");
 
         return postfork_rt_setup();
     }
 
     // Only child runs after this point
-    pid = getpid();
+    ipcRx = ipc_pipe[0][0];
+    ::close(ipc_pipe[0][1]);
 
-    // Close write end of pipe
-    ::close(ipc_pipe[1]);
+    ::close(ipc_pipe[1][0]);
+    ipcTx = ipc_pipe[1][1];
 
-    // Wait till main thread is initialized
-    if (::read(ipc_pipe[0], &rv, 1) != 1)
-        exit(errno);
+    terminatePipe = ipc_pipe[2][0];
+    ::close(ipc_pipe[2][1]);
+
+    // Wait till main thread has been initialized
+    if (::read(terminatePipe, &pid, sizeof(pid)) != sizeof(pid)
+            or pid != getpid())
+        std::runtime_error("Main::setup(): pid ::read() failed");
 
     // Ignore common terminating signals
     ::signal(SIGINT, SIG_IGN);
@@ -170,7 +197,8 @@ int Main::run()
 
     // Stay in this loop until real-time thread exits, in which case
     // ipc_pipe[0] becomes readable
-    struct ::EventData* eventData = *eventDataWp;
+    struct ::EventData* eventData = eventDataStart;
+    ipc_error = false;
     do {
         for (TaskList::iterator it = task.begin();
                 it != task.end(); ++it)
@@ -195,10 +223,11 @@ int Main::run()
                 eventData = eventDataStart;
         }
 
-        FD_SET(ipc_pipe[0], &fds);
+        FD_SET(terminatePipe, &fds);
         delay.tv_sec = 1;
-        rv = ::select(ipc_pipe[0] + 1, &fds, 0, 0, &delay);
-    } while (!rv);
+        delay.tv_usec = 0;
+        rv = ::select(terminatePipe + 1, &fds, 0, 0, &delay);
+    } while (!(rv or ipc_error));
 
     // Ignore rv if ipc_pipe[0] is readable
     if (rv == 1)
@@ -273,15 +302,8 @@ PdServ::Config Main::config(const char* key) const
 /////////////////////////////////////////////////////////////////////////////
 Task* Main::addTask(double sampleTime, const char *name)
 {
-    Task *t = new Task(this, sampleTime, name);
-    task.push_back(t);
-
-    tSampleMin =
-        std::min(tSampleMin, static_cast<size_t>(sampleTime * 1000 + 0.5));
-    if (!tSampleMin)
-        tSampleMin = 1U;
-
-    return t;
+    task.push_back(new Task(this, sampleTime, name));
+    return task.back();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -307,11 +329,10 @@ Event* Main::addEvent (
                 ? PdServ::Event::Emergency
                 : PdServ::Event::Debug;
     }
-    Event *e = new Event(this, path, eventPrio, nelem, messages);
 
-    events.push_back(e);
+    events.push_back(new Event(this, path, eventPrio, nelem, messages));
 
-    return e;
+    return events.back();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -319,11 +340,10 @@ Parameter* Main::addParameter( const char *path,
         unsigned int mode, const PdServ::DataType& datatype,
         void *addr, size_t n, const size_t *dim)
 {
-    Parameter *p = new Parameter(this, addr, path, mode, datatype, n, dim);
+    parameters.push_back(
+            new Parameter(this, addr, path, mode, datatype, n, dim));
 
-    parameters.push_back(p);
-
-    return p;
+    return parameters.back();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -336,7 +356,7 @@ Signal* Main::addSignal( Task *task, unsigned int decimation,
 
 /////////////////////////////////////////////////////////////////////////////
 void Main::setEvent(Event* event,
-        size_t element, bool state, const timespec *time) const
+        size_t element, bool state, const timespec *time)
 {
     ost::SemaphoreLock lock(eventMutex);
 
@@ -352,33 +372,50 @@ void Main::setEvent(Event* event,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(const PdServ::ProcessParameter *p,
-        size_t offset, size_t count) const
+int Main::setValue(const PdServ::ProcessParameter* p,
+        const char* buf, size_t offset, size_t count)
 {
+    ost::SemaphoreLock lock(sdoMutex);
     const Parameter* param = static_cast<const Parameter*>(p);
+    char* shmAddr = param->shmAddr + offset;
 
-    // Write the parameters into the shared memory sorted from widest
-    // to narrowest data type size. This ensures that the data is
-    // always aligned correctly.
-    sdo->parameter = param;
-    sdo->offset = offset;
+    // Backup old values in case of write failure
+    char backup[count];
+    std::copy(shmAddr, shmAddr + count, backup);
 
-    // Now write the length to trigger the action
-    sdo->count = count;
+    // Copy new data to shared memory
+    std::copy(buf, buf + count, shmAddr);
 
-    do {
-        ost::Thread::sleep(tSampleMin);
-    } while (sdo->count);
+    // Setup change request
+    struct SDO sdo;
+    sdo.type = SDO::ParamChange;
+    sdo.paramChangeReq.parameter = param;
+    sdo.paramChangeReq.offset = offset;
+    sdo.paramChangeReq.count = count;
 
-    if (!sdo->rv)
-        // Save time of update
-        param->mtime = sdo->time;
+    if (::write(ipcTx, &sdo, sizeof(sdo)) != sizeof(sdo)) {
+        log_debug("Main::setValue(): SDO ::write() failed");
+        ipc_error = true;
+        return -EIO;
+    }
 
-    return sdo->rv;
+    if (::read(ipcRx, &sdo, sizeof(sdo)) != sizeof(sdo)) {
+        log_debug("Main::setValue(): SDO ::read() failed");
+        ipc_error = true;
+        return -EIO;
+    }
+
+    if (!sdo.paramChangeAck.rv)
+        param->mtime = sdo.paramChangeAck.time; // Save time of update
+    else
+        // Write failure. Restore data
+        std::copy(backup, backup + count, shmAddr);
+
+    return sdo.paramChangeAck.rv;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::initializeParameter(const PdServ::Parameter* p,
+void Main::initializeParameter(PdServ::Parameter* p,
         const char* data, const struct timespec* mtime,
         const PdServ::Signal* s)
 {
@@ -410,30 +447,49 @@ bool Main::getPersistentSignalValue(const PdServ::Signal *s,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::processPoll(unsigned int delay_ms,
-        const PdServ::Signal * const *s, size_t nelem,
-        void * const *pollDest, struct timespec *t) const
+int Main::getValue(const Signal *signal, void* dest, struct timespec* time)
 {
-    bool fin[task.size()];
-    bool finished;
-    std::fill_n(fin, 4, false);
-    do {
-        finished = true;
-        int i = 0;
-        for (TaskList::const_iterator it = task.begin();
-                it != task.end(); ++it, ++i) {
-            const Task *task = static_cast<const Task*>(*it);
-            fin[i] = fin[i] or task->pollFinished( s, nelem, pollDest, t);
-            finished = finished and fin[i];
-        }
-        ost::Thread::sleep(delay_ms);
-    } while (!finished);
+    ost::SemaphoreLock lock(sdoMutex);
+    struct SDO sdo;
+
+    sdo.type = SDO::PollSignal;
+    sdo.signal = signal;
+
+    if (::write(ipcTx, &sdo, sizeof(sdo)) != sizeof(sdo)) {
+        log_debug("Main::getValue(): SDO ::write() failed");
+        ipc_error = true;
+        return -EIO;
+    }
+
+    if (::read(ipcRx, &sdo, sizeof(sdo)) != sizeof(sdo)) {
+        log_debug("Main::getValue(): SDO ::read() failed");
+        ipc_error = true;
+        return -EIO;
+    }
+
+    std::copy(signalData, signalData + signal->memSize,
+            reinterpret_cast<char*>(dest));
+
+    if (time)
+        *time = sdo.time;
+
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+PdServ::Parameter* Main::findParameter(const std::string& path) const
+{
+    for (ParameterList::const_iterator it = parameters.begin();
+            it != parameters.end(); ++it)
+        if ((*it)->path == path)
+            return *it;
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 // Orangization of shared memory:
 //      struct SDOStruct        sdo
-//      char                    sdoData (binary data of all parameters)
+//      char                    parameterData (binary data of all parameters)
 //      char                    pdoData
 //      struct EventData        eventDataStart
 //
@@ -442,6 +498,26 @@ int Main::prefork_init()
     size_t numTasks = task.size();
     size_t taskMemSize[numTasks];
     size_t i, eventCount;
+    size_t maxSignalSize = 0;
+
+    // Find out the largest signal size to reserve space in
+    // shared memory for polling
+    for (TaskList::const_iterator it = task.begin();
+            it != task.end(); ++it) {
+        std::list<const PdServ::Signal*> signals =
+            static_cast<PdServ::Task*>(*it)->getSignals();
+
+        while (!signals.empty()) {
+            const PdServ::Signal* s = signals.front();
+
+            if (s->memSize > maxSignalSize)
+                maxSignalSize = s->memSize;
+
+            signals.pop_front();
+        }
+
+    }
+    shmem_len += maxSignalSize;
 
     // The following two variables are used to organize parameters according
     // to the size of their elements so that their data type alignment is
@@ -477,8 +553,7 @@ int Main::prefork_init()
 
     // Extend shared memory size with the parameter memory requirement
     // and as many sdo's for every parameter.
-    shmem_len += sizeof(*sdo) * (parameters.size() + 1)
-        + parameterDataOffset[4];
+    shmem_len += parameterDataOffset[4];
 
     // Now check how much memory is required for events
     eventCount = 0;
@@ -486,8 +561,9 @@ int Main::prefork_init()
         eventCount += (*it)->nelem;
 
     // Increase shared memory by the number of events as well as
-    // enough capacity to store 10 event changes
-    shmem_len += sizeof(*eventDataStart) * 10 * eventCount;
+    // enough capacity to store eventDataLen event changes
+    const size_t eventLen = 10;     // Arbitrary
+    shmem_len += sizeof(*eventDataStart) * eventLen * eventCount;
 
     shmem_len += sizeof(*eventDataWp);  // Memory location for write pointer
 
@@ -498,14 +574,13 @@ int Main::prefork_init()
             it != task.end(); ++it) {
         taskMemSize[i] = ptr_align(
                 static_cast<const Task*>(*it)->getShmemSpace(bufferTime));
-        //log_debug("Task %i %f shmlen=%zu", i, bufferTime, taskMemSize[i]);
         shmem_len += taskMemSize[i++];
     }
 
     // Fudge factor. Every ptr_align can silently increase the pointer in
     // shmem by sizeof(unsigned long).
     // At the moment there are roughly 6 ptr_align's, take 10 to make sure!
-    shmem_len += 10*sizeof(unsigned long);
+    shmem_len += (10 + task.size())*sizeof(unsigned long);
 
     shmem = ::mmap(0, shmem_len, PROT_READ | PROT_WRITE,
             MAP_SHARED | MAP_ANON, -1, 0);
@@ -515,32 +590,55 @@ int Main::prefork_init()
         ::perror("mmap()");
         return errno;
     }
+
+    // Clear memory; at the same time prefault it, so it does not
+    // get swapped out
     ::memset(shmem, 0, shmem_len);
 
-    sdo     = ptr_align<struct SDOStruct>(shmem);
-    sdoData = ptr_align<char>(ptr_align<double>(sdo + parameters.size() + 1));
+    // Now spread the shared memory for the users thereof
 
+    // 1: Parameter data
+    parameterData = ptr_align<char>(shmem);
     for (ParameterList::iterator it = parameters.begin();
             it != parameters.end(); it++) {
         Parameter *p = *it;
-        p->shmAddr =
-            sdoData + parameterDataOffset[dataTypeIndex[p->dtype.align()]];
+        p->shmAddr = parameterData
+            + parameterDataOffset[dataTypeIndex[p->dtype.align()]];
         parameterDataOffset[dataTypeIndex[p->dtype.align()]] += p->memSize;
 
         std::copy(p->addr, p->addr + p->memSize, p->shmAddr);
     }
 
-    char* buf = ptr_align<char>(sdoData + parameterDataOffset[4]);
+    // 2: Signal data area for polling
+    signalData = ptr_align<char>(parameterData + parameterDataOffset[4]);
+
+    // 3: Streaming data for tasks
+    char* buf = ptr_align<char>(signalData + maxSignalSize);
     i = 0;
     for (TaskList::iterator it = task.begin(); it != task.end(); ++it) {
         static_cast<Task*>(*it)->prepare(buf, buf + taskMemSize[i]);
-        buf += taskMemSize[i++];
+        buf = ptr_align<char>(buf + taskMemSize[i++]);
     }
 
+    // 4: Event data
     eventDataWp    = ptr_align<struct ::EventData*>(buf);
     eventDataStart = ptr_align<struct ::EventData>(eventDataWp + 1);
-    eventDataEnd   = ptr_align<struct ::EventData>((char*)shmem + shmem_len) - 1;
+    eventDataEnd   = eventDataStart + eventLen * eventCount;
     *eventDataWp   = eventDataStart;
+
+    log_debug("shmem=%p shmem_end=%p(%zu)\n"
+            "param=%p(%zi)\n"
+            "stream=%p(%zi)\n"
+            "end=%p(%zi)\n",
+            shmem, (char*)shmem + shmem_len, shmem_len,
+            signalData, (char*)signalData - (char*)shmem,
+            eventDataWp, (char*)eventDataWp - (char*)shmem,
+            eventDataEnd, (char*)eventDataEnd - (char*)shmem);
+
+    if ((void*)(eventDataEnd + 1) > (void*)((char*)shmem + shmem_len)) {
+        log_debug("Not enough memory");
+        return ENOMEM;
+    }
 
     return 0;
 }
@@ -552,6 +650,10 @@ int Main::postfork_rt_setup()
     for (TaskList::iterator it = task.begin();
             it != task.end(); ++it)
         static_cast<Task*>(*it)->rt_init();
+
+    // Start supervisor thread
+    start();
+
     return 0;
 }
 
@@ -595,17 +697,56 @@ void Main::cleanup(const PdServ::Session* /*session*/) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::getParameters(Task *task, const struct timespec *t) const
+void Main::run()
 {
-    for (struct SDOStruct *s = sdo; s->count; s++) {
-        const Parameter *p = s->parameter;
-        const PdServ::Variable *v = p;
-        s->time.tv_sec = t->tv_sec;
-        s->time.tv_nsec = t->tv_nsec;
-        s->rv = p->trigger(reinterpret_cast<struct pdtask *>(task),
-                reinterpret_cast<const struct pdvariable *>(v),
-                p->addr + s->offset,
-                p->shmAddr + s->offset, s->count, p->priv_data);
-        s->count = 0;
+    const PdServ::Variable *variable;
+    struct SDO sdo;
+
+    while (true) {
+        if (::read(ipcRx, &sdo, sizeof(sdo)) != sizeof(sdo))
+            std::runtime_error("Main::run(): SDO ::read() failed");
+
+        switch (sdo.type) {
+            case SDO::ParamChange:
+                variable = sdo.paramChangeReq.parameter;
+                sdo.paramChangeAck.rv = 
+                    sdo.paramChangeReq.parameter->write_cb(
+                            reinterpret_cast<const pdvariable*>(variable),
+                            (sdo.paramChangeReq.parameter->addr
+                             + sdo.paramChangeReq.offset),
+                            (sdo.paramChangeReq.parameter->shmAddr
+                             + sdo.paramChangeReq.offset),
+                            sdo.paramChangeReq.count,
+                            &sdo.paramChangeAck.time,
+                            sdo.paramChangeReq.parameter->priv_data);
+
+                log_debug("Parameter change of %s; rv=%i\n",
+                        variable->path.c_str(),
+                        sdo.paramChangeAck.rv);
+
+                break;
+
+            case SDO::PollSignal:
+                variable = sdo.signal;
+                sdo.signal->read_cb(
+                        reinterpret_cast<const pdvariable*>(variable),
+                        signalData,
+                        sdo.signal->addr,
+                        sdo.signal->memSize,
+                        &sdo.time,
+                        sdo.signal->priv_data);
+//                log_debug("Signal poll of %s\n", variable->path.c_str());
+                break;
+        };
+
+        if (::write(ipcTx, &sdo, sizeof(sdo)) != sizeof(sdo))
+            std::runtime_error("Main::run(): SDO ::write() failed");
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::final()
+{
+    ::close(ipcRx);
+    ::close(ipcTx);
 }

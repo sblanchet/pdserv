@@ -146,13 +146,6 @@ int Main::localtime(struct timespec* t)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::getSessionStatistics(std::list<SessionStatistics>& stats) const
-{
-    msrproto->getSessionStatistics(stats);
-    //etlproto->getSessionStatistics(stats);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Main::startServers()
 {
     LOG4CPLUS_INFO_STR(log4cplus::Logger::getRoot(),
@@ -178,9 +171,8 @@ void Main::stopServers()
 int Main::setValue(const ProcessParameter* p, const Session* /*session*/,
         const char* buf, size_t offset, size_t count)
 {
-    // Ask the implemented parameter to change value. This allows the 
-    // parameter to obtain a write lock
-    int rv = p->setValue(buf, offset, count);
+    // Ask the implementation to change value.
+    int rv = setValue(p, buf, offset, count);
     if (rv)
         return rv;
 
@@ -241,26 +233,6 @@ int Main::setValue(const ProcessParameter* p, const Session* /*session*/,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::poll(const Session *session, const Signal * const *s,
-        size_t nelem, void *buf, struct timespec *t) const
-{
-    ost::SemaphoreLock lock(mutex);
-    char *dest = reinterpret_cast<char*>(buf);
-    double delay = 0.01;
-    void *pollDest[nelem];
-
-    for (size_t i = 0; i < nelem; ++i) {
-        delay = std::max(delay,
-                std::min(0.1, s[i]->poll(session, dest, t)));
-        pollDest[i] = dest;
-        dest += s[i]->memSize;
-    }
-
-    processPoll(static_cast<unsigned>(delay * 1000 + 0.5),
-		    s, nelem, pollDest, t);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 unsigned int Main::setupPersistent()
 {
     std::set<std::string> keys;
@@ -291,16 +263,6 @@ unsigned int Main::setupPersistent()
     }
 
     Database dataBase(persistentLog, databasePath);
-
-    // Copy parameters
-    typedef std::map<std::string, const Parameter*> ParameterMap;
-    ParameterMap parameterMap;
-
-    typedef std::list<const Parameter*> ParameterList;
-    ParameterList parameters = getParameters();
-    for (ParameterList::iterator it = parameters.begin();
-            it != parameters.end(); ++it)
-        parameterMap[(*it)->path] = *it;
 
     // Copy signals from tasks
     typedef std::map<std::string, const Signal*> SignalMap;
@@ -334,14 +296,14 @@ unsigned int Main::setupPersistent()
     //       signal: "/path/to/integrator"
     for (size_t i = 0; varList[i]; ++i) {
         const PdServ::Config& item = varList[i];
-        const Parameter* param;
+        Parameter* param;
         const Signal* signal = 0;
 
         std::string path =
             (item.isMapping() ? item["parameter"] : item).toString();
 
-        ParameterMap::const_iterator paramIt(parameterMap.find(path));
-        if (paramIt == parameterMap.end()) {
+        param = findParameter(path);
+        if (!param) {
             // Parameter does not exist
             LOG4CPLUS_WARN(persistentLog,
                     LOG4CPLUS_TEXT("Persistent parameter ")
@@ -349,7 +311,6 @@ unsigned int Main::setupPersistent()
                     << LOG4CPLUS_TEXT(" does not exist."));
             continue;
         }
-        param = paramIt->second;
 
         if (persistentMap.find(param) != persistentMap.end()) {
             LOG4CPLUS_INFO(persistentLog,
@@ -514,12 +475,15 @@ void Main::newEvent(Event* event,
     else
         event->resetTime[index] = *time;
 
-    (*eventPtr).event = event;
-    (*eventPtr).index = index;
-    (*eventPtr).state = state;
-    (*eventPtr).time = *time;
+    eventPtr->event = event;
+    eventPtr->index = index;
+    eventPtr->state = state;
+    eventPtr->time = *time;
     if (++eventPtr == eventList.end())
         eventPtr = eventList.begin();
+
+    if (!state)
+        return;
 
     log4cplus::LogLevel prio;
     switch (event->priority) {
@@ -548,41 +512,53 @@ void Main::newEvent(Event* event,
     os << time->tv_sec << '.'
         << std::setw(6) << std::setfill('0') << time->tv_nsec/1000
         << std::setw(0)
-        << LOG4CPLUS_TEXT(": ")
-        << LOG4CPLUS_STRING_TO_TSTRING(event->path);
-
-    if (event->nelem > 1)
-        os << '[' << index << ']';
-
-    os << " = " << state;
+        << LOG4CPLUS_TEXT(": ");
 
     if (event->message and event->message[index])
-        os << LOG4CPLUS_TEXT(" (")
-            << LOG4CPLUS_C_STR_TO_TSTRING(event->message[index])
-            << ')';
+        os << LOG4CPLUS_C_STR_TO_TSTRING(event->message[index]);
+
+    os << LOG4CPLUS_C_STR_TO_TSTRING(" (")
+        << LOG4CPLUS_STRING_TO_TSTRING(event->path);
+    if (event->nelem > 1)
+        os << '[' << index << ']';
+    os << ')';
 
     eventLog.log(prio, os.str());
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const Event *Main::getNextEvent(Session* session,
-        size_t *index, bool *state, struct timespec *time) const
+EventData Main::getNextEvent(Session* session) const
 {
     ost::ReadLock lock(eventMutex);
 
     if (session->eventId >= eventList.size())
         session->eventId = eventPtr - eventList.begin();
 
-    if (int(session->eventId) == eventPtr - eventList.begin())
-        return 0;
+    if (ssize_t(session->eventId) == eventPtr - eventList.begin()) {
+        static const EventData d;
+        return d;
+    }
 
     const EventData& eventData = eventList[session->eventId];
     if (++session->eventId == eventList.size())
         session->eventId = 0;
 
-    *index = eventData.index;
-    *state = eventData.state;
-    *time  = eventData.time;
+    return eventData;
+}
 
-    return eventData.event;
+/////////////////////////////////////////////////////////////////////////////
+std::list<EventData> Main::getEventHistory(Session* session) const
+{
+    ost::ReadLock lock(eventMutex);
+    std::list<EventData> list;
+    std::vector<EventData>::const_iterator it =
+        eventPtr->event ? eventPtr : eventList.begin();
+
+    if ( it >= eventPtr)
+        list.insert(list.end(), it, eventList.end());
+
+    list.insert(list.end(),
+            eventList.begin(), eventList.begin() + session->eventId);
+
+    return list;
 }

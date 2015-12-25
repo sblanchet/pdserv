@@ -35,6 +35,7 @@ namespace PdServ {
     class Config;
 }
 
+class Signal;
 class Parameter;
 class ProcessParameter;
 class Task;
@@ -51,6 +52,9 @@ class Main: public PdServ::Main {
 
         int setParameter(const char* dataPtr,
                 size_t len, struct timespec *mtime) const;
+
+        void getValue(
+                const Signal* signal, void* dest, struct timespec* t) const;
 
     private:
         const struct app_properties &app_properties;
@@ -80,7 +84,8 @@ class Main: public PdServ::Main {
         typedef std::set<int> EventSet;
         EventSet eventSet;
 
-        std::list<Parameter*> parameters;
+        typedef std::list<Parameter*> ParameterList;
+        ParameterList parameters;
 
         int postfork_nrt_setup();
 
@@ -92,18 +97,15 @@ class Main: public PdServ::Main {
         void cleanup(const PdServ::Session *session) const;
         const PdServ::Event *getNextEvent(const PdServ::Session* session,
                 size_t *index, bool *state, struct timespec *t) const;
-        int setParameter(const PdServ::ProcessParameter* p,
-                size_t offset, size_t count) const;
-        void initializeParameter(const PdServ::Parameter* p,
+        void initializeParameter(PdServ::Parameter* p,
                 const char* data, const struct timespec* mtime,
                 const PdServ::Signal* s);
         bool getPersistentSignalValue(const PdServ::Signal *s,
                 char* buf, struct timespec* time);
-        void processPoll(
-                unsigned int delay_ms, const PdServ::Signal * const *s,
-                size_t nelem, void * const * pollDest,
-                struct timespec *t) const;
+        PdServ::Parameter* findParameter(const std::string& path) const;
         PdServ::Config config(const char*) const;
+        int setValue(const PdServ::ProcessParameter* p,
+                const char* buf, size_t offset, size_t count);
 };
 
 #endif // BUDDY_MAIN_H
