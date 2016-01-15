@@ -120,11 +120,12 @@ void Variable::setAttributes(
     // index=
     XmlElement::Attribute(element, "index") << index;
 
+    // name=
+    // DO NOT REMOVE: Testmanager requires name even with short reply!
+    XmlElement::Attribute(element, "name").setEscaped(path());
+
     if (shortReply)
         return;
-
-    // name=
-    XmlElement::Attribute(element, "name").setEscaped(path());
 
     // alias=
     // comment=
