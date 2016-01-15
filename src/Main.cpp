@@ -176,6 +176,7 @@ int Main::setValue(const ProcessParameter* p, const Session* /*session*/,
     if (rv)
         return rv;
 
+return 0;
     msrproto->parameterChanged(p, offset, count);
 
     PersistentMap::iterator it = persistentMap.find(p);
@@ -390,7 +391,7 @@ unsigned int Main::setupPersistent()
 
                 os << " = ";
 
-                signal->dtype.print(os, value, value, value + signal->memSize);
+                param->dtype.print(os, value, value, value + param->memSize);
 
                 LOG4CPLUS_INFO_STR(persistentLogTrace,
                         LOG4CPLUS_STRING_TO_TSTRING(os.str()));
@@ -447,7 +448,7 @@ void Main::savePersistent()
 
                 os << " = ";
 
-                signal->dtype.print(os, buf, buf, buf + signal->memSize);
+                param->dtype.print(os, buf, buf, buf + param->memSize);
 
                 LOG4CPLUS_INFO_STR(persistentLogTrace,
                         LOG4CPLUS_STRING_TO_TSTRING(os.str()));
@@ -503,6 +504,7 @@ void Main::newEvent(Event* event,
             prio = log4cplus::INFO_LOG_LEVEL;
             break;
         case PdServ::Event::Debug:
+        default:
             prio = log4cplus::DEBUG_LOG_LEVEL;
             break;
     }
