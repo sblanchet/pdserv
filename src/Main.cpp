@@ -176,7 +176,6 @@ int Main::setValue(const ProcessParameter* p, const Session* /*session*/,
     if (rv)
         return rv;
 
-return 0;
     msrproto->parameterChanged(p, offset, count);
 
     PersistentMap::iterator it = persistentMap.find(p);
