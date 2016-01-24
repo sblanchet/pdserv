@@ -36,6 +36,8 @@
 #
 #       -DCMAKE_BUILD_TYPE=Debug|Release|RelWithDebInfo|MinSizeRel
 #       -DDEBUG=1               # prints debug messages in terminal
+#       -DTEST=1                # Compile tests (Requires
+#                               #     -DCMAKE_BUILD_TYPE=Debug)
 #
 #  option
 #
@@ -71,14 +73,15 @@ LIST (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 IF (${CMAKE_VERSION} VERSION_LESS "2.8.5")
   LIST (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/compat/")
 ENDIF ()
+
 INCLUDE (GNUInstallDirs)
+INCLUDE (CMakeDependentOption)
+INCLUDE (InstallRequiredSystemLibraries)
 
 SET (ENABLE_BUDDY "${ENABLE_BUDDY}" CACHE BOOL
     "Build etherlab_buddy" FORCE)
 
 ENABLE_TESTING()
-
-INCLUDE (InstallRequiredSystemLibraries)
 
 SET (CPACK_PACKAGE_DESCRIPTION_SUMMARY "Process data communications library")
 SET (CPACK_PACKAGE_VENDOR "Richard Hacker")
@@ -95,7 +98,6 @@ SET (CPACK_GENERATOR "TGZ")
 SET (CPACK_GENERATOR "DEB")
 SET (CPACK_DEBIAN_PACKAGE_MAINTAINER "Richard Hacker") #required
 LIST (APPEND CPACK_SOURCE_IGNORE_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/*build.*/"
     "/\\\\.hg"
     "\\\\.sw.$"
     "~$"
@@ -104,8 +106,6 @@ LIST (APPEND CPACK_SOURCE_IGNORE_FILES
 
 INCLUDE (CPack)
 ADD_CUSTOM_TARGET (dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
-
-FIND_PACKAGE (Threads)
 
 # Search for mercurial, used to add ID information to the library
 FIND_PACKAGE (Mercurial)
@@ -119,6 +119,7 @@ PKG_CHECK_MODULES (LIBCCEXT2 REQUIRED libccext2)
 FIND_PACKAGE (Log4cplus REQUIRED)
 FIND_PACKAGE (Yaml REQUIRED)
 FIND_PACKAGE (BerkeleyDB REQUIRED)
+FIND_PACKAGE (CyrusSASL REQUIRED)
 
 IF (UNIX)
     ADD_CUSTOM_TARGET (tags etags -R ${CMAKE_CURRENT_SOURCE_DIR})
@@ -128,7 +129,13 @@ ENDIF ()
 ADD_DEFINITIONS ("-Wall -Wextra")
 
 ADD_SUBDIRECTORY (src)
-ADD_SUBDIRECTORY (test)
+
+STRING (COMPARE EQUAL "${CMAKE_BUILD_TYPE}" "Debug" ENABLE_TEST)
+CMAKE_DEPENDENT_OPTION (TEST "Compile test subdirectory" ON
+    "ENABLE_TEST" OFF)
+IF (TEST)
+  ADD_SUBDIRECTORY (test)
+ENDIF ()
 
 OPTION ( DEBUG "Debugging output" OFF )
 SET  (PDS_DEBUG ${DEBUG})

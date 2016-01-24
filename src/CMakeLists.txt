@@ -25,6 +25,7 @@ INCLUDE_DIRECTORIES(
         ${PROJECT_BINARY_DIR}           # for config.h
         ${PROJECT_BINARY_DIR}/include   # for pdserv.h
         ${LIBCCEXT2_INCLUDE_DIRS}
+        ${CYRUS_SASL_INCLUDE_DIR}
         )
 
 SET (msrproto_src
@@ -62,8 +63,18 @@ SET (main_src
     Debug.cpp           Debug.h
     )
 
+SET (LIBS
+    ${LIBCCEXT2_LIBRARIES}
+    ${YAML_LIBRARIES}
+    ${LOG4CPLUS_LIBRARIES}
+    ${BerkeleyDB_LIBRARIES}
+    ${CYRUS_SASL_SHARED_LIB}
+    ${CYRUS_SASL_LIB_DEPS}
+    )
+
 # Search for files required by buddy.
-FIND_PATH (RT_APP_H "rt_app.h" PATHS /opt/etherlab/include)
+FIND_PATH (RT_APP_H "rt_app.h"
+    PATHS ${CMAKE_INSTALL_INCLUDEDIR} /opt/etherlab/include)
 
 #MESSAGE("ETL_DATA=${RT_APP_H}")
 
@@ -99,7 +110,6 @@ IF (RT_APP_H AND ENABLE_BUDDY)
     ENDIF ()
 
     FIND_PACKAGE (LibDaemon REQUIRED)
-    FIND_PACKAGE (Threads REQUIRED)
 
     ADD_EXECUTABLE (etherlab_buddy2
         buddy/SignalInfo.cpp            buddy/SignalInfo.h
@@ -120,17 +130,8 @@ IF (RT_APP_H AND ENABLE_BUDDY)
     SET_TARGET_PROPERTIES ( etherlab_buddy2 PROPERTIES
         COMPILE_DEFINITIONS "${DEFS}")
 
-    SET (BUDDY_LIBS
-        ${LIBCCEXT2_LIBRARIES}
-        ${LIBDAEMON_LIBRARIES}
-        ${YAML_LIBRARIES}
-        ${LOG4CPLUS_LIBRARIES}
-        ${CMAKE_THREAD_LIBS_INIT}
-        ${BerkeleyDB_LIBRARIES}
-        )
-
     INCLUDE_DIRECTORIES (${LIBDAEMON_INCLUDE_DIRS})
-    TARGET_LINK_LIBRARIES (etherlab_buddy2 ${BUDDY_LIBS})
+    TARGET_LINK_LIBRARIES (etherlab_buddy2 ${LIBS} ${LIBDAEMON_LIBRARIES})
     INSTALL (TARGETS etherlab_buddy2
         DESTINATION "${CMAKE_INSTALL_BINDIR}" RUNTIME)
 
@@ -159,8 +160,7 @@ SET_TARGET_PROPERTIES ( ${PROJECT_NAME} PROPERTIES
     SOVERSION ${SOVERSION}
     CLEAN_DIRECT_OUTPUT 1)
 
-TARGET_LINK_LIBRARIES (${PROJECT_NAME} ${LIBCCEXT2_LDFLAGS}
-    ${YAML_LIBRARIES} ${LOG4CPLUS_LIBRARIES} ${BerkeleyDB_LIBRARIES})
+TARGET_LINK_LIBRARIES (${PROJECT_NAME} ${LIBS})
 INSTALL (TARGETS ${PROJECT_NAME} DESTINATION "${CMAKE_INSTALL_LIBDIR}" LIBRARY)
 
 # pkgconfig files
