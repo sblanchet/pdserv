@@ -235,8 +235,6 @@ int Main::setup()
 
     stopServers();
 
-    savePersistent();
-
     ::exit(rv);
 }
 

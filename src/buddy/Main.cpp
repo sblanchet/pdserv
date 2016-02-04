@@ -159,7 +159,6 @@ int Main::serve()
                             << LOG4CPLUS_C_STR_TO_TSTRING(
                                 strsignal(signo))); 
                     stopServers();
-                    savePersistent();
                     daemon_signal_done();
                     return 0;
             }
