@@ -48,6 +48,8 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     active(&_active),
     mutex(1)
 {
+    server = 0;
+
     port = config["port"].toUInt();
     itemize = config["splitvectors"].toUInt();
 
@@ -157,6 +159,8 @@ void Server::initial()
 /////////////////////////////////////////////////////////////////////////////
 void Server::final()
 {
+    delete server;
+
     _active = false;
 
     while (!sessions.empty())
@@ -168,8 +172,6 @@ void Server::final()
 /////////////////////////////////////////////////////////////////////////////
 void Server::run()
 {
-    ost::TCPSocket *server = 0;
-
     ost::tpport_t port = this->port ? this->port : 2345;
 
     do {

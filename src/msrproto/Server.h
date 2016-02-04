@@ -42,6 +42,10 @@ namespace PdServ {
     class Signal;
 }
 
+namespace ost {
+    class TCPSocket;
+}
+
 namespace MsrProto {
 
 class Session;
@@ -103,6 +107,8 @@ class Server: public ost::Thread {
         ParameterMap parameterMap;
 
         mutable ost::Semaphore mutex;
+
+        ost::TCPSocket *server;
 
         // Reimplemented from ost::Thread
         void initial();
