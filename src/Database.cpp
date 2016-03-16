@@ -180,6 +180,9 @@ bool Database::read(const Parameter* p,
 void Database::save(const Parameter* p,
         const char* buf, const struct timespec* mtime)
 {
+    if (!db)
+        return;
+
     DBT key, value;
 
     // Clear the DBT structures
