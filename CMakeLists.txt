@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-#  Copyright 2010 - 2012  Richard Hacker (lerichi at gmx dot net)
+#  Copyright 2010 - 2016  Richard Hacker (lerichi at gmx dot net)
 #                         Florian Pose <fp@igh-essen.com>
 #
 #  This file is part of the pdserv library.
@@ -64,7 +64,7 @@ SET (PATCH_LEVEL 99)
 SET (VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL})
 
 # library version
-SET (SOVERSION ${MAJOR_VERSION})
+SET (SOVERSION ${MAJOR_VERSION}.${MINOR_VERSION})
 
 LIST (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
