@@ -201,7 +201,7 @@ int Main::setValue(const ProcessParameter* p, const Session* /*session*/,
         char data[p->memSize];
         struct timespec time;
 
-        static_cast<const Parameter*>(p)->getValue(0, data, &time);
+        p->copyValue(data, &time);
 
         PdServ::Database(persistentLog,
                 persistentConfig["database"].toString())

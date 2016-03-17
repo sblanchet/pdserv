@@ -58,11 +58,17 @@ int ProcessParameter::getValue(const PdServ::Session* /*session*/,
 {
     ost::ReadLock lock(mutex);
 
+    copyValue(buf, time);
+
+    return 0;
+}
+
+//////////////////////////////////////////////////////////////////////
+void ProcessParameter::copyValue(void* buf, struct timespec* time) const
+{
     std::copy(*valueBuf, *valueBuf + memSize, reinterpret_cast<char*>(buf));
     if (time)
         *time = *mtime;
-
-    return 0;
 }
 
 //////////////////////////////////////////////////////////////////////

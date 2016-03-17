@@ -45,6 +45,7 @@ class ProcessParameter: public Parameter {
                 const size_t *dim = 0);
 
         void print(std::ostream& os, size_t offset, size_t count) const;
+        void copyValue(void* buf, struct timespec*) const;
 
     private:
         Main* const main;
