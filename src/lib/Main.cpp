@@ -311,8 +311,7 @@ int Main::gettime(struct timespec* t) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Event* Main::addEvent (
-        const char *path, int prio, size_t nelem, const char **messages)
+Event* Main::addEvent (const char *path, int prio, size_t nelem)
 {
     PdServ::Event::Priority eventPrio;
     switch (prio) {
@@ -328,7 +327,7 @@ Event* Main::addEvent (
                 : PdServ::Event::Debug;
     }
 
-    events.push_back(new Event(this, path, eventPrio, nelem, messages));
+    events.push_back(new Event(this, path, eventPrio, nelem));
 
     return events.back();
 }

@@ -40,9 +40,6 @@ bool Event::toXml(Session::TCPStream &tcp, const PdServ::EventData& eventData)
             XmlElement::Attribute(msg, "index") << eventData.index;
         XmlElement::Attribute(msg, "state") << eventData.state;
         XmlElement::Attribute(msg, "time") << eventData.time;
-        if (event->message and eventData.state)
-            XmlElement::Attribute(msg, "text")
-                .setEscaped(event->message[eventData.index]);
     }
 
     return event;

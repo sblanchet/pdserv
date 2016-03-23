@@ -50,8 +50,7 @@ class Event {
             Emergency, Alert, Critical, Error, Warning, Notice, Info, Debug
         };
 
-        Event(const char *path, const Priority& prio,
-                size_t nelem, const char **messages);
+        Event(const char *path, const Priority& prio, size_t nelem);
 
         ~Event();
 
@@ -63,7 +62,6 @@ class Event {
         std::vector<struct timespec> resetTime;
 
         const size_t nelem;
-        const char ** message;
 
     private:
 };

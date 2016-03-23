@@ -28,9 +28,8 @@
 
 //////////////////////////////////////////////////////////////////////
 Event::Event( Main *main, const char* path,
-        const PdServ::Event::Priority& prio, size_t nelem,
-        const char **messages):
-    PdServ::Event(path, prio, nelem, messages),
+        const PdServ::Event::Priority& prio, size_t nelem):
+    PdServ::Event(path, prio, nelem),
     main(main),
     state(nelem),
     rt_state(nelem)

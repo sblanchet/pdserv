@@ -225,14 +225,7 @@ struct pdevent *pdserv_event(
                                  *   5 = Notice
                                  *   6 = Info
                                  *   7 = Debug */
-        size_t n,               /**< Vector size */
-        const char *message[]   /**< Event message list.
-                                 * @message can be NULL. If not, there must
-                                 * be at least n messages. 
-                                 *
-                                 * PdServ does not make a copy of these
-                                 * messages. They must be available
-                                 * permanently. */
+        size_t n                /**< Vector size */
         );
 
 /** Set the state of a single event.

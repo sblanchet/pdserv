@@ -515,14 +515,9 @@ void Main::newEvent(Event* event,
         << std::setw(0)
         << LOG4CPLUS_TEXT(": ");
 
-    if (event->message and event->message[index])
-        os << LOG4CPLUS_C_STR_TO_TSTRING(event->message[index]);
-
-    os << LOG4CPLUS_C_STR_TO_TSTRING(" (")
-        << LOG4CPLUS_STRING_TO_TSTRING(event->path);
+    os << LOG4CPLUS_STRING_TO_TSTRING(event->path);
     if (event->nelem > 1)
         os << '[' << index << ']';
-    os << ')';
 
     eventLog.log(prio, os.str());
 }

@@ -117,12 +117,12 @@ static const PdServ::DataType& getDataType(int dt)
 
 /////////////////////////////////////////////////////////////////////////////
 struct pdevent *pdserv_event (struct pdserv* pdserv, const char *path,
-        int prio, size_t n, const char **message)
+        int prio, size_t n)
 {
     Main *main = reinterpret_cast<Main*>(pdserv);
 
     return reinterpret_cast<struct pdevent *>(
-            main->addEvent(path, prio, n, message));
+            main->addEvent(path, prio, n));
 }
 
 /////////////////////////////////////////////////////////////////////////////

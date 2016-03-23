@@ -54,8 +54,7 @@ class Main: public PdServ::Main, public ost::Thread {
 
         Task* addTask(double sampleTime, const char *name);
 
-        Event* addEvent(const char *path, int prio,
-                size_t nelem, const char **messages);
+        Event* addEvent(const char *path, int prio, size_t n);
         void setEvent(Event* event,
                 size_t element, bool state, const timespec* t);
 

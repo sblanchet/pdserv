@@ -34,8 +34,7 @@ struct timespec;
 class Event: public PdServ::Event {
     public:
         Event( Main *main, const char* path,
-                const PdServ::Event::Priority& prio, size_t nelem,
-                const char **messages);
+                const PdServ::Event::Priority& prio, size_t nelem);
 
         Main * const main;
 
