@@ -309,35 +309,6 @@ int Main::postfork_nrt_setup()
                     LOG4CPLUS_TEXT("Watching as event: ")
                     << LOG4CPLUS_STRING_TO_TSTRING(s->path.c_str()));
 
-            // Set event message
-            e->message = new const char *[s->dim.nelem];
-            PdServ::Config messageList = it->second["message"];
-            if (s->dim.nelem > 1) {
-                for (size_t i = 0; i < s->dim.nelem; ++i) {
-                    std::string message = messageList[i].toString();
-                    if (message.empty()) {
-                        e->message[i] = 0;
-                        continue;
-                    }
-                    char *s = new char[message.size() + 1];
-                    e->message[i] = s;
-                    std::copy(message.begin(), message.end(), s);
-                    s[message.size()] = 0;
-                }
-            }
-            else {
-                std::string message = messageList.toString();
-
-                if (message.empty())
-                    e->message[0] = 0;
-                else {
-                    char *s = new char[message.size() + 1];
-                    e->message[0] = s;
-                    std::copy(message.begin(), message.end(), s);
-                    s[message.size()] = 0;
-                }
-            }
-
             // Reset config to indicate that the path was found
             it->second = PdServ::Config();
         }
