@@ -43,7 +43,7 @@ class Channel: public Variable {
                 size_t offset);
 
         void setXmlAttributes(XmlElement&, bool shortReply,
-                const char *signalBuf, size_t precision,
+                const char *signalBuf, std::streamsize precision,
                 struct timespec* time) const;
 
         const PdServ::Signal* const signal;

@@ -41,7 +41,7 @@ Channel::Channel(size_t taskIdx, const PdServ::Signal *s, size_t index,
 
 /////////////////////////////////////////////////////////////////////////////
 void Channel::setXmlAttributes( XmlElement &element, bool shortReply,
-        const char *data, size_t precision, struct timespec* time) const
+        const char *data, std::streamsize precision, struct timespec* time) const
 {
     setAttributes(element, shortReply);
 

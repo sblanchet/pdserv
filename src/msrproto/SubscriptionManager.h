@@ -54,7 +54,7 @@ class SubscriptionManager: public PdServ::SessionTask {
         void unsubscribe(const Channel *s, size_t group);
         void subscribe(const Channel *s, size_t group,
                 size_t decimation, size_t blocksize,
-                bool base64, size_t precision);
+                bool base64, std::streamsize precision);
 
         void sync();
 

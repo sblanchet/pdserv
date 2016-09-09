@@ -61,7 +61,7 @@ SubscriptionManager::~SubscriptionManager()
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::subscribe (const Channel *c, size_t group,
         size_t decimation, size_t blocksize, bool base64,
-        size_t precision)
+        std::streamsize precision)
 {
     Subscription** s = &signalSubscriptionMap[c->signal][c][group];
 

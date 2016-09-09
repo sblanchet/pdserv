@@ -67,7 +67,7 @@ class XmlElement {
                 void setEscaped( const std::string& value);
 
                 void csv(const Variable* var, const char *buf,
-                        size_t nblocks, size_t precision);
+                        size_t nblocks, std::streamsize precision);
                 void base64( const void *data, size_t len) const;
                 void hexDec( const void *data, size_t len) const;
 
