@@ -147,7 +147,7 @@ void XmlElement::Attribute::csv(const Variable* var, const char *buf,
 {
     char delim = '\0';
 
-    os.precision(precision);
+    precision = os.precision(precision);
     while (nblocks--) {
         if (delim)
             os << delim;
@@ -155,6 +155,7 @@ void XmlElement::Attribute::csv(const Variable* var, const char *buf,
         var->dtype.print(os, buf, buf, buf+var->memSize);
         buf += var->memSize;
     }
+    os.precision(precision);
 }
 
 /////////////////////////////////////////////////////////////////////////////
