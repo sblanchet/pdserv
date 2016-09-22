@@ -36,12 +36,18 @@ static char error[100];
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-Config::Config(): node(0)
+Config::Config():
+    document(0),
+    owning_document(false),
+    node(0)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Config::Config(yaml_document_t *d, yaml_node_t *n): document(d), node(n)
+Config::Config(yaml_document_t *d, yaml_node_t *n):
+    document(d),
+    owning_document(false),
+    node(n)
 {
 }
 
@@ -52,14 +58,28 @@ Config::~Config()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+Config &Config::operator=(const Config &other)
+{
+    document = other.document;
+    owning_document = false;
+    node = other.node;
+
+    return *this;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void Config::clear()
 {
-    if (!file.empty()) {
+    file.clear();
+
+    if (owning_document) {
         yaml_document_delete(document);
         delete document;
-
-        file.clear();
+        document = 0;
+        owning_document = false;
     }
+
+    node = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -93,6 +113,7 @@ const char * Config::load(const char *filename)
 
     clear();
     document = new yaml_document_t;
+    owning_document = true;
     this->file = filename;
 
     /* START new code */

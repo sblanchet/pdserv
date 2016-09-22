@@ -35,6 +35,8 @@ class Config {
         Config();
         ~Config();
 
+        Config &operator=(const Config &);
+
         const char *   load(const char *file);
         const char * reload();
         const std::string& fileName() const;
@@ -63,6 +65,7 @@ class Config {
         std::string file;
 
         yaml_document_t *document;
+        bool owning_document;
         yaml_node_t *node;
 
         void clear();
