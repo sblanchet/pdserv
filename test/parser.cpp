@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <stdarg.h>
 
+#include <sstream>
 #include <iostream>
 using std::cout;
 using std::cerr;
@@ -38,7 +39,7 @@ int test_single(const char *s, ...)
 {
     va_list ap;
     XmlParser inbuf;
-    XmlParser::Element command;
+    std::stringbuf input;
     int i = 0;
 
     va_start(ap, s);
@@ -46,11 +47,10 @@ int test_single(const char *s, ...)
     printf("%s\n", s);
 
     for( i = 0; s[i]; ++i) {
-        *inbuf.bufptr() = s[i];
-        inbuf.newData(1);
-        command = inbuf.nextElement();
+        input.sputc(s[i]);
+        inbuf.read(&input);
 
-        if (command) {
+        if (inbuf) {
             int idx = va_arg(ap, int);
             printf("idx=%i i=%i\n", idx, i);
             assert(idx and idx == i);
@@ -66,102 +66,161 @@ int test_single(const char *s, ...)
 
 int main(int , const char *[])
 {
+    std::stringstream buffer;
     XmlParser inbuf;
-    XmlParser::Element command;
     const char *s;
-    char *buf;
 
     // Perfectly legal statement
-    s = "<rp index=\"134\" value=13>";
-    test_single(s, 24, 0);
-    buf = inbuf.bufptr();
-    assert( buf);                // Buffer may not be null
-    assert( inbuf.free());       // and have some space
-    strcpy( inbuf.bufptr(), s);
-    inbuf.newData(14);
-    assert(!inbuf.nextElement());
-    inbuf.newData(11);
-    assert((command = inbuf.nextElement()));
-    assert(!strcmp(command.getCommand(), "rp"));  // which is "rp"
-    assert(!inbuf.nextElement());              // and no next command
-    assert( buf == inbuf.bufptr());      // Buffer pointer does not change
+    s = "<rp index=\"134\" value=13 argument>";
+    test_single(s, 33, 0);
+    buffer << s;
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!inbuf);
 
-    // An illegal command - no space after '<'
-    s = "< rp>";
-    test_single(s, 0);
-    strcpy( inbuf.bufptr(), s);
-    inbuf.newData(strlen(s));
-    assert(!inbuf.nextElement());
-    assert(buf == inbuf.bufptr());      // Buffer pointer does not change
+    buffer << "<>";
+    inbuf.read(buffer.rdbuf());
+    assert(!inbuf);
 
-    // Two legal commands
-    s = "<a_long_command_with_slash /><wp >";
-    test_single(s, 28, 33, 0);
-    strcpy( inbuf.bufptr(), s);
-    inbuf.newData(strlen(s));
-    assert((command = inbuf.nextElement()));
-    assert(command.getCommand());
-    assert(!strcmp(command.getCommand(), "a_long_command_with_slash"));
-    assert((command = inbuf.nextElement()));
-    assert(command.getCommand());
-    assert(!strcmp(command.getCommand(), "wp"));
-    assert(!inbuf.nextElement());
+    buffer << "</>";
+    inbuf.read(buffer.rdbuf());
+    assert(!inbuf);
 
-    s = " lkj <wrong/ >\n<still-incorrect /> <right> lkjs dfkl";
-    test_single(s, 41, 0);
-    strcpy( inbuf.bufptr(), s);
-    inbuf.newData(strlen(s));
-    assert((command = inbuf.nextElement()));
-    assert(command.getCommand());
-    assert(!strcmp(command.getCommand(), "right"));
-    assert(!inbuf.nextElement());
+    buffer << "<valid/>";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "valid"));
+    assert(!inbuf);
+
+    buffer << "<valid  />";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "valid"));
+    assert(!inbuf);
+
+    buffer << "lks flk s <valid/>";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "valid"));
+    assert(!inbuf);
+
+    buffer << "< invalid>";
+    inbuf.read(buffer.rdbuf());
+    assert(!inbuf);
+
+    buffer << "<1nvalid>";
+    inbuf.read(buffer.rdbuf());
+    assert(!inbuf);
+
+    buffer << "<valid-boolean-argument argument>";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "valid-boolean-argument"));
+    assert(inbuf.isTrue("argument"));
+    assert(!inbuf);
+
+    buffer << "<valid-argument argum<ent>";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "valid-argument"));
+    assert(inbuf.isTrue("argum<ent"));
+    assert(!inbuf);
+
+    buffer << "<invalid-argument 1argu>";
+    inbuf.read(buffer.rdbuf());
+    assert(!inbuf);
+    assert(!inbuf);
+
+    buffer << "<valid-argument argument=value>";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "valid-argument"));
+    assert(inbuf.isEqual("argument", "value"));
+    assert(!inbuf);
+
+    buffer << "<valid-argument argument=\"val'ue\">";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "valid-argument"));
+    assert(inbuf.isEqual("argument", "val'ue"));
+    assert(!inbuf);
+
+    buffer << "<valid-argument argument='va\"lu>e with space'>";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "valid-argument"));
+    assert(inbuf.isEqual("argument", "va\"lu>e with space"));
+    assert(!inbuf);
+
+    buffer << "<starttls invalidtls><notls>";
+    inbuf.read(buffer.rdbuf());
+    assert(!inbuf);
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "notls"));
+    assert(!inbuf);
+
+    buffer << "<starttls validargument>\n";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "starttls"));
+    assert(inbuf.isTrue("validargument"));
+    assert(!inbuf);
+
+    buffer << "<starttls>\r\n";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "starttls"));
+    assert(!inbuf);
+
+    buffer << " lkj <wrong/ >\n<correct /> <right> lkjs dfkl";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "correct"));
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "right"));
+    assert(!inbuf);
 
     for (s = "<tag true with=no-quote-attr "
             "trueval=1 falseval=0 truestr=True falsestr=nottrue onstr='on' "
             " and=\"quoted /> > &quot; &apos;\" />";
             *s; s++) {
-        *inbuf.bufptr() = *s;
-        inbuf.newData(1); // == (*s == '>' and !s[1]);
-        assert(!s[1] or !inbuf.nextElement());
+        buffer << *s;
+        inbuf.read(buffer.rdbuf());
+        assert(!s[1] xor !inbuf);
     }
-    assert((command = inbuf.nextElement()));
-    assert(command.getCommand());
-    assert(!strcmp(command.getCommand(), "tag"));
-    assert(!command.isTrue("with"));
-    assert(!command.isTrue("unknown"));
-    assert( command.isTrue("true"));
-    assert( command.isTrue("trueval"));
-    assert(!command.isTrue("falseval"));
-    assert( command.isTrue("truestr"));
-    assert(!command.isTrue("falsestr"));
-    assert( command.isTrue("onstr"));
-    assert(command.find("and", &s));
+    assert(!strcmp(inbuf.tag(), "tag"));
+    assert(!inbuf.isTrue("with"));
+    assert(!inbuf.isTrue("unknown"));
+    assert( inbuf.isTrue("true"));
+    assert( inbuf.isTrue("trueval"));
+    assert(!inbuf.isTrue("falseval"));
+    assert( inbuf.isTrue("truestr"));
+    assert(!inbuf.isTrue("falsestr"));
+    assert( inbuf.isTrue("onstr"));
+    assert(inbuf.find("and", &s));
     assert(!strcmp(s, "quoted /> > &quot; &apos;"));
     std::string str;
-    assert(command.getString("and", str));
+    assert(inbuf.getString("and", str));
     assert(str == "quoted /> > \" '");
-    assert(!inbuf.nextElement());
+    assert(!inbuf);
 
-    s = "<tag with=no-quot/>attr and=\"quo\\\"ted /> > &quot; &apos;\" />";
-    test_single(s, 18, 0);
-    strcpy( inbuf.bufptr(), s);
-    inbuf.newData(strlen(s));
-    assert((command = inbuf.nextElement()));
-    assert(command.getCommand());
-    assert(!strcmp(command.getCommand(), "tag"));
-    assert(command.isTrue("tag"));        // "tag" is also an attribute
-    assert(command.find("with", &s));
+    buffer
+        << "<tag with=no-quot/>attr and=\"quo\\\"ted /> > &quot; &apos;\" />";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "tag"));
+    assert(inbuf.isTrue("tag"));        // "tag" is also an attribute
+    assert(inbuf.find("with", &s));
     assert(!strcmp(s, "no-quot"));
-    assert(!inbuf.nextElement());
+    assert(!inbuf);
 
-    s = "<with=no-quot-attr and=\"quoted /> > &quot; &apos;\" />";
-    test_single(s, 52, 0);
-    strcpy( inbuf.bufptr(), s);
-    inbuf.newData(strlen(s));
-    assert((command = inbuf.nextElement()));
-    assert(command.getCommand());        // There is no command
-    assert(command.find("with", &s));
+    buffer << "<with=no-quot-attr and=\"quoted /> > &quot; &apos;\" />";
+    inbuf.read(buffer.rdbuf());
+    assert(inbuf);
+    assert(!strcmp(inbuf.tag(), "with"));
+    assert(inbuf.find("with", &s));
     assert(!strcmp(s, "no-quot-attr"));
-    assert(!inbuf.nextElement());
+    assert(!inbuf);
+
     return 0;
 }

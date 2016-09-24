@@ -28,6 +28,7 @@
 #include <cstddef>
 #include <list>
 #include <string>
+#include <unistd.h>
 
 namespace MsrProto {
 
@@ -37,55 +38,42 @@ class XmlParser {
         XmlParser(const char *begin, const char *end);
         ~XmlParser();
 
-        char *bufptr();
-        size_t free();
+        ssize_t read(std::streambuf*);
+        operator bool();
 
-        void newData(size_t n);
-
-        typedef std::pair<const char*, const char*> Attribute;
-        typedef std::list<Attribute> AttributeList;
-
-        class Element {
-            public:
-                Element(const char *command = 0,
-                        const AttributeList* attribute = 0);
-
-                operator bool() const;
-
-                const char *getCommand() const;
-                bool find(const char *name, const char **value = 0) const;
-                bool isEqual(const char *name, const char *s) const;
-                bool isTrue(const char *name) const;
-                bool getString(const char *name, std::string &s) const;
-                bool getUnsigned(const char *name, unsigned int &i) const;
-                bool getUnsignedList(const char *name,
-                        std::list<unsigned int> &i) const;
-
-            private:
-                const char * command;
-                const AttributeList* attribute;
-        };
-
-        Element nextElement();
+        const char* tag() const;
+        bool find(const char *name, const char **value = 0) const;
+        bool isEqual(const char *name, const char *s) const;
+        bool isTrue(const char *name) const;
+        bool getString(const char *name, std::string &s) const;
+        bool getUnsigned(const char *name, unsigned int &i) const;
+        bool getUnsignedList(const char *name,
+                std::list<unsigned int> &i) const;
 
     private:
         const size_t bufLenMax;
 
+        typedef std::pair<const char*, const char*> Attribute;
+        typedef std::list<Attribute> AttributeList;
         AttributeList attribute;
 
+        const char* argument;
+
         static const size_t bufIncrement = 1024;
-        size_t bufLen;
+        const char* bufEnd;
         char *buf;
+
+        bool starttls;
 
         char *parsePos;        // Current parsing position
         char *inputEnd;        // End of input data
-        char *element;         // pointer to '<' in the element
+        const char *name;            // pointer to '<' in the element
         char quote;
 
         enum ParseState {
-            FindStart, ExpectToken, SkipSpace, FindTokenEnd, GetAttribute,
-            GetQuotedAttribute, GetUnquotedAttribute,  ExpectGT, MaybeGT,
-            SkipEscapeChar
+            FindStart, FindNameEnd,
+            FindArgumentName, FindQuotedArgumentValue, FindArgumentValue,
+            FindElementEnd, FindTLSEnd
         };
         ParseState parseState, escapeState;
 };

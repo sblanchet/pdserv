@@ -202,12 +202,16 @@ void Session::run()
         tcp.pubsync();
 
         try {
-            n = tcp.read(inbuf.bufptr(), inbuf.free(), 40); // ms
+            if (tcp.isPending(ost::Socket::pendingInput, 40)) {
+                n = inbuf.read(&tcp);
 
-            if (!n) {
-                LOG4CPLUS_INFO_STR(server->log,
-                        LOG4CPLUS_TEXT("Client closed connection"));
-                return;
+                log_debug("read %zi chars", n);
+
+                if (!n) {
+                    LOG4CPLUS_INFO_STR(server->log,
+                            LOG4CPLUS_TEXT("Client closed connection"));
+                    return;
+                }
             }
         }
         catch (ost::Socket *s) {
@@ -227,26 +231,16 @@ void Session::run()
             return;
         }
 
-        if (n > 0) {
-            LOG4CPLUS_TRACE(server->log,
-                    LOG4CPLUS_TEXT("Rx: ")
-                    << LOG4CPLUS_STRING_TO_TSTRING(
-                        std::string(inbuf.bufptr(), n)));
+        while (inbuf) {
+            inbuf.getString("id", tcp.commandId);
+            processCommand(&inbuf);
 
-            inbuf.newData(n);
-            XmlParser::Element command;
+            if (!tcp.commandId.empty()) {
+                XmlElement ack(tcp.createElement("ack"));
+                XmlElement::Attribute(ack,"id")
+                    .setEscaped(tcp.commandId);
 
-            while ((command = inbuf.nextElement())) {
-                command.getString("id", tcp.commandId);
-                processCommand(command);
-
-                if (!tcp.commandId.empty()) {
-                    XmlElement ack(tcp.createElement("ack"));
-                    XmlElement::Attribute(ack,"id")
-                        .setEscaped(tcp.commandId);
-
-                    tcp.commandId.clear();
-                }
+                tcp.commandId.clear();
             }
         }
 
@@ -313,15 +307,15 @@ void Session::run()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::processCommand(const XmlParser::Element& cmd)
+void Session::processCommand(const XmlParser* parser)
 {
-    const char *command = cmd.getCommand();
+    const char *command = parser->tag();
     size_t commandLen = strlen(command);
 
     static const struct {
         size_t len;
         const char *name;
-        void (Session::*func)(const XmlParser::Element&);
+        void (Session::*func)(const XmlParser*);
     } cmds[] = {
         // First list most common commands
         { 4, "ping",                    &Session::ping                  },
@@ -359,7 +353,7 @@ void Session::processCommand(const XmlParser::Element& cmd)
                     LOG4CPLUS_C_STR_TO_TSTRING(cmds[idx].name));
 
             // Call the method
-            (this->*cmds[idx].func)(cmd);
+            (this->*cmds[idx].func)(parser);
 
             // Finished
             return;
@@ -380,44 +374,44 @@ void Session::processCommand(const XmlParser::Element& cmd)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::broadcast(const XmlParser::Element& cmd)
+void Session::broadcast(const XmlParser* parser)
 {
     struct timespec ts;
     std::string action, text;
 
     main->gettime(&ts);
-    cmd.getString("action", action);
-    cmd.getString("text", text);
+    parser->getString("action", action);
+    parser->getString("text", text);
 
     server->broadcast(this, ts, action, text);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::echo(const XmlParser::Element& cmd)
+void Session::echo(const XmlParser* parser)
 {
-    echoOn = cmd.isTrue("value");
+    echoOn = parser->isTrue("value");
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::ping(const XmlParser::Element& /*cmd*/)
+void Session::ping(const XmlParser* /*parser*/)
 {
     tcp.createElement("ping");
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readChannel(const XmlParser::Element& cmd)
+void Session::readChannel(const XmlParser* parser)
 {
     const Channel *c = 0;
-    bool shortReply = cmd.isTrue("short");
+    bool shortReply = parser->isTrue("short");
     std::string name;
     unsigned int index;
 
-    if (cmd.getString("name", name)) {
+    if (parser->getString("name", name)) {
         c = server->find<Channel>(name);
         if (!c)
             return;
     }
-    else if (cmd.getUnsigned("index", index)) {
+    else if (parser->getUnsigned("index", index)) {
         c = server->getChannel(index);
         if (!c)
             return;
@@ -450,11 +444,11 @@ void Session::readChannel(const XmlParser::Element& cmd)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::listDirectory(const XmlParser::Element& cmd)
+void Session::listDirectory(const XmlParser* parser)
 {
     const char *path;
 
-    if (!cmd.find("path", &path))
+    if (!parser->find("path", &path))
         return;
 
     XmlElement element(tcp.createElement("listing"));
@@ -462,20 +456,20 @@ void Session::listDirectory(const XmlParser::Element& cmd)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readParameter(const XmlParser::Element& cmd)
+void Session::readParameter(const XmlParser* parser)
 {
-    bool shortReply = cmd.isTrue("short");
-    bool hex = cmd.isTrue("hex");
+    bool shortReply = parser->isTrue("short");
+    bool hex = parser->isTrue("hex");
     std::string name;
     unsigned int index;
 
     const Parameter *p = 0;
-    if (cmd.getString("name", name)) {
+    if (parser->getString("name", name)) {
         p = server->find<Parameter>(name);
         if (!p)
             return;
     }
-    else if (cmd.getUnsigned("index", index)) {
+    else if (parser->getUnsigned("index", index)) {
         p = server->getParameter(index);
         if (!p)
             return;
@@ -488,7 +482,7 @@ void Session::readParameter(const XmlParser::Element& cmd)
         p->mainParam->getValue(this, buf, &ts);
 
         std::string id;
-        cmd.getString("id", id);
+        parser->getString("id", id);
 
         XmlElement xml(tcp.createElement("parameter"));
         p->setXmlAttributes(xml, buf, ts, shortReply, hex, 16);
@@ -520,7 +514,7 @@ void Session::readParameter(const XmlParser::Element& cmd)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readParamValues(const XmlParser::Element& /*cmd*/)
+void Session::readParamValues(const XmlParser* /*parser*/)
 {
     XmlElement param_values(tcp.createElement("param_values"));
     XmlElement::Attribute values(param_values, "value");
@@ -544,7 +538,7 @@ void Session::readParamValues(const XmlParser::Element& /*cmd*/)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::messageHistory(const XmlParser::Element& /*cmd*/)
+void Session::messageHistory(const XmlParser* /*parser*/)
 {
     std::list<PdServ::EventData> list(main->getEventHistory(this));
 
@@ -555,7 +549,7 @@ void Session::messageHistory(const XmlParser::Element& /*cmd*/)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::readStatistics(const XmlParser::Element& /*cmd*/)
+void Session::readStatistics(const XmlParser* /*parser*/)
 {
     // <clients>
     //   <client index="0" name="lansim"
@@ -583,14 +577,14 @@ void Session::readStatistics(const XmlParser::Element& /*cmd*/)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::remoteHost(const XmlParser::Element& cmd)
+void Session::remoteHost(const XmlParser* parser)
 {
 
-    cmd.getString("name", peer);
+    parser->getString("name", peer);
 
-    cmd.getString("applicationname", client);
+    parser->getString("applicationname", client);
 
-    writeAccess = cmd.isEqual("access", "allow") or cmd.isTrue("access");
+    writeAccess = parser->isEqual("access", "allow") or parser->isTrue("access");
 
     // Check whether stream should be polite, i.e. not send any data
     // when not requested by the client.
@@ -598,7 +592,7 @@ void Session::remoteHost(const XmlParser::Element& cmd)
     // on a regular basis causing the TCP stream to congest.
     {
         ost::SemaphoreLock lock(mutex);
-        polite = cmd.isTrue("polite");
+        polite = parser->isTrue("polite");
         if (polite) {
             changedParameter.clear();
             aic.clear();
@@ -619,7 +613,7 @@ void Session::remoteHost(const XmlParser::Element& cmd)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::writeParameter(const XmlParser::Element& cmd)
+void Session::writeParameter(const XmlParser* parser)
 {
     if (!writeAccess) {
         XmlElement warn(tcp.createElement("warn"));
@@ -631,10 +625,10 @@ void Session::writeParameter(const XmlParser::Element& cmd)
 
     unsigned int index;
     std::string name;
-    if (cmd.getString("name", name)) {
+    if (parser->getString("name", name)) {
         p = server->find<Parameter>(name);
     }
-    else if (cmd.getUnsigned("index", index)) {
+    else if (parser->getUnsigned("index", index)) {
         p = server->getParameter(index);
     }
 
@@ -642,20 +636,20 @@ void Session::writeParameter(const XmlParser::Element& cmd)
         return;
 
     unsigned int startindex = 0;
-    if (cmd.getUnsigned("startindex", startindex)) {
+    if (parser->getUnsigned("startindex", startindex)) {
         if (startindex >= p->dim.nelem)
             return;
     }
 
-    if (cmd.isTrue("aic"))
+    if (parser->isTrue("aic"))
         server->setAic(p);
 
     int errnum;
     const char *s;
-    if (cmd.find("hexvalue", &s)) {
+    if (parser->find("hexvalue", &s)) {
         errnum = p->setHexValue(this, s, startindex);
     }
-    else if (cmd.find("value", &s)) {
+    else if (parser->find("value", &s)) {
         errnum = p->setDoubleValue(this, s, startindex);
     }
     else
@@ -668,16 +662,16 @@ void Session::writeParameter(const XmlParser::Element& cmd)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::xsad(const XmlParser::Element& cmd)
+void Session::xsad(const XmlParser* parser)
 {
     unsigned int reduction, blocksize, precision, group;
-    bool base64 = cmd.isEqual("coding", "Base64");
-    bool event = cmd.isTrue("event");
+    bool base64 = parser->isEqual("coding", "Base64");
+    bool event = parser->isTrue("event");
     bool foundReduction = false;
     std::list<unsigned int> indexList;
     const Server::Channels& channel = server->getChannels();
 
-    if (cmd.isTrue("sync")) {
+    if (parser->isTrue("sync")) {
         for (SubscriptionManagerVector::iterator it = subscriptionManager.begin();
                 it != subscriptionManager.end(); ++it)
             (*it)->sync();
@@ -686,13 +680,13 @@ void Session::xsad(const XmlParser::Element& cmd)
     else {
         // Quiet will stop all transmission of <data> tags until
         // sync is called
-        quiet = cmd.isTrue("quiet");
+        quiet = parser->isTrue("quiet");
     }
 
-    if (!cmd.getUnsignedList("channels", indexList))
+    if (!parser->getUnsignedList("channels", indexList))
         return;
 
-    if (cmd.getUnsigned("reduction", reduction)) {
+    if (parser->getUnsigned("reduction", reduction)) {
         if (!reduction) {
             XmlElement warn(tcp.createElement("warn"));
             XmlElement::Attribute(warn, "command") << "xsad";
@@ -710,7 +704,7 @@ void Session::xsad(const XmlParser::Element& cmd)
         // blocksize of zero is for event channels
         blocksize = 0;
     }
-    else if (cmd.getUnsigned("blocksize", blocksize)) {
+    else if (parser->getUnsigned("blocksize", blocksize)) {
         if (!blocksize) {
             XmlElement warn(tcp.createElement("warn"));
             XmlElement::Attribute(warn, "command") << "xsad";
@@ -725,10 +719,10 @@ void Session::xsad(const XmlParser::Element& cmd)
         blocksize = 1;
     }
 
-    if (!cmd.getUnsigned("precision", precision))
+    if (!parser->getUnsigned("precision", precision))
         precision = 16;
 
-    if (!cmd.getUnsigned("group", group))
+    if (!parser->getUnsigned("group", group))
         group = 0;
 
     for (std::list<unsigned int>::const_iterator it = indexList.begin();
@@ -758,17 +752,17 @@ void Session::xsad(const XmlParser::Element& cmd)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Session::xsod(const XmlParser::Element& cmd)
+void Session::xsod(const XmlParser* parser)
 {
     std::list<unsigned int> intList;
 
     //cout << __LINE__ << "xsod: " << endl;
 
-    if (cmd.getUnsignedList("channels", intList)) {
+    if (parser->getUnsignedList("channels", intList)) {
         const Server::Channels& channel = server->getChannels();
         unsigned int group;
 
-        if (!cmd.getUnsigned("group", group))
+        if (!parser->getUnsigned("group", group))
             group = 0;
 
         for (std::list<unsigned int>::const_iterator it = intList.begin();
@@ -865,6 +859,12 @@ std::streamsize Session::TCPStream::xsputn (
     outBytes += count;
 
     return count;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::streamsize Session::TCPStream::xsgetn(char * s, std::streamsize count)
+{
+    return readData(s, count);
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -119,6 +119,8 @@ class Session: public ost::Thread, public PdServ::Session {
                 int overflow ( int c );
                 std::streamsize xsputn ( const char * s, std::streamsize n );
                 int sync();
+
+                std::streamsize xsgetn (       char * s, std::streamsize n);
         };
 
     private:
@@ -167,7 +169,7 @@ class Session: public ost::Thread, public PdServ::Session {
         void run();
         void final();
 
-        void processCommand(const XmlParser::Element&);
+        void processCommand(const XmlParser*);
         // Management variables
         bool writeAccess;
         bool quiet;
@@ -177,19 +179,19 @@ class Session: public ost::Thread, public PdServ::Session {
         std::string client;
 
         // Here are all the commands the MSR protocol supports
-        void broadcast(const XmlParser::Element&);
-        void echo(const XmlParser::Element&);
-        void ping(const XmlParser::Element&);
-        void readChannel(const XmlParser::Element&);
-        void listDirectory(const XmlParser::Element&);
-        void readParameter(const XmlParser::Element&);
-        void readParamValues(const XmlParser::Element&);
-        void readStatistics(const XmlParser::Element&);
-        void messageHistory(const XmlParser::Element&);
-        void remoteHost(const XmlParser::Element&);
-        void writeParameter(const XmlParser::Element&);
-        void xsad(const XmlParser::Element&);
-        void xsod(const XmlParser::Element&);
+        void broadcast(const XmlParser*);
+        void echo(const XmlParser*);
+        void ping(const XmlParser*);
+        void readChannel(const XmlParser*);
+        void listDirectory(const XmlParser*);
+        void readParameter(const XmlParser*);
+        void readParamValues(const XmlParser*);
+        void readStatistics(const XmlParser*);
+        void messageHistory(const XmlParser*);
+        void remoteHost(const XmlParser*);
+        void writeParameter(const XmlParser*);
+        void xsad(const XmlParser*);
+        void xsod(const XmlParser*);
 };
 
 }
