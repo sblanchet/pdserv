@@ -35,7 +35,6 @@ namespace MsrProto {
 
 class Session;
 class XmlElement;
-class ostream;
 
 class Parameter: public Variable {
     public:

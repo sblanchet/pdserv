@@ -96,7 +96,6 @@ void DirectoryNode::traditionalPathInsert(Variable* var,
             parser.read(&buf);
 
             if (parser) {
-                std::cout << __LINE__ << name << std::endl;
                 const char *value;
                 if (parser.isTrue("hide"))
                     hidden = 1;

@@ -40,6 +40,7 @@ namespace PdServ {
     class Task;
     class Parameter;
     class Signal;
+    class Variable;
 }
 
 namespace ost {
@@ -70,7 +71,7 @@ class Server: public ost::Thread {
                 std::list<PdServ::SessionStatistics>& stats) const;
 
         const PdServ::Main * const main;
-        const log4cplus::Logger log;
+        log4cplus::Logger log;
         const bool* const active;
 
         typedef std::vector<const Channel*> Channels;

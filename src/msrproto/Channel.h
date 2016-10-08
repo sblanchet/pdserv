@@ -33,7 +33,6 @@ namespace PdServ {
 namespace MsrProto {
 
 class XmlElement;
-class Task;
 
 class Channel: public Variable {
     public:

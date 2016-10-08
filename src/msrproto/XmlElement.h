@@ -30,15 +30,9 @@
 #include <ostream>
 #include <string>
 
-namespace PdServ {
-    class Variable;
-}
-
 namespace MsrProto {
 
 class Variable;
-class Parameter;
-class Channel;
 
 class XmlElement {
     public:
