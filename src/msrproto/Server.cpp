@@ -60,9 +60,7 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
         insertRoot = variableDirectory.create(
                 config["pathprefix"].toString(main->name));
 
-    maxConnections = config["maxconnections"].toUInt();
-    if (!maxConnections)
-        maxConnections = ~0U;
+    maxConnections = config["maxconnections"].toUInt(~0U);
 
     size_t taskIdx = 0;
     for (std::list<const PdServ::Task*> taskList(main->getTasks());

@@ -73,9 +73,7 @@ void Main::setupLogging()
     consoleLogging();
 #endif
 
-    unsigned int history = config("eventhistory").toUInt();
-    if (!history)
-        history = 100;
+    unsigned int history = config("eventhistory").toUInt(100);
     eventList.resize(history);
     eventPtr = eventList.begin();
 
@@ -402,8 +400,7 @@ unsigned int Main::setupPersistent()
 
     // Purge unneeded parameters from database, unless disabled by
     // configuration
-    Config cleanup(persistentConfig["cleanup"]);
-    if (!cleanup or cleanup.toUInt())
+    if (persistentConfig["cleanup"].toUInt(1))
         dataBase.checkKeys(keys);
 
     return persistentConfig["interval"].toUInt();
