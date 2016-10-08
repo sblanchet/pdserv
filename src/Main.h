@@ -111,8 +111,6 @@ class Main {
                 const char* buf, size_t offset, size_t count) = 0;
 
     private:
-        mutable ost::Semaphore mutex;
-
         std::vector<EventData> eventList;
         std::vector<EventData>::iterator eventPtr;
         mutable ost::ThreadLock eventMutex;

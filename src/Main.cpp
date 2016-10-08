@@ -53,7 +53,7 @@ using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
 Main::Main(const std::string& name, const std::string& version):
-    name(name), version(version), mutex(1),
+    name(name), version(version),
     parameterLog(
             log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("parameter"))),
     eventLog(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("event")))
