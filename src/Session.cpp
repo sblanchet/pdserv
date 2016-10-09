@@ -23,20 +23,128 @@
 
 #include "Session.h"
 #include "Main.h"
+#include "Debug.h"
+
+#include <cerrno>
+#include <cstring>      // strerror()
+#include <log4cplus/logger.h>
 
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
-Session::Session(const Main *m): main(m)
+Session::Session(const Main *m, log4cplus::Logger& log, size_t bufsize)
+: main(m), log(log)
 {
+    p_eof = false;
+
     main->gettime(&connectedTime);
     main->prepare(this);
     eventId = ~0U;
     main->getNextEvent(this);
+
+    char* buf = new char[bufsize];
+    setp(buf, buf + bufsize);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Session::~Session()
 {
     main->cleanup(this);
+    delete[] pbase();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Session::eof() const
+{
+    return p_eof;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Session::overflow(int value)
+{
+    char c = value;
+    return xsputn(&c, 1) ? c : traits_type::eof();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::streamsize Session::xsputn(const char * buf, std::streamsize count)
+{
+    std::streamsize rest = count;
+    do {
+        // Put data into buffer
+        size_t n = std::min(epptr() - pptr(), rest);
+        std::copy(buf, buf + n, pptr());
+
+        // Update pointers
+        pbump(n);
+        buf += n;
+        rest -= n;
+
+        // flush if buffer is full
+        if ((pptr() == epptr() and sync()) or p_eof)
+            return 0;
+
+    } while (rest);
+
+    return count;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Session::sync()
+{
+    size_t count = pptr() - pbase();
+    if (!count)
+        return 0;
+
+    ssize_t result = write(pbase(), count);
+    if (result > 0) {
+        std::copy(pbase() + result, pptr(), pbase());
+        pbump(-result);
+        return 0;
+    }
+
+    // write() unsuccessful. Filter out EINTR and EAGAIN
+    if (result != -EINTR and result != -EAGAIN) {
+        p_eof = true;
+
+        if (result)
+            LOG4CPLUS_ERROR(log,
+                    LOG4CPLUS_TEXT("Network error: ")
+                    << LOG4CPLUS_C_STR_TO_TSTRING(strerror(-result)));
+        else
+            LOG4CPLUS_INFO_STR(log,
+                    LOG4CPLUS_TEXT("Client closed connection"));
+    }
+
+    return result;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Session::underflow()
+{
+    char c;
+    return xsgetn(&c, 1) == 1 ? c : traits_type::eof();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+std::streamsize Session::xsgetn(char* buf, std::streamsize count)
+{
+    ssize_t result= read(buf, count);
+    if (result > 0)
+        return result;
+
+    // read() unsuccessful. Filter out EINTR and EAGAIN
+    if (result != -EINTR and result != -EAGAIN) {
+        p_eof = true;
+
+        if (result)
+            LOG4CPLUS_ERROR(log,
+                    LOG4CPLUS_TEXT("Network error: ")
+                    << LOG4CPLUS_C_STR_TO_TSTRING(strerror(-result)));
+        else
+            LOG4CPLUS_INFO_STR(log,
+                    LOG4CPLUS_TEXT("Client closed connection"));
+    }
+
+    return 0;
 }

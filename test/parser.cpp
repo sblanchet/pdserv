@@ -35,149 +35,199 @@ using std::endl;
 
 using namespace MsrProto;
 
-int test_single(const char *s, ...)
-{
-    va_list ap;
-    XmlParser inbuf;
-    std::stringbuf input;
-    int i = 0;
+#include <algorithm>
 
-    va_start(ap, s);
-
-    printf("%s\n", s);
-
-    for( i = 0; s[i]; ++i) {
-        input.sputc(s[i]);
-        inbuf.read(&input);
-
-        if (inbuf) {
-            int idx = va_arg(ap, int);
-            printf("idx=%i i=%i\n", idx, i);
-            assert(idx and idx == i);
-        }
+struct stringbuf: std::stringbuf {
+    stringbuf(std::streamsize* chunk): p_chunk(chunk) {}
+    std::streamsize xsgetn(char* s, std::streamsize n) {
+        return std::stringbuf::xsgetn(s,
+                *p_chunk ? std::min(n, *p_chunk) : n);
     }
+    const std::streamsize* const p_chunk;
+};
 
-    i = va_arg(ap, int);
-    assert(!i);
+struct stringstream: std::iostream {
+    stringstream(): std::iostream(&sb), sb(&chunk) {}
 
-    va_end(ap);
-    return 1;
-}
+    stringbuf sb;
+    std::streamsize chunk;
+};
 
 int main(int , const char *[])
 {
-    std::stringstream buffer;
+    stringstream buffer;
     XmlParser inbuf;
     const char *s;
 
+    buffer.chunk = 1;
+
     // Perfectly legal statement
     s = "<rp index=\"134\" value=13 argument>";
-    test_single(s, 33, 0);
     buffer << s;
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(inbuf);
     assert(!inbuf);
 
     buffer << "<>";
-    inbuf.read(buffer.rdbuf());
+    do { 
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(!inbuf);
 
     buffer << "</>";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(!inbuf);
 
     buffer << "<valid/>";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(inbuf);
     assert(!strcmp(inbuf.tag(), "valid"));
     assert(!inbuf);
 
     buffer << "<valid  />";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(inbuf);
     assert(!strcmp(inbuf.tag(), "valid"));
     assert(!inbuf);
 
     buffer << "lks flk s <valid/>";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(inbuf);
     assert(!strcmp(inbuf.tag(), "valid"));
     assert(!inbuf);
 
     buffer << "< invalid>";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(!inbuf);
 
     buffer << "<1nvalid>";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(!inbuf);
 
     buffer << "<valid-boolean-argument argument>";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(inbuf);
     assert(!strcmp(inbuf.tag(), "valid-boolean-argument"));
     assert(inbuf.isTrue("argument"));
     assert(!inbuf);
 
     buffer << "<valid-argument argum<ent>";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(inbuf);
     assert(!strcmp(inbuf.tag(), "valid-argument"));
     assert(inbuf.isTrue("argum<ent"));
     assert(!inbuf);
 
     buffer << "<invalid-argument 1argu>";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(!inbuf);
     assert(!inbuf);
 
     buffer << "<valid-argument argument=value>";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(inbuf);
     assert(!strcmp(inbuf.tag(), "valid-argument"));
     assert(inbuf.isEqual("argument", "value"));
     assert(!inbuf);
 
     buffer << "<valid-argument argument=\"val'ue\">";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(inbuf);
     assert(!strcmp(inbuf.tag(), "valid-argument"));
     assert(inbuf.isEqual("argument", "val'ue"));
     assert(!inbuf);
 
     buffer << "<valid-argument argument='va\"lu>e with space'>";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(inbuf);
     assert(!strcmp(inbuf.tag(), "valid-argument"));
     assert(inbuf.isEqual("argument", "va\"lu>e with space"));
     assert(!inbuf);
 
     buffer << "<starttls invalidtls><notls>";
-    inbuf.read(buffer.rdbuf());
-    assert(!inbuf);
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(inbuf);
     assert(!strcmp(inbuf.tag(), "notls"));
     assert(!inbuf);
 
     buffer << "<starttls validargument>\n";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(inbuf);
     assert(!strcmp(inbuf.tag(), "starttls"));
     assert(inbuf.isTrue("validargument"));
     assert(!inbuf);
 
     buffer << "<starttls>\r\n";
-    inbuf.read(buffer.rdbuf());
+    do {
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(inbuf);
     assert(!strcmp(inbuf.tag(), "starttls"));
     assert(!inbuf);
 
     buffer << " lkj <wrong/ >\n<correct /> <right> lkjs dfkl";
-    inbuf.read(buffer.rdbuf());
-    assert(inbuf);
+    do { 
+        assert(buffer.rdbuf()->in_avail());
+        inbuf.read(buffer.rdbuf());
+    } while (!inbuf);
     assert(!strcmp(inbuf.tag(), "correct"));
-    assert(inbuf);
+    assert(!inbuf);
+    do { 
+        assert(buffer.rdbuf()->in_avail());
+        inbuf.read(buffer.rdbuf());
+    } while (!inbuf);
     assert(!strcmp(inbuf.tag(), "right"));
+    do { 
+        assert(!inbuf);
+        inbuf.read(buffer.rdbuf());
+    } while (buffer.rdbuf()->in_avail());
     assert(!inbuf);
 
     for (s = "<tag true with=no-quote-attr "
@@ -206,20 +256,51 @@ int main(int , const char *[])
 
     buffer
         << "<tag with=no-quot/>attr and=\"quo\\\"ted /> > &quot; &apos;\" />";
-    inbuf.read(buffer.rdbuf());
-    assert(inbuf);
+    do { 
+        assert(buffer.rdbuf()->in_avail());
+        inbuf.read(buffer.rdbuf());
+    } while (!inbuf);
     assert(!strcmp(inbuf.tag(), "tag"));
     assert(inbuf.isTrue("tag"));        // "tag" is also an attribute
     assert(inbuf.find("with", &s));
-    assert(!strcmp(s, "no-quot"));
+    assert(!strcmp(s, "no-quot/"));
     assert(!inbuf);
+    do { 
+        inbuf.read(buffer.rdbuf());
+        assert(!inbuf);
+    } while ( buffer.rdbuf()->in_avail());
 
     buffer << "<with=no-quot-attr and=\"quoted /> > &quot; &apos;\" />";
-    inbuf.read(buffer.rdbuf());
-    assert(inbuf);
+    do { 
+        assert(buffer.rdbuf()->in_avail());
+        inbuf.read(buffer.rdbuf());
+    } while (!inbuf);
+    assert(!buffer.rdbuf()->in_avail());
     assert(!strcmp(inbuf.tag(), "with"));
     assert(inbuf.find("with", &s));
     assert(!strcmp(s, "no-quot-attr"));
+    assert(inbuf.find("and", &s));
+    assert(!strcmp(s, "quoted /> > &quot; &apos;"));
+    assert(!inbuf);
+
+    buffer.chunk = 1;
+    buffer << "<rk index=23 path=/path/to/var>"
+        << "<rp index=\"23\" path=\"/path/to/v/\"/>";
+    do { 
+        assert(buffer.rdbuf()->in_avail());
+        inbuf.read(buffer.rdbuf());
+    } while (!inbuf);
+    assert(!strcmp(inbuf.tag(), "rk"));
+    assert(inbuf.find("path", &s));
+    assert(!strcmp(s, "/path/to/var"));
+    assert(!inbuf);
+    do { 
+        assert(buffer.rdbuf()->in_avail());
+        inbuf.read(buffer.rdbuf());
+    } while (!inbuf);
+    assert(!strcmp(inbuf.tag(), "rp"));
+    assert(inbuf.find("path", &s));
+    assert(!strcmp(s, "/path/to/v/"));
     assert(!inbuf);
 
     return 0;

@@ -24,8 +24,6 @@
 #ifndef MSREVENT_H
 #define MSREVENT_H
 
-#include "Session.h"
-
 namespace PdServ {
     class Event;
     class EventData;
@@ -33,9 +31,11 @@ namespace PdServ {
 
 namespace MsrProto {
 
+class Session;
+
 class Event {
     public:
-        static bool toXml(Session::TCPStream& tcp,
+        static bool toXml(Session* session,
                 const PdServ::EventData& eventData);
 
     private:

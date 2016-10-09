@@ -62,8 +62,6 @@ struct timespec;
 
 namespace PdServ {
     class Parameter;
-    class SessionTaskData;
-    class Task;
     class TaskStatistics;
     class SessionStatistics;
 }
@@ -71,13 +69,12 @@ namespace PdServ {
 namespace MsrProto {
 
 class SubscriptionManager;
-class TaskStatistics;
-class SessionStatistics;
 class Server;
 class Parameter;
-class Subscription;
 
-class Session: public ost::Thread, public PdServ::Session {
+class Session:
+    public ost::TCPSession,
+    public PdServ::Session {
     public:
         Session( Server *s, ost::TCPSocket *socket);
         ~Session();
@@ -87,6 +84,7 @@ class Session: public ost::Thread, public PdServ::Session {
         void parameterChanged(const Parameter*);
         void setAIC(const Parameter* p);
         void getSessionStatistics(PdServ::SessionStatistics &stats) const;
+        XmlElement createElement(const char *name);
 
         const struct timespec *getTaskTime(size_t taskId) const;
         const PdServ::TaskStatistics *getTaskStatistics(size_t taskId) const;
@@ -95,40 +93,16 @@ class Session: public ost::Thread, public PdServ::Session {
             return &tmp.dbl;
         }
 
-        class TCPStream: public ost::Socket, public std::streambuf {
-            public:
-                TCPStream(ost::TCPSocket *socket);
-                ~TCPStream();
-
-                int read(char *buf, size_t n, timeout_t timeout);
-
-                XmlElement createElement(const char *name);
-
-                size_t inBytes;
-                size_t outBytes;
-
-                std::string peer;
-                std::string commandId;
-
-            private:
-                std::ostream os;
-
-                FILE *file;
-
-                // Reimplemented from std::streambuf
-                int overflow ( int c );
-                std::streamsize xsputn ( const char * s, std::streamsize n );
-                int sync();
-
-                std::streamsize xsgetn (       char * s, std::streamsize n);
-        };
-
     private:
         Server * const server;
 
-        TCPStream tcp;
+        size_t inBytes;
+        size_t outBytes;
+        std::string peer() const;
 
         std::ostream xmlstream;
+
+        std::string commandId;
 
         // Protection for inter-session communication
         ost::Semaphore mutex;
@@ -169,13 +143,17 @@ class Session: public ost::Thread, public PdServ::Session {
         void run();
         void final();
 
+        // Reimplemented from PdServ::Session
+        ssize_t write(const void* buf, size_t len);
+        ssize_t read(       void* buf, size_t len);
+
         void processCommand(const XmlParser*);
         // Management variables
         bool writeAccess;
         bool quiet;
         bool polite;
         bool echoOn;
-        std::string peer;
+        std::string remoteHostName;
         std::string client;
 
         // Here are all the commands the MSR protocol supports

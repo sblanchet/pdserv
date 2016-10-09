@@ -36,7 +36,7 @@ using namespace MsrProto;
 /////////////////////////////////////////////////////////////////////////////
 XmlParser::XmlParser(size_t bufMax): bufLenMax(bufMax)
 {
-    parseState = FindStart;
+    parseState = FindElementStart;
     buf = 0;
     bufEnd = 0;
     inputEnd = 0;
@@ -55,44 +55,24 @@ ssize_t XmlParser::read(std::streambuf* sb)
 {
     if (bufEnd == inputEnd) {
         if (name > buf + 1) {
-            log_debug("shift up data");
             // Name is not the second character in the buffer.
-            std::copy(name, const_cast<const char*>(inputEnd), buf);
+            log_debug("shift up data");
 
-            // Update pointers
-            ssize_t count = name - buf;
-            inputEnd = buf + (inputEnd - name);
-            name = buf;
-            parsePos -= count;
-            for (AttributeList::iterator it = attribute.begin();
-                    it != attribute.end(); ++it) {
-                it->first  -= count;
-                it->second -= count;
-            }
+            moveData(buf);
         }
         else {
             log_debug("allocate new buffer");
             size_t bufLen = (bufEnd - buf) + bufIncrement;
             char *newBuf = new char[bufLen];
-            std::copy(buf, inputEnd, newBuf);
 
-            // Update pointers
-            parsePos = newBuf + (parsePos - buf);
-            inputEnd = newBuf + (inputEnd - buf);
-            bufEnd   = newBuf +  bufLen;
-            name     = newBuf + (name     - buf);
-            for (AttributeList::iterator it = attribute.begin();
-                    it != attribute.end(); ++it) {
-                it->first  = newBuf + (it->first  - buf);
-                it->second = newBuf + (it->second - buf);
-            }
+            moveData(newBuf);
 
-            log_debug(" newbuf %zi", bufEnd - inputEnd);
             delete[] buf;
             buf = newBuf;
+            bufEnd = buf + bufLen;
         }
     }
-    else if (parseState == FindStart and parsePos == inputEnd) {
+    else if (parseState == FindElementStart and parsePos == inputEnd) {
         inputEnd = buf;
         parsePos = buf;
     }
@@ -108,11 +88,35 @@ ssize_t XmlParser::read(std::streambuf* sb)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void XmlParser::moveData(char* dst)
+{
+    // Move data to new location
+    std::copy(name, const_cast<const char*>(inputEnd), dst);
+
+    // Update pointers
+    const ssize_t diff = dst - name;
+    parsePos += diff;
+    inputEnd += diff;
+    name     += diff;
+    argument += diff;
+
+    for (AttributeList::iterator it = attribute.begin();
+            it != attribute.end(); ++it) {
+        it->first  += diff;
+        it->second += diff;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
 XmlParser::operator bool()
 {
     while (parsePos < inputEnd) {
+//        log_debug("parsepos=%zi state=%i \"%s\"",
+//                parsePos - buf, parseState,
+//                std::string(name, inputEnd - name).c_str()
+//                );
         switch (parseState) {
-            case FindStart:
+            case FindElementStart:
                 // At the end of this state, name set up correctly
                 // and there is at least one valid character following name
 
@@ -146,12 +150,13 @@ XmlParser::operator bool()
                         return false;
                 }
 
+                // Element that ends in />
                 if (*parsePos == '/') {
                     if (parsePos + 1 >= inputEnd)
                         return false;
                     *parsePos++ = '\0';
 
-                    parseState = FindStart;
+                    parseState = FindElementStart;
 
                     if (*parsePos++ == '>') {
                         if (!starttls)
@@ -161,8 +166,9 @@ XmlParser::operator bool()
                     break;
                 }
 
+                // Element that ends in >
                 if (!isalpha(*parsePos)) {
-                    parseState = FindStart;
+                    parseState = FindElementStart;
                     if (*parsePos == '>') {
                         *parsePos++ = '\0';
 
@@ -236,7 +242,7 @@ XmlParser::operator bool()
                 // no break
 
             case FindArgumentValue:
-                while (!strchr(" />", *parsePos)) {
+                while (*parsePos != ' ' and *parsePos != '>') {
                     if (++parsePos == inputEnd)
                         return false;
                 }
@@ -266,14 +272,14 @@ XmlParser::operator bool()
                     ++parsePos;
                 }
 
-                parseState = FindElementEnd;
+                parseState = FindElementStart;
 
                 if (*parsePos == '\n') {
                     ++parsePos;
                     return true;
                 }
 
-                return false;
+                break;
         }
     }
 

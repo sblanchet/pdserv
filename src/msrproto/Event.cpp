@@ -22,18 +22,19 @@
  *****************************************************************************/
 
 #include "../Event.h"
+#include "Session.h"
 #include "Event.h"
 #include "XmlElement.h"
 
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-bool Event::toXml(Session::TCPStream &tcp, const PdServ::EventData& eventData)
+bool Event::toXml(Session* session, const PdServ::EventData& eventData)
 {
     const PdServ::Event* event = eventData.event;
 
     if (event) {
-        XmlElement msg(tcp.createElement(levelString(event)));
+        XmlElement msg(session->createElement(levelString(event)));
 
         XmlElement::Attribute(msg, "name").setEscaped(event->path);
         if (event->nelem > 1)

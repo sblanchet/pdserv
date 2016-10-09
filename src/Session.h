@@ -25,24 +25,50 @@
 #define SESSION_H
 
 #include <ctime>
+#include <streambuf>
+#include <unistd.h>
 
 struct SessionData;
+
+namespace log4cplus {
+    class Logger;
+}
 
 namespace PdServ {
 
 class Main;
 class Event;
 
-class Session {
+class Session: public std::streambuf {
     public:
-        Session(const Main *main);
+        Session(const Main *main, 
+                log4cplus::Logger& log,
+                size_t bufsize = 4096);
         virtual ~Session();
 
         const Main * const main;
         size_t eventId;
 
+        bool eof() const;
+
     protected:
         struct timespec connectedTime;
+
+        virtual ssize_t write(const void* buf, size_t len) = 0;
+        virtual ssize_t read(       void* buf, size_t len) = 0;
+
+    private:
+        bool p_eof;
+
+        log4cplus::Logger& log;
+
+        // Reimplemented from std::streambuf
+        int overflow(int c);
+        std::streamsize xsputn(const char* s, std::streamsize n);
+        int sync();
+
+        int underflow();
+        std::streamsize xsgetn(char* s, std::streamsize n);
 };
 
 }

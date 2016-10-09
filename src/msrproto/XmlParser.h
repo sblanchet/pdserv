@@ -57,25 +57,27 @@ class XmlParser {
         typedef std::list<Attribute> AttributeList;
         AttributeList attribute;
 
-        const char* argument;
-
         static const size_t bufIncrement = 1024;
         const char* bufEnd;
-        char *buf;
+        char* buf;
 
         bool starttls;
 
-        char *parsePos;        // Current parsing position
-        char *inputEnd;        // End of input data
-        const char *name;            // pointer to '<' in the element
+        char* parsePos;        // Current parsing position
+        char* inputEnd;        // End of input data
+        const char* name;      // pointer to '<' in the element
+        const char* argument;
+
         char quote;
 
         enum ParseState {
-            FindStart, FindNameEnd,
+            FindElementStart, FindNameEnd,
             FindArgumentName, FindQuotedArgumentValue, FindArgumentValue,
             FindElementEnd, FindTLSEnd
         };
         ParseState parseState, escapeState;
+
+        void moveData(char* dst);
 };
 
 }
