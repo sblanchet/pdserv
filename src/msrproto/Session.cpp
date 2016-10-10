@@ -28,6 +28,8 @@
 #include <log4cplus/ndc.h>
 #include <log4cplus/loggingmacros.h>
 
+#include "config.h"
+
 #include "../Debug.h"
 
 #include "../Main.h"
@@ -182,7 +184,11 @@ void Session::initial()
         XmlElement::Attribute(greeting, "app") << main->name;
         XmlElement::Attribute(greeting, "appversion") << main->version;
         XmlElement::Attribute(greeting, "version") << MSR_VERSION;
-        XmlElement::Attribute(greeting, "features") << MSR_FEATURES;
+        XmlElement::Attribute(greeting, "features") << MSR_FEATURES
+#ifdef GNUTLS_FOUND
+            ",tls"
+#endif
+            ;
         XmlElement::Attribute(greeting, "recievebufsize") << 100000000;
     }
 }
@@ -318,6 +324,9 @@ void Session::processCommand(const XmlParser* parser)
         { 2, "rk",                      &Session::readChannel           },
         { 3, "rpv",                     &Session::readParamValues       },
         { 4, "list",                    &Session::listDirectory         },
+#ifdef GNUTLS_FOUND
+        { 8, "starttls",                &Session::startTLS              },
+#endif
         { 9, "broadcast",               &Session::broadcast             },
         {11, "remote_host",             &Session::remoteHost            },
         {12, "read_kanaele",            &Session::readChannel           },
@@ -561,6 +570,15 @@ void Session::readStatistics(const XmlParser* /*parser*/)
         XmlElement::Attribute(client,"countout") << (*it).countOut;
         XmlElement::Attribute(client,"connectedtime") << (*it).connectedTime;
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Session::startTLS(const XmlParser* /*parser*/)
+{
+    createElement("tls");
+    xmlstream.flush();
+
+    PdServ::Session::startTLS();
 }
 
 /////////////////////////////////////////////////////////////////////////////

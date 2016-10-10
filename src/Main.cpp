@@ -25,11 +25,14 @@
 #include "Debug.h"
 
 #include <cerrno>
-#include <unistd.h>     // fork(), getpid(), chdir, sysconf, close
+#include <cstdio>       // fread(), fileno()
+#include <unistd.h>     // fork(), getpid(), chdir, sysconf, close, fstat()
+                        // stat()
 #include <signal.h>     // signal()
 #include <limits.h>     // _POSIX_OPEN_MAX
-#include <sys/types.h>  // umask()
-#include <sys/stat.h>   // umask()
+#include <sys/types.h>  // umask(), fstat(), stat(), opendir()
+#include <sys/stat.h>   // umask(), fstat(), stat()
+#include <dirent.h>     // opendir(), readdir_r()
 #include <iomanip>      // std::setw(), std::setfill()
 
 #include <log4cplus/syslogappender.h>
@@ -49,6 +52,15 @@
 //#include "etlproto/Server.h"
 #include "msrproto/Server.h"
 
+#ifndef _GNU_SOURCE
+#    define _GNU_SOURCE
+#endif
+#include <string.h>     // basename()
+
+#ifdef GNUTLS_FOUND
+#include "TLS.h"
+#endif
+
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -64,6 +76,9 @@ Main::Main(const std::string& name, const std::string& version):
 /////////////////////////////////////////////////////////////////////////////
 Main::~Main()
 {
+#ifdef GNUTLS_FOUND
+    destroyTLS();
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -146,6 +161,16 @@ int Main::localtime(struct timespec* t)
 /////////////////////////////////////////////////////////////////////////////
 void Main::startServers()
 {
+    log4cplus::Logger logger = log4cplus::Logger::getRoot();
+
+#ifdef GNUTLS_FOUND
+    if (setupTLS(config("tls"), logger)) {
+        LOG4CPLUS_FATAL_STR(logger,
+                LOG4CPLUS_TEXT("Fatal TLS error."));
+        return;
+    }
+#endif
+
     LOG4CPLUS_INFO_STR(log4cplus::Logger::getRoot(),
             LOG4CPLUS_TEXT("Starting servers"));
 
@@ -555,3 +580,358 @@ std::list<EventData> Main::getEventHistory(Session* session) const
 
     return list;
 }
+
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+#ifdef GNUTLS_FOUND
+/////////////////////////////////////////////////////////////////////////////
+int Main::setupTLS(Config tlsConf, log4cplus::Logger& logger)
+{
+    int result;
+
+    // NULL pointers
+    tls = 0;
+    dh_params = 0;
+    priority_cache = 0;
+    blacklist = 0;
+    tlsSessionDB = 0;
+    verifyClient = false;
+
+    if (!tlsConf)
+        return 0;
+
+    LOG4CPLUS_INFO_STR(logger,
+            LOG4CPLUS_TEXT("Starting TLS configuration"));
+
+    tlsSessionDB = new TlsSessionDB(&tls_mutex, TLS_DB_SIZE);
+    blacklist = new Blacklist;
+
+    // Release mutex
+    tls_mutex.post();
+
+    result = gnutls_global_init();
+    if (result) {
+        LOG4CPLUS_FATAL(logger,
+                LOG4CPLUS_TEXT("gnutls_global_init() failed: ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(gnutls_strerror(result))
+                << LOG4CPLUS_TEXT(" (")
+                << LOG4CPLUS_C_STR_TO_TSTRING(
+                    gnutls_strerror_name(result))
+                << LOG4CPLUS_TEXT(")"));
+        return result;
+    }
+
+    result = gnutls_dh_params_init (&dh_params); // Allocate memory
+    if (result) {
+        LOG4CPLUS_FATAL(logger,
+                LOG4CPLUS_TEXT("gnutls_dh_params_init() failed: ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(gnutls_strerror(result))
+                << LOG4CPLUS_TEXT(" (")
+                << LOG4CPLUS_C_STR_TO_TSTRING(
+                    gnutls_strerror_name(result))
+                << LOG4CPLUS_TEXT(")"));
+        return result;
+    }
+
+    Config dh(tlsConf["dh"]);
+    if (dh) {
+        FILE* fd = fopen(dh.toString().c_str(), "r");
+        struct stat sb;
+
+        if (!fd or fstat(fileno(fd), &sb)) {
+            const char* func = fd ? "fstat" : "fdopen";
+            LOG4CPLUS_WARN(logger,
+                    LOG4CPLUS_C_STR_TO_TSTRING(func)
+                    << LOG4CPLUS_TEXT("(")
+                    << LOG4CPLUS_STRING_TO_TSTRING(dh.toString())
+                    << LOG4CPLUS_TEXT(") failed: ")
+                    << LOG4CPLUS_C_STR_TO_TSTRING(strerror(errno))
+                    << LOG4CPLUS_TEXT(" (")
+                    << errno
+                    << LOG4CPLUS_TEXT(")"));
+            sb.st_size = 0;
+        }
+        else {
+            unsigned char buf[sb.st_size];
+            gnutls_datum_t params;
+            params.size = fread(buf, 1, sb.st_size, fd);
+            params.data = buf;
+
+            result = gnutls_dh_params_import_pkcs3(
+                    dh_params, &params, GNUTLS_X509_FMT_PEM);
+
+            if (result) {
+                LOG4CPLUS_FATAL(logger,
+                        LOG4CPLUS_TEXT("gnutls_dh_params_import_pkcs3(")
+                        << LOG4CPLUS_STRING_TO_TSTRING(dh.toString())
+                        << LOG4CPLUS_TEXT(") failed: ")
+                        << LOG4CPLUS_C_STR_TO_TSTRING(gnutls_strerror(result))
+                        << LOG4CPLUS_TEXT(" (")
+                        << LOG4CPLUS_C_STR_TO_TSTRING(
+                            gnutls_strerror_name(result))
+                        << LOG4CPLUS_TEXT(")"));
+                return result;
+            }
+            else {
+                LOG4CPLUS_INFO_STR(logger,
+                        LOG4CPLUS_TEXT(
+                            "Successfully loaded DH parameters from file"));
+            }
+        }
+
+        if (fd)
+            fclose(fd);
+    }
+    else {
+        unsigned int bits(tlsConf["dh-bits"].toUInt(1024));
+        result = gnutls_dh_params_generate2 (dh_params, bits);
+        if (result) {
+            LOG4CPLUS_FATAL(logger,
+                    LOG4CPLUS_TEXT("gnutls_dh_params_generate2(")
+                    << bits
+                    << LOG4CPLUS_TEXT(") failed: ")
+                    << LOG4CPLUS_C_STR_TO_TSTRING(gnutls_strerror(result))
+                    << LOG4CPLUS_TEXT(" (")
+                    << LOG4CPLUS_C_STR_TO_TSTRING(
+                        gnutls_strerror_name(result))
+                    << LOG4CPLUS_TEXT(")"));
+            return result;
+        }
+        else {
+            LOG4CPLUS_INFO(logger,
+                    LOG4CPLUS_TEXT(
+                        "Successfully generated DH parameters with ")
+                    << bits
+                    << LOG4CPLUS_TEXT(" bits"));
+        }
+    }
+
+    // Set priority string
+    std::string priority(tlsConf["priority"].toString("NORMAL"));
+    const char* errpos = 0;
+    result = gnutls_priority_init (&priority_cache, priority.c_str(), &errpos);
+    if (result) {
+        LOG4CPLUS_FATAL(logger,
+                LOG4CPLUS_TEXT("gnutls_priority_init(")
+                << LOG4CPLUS_STRING_TO_TSTRING(priority)
+                << LOG4CPLUS_TEXT(") failed at position ")
+                << (errpos - priority.c_str())
+                << LOG4CPLUS_TEXT(": ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(gnutls_strerror(result))
+                << LOG4CPLUS_TEXT(" (")
+                << LOG4CPLUS_C_STR_TO_TSTRING(
+                    gnutls_strerror_name(result))
+                << LOG4CPLUS_TEXT(")"));
+        return result;
+    }
+    else {
+        LOG4CPLUS_INFO_STR(logger,
+                LOG4CPLUS_TEXT("Successfully initialized priority string"));
+    }
+
+    result = gnutls_certificate_allocate_credentials(&tls);
+    if (result) {
+        LOG4CPLUS_FATAL(logger,
+                LOG4CPLUS_TEXT(
+                    "gnutls_certificate_allocate_credentials() failed: ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(gnutls_strerror(result))
+                << LOG4CPLUS_TEXT(" (")
+                << LOG4CPLUS_C_STR_TO_TSTRING(
+                    gnutls_strerror_name(result))
+                << LOG4CPLUS_TEXT(")"));
+        return result;
+    }
+
+    gnutls_certificate_set_dh_params (tls, dh_params);
+
+    std::string cert(tlsConf["cert"].toString());
+    std::string key(tlsConf["key"].toString());
+    result = gnutls_certificate_set_x509_key_file(
+            tls, cert.c_str(), key.c_str(), GNUTLS_X509_FMT_PEM);
+    if (result) {
+        LOG4CPLUS_FATAL(logger,
+                LOG4CPLUS_TEXT("gnutls_certificate_set_x509_key_file(")
+                << LOG4CPLUS_TEXT("key=")
+                << LOG4CPLUS_STRING_TO_TSTRING(key)
+                << LOG4CPLUS_TEXT(" cert=")
+                << LOG4CPLUS_STRING_TO_TSTRING(cert)
+                << LOG4CPLUS_TEXT(" failed: ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(gnutls_strerror(result))
+                << LOG4CPLUS_TEXT(" (")
+                << LOG4CPLUS_C_STR_TO_TSTRING(
+                    gnutls_strerror_name(result))
+                << LOG4CPLUS_TEXT(")"));
+        return result;
+    }
+    else {
+        LOG4CPLUS_INFO_STR(logger,
+                LOG4CPLUS_TEXT(
+                    "Successfully loaded server key and certificate"));
+    }
+
+    parseCertConfigItem(logger, tlsConf["ca"],  &Main::loadTrustFile);
+    parseCertConfigItem(logger, tlsConf["crl"], &Main::loadCrlFile);
+
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::destroyTLS()
+{
+    delete tlsSessionDB;
+    delete blacklist;
+
+    if (tls)
+        gnutls_certificate_free_credentials (tls);
+    if (dh_params)
+        gnutls_dh_params_deinit (dh_params);
+    if (priority_cache)
+        gnutls_priority_deinit (priority_cache);
+    gnutls_global_deinit();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::loadTrustFile(log4cplus::Logger& logger, const char* cafile)
+{
+    int result = gnutls_certificate_set_x509_trust_file(
+            tls, cafile, GNUTLS_X509_FMT_PEM);
+    if (result >= 0) {
+        LOG4CPLUS_INFO(logger,
+                LOG4CPLUS_TEXT("Successfully loaded ")
+                << result
+                << LOG4CPLUS_TEXT(" certificates from ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(cafile));
+    }
+    else {
+        LOG4CPLUS_WARN(logger,
+                LOG4CPLUS_TEXT("gnutls_certificate_set_x509_trust_file(")
+                << LOG4CPLUS_STRING_TO_TSTRING(cafile)
+                << LOG4CPLUS_TEXT(") failed: ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(gnutls_strerror(result))
+                << LOG4CPLUS_TEXT(" (")
+                << LOG4CPLUS_C_STR_TO_TSTRING(
+                    gnutls_strerror_name(result))
+                << LOG4CPLUS_TEXT(")"));
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::loadCrlFile(log4cplus::Logger& logger, const char* crlfile)
+{
+    struct stat sb;
+
+    LOG4CPLUS_DEBUG(logger,
+            LOG4CPLUS_TEXT("Considering ")
+            << LOG4CPLUS_C_STR_TO_TSTRING(crlfile)
+            << LOG4CPLUS_TEXT(" as CRL file"));
+
+    if (stat(crlfile, &sb) or !S_ISREG(sb.st_mode) or sb.st_size == 0) {
+        const char* name = ::basename(crlfile);
+        if (name) {
+            datum_string str(name);
+
+            blacklist->insert(str);
+            LOG4CPLUS_INFO(logger,
+                    LOG4CPLUS_TEXT("Added Key ID ")
+                    << LOG4CPLUS_STRING_TO_TSTRING(std::string(str))
+                    << LOG4CPLUS_TEXT(" to blacklist"));
+        }
+    }
+    else {
+        int result = gnutls_certificate_set_x509_crl_file(
+                tls, crlfile, GNUTLS_X509_FMT_PEM);
+        if (result >= 0) {
+            LOG4CPLUS_INFO(logger,
+                    LOG4CPLUS_TEXT("Successfully loaded ")
+                    << result
+                    << LOG4CPLUS_TEXT(" revoked certificates from ")
+                    << LOG4CPLUS_C_STR_TO_TSTRING(crlfile));
+        }
+        else {
+            LOG4CPLUS_WARN(logger,
+                    LOG4CPLUS_TEXT("gnutls_certificate_set_x509_crl_file(")
+                    << LOG4CPLUS_STRING_TO_TSTRING(crlfile)
+                    << LOG4CPLUS_TEXT(") failed: ")
+                    << LOG4CPLUS_C_STR_TO_TSTRING(gnutls_strerror(result))
+                    << LOG4CPLUS_TEXT(" (")
+                    << LOG4CPLUS_C_STR_TO_TSTRING(
+                        gnutls_strerror_name(result))
+                    << LOG4CPLUS_TEXT(")"));
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::parseCertConfigDir(log4cplus::Logger& logger, const char* path,
+        void (Main::*loadFunc)(log4cplus::Logger&, const char*))
+{
+    DIR* dir = opendir(path);
+    struct dirent entry, *result;
+    int rv;
+
+    if (dir)
+        while (!(rv = readdir_r(dir, &entry, &result)) and result) {
+            if (entry.d_name[0] != '.') {
+                std::string name(path);
+                name.append(1,'/');
+                name.append(entry.d_name);
+                parseCertConfigDir(logger, name.c_str(), loadFunc);
+            }
+        }
+    else
+        (this->*loadFunc)(logger, path);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::parseCertConfigItem(log4cplus::Logger& logger, Config config,
+        void (Main::*loadFunc)(log4cplus::Logger&, const char*))
+{
+    if (!config)
+        return;
+
+    verifyClient = true;
+    gnutls_certificate_set_verify_function(tls, Session::gnutls_verify_client);
+
+    size_t i = 0;
+    while (Config item = config[i++])
+        parseCertConfigDir(logger, item.toString().c_str(), loadFunc);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::initTlsSessionData(gnutls_session_t session,
+        const Blacklist** blacklist) const
+{
+    gnutls_priority_set(session, priority_cache);
+    gnutls_credentials_set(session, GNUTLS_CRD_CERTIFICATE, tls);
+    if (verifyClient)
+        gnutls_certificate_server_set_request(session, GNUTLS_CERT_REQUIRE);
+
+    gnutls_db_set_retrieve_function (session, gnutls_db_retr_func);
+    gnutls_db_set_remove_function (session, gnutls_db_remove_func);
+    gnutls_db_set_store_function (session, gnutls_db_store_func);
+    gnutls_db_set_ptr (session, tlsSessionDB);
+
+    *blacklist = this->blacklist;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::gnutls_db_store_func(
+        void *ptr, gnutls_datum_t key, gnutls_datum_t data)
+{
+    return reinterpret_cast<TlsSessionDB*>(ptr)->store(key, data);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+int Main::gnutls_db_remove_func(void *ptr, gnutls_datum_t key)
+{
+    return reinterpret_cast<TlsSessionDB*>(ptr)->erase(key);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+gnutls_datum_t Main::gnutls_db_retr_func(void *ptr, gnutls_datum_t key)
+{
+    return reinterpret_cast<TlsSessionDB*>(ptr)->retrieve(key);
+}
+
+#endif
+

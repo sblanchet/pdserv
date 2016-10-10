@@ -26,7 +26,12 @@ INCLUDE_DIRECTORIES(
         ${PROJECT_BINARY_DIR}/include   # for pdserv.h
         ${LIBCCEXT2_INCLUDE_DIRS}
         ${CYRUS_SASL_INCLUDE_DIR}
+        ${GNUTLS_INCLUDE_DIR}
         )
+
+#IF (GNUTLS_FOUND)
+#    LIST (APPEND DEFS ${GNUTLS_DEFINITIONS} GNUTLS_FOUND)
+#ENDIF ()
 
 SET (msrproto_src
     msrproto/StatSignal.cpp             msrproto/StatSignal.h
@@ -63,6 +68,10 @@ SET (main_src
     Debug.cpp           Debug.h
     )
 
+IF (GNUTLS_FOUND)
+    LIST (APPEND main_src TLS.h TLS.cpp)
+ENDIF ()
+
 SET (LIBS
     ${LIBCCEXT2_LIBRARIES}
     ${YAML_LIBRARIES}
@@ -70,6 +79,7 @@ SET (LIBS
     ${BerkeleyDB_LIBRARIES}
     ${CYRUS_SASL_SHARED_LIB}
     ${CYRUS_SASL_LIB_DEPS}
+    ${GNUTLS_LIBRARIES}
     )
 
 # Search for files required by buddy.
@@ -156,6 +166,7 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     )
 
 SET_TARGET_PROPERTIES ( ${PROJECT_NAME} PROPERTIES
+    COMPILE_DEFINITIONS "${DEFS}"
     VERSION ${VERSION}
     SOVERSION ${SOVERSION}
     CLEAN_DIRECT_OUTPUT 1)

@@ -167,6 +167,7 @@ class Session:
         void readStatistics(const XmlParser*);
         void messageHistory(const XmlParser*);
         void remoteHost(const XmlParser*);
+        void startTLS(const XmlParser*);
         void writeParameter(const XmlParser*);
         void xsad(const XmlParser*);
         void xsod(const XmlParser*);

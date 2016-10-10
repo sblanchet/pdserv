@@ -28,7 +28,13 @@
 #include <streambuf>
 #include <unistd.h>
 
-struct SessionData;
+#include "config.h"
+
+#ifdef GNUTLS_FOUND
+#include <gnutls/gnutls.h>
+#endif
+
+class Blacklist;
 
 namespace log4cplus {
     class Logger;
@@ -51,14 +57,21 @@ class Session: public std::streambuf {
 
         bool eof() const;
 
+#ifdef GNUTLS_FOUND
+        static int gnutls_verify_client(gnutls_session_t);
+#endif
+
     protected:
         struct timespec connectedTime;
+
+        int startTLS();
 
         virtual ssize_t write(const void* buf, size_t len) = 0;
         virtual ssize_t read(       void* buf, size_t len) = 0;
 
     private:
         bool p_eof;
+        enum {NoTLS, InitTLS, RunTLS} state;
 
         log4cplus::Logger& log;
 
@@ -69,6 +82,16 @@ class Session: public std::streambuf {
 
         int underflow();
         std::streamsize xsgetn(char* s, std::streamsize n);
+
+#ifdef GNUTLS_FOUND
+        gnutls_session_t tls_session;
+        const Blacklist* blacklist;
+
+        static ssize_t gnutls_pull_func(
+                gnutls_transport_ptr_t, void*, size_t);
+        static ssize_t gnutls_push_func(
+                gnutls_transport_ptr_t, const void*, size_t);
+#endif
 };
 
 }

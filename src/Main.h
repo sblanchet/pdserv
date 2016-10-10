@@ -24,20 +24,30 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include <list>
 #include <map>
+#include <list>
 #include <string>
+#include <vector>
 #include <cc++/thread.h>
 #include <log4cplus/logger.h>
 
 #include "Config.h"
 #include "Event.h"
+#include "config.h"
+
+#ifdef GNUTLS_FOUND
+#include <gnutls/gnutls.h>
+#endif
 
 struct timespec;
+class TlsSessionDB;
 
 namespace MsrProto {
     class Server;
 }
+
+class Blacklist;
+class TlsSessionDB;
 
 namespace PdServ {
 
@@ -60,6 +70,11 @@ class Main {
 
         void startServers();
         void stopServers();
+
+#ifdef GNUTLS_FOUND
+        void initTlsSessionData(gnutls_session_t,
+                const Blacklist** blacklist) const;
+#endif
 
         // Get the current system time.
         // Reimplement this method in the class specialization
@@ -128,10 +143,33 @@ class Main {
         MsrProto::Server *msrproto;
 //        EtlProto::Server etlproto(this);
 
-//         int setupDaemon();
-
         void consoleLogging();
         void syslogLogging();
+
+#ifdef GNUTLS_FOUND
+        ost::Semaphore tls_mutex;
+        bool verifyClient;
+        gnutls_certificate_credentials_t tls;
+        gnutls_priority_t priority_cache;
+        gnutls_dh_params_t dh_params;
+
+        TlsSessionDB *tlsSessionDB;
+        Blacklist* blacklist;
+
+        int setupTLS(Config, log4cplus::Logger&);
+        void destroyTLS();
+        void loadTrustFile(log4cplus::Logger&, const char* cafile);
+        void loadCrlFile(log4cplus::Logger&, const char* cafile);
+        void parseCertConfigDir(log4cplus::Logger&, const char* path,
+                void (Main::*func)(log4cplus::Logger&, const char*));
+        void parseCertConfigItem(log4cplus::Logger&, Config config,
+                void (Main::*func)(log4cplus::Logger&, const char*));
+
+        static int gnutls_db_store_func(
+                void *, gnutls_datum_t key, gnutls_datum_t data);
+        static int gnutls_db_remove_func(void *, gnutls_datum_t key);
+        static gnutls_datum_t gnutls_db_retr_func(void *, gnutls_datum_t key);
+#endif
 };
 
 }
