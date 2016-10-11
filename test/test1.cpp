@@ -49,17 +49,21 @@ struct s2 {
     int16_t i16;
 };
 
-int copy_param(struct pdtask *, const struct pdvariable *,
-        void* dst, const void* src, size_t len, void *priv_data)
-{
-    memcpy(dst, src, len);
-    printf("hallo %p\n", priv_data);
-    return 0;
-}
-
 int gettime(struct timespec *t)
 {
     return clock_gettime(CLOCK_REALTIME, t);
+}
+
+int copy_param(const struct pdvariable *,
+        void* dst, const void* src, size_t len,
+        struct timespec* time,
+        void *priv_data)
+{
+    memcpy(dst, src, len);
+    printf("hallo %p\n", priv_data);
+    if (time)
+        gettime(time);
+    return 0;
 }
 
 void clear_event(const struct pdevent* /*event*/, size_t /*index*/,
@@ -79,7 +83,7 @@ int main(int argc, const char *argv[])
     double tick = 10;
     uint32_t param[] = {1,2,3,4};
     struct pdtask *task[3];
-    const struct pdevent *event;
+    struct pdevent *event;
 
     struct s1 s1 = {{1,2,3,4,5}, 'a'};
     struct s2 s2[2] = {
@@ -101,13 +105,6 @@ int main(int argc, const char *argv[])
 
     int s1_t = pdserv_create_compound("s1", sizeof(s1));
     int s2_t = pdserv_create_compound("s2", sizeof(struct s2));
-    const char *room_mapping[] = {
-        "control",
-        "pump",
-        "sdlfj",
-        "server",
-        0
-    };
 
     pdserv_compound_add_field(s1_t, "d",
             pd_double_T, offsetof(struct s1, d), 5, NULL);
@@ -124,19 +121,19 @@ int main(int argc, const char *argv[])
 
     task[0] = pdserv_create_task(pdserv, 0.1, "Task1");
 
-    assert(pdserv_signal(task[0], 1, "/s1", s1_t, &s1, 1, NULL));
-    assert(pdserv_signal(task[0], 1, "/s2", s2_t, s2, 2, NULL));
+    assert(pdserv_signal(task[0], 1, "/s1", s1_t, &s1, 1, NULL, NULL, NULL));
+    assert(pdserv_signal(task[0], 1, "/s2", s2_t, s2, 2, NULL, NULL, NULL));
 
-    event = pdserv_event(pdserv,"/Event/path",WARN_EVENT,5, room_mapping);
+    event = pdserv_event(pdserv,"/Event/path",WARN_EVENT,5);
 
     assert(pdserv_signal(task[0], 1, "/path<lksjdf/to>ljk/double",
-            pd_double_T, dbl, 3, NULL));
+            pd_double_T, dbl, 3, NULL, NULL, NULL));
 
     assert(pdserv_signal(task[0], 1, "/Tme",
-            pd_double_T, &dbltime, 1, NULL));
+            pd_double_T, &dbltime, 1, NULL, NULL, NULL));
 
     assert(pdserv_signal(task[0], 1, "/path //to/ var2",
-            pd_uint16_T, var1, 3, var1_dims));
+            pd_uint16_T, var1, 3, var1_dims, NULL, NULL));
 
     struct pdvariable *p3 = pdserv_parameter(pdserv, "/path //to/ mdimparam",
             0666, pd_uint16_T, var1, 3, var1_dims, copy_param, (void*) 10);
@@ -169,7 +166,6 @@ int main(int argc, const char *argv[])
         usleep(100000);
         clock_gettime(CLOCK_REALTIME, &time);
 
-        pdserv_get_parameters(pdserv, task[0], &time);
         var1[1][0][0] = i++;
         if (!(i%30))
             var1[1][0][0]++;

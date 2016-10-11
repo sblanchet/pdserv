@@ -54,7 +54,7 @@ struct Pdo {
 
 /////////////////////////////////////////////////////////////////////////////
 struct EventData {
-    const PdServ::Event *event;
+    PdServ::Event *event;
     size_t index;
     bool state;
     timespec time;

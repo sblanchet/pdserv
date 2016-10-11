@@ -33,6 +33,8 @@
 #include "../Parameter.h"
 
 #include <locale>
+#include <sstream>
+#include <iostream>
 
 using namespace MsrProto;
 
@@ -89,22 +91,22 @@ void DirectoryNode::traditionalPathInsert(Variable* var,
         size_t nameEnd = name.find('<');
 
         if (nameEnd != name.npos) {
-            const char *s = name.c_str();
-            XmlParser p(s + nameEnd, s + name.size());
-            XmlParser::Element element = p.nextElement();
+            std::stringbuf buf(name);
+            XmlParser parser;
+            parser.read(&buf);
 
-            if (element) {
+            if (parser) {
                 const char *value;
-                if (element.isTrue("hide"))
+                if (parser.isTrue("hide"))
                     hidden = 1;
-                else if (element.find("hide", &value))
+                else if (parser.find("hide", &value))
                     hidden = *value;
 
-                if (element.isTrue("unhide"))
+                if (parser.isTrue("unhide"))
                     hidden = 0;
 
-                if (element.find("persistent"))
-                    persistent = element.isTrue("persistent");
+                if (parser.find("persistent"))
+                    persistent = parser.isTrue("persistent");
 
                 while (nameEnd
                         and std::isspace(name[nameEnd-1],
@@ -235,7 +237,7 @@ void DirectoryNode::list( PdServ::Session *session, XmlElement& parent,
         const Channel *channel = dynamic_cast<const Channel   *>(it->second);
         if (channel and !channel->hidden) {
             XmlElement xml(parent.createChild("channel"));
-            channel->setXmlAttributes(xml, 0, 0, 0);
+            channel->setXmlAttributes(xml, 0, 0, 0, 0);
         }
 
         // If there are children, report this node as a directory

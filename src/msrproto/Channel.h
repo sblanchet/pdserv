@@ -33,7 +33,6 @@ namespace PdServ {
 namespace MsrProto {
 
 class XmlElement;
-class Task;
 
 class Channel: public Variable {
     public:
@@ -43,7 +42,8 @@ class Channel: public Variable {
                 size_t offset);
 
         void setXmlAttributes(XmlElement&, bool shortReply,
-                const char *signalBuf, size_t precision) const;
+                const char *signalBuf, std::streamsize precision,
+                struct timespec* time) const;
 
         const PdServ::Signal* const signal;
         const size_t taskIdx;

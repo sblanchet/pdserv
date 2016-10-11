@@ -24,6 +24,8 @@
 #ifndef LIB_EVENT
 #define LIB_EVENT
 
+#include <vector>
+
 #include "../Event.h"
 
 class Main;
@@ -32,17 +34,24 @@ struct timespec;
 class Event: public PdServ::Event {
     public:
         Event( Main *main, const char* path,
-                const PdServ::Event::Priority& prio, size_t nelem,
-                const char **messages);
+                const PdServ::Event::Priority& prio, size_t nelem);
 
-        const Main * const main;
+        Main * const main;
 
-        /* Pointer into shmem where management data is stored */
-        struct EventData *data;
-
-        void set(size_t element, bool state, const timespec *t) const;
+        void set(size_t element, bool state, const timespec *t);
 
     private:
+
+        struct data {
+            bool value;
+            struct timespec setTime;
+            struct timespec resetTime;
+        };
+
+        std::vector<data> state;
+
+        // Only used in realtime thread
+        std::vector<bool> rt_state;
 };
 
 #endif //LIB_EVENT

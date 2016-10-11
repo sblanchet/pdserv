@@ -33,12 +33,15 @@ namespace PdServ {
 class Config {
     public:
         Config();
+        Config(const Config& other);
+
         ~Config();
 
         const char *   load(const char *file);
         const char * reload();
         const std::string& fileName() const;
 
+        Config& operator=(const Config& other);
         Config operator[](const std::string&) const;
         Config operator[](const char *) const;
         Config operator[](char *) const;
@@ -51,9 +54,9 @@ class Config {
         operator bool() const;
         bool isMapping() const;
 
-        int             toInt() const;
-        unsigned int    toUInt() const;
-        double          toDouble() const;
+        int             toInt(int dflt = 0) const;
+        unsigned int    toUInt(unsigned int def = 0U) const;
+        double          toDouble(double dflt = 0.0) const;
         std::string     toString(const std::string& s = std::string()) const;
 
     protected:

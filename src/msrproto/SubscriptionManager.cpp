@@ -30,7 +30,6 @@
 #include "Channel.h"
 #include "Session.h"
 #include "Subscription.h"
-#include "XmlElement.h"
 
 using namespace MsrProto;
 
@@ -40,7 +39,7 @@ PdServ::TaskStatistics SubscriptionManager::dummyTaskStatistics;
 
 /////////////////////////////////////////////////////////////////////////////
 SubscriptionManager::SubscriptionManager(
-        const Session *s, const PdServ::Task* task):
+        Session *s, const PdServ::Task* task):
     SessionTask(task), session(s)
 {
     taskTime = &dummyTime;
@@ -61,7 +60,7 @@ SubscriptionManager::~SubscriptionManager()
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::subscribe (const Channel *c, size_t group,
         size_t decimation, size_t blocksize, bool base64,
-        size_t precision)
+        std::streamsize precision)
 {
     Subscription** s = &signalSubscriptionMap[c->signal][c][group];
 
@@ -217,7 +216,7 @@ void SubscriptionManager::remove (Subscription *s, size_t group)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void SubscriptionManager::rxPdo(Session::TCPStream& tcp, bool quiet)
+void SubscriptionManager::rxPdo(bool quiet)
 {
     ActiveSignals::iterator git;
     DecimationGroup::iterator dit;
@@ -277,7 +276,7 @@ void SubscriptionManager::rxPdo(Session::TCPStream& tcp, bool quiet)
 
                     // Check if any signals need printing
                     if (printQ) {
-                        XmlElement dataTag(tcp.createElement("data"));
+                        XmlElement dataTag(session->createElement("data"));
                         if (git->first)
                             XmlElement::Attribute(dataTag, "group")
                                 << git->first;

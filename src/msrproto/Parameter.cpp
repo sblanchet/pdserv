@@ -96,7 +96,7 @@ void Parameter::addChild(const Parameter* child)
 /////////////////////////////////////////////////////////////////////////////
 void Parameter::setXmlAttributes(XmlElement &element, const char *valueBuf,
         struct timespec const& mtime, bool shortReply, bool hex,
-        size_t precision) const
+        std::streamsize precision) const
 {
     unsigned int flags = MSR_R | MSR_W | MSR_WOP;
 

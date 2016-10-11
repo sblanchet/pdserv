@@ -46,9 +46,6 @@ class Signal: public Variable {
         virtual void subscribe(SessionTask *) const = 0;
         virtual void unsubscribe(SessionTask *) const = 0;
 
-        virtual double poll(const Session *s,
-                void *buf, struct timespec *t) const = 0;
-
         virtual const char *getValue(const SessionTask*) const = 0;
 };
 

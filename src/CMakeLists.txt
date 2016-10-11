@@ -22,9 +22,16 @@
 #############################################################################
 
 INCLUDE_DIRECTORIES(
-        ${PROJECT_BINARY_DIR}       # for config.h
+        ${PROJECT_BINARY_DIR}           # for config.h
+        ${PROJECT_BINARY_DIR}/include   # for pdserv.h
         ${LIBCCEXT2_INCLUDE_DIRS}
+        ${CYRUS_SASL_INCLUDE_DIR}
+        ${GNUTLS_INCLUDE_DIR}
         )
+
+#IF (GNUTLS_FOUND)
+#    LIST (APPEND DEFS ${GNUTLS_DEFINITIONS} GNUTLS_FOUND)
+#ENDIF ()
 
 SET (msrproto_src
     msrproto/StatSignal.cpp             msrproto/StatSignal.h
@@ -53,17 +60,31 @@ SET (main_src
     Main.cpp            Main.h
     Variable.cpp        Variable.h
     DataType.cpp        DataType.h
+    Database.cpp        Database.h
     Signal.cpp          Signal.h
     Event.cpp           Event.h
     Parameter.cpp       Parameter.h
     ProcessParameter.cpp ProcessParameter.h
     Debug.cpp           Debug.h
+    )
 
-    supervisor/Server.cpp         supervisor/Server.h
+IF (GNUTLS_FOUND)
+    LIST (APPEND main_src TLS.h TLS.cpp)
+ENDIF ()
+
+SET (LIBS
+    ${LIBCCEXT2_LIBRARIES}
+    ${YAML_LIBRARIES}
+    ${LOG4CPLUS_LIBRARIES}
+    ${BerkeleyDB_LIBRARIES}
+    ${CYRUS_SASL_SHARED_LIB}
+    ${CYRUS_SASL_LIB_DEPS}
+    ${GNUTLS_LIBRARIES}
     )
 
 # Search for files required by buddy.
-FIND_PATH (RT_APP_H "rt_app.h" PATHS /opt/etherlab/include)
+FIND_PATH (RT_APP_H "rt_app.h"
+    PATHS ${CMAKE_INSTALL_INCLUDEDIR} /opt/etherlab/include)
 
 #MESSAGE("ETL_DATA=${RT_APP_H}")
 
@@ -78,33 +99,27 @@ IF (RT_APP_H AND ENABLE_BUDDY)
         app_taskstats.h HAVE_TIMESPEC)
     CHECK_STRUCT_HAS_MEMBER("struct task_stats" time.tv_usec
         app_taskstats.h HAVE_TIMEVAL)
-    CHECK_STRUCT_HAS_MEMBER("struct rt_app" port rt_app.h HAVE_SIMULINK_PORT)
 
     IF (HAVE_TIMEVAL)
         MESSAGE (STATUS "Using timeval for etherlab_buddy2")
+        LIST (APPEND DEFS HAVE_TIMEVAL)
     ELSEIF (HAVE_TIMESPEC)
         MESSAGE (STATUS "Using timespec for etherlab_buddy2")
-        SET_SOURCE_FILES_PROPERTIES (buddy/SessionTaskData.cpp
-            PROPERTIES COMPILE_DEFINITIONS HAVE_TIMESPEC)
+        LIST (APPEND DEFS HAVE_TIMESPEC)
     ELSE ()
-        MESSAGE ("Compiler output:")
-        MESSAGE (${HAVE_TIMESPEC_OUTPUT})
         MESSAGE (FATAL_ERROR
-            "Not all header files for etherlab_buddy are available")
+            "Could not find out whether app_taskstats.h "
+            "uses struct timespec or struct timeval. "
+            "Maybe the header file is not found.")
     ENDIF()
 
+    CHECK_STRUCT_HAS_MEMBER("struct rt_app" port rt_app.h HAVE_SIMULINK_PORT)
     IF (HAVE_SIMULINK_PORT)
         MESSAGE (STATUS "etherlab_buddy2 understands port= option")
-        SET_SOURCE_FILES_PROPERTIES (buddy/SignalInfo.cpp
-            PROPERTIES COMPILE_DEFINITIONS HAVE_SIMULINK_PORT)
+        LIST (APPEND DEFS HAVE_SIMULINK_PORT)
     ENDIF ()
 
-    #MESSAGE("TIMESPEC=${HAVE_TIMESPEC}")
-    #MESSAGE("TIMEVAL=${HAVE_TIMEVAL}")
-    #MESSAGE("PORT=${HAVE_SIMULINK_PORT}")
-
     FIND_PACKAGE (LibDaemon REQUIRED)
-    FIND_PACKAGE (Threads REQUIRED)
 
     ADD_EXECUTABLE (etherlab_buddy2
         buddy/SignalInfo.cpp            buddy/SignalInfo.h
@@ -122,17 +137,11 @@ IF (RT_APP_H AND ENABLE_BUDDY)
         ${msrproto_src}
         ${main_src}
         )
-
-    SET (BUDDY_LIBS
-        ${LIBCCEXT2_LIBRARIES}
-        ${LIBDAEMON_LIBRARIES}
-        ${YAML_LIBRARIES}
-        ${LOG4CPLUS_LIBRARIES}
-        ${CMAKE_THREAD_LIBS_INIT}
-        )
+    SET_TARGET_PROPERTIES ( etherlab_buddy2 PROPERTIES
+        COMPILE_DEFINITIONS "${DEFS}")
 
     INCLUDE_DIRECTORIES (${LIBDAEMON_INCLUDE_DIRS})
-    TARGET_LINK_LIBRARIES (etherlab_buddy2 ${BUDDY_LIBS})
+    TARGET_LINK_LIBRARIES (etherlab_buddy2 ${LIBS} ${LIBDAEMON_LIBRARIES})
     INSTALL (TARGETS etherlab_buddy2
         DESTINATION "${CMAKE_INSTALL_BINDIR}" RUNTIME)
 
@@ -151,19 +160,18 @@ ADD_LIBRARY( ${PROJECT_NAME} SHARED
     lib/Event.cpp           lib/Event.h
     lib/Parameter.cpp       lib/Parameter.h
     lib/SessionTaskData.cpp lib/SessionTaskData.h
-    lib/SessionData.cpp     lib/SessionData.h
 
     ${msrproto_src}
     ${main_src}
     )
 
 SET_TARGET_PROPERTIES ( ${PROJECT_NAME} PROPERTIES
+    COMPILE_DEFINITIONS "${DEFS}"
     VERSION ${VERSION}
-    SOVERSION "${SOVERSION}"
+    SOVERSION ${SOVERSION}
     CLEAN_DIRECT_OUTPUT 1)
 
-TARGET_LINK_LIBRARIES (${PROJECT_NAME} ${LIBCCEXT2_LDFLAGS}
-    ${YAML_LIBRARIES} ${LOG4CPLUS_LIBRARIES})
+TARGET_LINK_LIBRARIES (${PROJECT_NAME} ${LIBS})
 INSTALL (TARGETS ${PROJECT_NAME} DESTINATION "${CMAKE_INSTALL_LIBDIR}" LIBRARY)
 
 # pkgconfig files

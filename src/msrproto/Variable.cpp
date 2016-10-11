@@ -117,10 +117,11 @@ void Variable::addCompoundFields(XmlElement &element,
 void Variable::setAttributes(
         XmlElement &element, bool shortReply) const
 {
-    // name=
-    // value=
     // index=
     XmlElement::Attribute(element, "index") << index;
+
+    // name=
+    // DO NOT REMOVE: Testmanager requires name even with short reply!
     XmlElement::Attribute(element, "name").setEscaped(path());
 
     if (shortReply)

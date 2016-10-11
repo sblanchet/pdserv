@@ -25,14 +25,16 @@
 #include "../Debug.h"
 
 #include <sstream>
+#include <functional>
 #include <cerrno>
 #include <cstdlib>              // exit()
 #include <sys/ioctl.h>          // ioctl()
 #include <unistd.h>             // fork()
 #include <sys/mman.h>
 #include <sys/select.h>         // select()
-#include <sys/signalfd.h>       // signalfd()
-
+#include <app_taskstats.h>
+#include <log4cplus/loggingmacros.h>
+#include <dsignal.h>
 
 #include "Main.h"
 #include "Task.h"
@@ -54,10 +56,9 @@ Main::Main(const struct app_properties& p,
         const PdServ::Config& config, int fd):
     PdServ::Main(p.name, p.version),
     app_properties(p), log(log4cplus::Logger::getRoot()),
-    config(config), pid(::getpid()), fd(fd),
+    m_config(config), pid(::getpid()), fd(fd),
     parameterBuf(0)
 {
-    setConfig(config);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -74,37 +75,29 @@ Main::~Main()
 /////////////////////////////////////////////////////////////////////////////
 int Main::serve()
 {
-    sigset_t mask;
     fd_set fds;
     int maxfd, sfd, rv;
+    time_t persistTimeout;
+    struct timeval timeout, now;
+    int photoPtr;
 
     setupLogging();
     postfork_nrt_setup();
+    persistTimeout = setupPersistent();
+    readPointer = ioctl(fd, RESET_BLOCKIO_RP);
+    photoPtr = readPointer;
     startServers();
 
-    // Set signal mask
-    if (::sigemptyset(&mask)
-            or ::sigaddset(&mask, SIGHUP)      // Reread configuration
-            or ::sigaddset(&mask, SIGINT)      // Ctrl-C
-            or ::sigaddset(&mask, SIGTERM)     // standard kill signal
-            or ::sigprocmask(SIG_BLOCK, &mask, NULL)) { 
+    // In foreground mode, only catch SIGCHLD
+    if (daemon_signal_init(SIGHUP, SIGINT, SIGTERM, -1) < 0) {
         rv = errno;
-        LOG4CPLUS_FATAL_STR(log,
-                LOG4CPLUS_TEXT("Failed to set correct signal mask"));
         goto out;
     }
 
-    // Get a file descriptor for reading signals
-    sfd = ::signalfd(-1, &mask, SFD_NONBLOCK);
-    if (sfd == -1) {
-        rv = errno;
-        LOG4CPLUS_FATAL(log,
-                LOG4CPLUS_TEXT("Getting signal file descriptor failed: ")
-                << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(errno)));
-        goto out;
-    }
-
+    sfd = daemon_signal_fd();
     maxfd = (sfd > fd ? sfd : fd) + 1;
+
+    ::gettimeofday(&timeout, 0);
 
     FD_ZERO(&fds);
     while (true) {
@@ -129,14 +122,15 @@ int Main::serve()
             ioctl(fd, GET_WRITE_PTRS, &data_p);
 
             if (data_p.wp == -ENOSPC) {
-                readPointer = ioctl(fd, RESET_BLOCKIO_RP);
+                photoPtr = ioctl(fd, RESET_BLOCKIO_RP);
                 continue;
             }
 
-            for (int i = readPointer; i < data_p.wp; ++i) {
+            for (int i = photoPtr; i < data_p.wp; ++i) {
 
                 // Mark photo as ready
                 photoReady[i] = photoCount++;
+                readPointer = i;
 
                 // Go through event list to see if something happened
                 for (EventList::const_iterator it = events.begin();
@@ -145,39 +139,43 @@ int Main::serve()
             }
 
             // Tell kernel that reading has finished
-            readPointer = ioctl(fd, SET_BLOCKIO_RP, data_p.wp);
+            photoPtr = ioctl(fd, SET_BLOCKIO_RP, data_p.wp);
         }
 
         if (FD_ISSET(sfd, &fds)) {
-            // Signal received
-            struct signalfd_siginfo fdsi;
+            int signo = daemon_signal_next();
 
-            printf("Child %i got signal\n", pid);
-            ssize_t s = ::read(sfd, &fdsi, sizeof(struct signalfd_siginfo));
-            if (s != sizeof(struct signalfd_siginfo)) {
-                rv = errno;
-                LOG4CPLUS_FATAL_STR(log,
-                        LOG4CPLUS_TEXT("Received incorrect length when "
-                            "reading signal file descriptor"));
-                goto out;
-            }
-
-            switch (fdsi.ssi_signo) {
+            switch (signo) {
                 case SIGHUP:
                     LOG4CPLUS_INFO_STR(log,
-                            LOG4CPLUS_TEXT("SIGUP received. Reloading config"));
-                    config.reload();
-                    setConfig(config[name]);
+                            LOG4CPLUS_TEXT("SIGHUP received. Reloading config"));
+                    m_config.reload();
+                    savePersistent();
                     break;
 
                 default:
                     LOG4CPLUS_INFO(log,
                             LOG4CPLUS_TEXT("Terminating on ")
                             << LOG4CPLUS_C_STR_TO_TSTRING(
-                                strsignal(fdsi.ssi_signo))); 
+                                strsignal(signo))); 
                     stopServers();
+                    daemon_signal_done();
                     return 0;
             }
+        }
+
+        // Get current time and save persistent variables on timeout
+        if (::gettimeofday(&now, 0)) {
+            rv = errno;
+            break;
+        }
+        if (timercmp(&now, &timeout, <))
+            timeout = now;
+
+        if (persistTimeout
+                and now.tv_sec >= timeout.tv_sec + persistTimeout) {
+            timeout.tv_sec += persistTimeout;
+            savePersistent();
         }
     }
 
@@ -186,6 +184,8 @@ out:
             LOG4CPLUS_TEXT("Failed: ")
             << LOG4CPLUS_C_STR_TO_TSTRING(strerror(errno)));
     stopServers();
+    daemon_signal_done();
+
     return rv;
 }
 
@@ -220,7 +220,7 @@ int Main::postfork_nrt_setup()
 
     // Go through the list of events and set up a map path->id
     // of paths and their corresponding id's to watch
-    const PdServ::Config eventList = config["events"];
+    const PdServ::Config eventList = m_config["events"];
     typedef std::map<std::string, PdServ::Config> EventMap;
     EventMap eventMap;
     PdServ::Config eventConf;
@@ -228,10 +228,11 @@ int Main::postfork_nrt_setup()
     for (i = 0, eventConf = eventList[i];
             eventConf; eventConf = eventList[++i]) {
 
-        std::string subsys = eventConf["subsystem"].toString();
-        eventMap[subsys] = eventConf;
-        LOG4CPLUS_TRACE(log,
-                LOG4CPLUS_TEXT("Added event " << subsys.c_str()));
+        std::string name = eventConf["name"].toString();
+        eventMap[name] = eventConf;
+        LOG4CPLUS_DEBUG(log,
+                LOG4CPLUS_TEXT("Added event ")
+                << LOG4CPLUS_STRING_TO_TSTRING(name));
     }
 
     // Get a copy of the parameters
@@ -257,7 +258,7 @@ int Main::postfork_nrt_setup()
         Parameter *p = new Parameter( this, parameterBuf + si.offset,
                 SignalInfo(app_properties.name, &si));
         parameters.push_back(p);
-        LOG4CPLUS_DEBUG_STR(log, LOG4CPLUS_STRING_TO_TSTRING(p->path));
+        LOG4CPLUS_TRACE_STR(log, LOG4CPLUS_STRING_TO_TSTRING(p->path));
     }
 
     photoReady = new unsigned int[app_properties.rtB_count];
@@ -268,7 +269,7 @@ int Main::postfork_nrt_setup()
     shmem = ::mmap(0, shmem_len, PROT_READ, MAP_PRIVATE, fd, 0);
     if (shmem == MAP_FAILED)
         goto out;
-    LOG4CPLUS_INFO(log,
+    LOG4CPLUS_DEBUG(log,
             LOG4CPLUS_TEXT("Mapped shared memory segment with ") << shmem_len
             << LOG4CPLUS_TEXT(" and ") << app_properties.rtB_count
             << LOG4CPLUS_TEXT(" snapshots."));
@@ -308,40 +309,11 @@ int Main::postfork_nrt_setup()
                     LOG4CPLUS_TEXT("Watching as event: ")
                     << LOG4CPLUS_STRING_TO_TSTRING(s->path.c_str()));
 
-            // Set event message
-            e->message = new const char *[s->dim.nelem];
-            PdServ::Config messageList = it->second["message"];
-            if (s->dim.nelem > 1) {
-                for (size_t i = 0; i < s->dim.nelem; ++i) {
-                    std::string message = messageList[i].toString();
-                    if (message.empty()) {
-                        e->message[i] = 0;
-                        continue;
-                    }
-                    char *s = new char[message.size() + 1];
-                    e->message[i] = s;
-                    std::copy(message.begin(), message.end(), s);
-                    s[message.size()] = 0;
-                }
-            }
-            else {
-                std::string message = messageList.toString();
-
-                if (message.empty())
-                    e->message[0] = 0;
-                else {
-                    char *s = new char[message.size() + 1];
-                    e->message[0] = s;
-                    std::copy(message.begin(), message.end(), s);
-                    s[message.size()] = 0;
-                }
-            }
-
             // Reset config to indicate that the path was found
             it->second = PdServ::Config();
         }
 
-        LOG4CPLUS_DEBUG_STR(log, LOG4CPLUS_STRING_TO_TSTRING(s->path));
+        LOG4CPLUS_TRACE_STR(log, LOG4CPLUS_STRING_TO_TSTRING(s->path));
     }
 
     // Report whether some events were not discovered
@@ -356,8 +328,6 @@ int Main::postfork_nrt_setup()
 
     eventQ = new EventQ(eventCount * 2, photoAlbum, &app_properties);
 
-    readPointer = ioctl(fd, RESET_BLOCKIO_RP);
-
     return 0;
 
 out:
@@ -368,40 +338,110 @@ out:
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::processPoll(unsigned int /*delay_ms*/,
-        const PdServ::Signal * const *s, size_t nelem,
-        void * const * pollDest, struct timespec *) const
+void Main::getValue(
+        const Signal *signal, void* dest, struct timespec *time) const
 {
     const char *data = photoAlbum + readPointer * app_properties.rtB_size;
 
-    for (size_t i = 0; i < nelem; ++i) {
-        const Signal *signal = dynamic_cast<const Signal *>(s[i]);
-        if (signal)
-            std::copy(data + signal->offset,
-                    data + signal->offset + signal->memSize,
-                    reinterpret_cast<char*>(pollDest[i]));
+    std::copy(data + signal->offset,
+            data + signal->offset + signal->memSize,
+            reinterpret_cast<char*>(dest));
+
+    if (time) {
+        size_t statsOffset =
+            app_properties.rtB_size
+            - app_properties.num_tasks*sizeof(struct task_stats);
+        const struct task_stats *task_stats =
+            reinterpret_cast<const struct task_stats*>(data + statsOffset);
+
+#ifdef HAVE_TIMESPEC
+        *time = task_stats[0].time;
+#else
+        time->tv_sec = task_stats[0].time.tv_sec;
+        time->tv_nsec = 1000*task_stats[0].time.tv_usec;
+#endif
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Main::setParameter(const PdServ::Parameter* p,
-        size_t offset, size_t count) const
+int Main::setValue(const PdServ::ProcessParameter* p,
+        const char* buf, size_t offset, size_t count)
 {
-    struct param_change delta;
+    const Parameter* parameter = static_cast<const Parameter*>(p);
+    char* addr = parameter->valueBuf + offset;
 
-    delta.pos =
-        static_cast<const Parameter*>(p)->valueBuf + offset - parameterBuf;
+    // Backup old values in case of write failure
+    char backup[count];
+    std::copy(addr, addr + count, backup);
+
+    // Copy new data to shared memory
+    std::copy(buf, buf + count, addr);
+
+    struct param_change delta;
+    delta.pos = addr - parameterBuf;
     delta.rtP = parameterBuf;
     delta.len = count;
     delta.count = 0;
 
     if (ioctl(fd, CHANGE_PARAM, &delta)) {
+        // Write failure. Restore data
+        std::copy(backup, backup + count, addr);
         return errno;
     }
 
-    gettime(&static_cast<const Parameter*>(p)->mtime);
+    gettime(&parameter->mtime);
 
     return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Main::initializeParameter(PdServ::Parameter* p,
+        const char* data, const struct timespec* mtime,
+        const PdServ::Signal* signal)
+{
+    if (!data)
+        return;
+
+    Parameter *parameter = static_cast<Parameter*>(p);
+
+    // Set modify time unconditionally
+    parameter->mtime = *mtime;
+
+    // Make sure parameter value is unset for signal/parameter pairs
+    if (signal) {
+        for (const char* p = parameter->valueBuf;
+                p < parameter->valueBuf + parameter->memSize; ++p)
+            if (*p)
+                return;
+    }
+
+    std::copy(data, data + parameter->memSize, parameter->valueBuf);
+    setValue(static_cast<PdServ::ProcessParameter*>(parameter),
+            parameter->valueBuf, 0, parameter->memSize);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Main::getPersistentSignalValue(const PdServ::Signal *s,
+        char* buf, struct timespec* time)
+{
+    getValue(static_cast<const Signal*>(s), buf, time);
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+PdServ::Parameter* Main::findParameter(const std::string& path) const
+{
+    for (ParameterList::const_iterator it = parameters.begin();
+            it != parameters.end(); ++it)
+        if ((*it)->path == path)
+            return *it;
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+PdServ::Config Main::config(const char* key) const
+{
+    return m_config[key];
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -426,22 +466,11 @@ std::list<const PdServ::Parameter*> Main::getParameters() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::prepare(PdServ::Session *session) const
+void Main::prepare(PdServ::Session* /*session*/) const
 {
-    session->data = new SessionData;
-    eventQ->initialize(session->data->eventReadPointer);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Main::cleanup(const PdServ::Session *session) const
+void Main::cleanup(const PdServ::Session* /*session*/) const
 {
-    delete session->data;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const PdServ::Event* Main::getNextEvent (const PdServ::Session* session,
-        size_t *index, bool *state, struct timespec *t) const
-{
-    return eventQ->getNextEvent(
-            session->data->eventReadPointer, index, state, t);
 }

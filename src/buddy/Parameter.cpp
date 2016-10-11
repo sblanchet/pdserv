@@ -30,7 +30,8 @@ Parameter::Parameter( Main *main, char *parameterData,
         const SignalInfo &si):
     PdServ::ProcessParameter(main, &valueBuf, &mtime,
             si.path(), 0x666, si.dataType(), si.ndim(), si.getDim()),
-    valueBuf(parameterData)
+    valueBuf(parameterData),
+    main(main)
 {
     mtime.tv_sec = 0;
     mtime.tv_nsec = 0;

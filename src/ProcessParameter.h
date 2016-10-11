@@ -28,14 +28,15 @@
 #include <cc++/thread.h>
 #include "Parameter.h"
 
-namespace PdServ{
+namespace PdServ {
 
 class Main;
 
 class ProcessParameter: public Parameter {
     public:
-        ProcessParameter ( Main* main,
-                char * const* addr,
+        ProcessParameter(
+                Main* main,
+                const char * const* addr,
                 const struct timespec* mtime,
                 const std::string& path,
                 unsigned int mode,
@@ -44,10 +45,12 @@ class ProcessParameter: public Parameter {
                 const size_t *dim = 0);
 
         void print(std::ostream& os, size_t offset, size_t count) const;
+        void copyValue(void* buf, struct timespec*) const;
 
     private:
-        const Main * const main;
-        char* const* const valueBuf;
+        Main* const main;
+
+        const char* const* const valueBuf;
         const struct timespec* const mtime;
 
         mutable ost::ThreadLock mutex;
@@ -57,7 +60,7 @@ class ProcessParameter: public Parameter {
                 const char *buf, size_t offset, size_t count) const;
 
         // Reimplemented from PdServ::Variable
-        void getValue(const PdServ::Session* session,
+        int getValue(const PdServ::Session* session,
                 void *buf, struct timespec* t = 0) const;
 };
 

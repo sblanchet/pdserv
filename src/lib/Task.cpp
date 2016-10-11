@@ -49,19 +49,6 @@ struct SignalList {
     const Signal* signal;
 };
 
-struct PollData {
-    unsigned int request, reply;
-    bool active;
-    struct timespec time;
-    unsigned int count;
-    unsigned int length;
-    const char *addr;
-    struct Data {
-        void *dest;
-        const Signal *signal;
-    } data[];
-};
-
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 Task::Task(Main *main, double ts, const char * /*name*/):
@@ -74,11 +61,14 @@ Task::Task(Main *main, double ts, const char * /*name*/):
     std::fill_n(signalTypeCount, 4, 0);
     signalCopyList[0] = 0;
     copyList[0] = 0;
+    persist = 0;
+    time = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Task::~Task()
 {
+    delete persist;
     delete[] copyList[0];
     delete[] signalCopyList[0];
     delete[] signalPosition;
@@ -120,7 +110,6 @@ size_t Task::getShmemSpace(double T) const
         minPdoCount = 10;
 
     return sizeof(*signalListRp) + sizeof(*signalListWp)
-        + sizeof(*poll) + n*sizeof(*poll->data)
         + 2 * n * sizeof(*signalList)
         + (sizeof(*txPdo) + signalMemSize) * minPdoCount;
 }
@@ -138,9 +127,7 @@ void Task::prepare(void *shmem, void *shmem_end)
     *signalListRp = signalList;
     *signalListWp = signalList;
 
-    poll = ptr_align<struct PollData>(signalListEnd);
-
-    txMemBegin = ptr_align<struct Pdo>(poll->data + n);
+    txMemBegin = ptr_align<struct Pdo>(signalListEnd);
     txMemEnd = shmem_end;
     //log_debug("S(%p): txMemBegin=%p", this, txMemBegin);
 
@@ -174,6 +161,46 @@ void Task::nrt_init()
         signalCopyList[i+1] = signalCopyList[i] + signalTypeCount[i];
 
     std::fill_n(signalTypeCount, 4, 0);
+
+    if (!persistentSet.empty()) {
+        persist = new Persistent(this);
+
+        for (PersistentSet::iterator it = persistentSet.begin();
+                it != persistentSet.end(); ++it)
+            static_cast<const PdServ::Signal*>(*it)->subscribe(persist);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::makePersistent(const Signal* s)
+{
+    persistentSet.insert(s);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool Task::getPersistentValue(const PdServ::Signal* s,
+        char* buf, const struct timespec** t) const
+{
+    if (persist->active.find(s) != persist->active.end()) {
+        const char *value = s->getValue(persist);
+        std::copy(value, value + s->memSize, buf);
+        *t = time;
+    }
+
+    return time;        // time will be non-zero rxPdo is called at least once
+}
+
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+Task::Persistent::Persistent(Task* task):
+    PdServ::SessionTask(task)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void Task::Persistent::newSignal(const PdServ::Signal *signal)
+{
+    active.insert(static_cast<const PdServ::Signal*>(signal));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -233,48 +260,6 @@ void Task::subscribe(const Signal* s, bool insert) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::pollPrepare( const Signal *signal, void *dest) const
-{
-    poll->data[poll->count].dest = dest;
-    poll->data[poll->count].signal = signal;
-    poll->length += signal->memSize;
-    poll->count++;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-bool Task::pollFinished( const PdServ::Signal * const *, size_t /*nelem*/,
-        void * const *, struct timespec *t) const
-{
-    if (!poll->count)
-        return true;
-
-    if (!poll->active) {
-        poll->active = true;
-        poll->request++;
-        return false;
-    }
-
-    if (poll->request != poll->reply)
-        return false;
-
-    const char *buf = poll->addr;
-    for (size_t i = 0; i < poll->count; ++i) {
-        const Signal *s = poll->data[i].signal;
-        std::copy(buf, buf + s->memSize,
-                reinterpret_cast<char*>(poll->data[i].dest));
-        buf += s->memSize;
-    }
-
-    poll->active = false;
-    poll->count = 0;
-    poll->length = 0;
-    if (t)
-        *t = poll->time;
-
-    return true;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Task::updateStatistics(
         double exec_time, double cycle_time, unsigned int overrun)
 {
@@ -304,13 +289,20 @@ bool Task::rxPdo (PdServ::SessionTask *s, const struct timespec **time,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+void Task::nrt_update()
+{
+    if (!persist)
+        return;
+
+    const PdServ::TaskStatistics *stat;
+    while (rxPdo(persist, &time, &stat));
+}
+
+/////////////////////////////////////////////////////////////////////////////
 // Real time methods
 /////////////////////////////////////////////////////////////////////////////
-void Task::update(const struct timespec *t)
+void Task::rt_update(const struct timespec *t)
 {
-    while (poll->request != poll->reply)
-        processPollRequest(t);
-
     if (*signalListRp != *signalListWp) {
         while (*signalListRp != *signalListWp)
             processSignalList();
@@ -319,42 +311,6 @@ void Task::update(const struct timespec *t)
     }
 
     copyData(t);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-void Task::processPollRequest(const struct timespec *t)
-{
-    // Rewind pointers
-    if (txPdo->data + poll->length >= txMemEnd) {
-        txPdo = txMemBegin;
-        txPdo->type = Pdo::Empty;
-        txPdo->next = 0;
-    }
-
-    char *dst = txPdo->data;
-
-    if (t)
-        poll->time = *t;
-    else
-        poll->time.tv_sec = poll->time.tv_nsec = 0;
-
-    poll->addr = dst;
-
-    for (size_t i = 0; i < poll->count; ++i) {
-        const Signal *s = poll->data[i].signal;
-        std::copy(s->addr, s->addr + s->memSize, dst);
-        dst += s->memSize;
-    }
-
-    txPdo = ptr_align<Pdo>(dst);
-
-    if (poll->addr == txMemBegin->data) {
-        txPdo->next = 0;
-        txPdo->type = Pdo::Empty;
-        txMemBegin->next = txPdo;
-    }
-
-    poll->reply = poll->request;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -433,11 +389,12 @@ void Task::copyData(const struct timespec *t)
 
     txPdo->taskStatistics = taskStatistics;
 
-    if (t) {
+    if (t)
         txPdo->time = *t;
-    }
     else
         txPdo->time.tv_sec = txPdo->time.tv_nsec = 0;
+
+    time = &txPdo->time;
 
     char *p = txPdo->data;
     for (int i = 0; i < 4; ++i) {

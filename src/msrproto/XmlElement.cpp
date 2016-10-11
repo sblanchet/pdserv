@@ -143,11 +143,13 @@ void XmlElement::Attribute::setEscaped( const std::string& str)
 
 /////////////////////////////////////////////////////////////////////////////
 void XmlElement::Attribute::csv(const Variable* var, const char *buf,
-        size_t nblocks, size_t precision)
+        size_t nblocks, std::streamsize precision)
 {
     char delim = '\0';
 
+    // Save current and set new precision
     precision = os.precision(precision);
+
     while (nblocks--) {
         if (delim)
             os << delim;
@@ -155,6 +157,8 @@ void XmlElement::Attribute::csv(const Variable* var, const char *buf,
         var->dtype.print(os, buf, buf, buf+var->memSize);
         buf += var->memSize;
     }
+
+    // Reset previous precision
     os.precision(precision);
 }
 

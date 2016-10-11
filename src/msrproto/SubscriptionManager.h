@@ -25,13 +25,11 @@
 #define SUBSCRIPTIONMANAGER_H
 
 #include "../SessionTask.h"
-#include "Session.h"
 
 #include <set>
 #include <map>
 
 namespace PdServ {
-    class Channel;
     class Task;
     class TaskStatistics;
 }
@@ -40,21 +38,22 @@ namespace MsrProto {
 
 class Channel;
 class Subscription;
+class Session;
 
 class SubscriptionManager: public PdServ::SessionTask {
     public:
-        SubscriptionManager(const Session *session, const PdServ::Task*);
+        SubscriptionManager(Session *session, const PdServ::Task*);
         ~SubscriptionManager();
 
-        const Session * const session;
+        Session * const session;
 
-        void rxPdo(Session::TCPStream& tcp, bool quiet);
+        void rxPdo(bool quiet);
 
         void clear();
         void unsubscribe(const Channel *s, size_t group);
         void subscribe(const Channel *s, size_t group,
                 size_t decimation, size_t blocksize,
-                bool base64, size_t precision);
+                bool base64, std::streamsize precision);
 
         void sync();
 

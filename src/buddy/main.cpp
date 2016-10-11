@@ -34,6 +34,8 @@
 #include <unistd.h>         // getopt(), sleep()
 #include <signal.h>         // kill()
 #include <cstdlib>          // atoi()
+#include <iostream>
+#include <fstream>
 
 #include "Main.h"
 #include "../Config.h"
@@ -56,6 +58,65 @@ void printhelp(const char *exe, const std::string &default_config)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+int kill_daemon()
+{
+    std::ifstream is(daemon_pid_file_proc_default());
+    int pid;
+
+    is >> pid;
+    if (is.good()) {
+        if (!::kill(-pid, SIGTERM)) {
+            time_t timeout = ::time(NULL) + 5;
+            do {
+                if (::kill(-pid, 0) and errno == ESRCH) {
+                    daemon_pid_file_remove();
+                    return EXIT_SUCCESS;
+                }
+                ::usleep(100000);
+            } while (::time(NULL) < timeout);
+
+            std::cerr
+                << "Failed to react on SIGTERM. Trying SIGKILL..."
+                << std::endl;
+
+            ::kill(-pid, SIGKILL);
+            timeout = ::time(NULL) + 5;
+            do {
+                if (::kill(-pid, 0) and errno == ESRCH) {
+                    daemon_pid_file_remove();
+                    return EXIT_SUCCESS;
+                }
+                ::usleep(100000);
+            } while (::time(NULL) < timeout);
+
+            std::cerr
+                << "Failed to react on SIGKILL. Giving up."
+                << std::endl;
+        }
+        else {
+            if (errno == ESRCH) {
+                std::cerr
+                    << "Process group " << pid << " does not exist."
+                    << std::endl;
+                daemon_pid_file_remove();
+            }
+            else
+                std::cerr << "Failed to terminate daemon: "
+                    << strerror(errno)
+                    << std::endl;
+        }
+    }
+    else {
+        std::cerr << "Failed to read pid from " 
+            << daemon_pid_file_proc_default()
+            << std::endl;
+        daemon_pid_file_remove();
+    }
+
+    return EXIT_FAILURE;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 void parse_command_line (int argc, char **argv)
 {
     int opt;
@@ -71,21 +132,7 @@ void parse_command_line (int argc, char **argv)
 
             case 'k':
                 // Kill daemon
-                if (daemon_pid_file_kill_wait(SIGTERM,5) < 0) {
-                    int rv = errno;
-                    std::cerr << "Failed to terminate daemon: "
-                        << strerror(errno)
-                        << std::endl;
-                    if (rv != ENOENT and rv != ESRCH) {
-                        std::cerr << "Killing it with SIGKILL" << std::endl;
-                        daemon_pid_file_kill(SIGKILL);
-                        daemon_pid_file_remove();
-                    }
-                    ::exit(EXIT_FAILURE);
-                }
-                else
-                    ::exit(EXIT_SUCCESS);
-                break;
+                ::exit(kill_daemon());
 
             case 'f':
                 // Foreground
@@ -152,7 +199,7 @@ int serve(const std::string& file, const PdServ::Config& config,
     rv = fork();
     if (!rv) {
         // Child
-        //daemon_signal_done();
+        daemon_signal_done();
         ::close(mainfd);
         ::exit(Main(app_properties, config[app_properties.name], fd).serve());
     }
@@ -180,6 +227,7 @@ int main(int argc, char **argv)
     log4cplus::Logger log = log4cplus::Logger::getRoot();
     const char *device_node = "/dev/etl";
     int app[MAX_APPS];
+    bool rescan = true;
     std::string path;
 
     memset(app, 0, sizeof(app));
@@ -199,13 +247,6 @@ int main(int argc, char **argv)
 #endif
 
     if (!fg) {
-        // Make sure no other instance is running
-        if ((pid = daemon_pid_file_is_running()) > 0) {
-            daemon_log(LOG_ERR,
-                    "Process already running with pid %i", pid);
-            return EBUSY;
-        }
-
         // Prepare pipe for daemon to pass return value
         if (daemon_retval_init() < 0) {
             daemon_log(LOG_ERR,
@@ -239,34 +280,15 @@ int main(int argc, char **argv)
             return rv;
         }
 
-        // Remove and create new pid files
-        if (daemon_pid_file_create() < 0) {
-            // Warn in the logger, but otherwise carry on
-            daemon_log(LOG_WARNING,
-                    "Could not create pid file %s: %s",
-                    daemon_pid_file_proc_default(), strerror(errno));
-        }
-
-        // Install some signal handlers
-        //  SIGCHLD: when a child finishes
-        //  SIGHUP: reload configuration file
-        //  SIGTERM: called to finish processes
-        if (daemon_signal_init(SIGCHLD, SIGHUP, SIGTERM, -1) < 0) {
-            rv = errno;
-            daemon_log(LOG_ERR, "Could not install daemon signal handlers");
-            goto finished;
-        }
-
         /* The daemon */
         daemon_log(LOG_INFO, "Daemon started with pid %i", getpid());
     }
-    else {
-        // In foreground mode, only catch SIGCHLD
-        if (daemon_signal_init(SIGCHLD, -1) < 0) {
-            rv = errno;
-            daemon_log(LOG_ERR, "Could not install daemon signal handlers");
-            goto finished;
-        }
+
+    // Catch SIGCHLD and SIGHUP
+    if (daemon_signal_init(SIGCHLD, SIGHUP, -1) < 0) {
+        rv = errno;
+        daemon_log(LOG_ERR, "Could not install daemon signal handlers");
+        goto finished;
     }
 
     // Use default configuration file if it exists and nothing has been
@@ -293,10 +315,19 @@ int main(int argc, char **argv)
         rv = errno;
         daemon_log(LOG_ERR, "Could not open main etherlab device %s: %s",
                 path.c_str(), strerror(errno));
-        goto finished;
+        goto finished_retval;
     }
 
     if (!fg) {
+        // Remove and create new pid files
+        daemon_pid_file_remove();
+        if (daemon_pid_file_create() < 0) {
+            // Warn in the logger, but otherwise carry on
+            daemon_log(LOG_WARNING,
+                    "Could not create pid file %s: %s",
+                    daemon_pid_file_proc_default(), strerror(errno));
+        }
+
         // Finished all initializing. Can send parent to sleep now
         daemon_retval_send(0);
         daemon_retval_done();
@@ -315,31 +346,35 @@ int main(int argc, char **argv)
     while (true) {
         uint32_t apps = 0;
 
-        ::ioctl(etl_main, RTAC_GET_ACTIVE_APPS, &apps);
-        for (unsigned app_id = 0;
-                apps and app_id < MAX_APPS; ++app_id, apps >>= 1) {
-            if ((apps & 0x01) and !app[app_id]) {
-                // A new application started
-                daemon_log(LOG_INFO, "New application instance %i", app_id);
+        if (rescan) {
+            ::ioctl(etl_main, RTAC_GET_ACTIVE_APPS, &apps);
+            for (unsigned app_id = 0;
+                    apps and app_id < MAX_APPS; ++app_id, apps >>= 1) {
+                if ((apps & 0x01) and !app[app_id]) {
+                    // A new application started
+                    daemon_log(LOG_INFO, "New application instance %i", app_id);
 
-                std::ostringstream path;
-                path << device_node << app_id + 1;
+                    std::ostringstream path;
+                    path << device_node << app_id + 1;
 
-                app[app_id] = serve(path.str(), config, etl_main);
-                if (app[app_id] <= 0) {
-                    daemon_log(LOG_ERR,
-                            "Could not install buddy "
-                            "for real time instance %i", app_id);
+                    app[app_id] = serve(path.str(), config, etl_main);
+                    if (app[app_id] <= 0) {
+                        daemon_log(LOG_ERR,
+                                "Could not install buddy "
+                                "for real time instance %i", app_id);
+                        app[app_id] = 0;
+                    }
+                }
+                else if (!(apps & 0x01) and app[app_id]) {
+                    daemon_log(LOG_INFO,
+                            "Finished with application instance %i pid %i",
+                            app_id, app[app_id]);
+                    ::kill(app[app_id], SIGTERM);
                     app[app_id] = 0;
                 }
             }
-            else if (!(apps & 0x01) and app[app_id]) {
-                daemon_log(LOG_INFO,
-                        "Finished with application instance %i pid %i",
-                        app_id, app[app_id]);
-                ::kill(app[app_id], SIGTERM);
-                app[app_id] = 0;
-            }
+
+            rescan = false;
         }
 
         // Wait until the status of a child or that of the main changes
@@ -363,29 +398,30 @@ int main(int argc, char **argv)
                 int sig = daemon_signal_next();
 
                 switch (sig) {
-                    case SIGHUP:
-                        daemon_log(LOG_INFO, "hup");
-                        for (unsigned i = 0; i < MAX_APPS; ++i) {
-                            if (app[i]) // app[i] is never negative
-                                ::kill(app[i], SIGHUP);
-                        }
-                        break;
-
                     case SIGCHLD:
                         // One of the children finished
                         pid = wait(&rv);
-                        daemon_log(LOG_INFO,
-                                "Child %i finished with return value %i",
-                                pid, rv);
+                        for (size_t i = 0; i < MAX_APPS; ++i) {
+                            if (app[i] == pid
+                                    and ::kill(pid, 0) and errno == ESRCH) {
+                                app[i] = 0;
+                                daemon_log(LOG_INFO,
+                                        "Child %i finished with return value %i",
+                                        pid, rv);
+                                break;
+                            }
+                        }
                         break;
 
-                    case SIGTERM:
-                    case SIGINT:
-                        goto finished;
+                    case SIGHUP:
+                        rescan = true;
+                        break;
 
                     case 0:
                         daemon_log(LOG_ERR, "daemon_signal_next() failed: %s",
                                 strerror(errno));
+                    case SIGINT:
+                    case SIGTERM:
                         goto finished;
 
                     default:
@@ -395,15 +431,23 @@ int main(int argc, char **argv)
                         break;
                 }
             }
-        } while (!FD_ISSET(etl_main, &fds)); // ETL main has a new event
+
+            rescan |= FD_ISSET(etl_main, &fds);
+
+        } while (!rescan); // ETL main has a new event
+    }
+
+    return 0;
+
+finished_retval:
+    if (!fg) {
+        daemon_retval_send(0);
+        daemon_retval_done();
     }
 
 finished:
-    // Send everyone a term
-    ::kill(0, SIGTERM);
 
-    daemon_pid_file_remove();
-
+    daemon_signal_done();
     daemon_log(LOG_NOTICE, "Exiting...");
 
     return 0;

@@ -40,12 +40,16 @@ namespace PdServ {
     class Task;
     class Parameter;
     class Signal;
+    class Variable;
+}
+
+namespace ost {
+    class TCPSocket;
 }
 
 namespace MsrProto {
 
 class Session;
-class Event;
 class Parameter;
 class Channel;
 
@@ -67,12 +71,11 @@ class Server: public ost::Thread {
                 std::list<PdServ::SessionStatistics>& stats) const;
 
         const PdServ::Main * const main;
-        const log4cplus::Logger log;
+        log4cplus::Logger log;
         const bool* const active;
 
         typedef std::vector<const Channel*> Channels;
         typedef std::vector<const Parameter*> Parameters;
-        typedef std::vector<const Event*> Events;
 
         const Channels& getChannels() const;
         const Channel * getChannel(size_t) const;
@@ -82,8 +85,6 @@ class Server: public ost::Thread {
         const Parameters& getParameters() const;
         const Parameter * getParameter(size_t) const;
         const Parameter * find(const PdServ::Parameter *p) const;
-
-        const Events& getEvents() const;
 
         template <typename T>
             const T * find(const std::string& path) const;
@@ -97,7 +98,6 @@ class Server: public ost::Thread {
         DirectoryNode variableDirectory;
         DirectoryNode* insertRoot;
 
-        Events events;
         size_t maxConnections;
 
         Channels channels;
@@ -109,6 +109,8 @@ class Server: public ost::Thread {
 
         mutable ost::Semaphore mutex;
 
+        ost::TCPSocket *server;
+
         // Reimplemented from ost::Thread
         void initial();
         void run();
@@ -117,12 +119,12 @@ class Server: public ost::Thread {
         void createChannels(DirectoryNode* baseDir,
                 const PdServ::Task* task, size_t taskIdx);
         void createParameters(DirectoryNode* baseDir);
-        void createEvents();
 
         struct CreateVariable {
             CreateVariable(Server* server, DirectoryNode* baseDir,
                     const PdServ::Variable* var);
             CreateVariable(const CreateVariable& other);
+            virtual ~CreateVariable() {}
 
             void newDimension(
                     const PdServ::DataType& dtype,

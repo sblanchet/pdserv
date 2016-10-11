@@ -54,7 +54,7 @@ class StatSignal: public PdServ::Signal, public Channel {
         double poll(const PdServ::Session *s,
                 void *buf, struct timespec *t) const;
         const char *getValue(const PdServ::SessionTask*) const;
-        void getValue(const PdServ::Session*, void*, struct timespec*) const;
+        int getValue(const PdServ::Session*, void*, struct timespec*) const;
 };
 
 }

@@ -25,12 +25,24 @@
 #define EVENT_H
 
 #include <string>
+#include <ctime>
+#include <vector>
 
 namespace PdServ {
 
 class Session;
 class SessionTask;
 class Config;
+class Event;
+
+struct EventData {
+    EventData();
+
+    const Event* event;
+    size_t index;
+    bool state;
+    struct timespec time;
+};
 
 class Event {
     public:
@@ -38,8 +50,7 @@ class Event {
             Emergency, Alert, Critical, Error, Warning, Notice, Info, Debug
         };
 
-        Event(const char *path, const Priority& prio,
-                size_t nelem, const char **messages);
+        Event(const char *path, const Priority& prio, size_t nelem);
 
         ~Event();
 
@@ -47,8 +58,10 @@ class Event {
 
         const Priority priority;
 
+        std::vector<struct timespec> setTime;
+        std::vector<struct timespec> resetTime;
+
         const size_t nelem;
-        const char ** message;
 
     private:
 };

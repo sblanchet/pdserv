@@ -41,7 +41,14 @@ Config::Config(): node(0)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Config::Config(yaml_document_t *d, yaml_node_t *n): document(d), node(n)
+Config::Config(const Config& other):
+    document(other.document), node(other.node)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Config::Config(yaml_document_t *d, yaml_node_t *n):
+    document(d), node(n)
 {
 }
 
@@ -112,6 +119,15 @@ const char * Config::load(const char *filename)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+Config& Config::operator=(const Config& other)
+{
+    document = other.document;
+    node     = other.node;
+
+    return *this;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 Config Config::operator[](const char *key) const
 {
     return this->operator[](std::string(key));
@@ -174,6 +190,11 @@ Config Config::operator[](size_t index) const
             }
             break;
 
+        case YAML_SCALAR_NODE:
+            if (index == 0)
+                return *this;
+            break;
+
         default:
             break;
     }
@@ -212,21 +233,21 @@ namespace PdServ {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Config::toInt() const
+int Config::toInt(int dflt) const
 {
     std::string sval(toString());
     if (sval.empty())
-        return 0;
+        return dflt;
 
     return strtol(sval.c_str(), 0, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-unsigned int Config::toUInt() const
+unsigned int Config::toUInt(unsigned int dflt) const
 {
     std::string sval(toString());
     if (sval.empty())
-        return 0;
+        return dflt;
 
     return strtoul(sval.c_str(), 0, 0);
 }
