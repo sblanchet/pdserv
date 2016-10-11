@@ -39,8 +39,7 @@ class StatSignal: public PdServ::Signal, public Channel {
     public:
         enum Type {ExecTime, Period, Overrun};
 
-        StatSignal(size_t taskId,
-                const PdServ::Task *task, Type type, size_t index);
+        StatSignal(const PdServ::Task *task, Type type, size_t index);
 
     private:
         const Type type;

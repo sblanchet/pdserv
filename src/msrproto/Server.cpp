@@ -62,10 +62,9 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
 
     maxConnections = config["maxconnections"].toUInt(~0U);
 
-    size_t taskIdx = 0;
     for (std::list<const PdServ::Task*> taskList(main->getTasks());
             taskList.size(); taskList.pop_front())
-        createChannels(insertRoot, taskList.front(), taskIdx++);
+        createChannels(insertRoot, taskList.front());
 
     createParameters(insertRoot);
 
@@ -82,13 +81,12 @@ Server::~Server()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::createChannels(DirectoryNode* baseDir,
-        const PdServ::Task* task, size_t taskIdx)
+void Server::createChannels(DirectoryNode* baseDir, const PdServ::Task* task)
 {
     Channel* c;
 
     LOG4CPLUS_TRACE(log,
-            LOG4CPLUS_TEXT("Create channels for task ") << taskIdx
+            LOG4CPLUS_TEXT("Create channels for task ") << task->index
             << LOG4CPLUS_TEXT(", Ts=") << task->sampleTime);
 
     std::list<const PdServ::Signal*> signals(task->getSignals());
@@ -103,28 +101,28 @@ void Server::createChannels(DirectoryNode* baseDir,
 //                << signal->dtype.name);
         PdServ::DataType::Iterator<CreateChannel>(
                 signal->dtype, signal->dim,
-                CreateChannel(this, baseDir, taskIdx, signal));
+                CreateChannel(this, baseDir, signal));
     }
 
     DirectoryNode* taskInfo = variableDirectory.create("Taskinfo");
 
     std::ostringstream os;
-    os << taskIdx;
+    os << task->index;
     DirectoryNode* t = taskInfo->create(os.str());
 
-    c = new TimeSignal(taskIdx, task, channels.size());
+    c = new TimeSignal(task, channels.size());
     channels.push_back(c);
     t->insert(c, "TaskTime");
 
-    c = new StatSignal(taskIdx, task, StatSignal::ExecTime, channels.size());
+    c = new StatSignal(task, StatSignal::ExecTime, channels.size());
     channels.push_back(c);
     t->insert(c, "ExecTime");
 
-    c = new StatSignal(taskIdx, task, StatSignal::Period, channels.size());
+    c = new StatSignal(task, StatSignal::Period, channels.size());
     channels.push_back(c);
     t->insert(c, "Period");
 
-    c = new StatSignal(taskIdx, task, StatSignal::Overrun, channels.size());
+    c = new StatSignal(task, StatSignal::Overrun, channels.size());
     channels.push_back(c);
     t->insert(c, "Overrun");
 }
@@ -371,10 +369,8 @@ bool Server::CreateVariable::newVariable(
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 Server::CreateChannel::CreateChannel(
-        Server* server, DirectoryNode* baseDir,
-        size_t taskIdx, const PdServ::Signal* s):
-    CreateVariable(server, baseDir, s),
-    taskIdx(taskIdx)
+        Server* server, DirectoryNode* baseDir, const PdServ::Signal* s):
+    CreateVariable(server, baseDir, s)
 {
 }
 
@@ -382,7 +378,7 @@ Server::CreateChannel::CreateChannel(
 bool Server::CreateChannel::createVariable(const PdServ::DataType& dtype,
         const PdServ::DataType::DimType& dim, size_t offset) const
 {
-    Channel *c = new Channel(taskIdx, static_cast<const PdServ::Signal*>(var),
+    Channel *c = new Channel(static_cast<const PdServ::Signal*>(var),
             server->channels.size(), dtype, dim, offset);
     bool rv;
 

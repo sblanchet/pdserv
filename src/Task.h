@@ -25,6 +25,7 @@
 #define TASK_H
 
 #include <list>
+#include <stddef.h>
 
 struct timespec;
 
@@ -36,9 +37,10 @@ class TaskStatistics;
 
 class Task {
     public:
-        Task(double sampleTime);
+        Task(size_t index, double sampleTime);
         virtual ~Task();
 
+        const size_t index;
         const double sampleTime;
 
         virtual std::list<const Signal*> getSignals() const = 0;

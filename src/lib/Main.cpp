@@ -1,3 +1,4 @@
+
 /*****************************************************************************
  *
  *  $Id$
@@ -300,7 +301,7 @@ PdServ::Config Main::config(const char* key) const
 /////////////////////////////////////////////////////////////////////////////
 Task* Main::addTask(double sampleTime, const char *name)
 {
-    task.push_back(new Task(this, sampleTime, name));
+    task.push_back(new Task(this, task.size(), sampleTime, name));
     return task.back();
 }
 

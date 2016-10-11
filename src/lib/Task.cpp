@@ -51,8 +51,8 @@ struct SignalList {
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-Task::Task(Main *main, double ts, const char * /*name*/):
-    PdServ::Task(ts), main(main), mutex(1)
+Task::Task(Main *main, size_t index, double ts, const char * /*name*/):
+    PdServ::Task(index, ts), main(main), mutex(1)
 {
     seqNo = 0;
     signalMemSize = 0;

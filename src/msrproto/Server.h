@@ -117,7 +117,7 @@ class Server: public ost::Thread {
         void final();
 
         void createChannels(DirectoryNode* baseDir,
-                const PdServ::Task* task, size_t taskIdx);
+                const PdServ::Task* task);
         void createParameters(DirectoryNode* baseDir);
 
         struct CreateVariable {
@@ -154,14 +154,12 @@ class Server: public ost::Thread {
 
         struct CreateChannel: CreateVariable {
             CreateChannel(Server* server, DirectoryNode* baseDir,
-                    size_t taskIdx, const PdServ::Signal* s);
+                    const PdServ::Signal* s);
 
             bool createVariable(
                     const PdServ::DataType& dtype,
                     const PdServ::DataType::DimType& dim,
                     size_t offset) const;
-
-            const size_t taskIdx;
         };
 
         struct CreateParameter: CreateVariable {

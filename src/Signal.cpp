@@ -22,22 +22,30 @@
  *****************************************************************************/
 
 #include "Signal.h"
+#include "Task.h"
 
 using namespace PdServ;
 
 //////////////////////////////////////////////////////////////////////
 Signal::Signal(
         const std::string& path,
-        double sampleTime,
+        const Task* task,
+        unsigned int decimation,
         const DataType& dtype,
         size_t ndims,
         const size_t *dim):
     Variable(path, dtype, ndims, dim),
-    sampleTime(sampleTime)
+    task(task), decimation(decimation)
 {
 }
 
 //////////////////////////////////////////////////////////////////////
 Signal::~Signal()
 {
+}
+
+//////////////////////////////////////////////////////////////////////
+double Signal::sampleTime() const
+{
+    return task->sampleTime * decimation;
 }

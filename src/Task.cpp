@@ -27,8 +27,8 @@
 using namespace PdServ;
 
 /////////////////////////////////////////////////////////////////////////////
-Task::Task(double sampleTime):
-    sampleTime(sampleTime)
+Task::Task(size_t index, double sampleTime):
+    index(index), sampleTime(sampleTime)
 {
 }
 

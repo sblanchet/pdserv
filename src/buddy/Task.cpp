@@ -30,7 +30,7 @@
 Task::Task( Main *main, double sampleTime,
         const unsigned int* photoReady, const char *album,
         const struct app_properties *app_properties):
-    PdServ::Task(sampleTime), main(main),
+    PdServ::Task(0U, sampleTime), main(main),
     photoReady(photoReady), album(album), app_properties(app_properties)
 {
 }

@@ -45,7 +45,7 @@ class SessionTaskData;
 
 class Task: public PdServ::Task {
     public:
-        Task(Main *main, double sampleTime, const char *name);
+        Task(Main *main, size_t index, double sampleTime, const char *name);
         virtual ~Task();
 
         Main * const main;

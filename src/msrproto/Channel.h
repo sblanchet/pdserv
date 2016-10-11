@@ -36,7 +36,7 @@ class XmlElement;
 
 class Channel: public Variable {
     public:
-        Channel(size_t taskId, const PdServ::Signal *s, size_t index,
+        Channel(const PdServ::Signal *s, size_t index,
                 const PdServ::DataType& dtype,
                 const PdServ::DataType::DimType& dim,
                 size_t offset);
@@ -46,7 +46,6 @@ class Channel: public Variable {
                 struct timespec* time) const;
 
         const PdServ::Signal* const signal;
-        const size_t taskIdx;
 };
 
 }

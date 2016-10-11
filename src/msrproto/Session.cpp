@@ -112,15 +112,16 @@ void Session::getSessionStatistics(PdServ::SessionStatistics &stats) const
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const struct timespec *Session::getTaskTime (size_t taskIdx) const
+const struct timespec *Session::getTaskTime (const PdServ::Task* task) const
 {
-    return subscriptionManager[taskIdx]->taskTime;
+    return subscriptionManager[task->index]->taskTime;
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const PdServ::TaskStatistics *Session::getTaskStatistics (size_t taskIdx) const
+const PdServ::TaskStatistics *Session::getTaskStatistics (
+        const PdServ::Task* task) const
 {
-    return subscriptionManager[taskIdx]->taskStatistics;
+    return subscriptionManager[task->index]->taskStatistics;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -744,15 +745,15 @@ void Session::xsad(const XmlParser* parser)
                 // If user did not supply a reduction, limit to a
                 // max of 10Hz automatically
                 reduction = static_cast<unsigned>(
-				0.1/mainSignal->sampleTime + 0.5);
+				0.1/mainSignal->sampleTime() + 0.5);
         }
         else if (!foundReduction) {
             // Quite possibly user input; choose reduction for 1Hz
             reduction = static_cast<unsigned>(
-                    1.0/mainSignal->sampleTime / blocksize + 0.5);
+                    1.0/mainSignal->sampleTime() / blocksize + 0.5);
         }
 
-        subscriptionManager[c->taskIdx]->subscribe(
+        subscriptionManager[c->signal->task->index]->subscribe(
                 c, group, reduction, blocksize, base64, precision);
     }
 }
@@ -774,7 +775,7 @@ void Session::xsod(const XmlParser* parser)
         for (std::list<unsigned int>::const_iterator it = intList.begin();
                 it != intList.end(); it++) {
             if (*it < channel.size()) {
-                size_t taskIdx = channel[*it]->taskIdx;
+                size_t taskIdx = channel[*it]->signal->task->index;
                 subscriptionManager[taskIdx]->unsubscribe(channel[*it], group);
             }
         }

@@ -61,6 +61,7 @@
 struct timespec;
 
 namespace PdServ {
+    class Task;
     class Parameter;
     class TaskStatistics;
     class SessionStatistics;
@@ -86,8 +87,9 @@ class Session:
         void getSessionStatistics(PdServ::SessionStatistics &stats) const;
         XmlElement createElement(const char *name);
 
-        const struct timespec *getTaskTime(size_t taskId) const;
-        const PdServ::TaskStatistics *getTaskStatistics(size_t taskId) const;
+        const struct timespec *getTaskTime(const PdServ::Task* task) const;
+        const PdServ::TaskStatistics *getTaskStatistics(
+                const PdServ::Task* task) const;
 
         double *getDouble() const {
             return &tmp.dbl;

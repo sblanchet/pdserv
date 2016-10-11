@@ -24,16 +24,17 @@
 #include "Channel.h"
 #include "XmlElement.h"
 #include "../Signal.h"
+#include "../Task.h"
 
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Channel::Channel(size_t taskIdx, const PdServ::Signal *s, size_t index,
+Channel::Channel(const PdServ::Signal *s, size_t index,
                 const PdServ::DataType& dtype,
                 const PdServ::DataType::DimType& dim,
                 size_t offset):
     Variable(s, index, dtype, dim, offset),
-    signal(s), taskIdx(taskIdx)
+    signal(s)
 {
 //    log_debug("new var %s idx=%u size=%zu, nelem=%zu offset=%zu",
 //            path().c_str(), index, dtype.size, dim.nelem, offset);
@@ -49,7 +50,7 @@ void Channel::setXmlAttributes( XmlElement &element, bool shortReply,
         // <channel name="/lan/World Time" alias="" index="0" typ="TDBL"
         //   datasize="8" bufsize="500" HZ="50" unit=""
         //   value="1283134199.93743"/>
-        double freq = 1.0 / signal->sampleTime;
+        double freq = 1.0 / signal->sampleTime();
 
         // The MSR protocol wants a bufsize, the maximum number of
         // values that can be retraced. This artificial limitation does
@@ -59,7 +60,7 @@ void Channel::setXmlAttributes( XmlElement &element, bool shortReply,
 
         // bufsize=
         XmlElement::Attribute(element, "bufsize") << bufsize;
-        XmlElement::Attribute(element, "task") << taskIdx;
+        XmlElement::Attribute(element, "task") << signal->task->index;
         XmlElement::Attribute(element, "HZ") << freq;
     }
 
