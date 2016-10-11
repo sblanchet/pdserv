@@ -24,22 +24,19 @@
 #ifndef MSREVENT_H
 #define MSREVENT_H
 
-#include "Session.h"
-
 namespace PdServ {
     class Event;
+    class EventData;
 }
 
 namespace MsrProto {
 
+class Session;
+
 class Event {
     public:
-        Event(const PdServ::Event *s);
-
-        const PdServ::Event *event;
-
-        static void toXml(Session::TCPStream& tcp, const PdServ::Event* event,
-                size_t index, bool state, const struct timespec& t);
+        static bool toXml(Session* session,
+                const PdServ::EventData& eventData);
 
     private:
         static const char* levelString(const PdServ::Event *e);

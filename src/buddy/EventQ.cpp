@@ -59,8 +59,8 @@ void EventQ::test(const Event* event, size_t photoIdx)
             data.event = event;
             data.index = i;
             data.state = triggered[i] == 1;
-            data.time.tv_sec  =  time[i];
-            data.time.tv_nsec = (time[i] - data.time.tv_sec) * 1.0e9;
+            data.time.tv_sec  = (time_t) time[i];
+            data.time.tv_nsec = (time_t)((time[i] - data.time.tv_sec) * 1.0e9);
 
             if (++writePointer == events.size())
                 writePointer = 0;

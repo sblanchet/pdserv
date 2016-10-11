@@ -29,8 +29,6 @@
 
 namespace PdServ {
     class Variable;
-    class Signal;
-    class Parameter;
 }
 
 namespace MsrProto {

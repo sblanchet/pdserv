@@ -28,6 +28,7 @@
 #include <cc++/thread.h>
 
 #include "../Signal.h"
+#include "pdserv.h"
 
 namespace PdServ {
     class Session;
@@ -47,31 +48,36 @@ class Signal: public PdServ::Signal {
                 size_t ndims = 1,
                 const size_t *dim = 0);
 
+        Task* const task;
+
         const char * const addr;
 
         static const size_t dataTypeIndex[PdServ::DataType::maxWidth+1];
-//        const PdServ::DataType& dataType;
         const size_t index;
 
+        read_signal_t read_cb;
+        void* priv_data;
+
     private:
-        Task* const task;
         mutable ost::Semaphore mutex;
 
         typedef std::set<const PdServ::SessionTask*> SessionSet;
         mutable SessionSet sessions;
 
-
         // Reimplemented from PdServ::Signal
         void subscribe(PdServ::SessionTask *) const;
         void unsubscribe(PdServ::SessionTask *) const;
         double sampleTime() const;
-        double poll(const PdServ::Session *s,
-                void *buf, struct timespec *t) const;
         const char *getValue(const PdServ::SessionTask*) const;
 
         // Reimplemented from PdServ::Variable
-        void getValue(const PdServ::Session*,
+        int getValue(const PdServ::Session*,
                 void *, struct timespec * = 0) const;
+
+        // A default function used when read_cb is not specified by the user
+        static int copy(const struct pdvariable *signal,
+                void *dst, const void *src, size_t len,
+                struct timespec* time, void *priv_data);
 };
 
 #endif //LIB_SIGNAL

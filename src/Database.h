@@ -21,38 +21,39 @@
  *
  *****************************************************************************/
 
-#ifndef SUPERVISOR_SERVER_H
-#define SUPERVISOR_SERVER_H
+#ifndef PERSISTENT_DATABASE_H
+#define PERSISTENT_DATABASE_H
 
-#include <cc++/thread.h>
-
-#include "../Config.h"
-#include "../Session.h"
+#include <string>
+#include <set>
+#include <db.h>
+#include <log4cplus/logger.h>
 
 namespace PdServ {
-    class Main;
-    class Config;
-}
 
-namespace Supervisor {
+class Parameter;
 
-class Session;
-class Event;
-
-class Server: public ost::Thread, private PdServ::Session {
+class Database {
     public:
-        Server(const PdServ::Main *main, const PdServ::Config &config);
-        ~Server();
+        Database(const log4cplus::Logger& log, const std::string& path);
+        ~Database();
+
+        operator bool() const;
+
+        bool read(const Parameter* p,
+                const char** buf, const struct timespec** time) const;
+        void save(const Parameter* p,
+                const char* data, const struct timespec* time);
+        void checkKeys(const std::set<std::string>& keys);
 
     private:
-        const PdServ::Main * const main;
 
-        mutable ost::Semaphore mutex;
+        DB* db;
+        const log4cplus::Logger& log;
 
-        // Reimplemented from ost::Thread
-        void run();
+        void close();
 };
 
 }
 
-#endif //SUPERVISOR_SERVER_H
+#endif //PERSISTENT_DATABASE_H

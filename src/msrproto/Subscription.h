@@ -24,12 +24,14 @@
 #ifndef SUBSCRIPTION_H
 #define SUBSCRIPTION_H
 
+#include <ios>
+
 namespace MsrProto {
 
 class Subscription {
     public:
         Subscription(const Channel *, size_t decimation,
-                size_t blocksize, bool base64, size_t precision);
+                size_t blocksize, bool base64, std::streamsize precision);
         ~Subscription();
 
         const Channel *channel;
@@ -52,7 +54,7 @@ class Subscription {
 
         size_t nblocks;         // number of blocks to print
 
-        size_t precision;
+        std::streamsize precision;
         bool base64;
 
         char *data_bptr;

@@ -25,8 +25,12 @@
 #define LIB_MAIN_H
 
 #include <set>
+#include <list>
+#include <cc++/thread.h>
 
 #include "../Main.h"
+
+struct EventData;
 
 namespace PdServ {
     class Signal;
@@ -39,23 +43,20 @@ class Signal;
 class Event;
 class Task;
 
-class Main: public PdServ::Main {
+class Main: public PdServ::Main, public ost::Thread {
     public:
         Main( const char *name, const char *version,
                 int (*gettime)(struct timespec*));
         ~Main();
 
         void setConfigFile(const char *file);
-        int run();
-
-        void getParameters(Task *, const struct timespec *) const;
+        int setup();
 
         Task* addTask(double sampleTime, const char *name);
 
-        Event* addEvent(const char *path, int prio,
-                size_t nelem, const char **messages);
-        bool setEvent(const Event* event,
-                size_t element, bool state, const timespec* t) const;
+        Event* addEvent(const char *path, int prio, size_t n);
+        void setEvent(Event* event,
+                size_t element, bool state, const timespec* t);
 
         Parameter* addParameter( const char *path,
                 unsigned int mode, const PdServ::DataType& datatype,
@@ -65,52 +66,45 @@ class Main: public PdServ::Main {
                 const char *path, const PdServ::DataType& datatype,
                 const void *addr, size_t n, const size_t *dim);
 
+        int getValue(const Signal* s, void* dst, struct timespec* time);
+
         static const double bufferTime;
 
     private:
-        mutable ost::Semaphore mutex;
-
         typedef std::list<Task*> TaskList;
         TaskList task;
 
-        int ipc_pipe[2];
+        ost::Semaphore sdoMutex;
+        int ipcRx;
+        int ipcTx;
+        int terminatePipe;
+        bool ipc_error;
 
         int pid;
         std::string configFile;
-        PdServ::Config config;
-
-        size_t tSampleMin;      // Minimal sample time in ms
+        PdServ::Config m_config;
 
         size_t shmem_len;
         void *shmem;
 
-        /* Pointer to event states in shmem */
-        struct EventData *eventData;
+        char* signalData;
 
         /* Structure where event changes are written to in shmem */
-        struct EventData **eventDataWp;   // Pointer to next write location
-        struct EventData *eventDataStart; // First valid block
-        struct EventData *eventDataEnd;   // Last valid block
-        mutable ost::Semaphore eventMutex;
+        struct ::EventData **eventDataWp;   // Pointer to next write location
+        struct ::EventData *eventDataStart; // First valid block
+        struct ::EventData *eventDataEnd;   // Last valid block
+        ost::Semaphore eventMutex;
 
-        struct SDOStruct *sdo;
-        char *sdoData;
+        char *parameterData;
 
         int (* const rttime)(struct timespec*);
 
         typedef std::list<Event*> EventList;
         EventList events;
 
-        typedef std::set<int> EventSet;
-        EventSet eventSet;
-
-        typedef std::set<std::string> VariableSet;
-        VariableSet variableSet;
-
         typedef std::list<Parameter*> ParameterList;
         ParameterList parameters;
 
-        int runForever();
         int readConfiguration();
 
         // Reimplemented from PdServ::Main
@@ -125,12 +119,19 @@ class Main: public PdServ::Main {
         void cleanup(const PdServ::Session *session) const;
         const PdServ::Event *getNextEvent(const PdServ::Session* session,
                 size_t *index, bool *state, struct timespec *t) const;
-        int setParameter(const PdServ::Parameter* p,
-                size_t offset, size_t count) const;
-        void processPoll(
-                unsigned int delay_ms, const PdServ::Signal * const *s,
-                size_t nelem, void * const * pollDest,
-                struct timespec *t) const;
+        void initializeParameter(PdServ::Parameter* p,
+                const char* data, const struct timespec* mtime,
+                const PdServ::Signal* s);
+        bool getPersistentSignalValue(const PdServ::Signal *s,
+                char* buf, struct timespec* time);
+        PdServ::Parameter* findParameter(const std::string& path) const;
+        PdServ::Config config(const char*) const;
+        int setValue(const PdServ::ProcessParameter* p,
+                const char* buf, size_t offset, size_t count);
+
+        // Reimplemented from ost::Thread
+        void run();
+        void final();
 };
 
 #endif // LIB_MAIN_H

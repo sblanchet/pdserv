@@ -25,7 +25,6 @@
 
 #include "Server.h"
 #include "Channel.h"
-#include "Event.h"
 #include "TimeSignal.h"
 #include "StatSignal.h"
 #include "Parameter.h"
@@ -49,6 +48,8 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     active(&_active),
     mutex(1)
 {
+    server = 0;
+
     port = config["port"].toUInt();
     itemize = config["splitvectors"].toUInt();
 
@@ -59,9 +60,7 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
         insertRoot = variableDirectory.create(
                 config["pathprefix"].toString(main->name));
 
-    maxConnections = config["maxconnections"].toUInt();
-    if (!maxConnections)
-        maxConnections = ~0U;
+    maxConnections = config["maxconnections"].toUInt(~0U);
 
     size_t taskIdx = 0;
     for (std::list<const PdServ::Task*> taskList(main->getTasks());
@@ -69,7 +68,6 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
         createChannels(insertRoot, taskList.front(), taskIdx++);
 
     createParameters(insertRoot);
-    createEvents();
 
     start();
 }
@@ -101,8 +99,8 @@ void Server::createChannels(DirectoryNode* baseDir,
     for (; signals.size(); signals.pop_front()) {
         const PdServ::Signal *signal = signals.front();
 
-        LOG4CPLUS_TRACE(log, LOG4CPLUS_TEXT(signal->path)
-                << signal->dtype.name);
+//        LOG4CPLUS_TRACE(log, LOG4CPLUS_TEXT(signal->path)
+//                << signal->dtype.name);
         PdServ::DataType::Iterator<CreateChannel>(
                 signal->dtype, signal->dim,
                 CreateChannel(this, baseDir, taskIdx, signal));
@@ -132,22 +130,9 @@ void Server::createChannels(DirectoryNode* baseDir,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Server::createEvents ()
-{
-    LOG4CPLUS_TRACE(log,
-            LOG4CPLUS_TEXT("Create events"));
-
-    std::list<const PdServ::Event*> mainEvents(main->getEvents());
-    this->events.reserve(mainEvents.size());
-
-    for (; mainEvents.size(); mainEvents.pop_front())
-        this->events.push_back(new Event(mainEvents.front()));
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Server::createParameters(DirectoryNode* baseDir)
 {
-    LOG4CPLUS_TRACE(log,
+    LOG4CPLUS_TRACE_STR(log,
             LOG4CPLUS_TEXT("Create parameters"));
 
     std::list<const PdServ::Parameter*> mainParam(main->getParameters());
@@ -172,6 +157,8 @@ void Server::initial()
 /////////////////////////////////////////////////////////////////////////////
 void Server::final()
 {
+    delete server;
+
     _active = false;
 
     while (!sessions.empty())
@@ -183,8 +170,6 @@ void Server::final()
 /////////////////////////////////////////////////////////////////////////////
 void Server::run()
 {
-    ost::TCPSocket *server = 0;
-
     ost::tpport_t port = this->port ? this->port : 2345;
 
     do {
@@ -202,7 +187,7 @@ void Server::run()
                         << LOG4CPLUS_C_STR_TO_TSTRING(::strerror(err)));
                 return;
             }
-            LOG4CPLUS_DEBUG(log,
+            LOG4CPLUS_INFO(log,
                     LOG4CPLUS_TEXT("Port ") << port
                     << LOG4CPLUS_TEXT(" is busy. Trying next one..."));
             port++;
@@ -216,7 +201,7 @@ void Server::run()
         }
 
         try {
-            LOG4CPLUS_TRACE_STR(log,
+            LOG4CPLUS_DEBUG_STR(log,
                     LOG4CPLUS_TEXT("New client connection"));
             ost::SemaphoreLock lock(mutex);
             sessions.insert(new Session(this, server));
@@ -316,12 +301,6 @@ const Server::Parameters& Server::getParameters() const
 const Parameter *Server::find( const PdServ::Parameter *p) const
 {
     return parameterMap.find(p)->second;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-const Server::Events& Server::getEvents() const
-{
-    return events;
 }
 
 /////////////////////////////////////////////////////////////////////////////

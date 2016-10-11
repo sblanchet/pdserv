@@ -58,10 +58,10 @@
 #include <set>
 #include <cstdio>
 
+struct timespec;
+
 namespace PdServ {
     class Parameter;
-    class SessionTaskData;
-    class Task;
     class TaskStatistics;
     class SessionStatistics;
 }
@@ -69,13 +69,12 @@ namespace PdServ {
 namespace MsrProto {
 
 class SubscriptionManager;
-class TaskStatistics;
-class SessionStatistics;
 class Server;
 class Parameter;
-class Subscription;
 
-class Session: public ost::Thread, public PdServ::Session {
+class Session:
+    public ost::TCPSession,
+    public PdServ::Session {
     public:
         Session( Server *s, ost::TCPSocket *socket);
         ~Session();
@@ -85,6 +84,7 @@ class Session: public ost::Thread, public PdServ::Session {
         void parameterChanged(const Parameter*);
         void setAIC(const Parameter* p);
         void getSessionStatistics(PdServ::SessionStatistics &stats) const;
+        XmlElement createElement(const char *name);
 
         const struct timespec *getTaskTime(size_t taskId) const;
         const PdServ::TaskStatistics *getTaskStatistics(size_t taskId) const;
@@ -93,38 +93,16 @@ class Session: public ost::Thread, public PdServ::Session {
             return &tmp.dbl;
         }
 
-        class TCPStream: public ost::Socket, public std::streambuf {
-            public:
-                TCPStream(ost::TCPSocket *socket);
-                ~TCPStream();
-
-                int read(char *buf, size_t n, timeout_t timeout);
-
-                XmlElement createElement(const char *name);
-
-                size_t inBytes;
-                size_t outBytes;
-
-                std::string peer;
-                std::string commandId;
-
-            private:
-                std::ostream os;
-
-                FILE *file;
-
-                // Reimplemented from std::streambuf
-                int overflow ( int c );
-                std::streamsize xsputn ( const char * s, std::streamsize n );
-                int sync();
-        };
-
     private:
         Server * const server;
 
-        TCPStream tcp;
+        size_t inBytes;
+        size_t outBytes;
+        std::string peer() const;
 
         std::ostream xmlstream;
+
+        std::string commandId;
 
         // Protection for inter-session communication
         ost::Semaphore mutex;
@@ -165,33 +143,34 @@ class Session: public ost::Thread, public PdServ::Session {
         void run();
         void final();
 
-//        // Reimplemented from PdServ::Session
-//        void newSignal(const PdServ::Task *task, const PdServ::Signal *);
-//        void newSignalData(const PdServ::SessionTaskData*,
-//                const struct timespec *);
+        // Reimplemented from PdServ::Session
+        ssize_t write(const void* buf, size_t len);
+        ssize_t read(       void* buf, size_t len);
 
-        void processCommand(const XmlParser::Element&);
+        void processCommand(const XmlParser*);
         // Management variables
         bool writeAccess;
         bool quiet;
         bool polite;
         bool echoOn;
-        std::string peer;
+        std::string remoteHostName;
         std::string client;
 
         // Here are all the commands the MSR protocol supports
-        void broadcast(const XmlParser::Element&);
-        void echo(const XmlParser::Element&);
-        void ping(const XmlParser::Element&);
-        void readChannel(const XmlParser::Element&);
-        void listDirectory(const XmlParser::Element&);
-        void readParameter(const XmlParser::Element&);
-        void readParamValues(const XmlParser::Element&);
-        void readStatistics(const XmlParser::Element&);
-        void remoteHost(const XmlParser::Element&);
-        void writeParameter(const XmlParser::Element&);
-        void xsad(const XmlParser::Element&);
-        void xsod(const XmlParser::Element&);
+        void broadcast(const XmlParser*);
+        void echo(const XmlParser*);
+        void ping(const XmlParser*);
+        void readChannel(const XmlParser*);
+        void listDirectory(const XmlParser*);
+        void readParameter(const XmlParser*);
+        void readParamValues(const XmlParser*);
+        void readStatistics(const XmlParser*);
+        void messageHistory(const XmlParser*);
+        void remoteHost(const XmlParser*);
+        void startTLS(const XmlParser*);
+        void writeParameter(const XmlParser*);
+        void xsad(const XmlParser*);
+        void xsod(const XmlParser*);
 };
 
 }

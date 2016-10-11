@@ -41,7 +41,7 @@ Channel::Channel(size_t taskIdx, const PdServ::Signal *s, size_t index,
 
 /////////////////////////////////////////////////////////////////////////////
 void Channel::setXmlAttributes( XmlElement &element, bool shortReply,
-        const char *data, size_t precision) const
+        const char *data, std::streamsize precision, struct timespec* time) const
 {
     setAttributes(element, shortReply);
 
@@ -62,6 +62,9 @@ void Channel::setXmlAttributes( XmlElement &element, bool shortReply,
         XmlElement::Attribute(element, "task") << taskIdx;
         XmlElement::Attribute(element, "HZ") << freq;
     }
+
+    if (time)
+        XmlElement::Attribute(element, "time") << *time;
 
     if (data)
         XmlElement::Attribute(element, "value").csv(this,

@@ -22,29 +22,28 @@
  *****************************************************************************/
 
 #include "../Event.h"
+#include "Session.h"
 #include "Event.h"
 #include "XmlElement.h"
 
 using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
-Event::Event(const PdServ::Event *e):
-    event(e)
+bool Event::toXml(Session* session, const PdServ::EventData& eventData)
 {
-}
+    const PdServ::Event* event = eventData.event;
 
-/////////////////////////////////////////////////////////////////////////////
-void Event::toXml(Session::TCPStream &tcp, const PdServ::Event* event,
-        size_t index, bool state, const struct timespec& t)
-{
-    XmlElement msg(tcp.createElement(levelString(event)));
+    if (event) {
+        XmlElement msg(session->createElement(levelString(event)));
 
-    XmlElement::Attribute(msg, "path").setEscaped(event->path);
-    XmlElement::Attribute(msg, "index") << index;
-    XmlElement::Attribute(msg, "state") << state;
-    XmlElement::Attribute(msg, "time") << t;
-    if (event->message and state)
-        XmlElement::Attribute(msg, "text").setEscaped(event->message[index]);
+        XmlElement::Attribute(msg, "name").setEscaped(event->path);
+        if (event->nelem > 1)
+            XmlElement::Attribute(msg, "index") << eventData.index;
+        XmlElement::Attribute(msg, "state") << eventData.state;
+        XmlElement::Attribute(msg, "time") << eventData.time;
+    }
+
+    return event;
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -56,7 +56,7 @@ class Variable {
         // This method directly copies the variable's value into buf. This
         // method has to be used when a variable's value is valid only within
         // the method's calling context
-        virtual void getValue(
+        virtual int getValue(
                 const Session*,         /**< Calling session */
                 void *buf,              /**< Buffer where data is copied to */
                 struct timespec * = 0   /**< Optional timespec stamp */

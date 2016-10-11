@@ -46,7 +46,7 @@ class TimeSignal: public PdServ::Signal, public Channel {
         double poll(const PdServ::Session *s,
                 void *buf, struct timespec *t) const;
         const char *getValue(const PdServ::SessionTask*) const;
-        void getValue(const PdServ::Session*,
+        int getValue(const PdServ::Session*,
                 void*, struct timespec*) const;
 };
 

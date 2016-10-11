@@ -82,14 +82,6 @@ void pdserv_exit(struct pdserv* pdserv)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdserv_get_parameters(struct pdserv* pdserv, struct pdtask *task,
-        const struct timespec *t)
-{
-    reinterpret_cast<Main*>(pdserv)->getParameters(
-            reinterpret_cast<Task*>(task), t);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void pdserv_update_statistics(struct pdtask* task,
         double exec_time, double cycle_time, unsigned int overrun)
 {
@@ -100,7 +92,7 @@ void pdserv_update_statistics(struct pdtask* task,
 /////////////////////////////////////////////////////////////////////////////
 void pdserv_update(struct pdtask* task, const struct timespec *t)
 {
-    reinterpret_cast<Task*>(task)->update(t);
+    reinterpret_cast<Task*>(task)->rt_update(t);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -124,21 +116,20 @@ static const PdServ::DataType& getDataType(int dt)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-const struct pdevent *pdserv_event (struct pdserv* pdserv, const char *path,
-        int prio, size_t n, const char **message)
+struct pdevent *pdserv_event (struct pdserv* pdserv, const char *path,
+        int prio, size_t n)
 {
     Main *main = reinterpret_cast<Main*>(pdserv);
 
-    Event *e = main->addEvent(path, prio, n, message);
-
-    return reinterpret_cast<const struct pdevent *>(e);
+    return reinterpret_cast<struct pdevent *>(
+            main->addEvent(path, prio, n));
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void pdserv_event_set(const struct pdevent *event,
+void pdserv_event_set(struct pdevent *event,
         size_t element, char state, const timespec *t)
 {
-    reinterpret_cast<const Event*>(event)->set(element, state != 0, t);
+    reinterpret_cast<Event*>(event)->set(element, bool(state), t);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -149,15 +140,21 @@ struct pdvariable *pdserv_signal(
         int datatype,
         const void *addr,
         size_t n,
-        const size_t *dim
+        const size_t *dim,
+        read_signal_t read_cb,
+        void* priv_data
         )
 {
     Task *task = reinterpret_cast<Task*>(pdtask);
 
-    PdServ::Variable *v = task->main->addSignal(
+    Signal *s = task->main->addSignal(
             task, decimation, path, getDataType(datatype), addr, n, dim);
+    if (read_cb)
+        s->read_cb = read_cb;
+    s->priv_data = priv_data;
 
-    return reinterpret_cast<struct pdvariable *>(v);
+    return reinterpret_cast<struct pdvariable *>(
+            static_cast<PdServ::Variable*>(s));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -169,7 +166,7 @@ struct pdvariable *pdserv_parameter(
         void *addr,
         size_t n,
         const size_t *dim,
-        paramtrigger_t trigger = 0,
+        write_parameter_t trigger = 0,
         void *priv_data = 0
         )
 {
@@ -178,7 +175,7 @@ struct pdvariable *pdserv_parameter(
     Parameter *p = main->addParameter(
             path, mode, getDataType(datatype), addr, n, dim);
     if (trigger)
-        p->trigger = trigger;
+        p->write_cb = trigger;
     p->priv_data = priv_data;
 
     return reinterpret_cast<struct pdvariable *>
@@ -206,5 +203,5 @@ void pdserv_set_comment(struct pdvariable *var, const char *comment)
 /////////////////////////////////////////////////////////////////////////////
 int pdserv_prepare(struct pdserv* pdserv)
 {
-    return reinterpret_cast<Main*>(pdserv)->run();
+    return reinterpret_cast<Main*>(pdserv)->setup();
 }

@@ -36,18 +36,19 @@ static char error[100];
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-Config::Config():
-    document(0),
-    owning_document(false),
-    node(0)
+Config::Config(): node(0)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Config::Config(const Config& other):
+    document(other.document), node(other.node)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
 Config::Config(yaml_document_t *d, yaml_node_t *n):
-    document(d),
-    owning_document(false),
-    node(n)
+    document(d), node(n)
 {
 }
 
@@ -58,28 +59,14 @@ Config::~Config()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Config &Config::operator=(const Config &other)
-{
-    document = other.document;
-    owning_document = false;
-    node = other.node;
-
-    return *this;
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Config::clear()
 {
-    file.clear();
-
-    if (owning_document) {
+    if (!file.empty()) {
         yaml_document_delete(document);
         delete document;
-        document = 0;
-        owning_document = false;
-    }
 
-    node = 0;
+        file.clear();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -113,7 +100,6 @@ const char * Config::load(const char *filename)
 
     clear();
     document = new yaml_document_t;
-    owning_document = true;
     this->file = filename;
 
     /* START new code */
@@ -130,6 +116,15 @@ const char * Config::load(const char *filename)
     node = yaml_document_get_root_node(document);
 
     return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+Config& Config::operator=(const Config& other)
+{
+    document = other.document;
+    node     = other.node;
+
+    return *this;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -195,6 +190,11 @@ Config Config::operator[](size_t index) const
             }
             break;
 
+        case YAML_SCALAR_NODE:
+            if (index == 0)
+                return *this;
+            break;
+
         default:
             break;
     }
@@ -233,21 +233,21 @@ namespace PdServ {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-int Config::toInt() const
+int Config::toInt(int dflt) const
 {
     std::string sval(toString());
     if (sval.empty())
-        return 0;
+        return dflt;
 
     return strtol(sval.c_str(), 0, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////
-unsigned int Config::toUInt() const
+unsigned int Config::toUInt(unsigned int dflt) const
 {
     std::string sval(toString());
     if (sval.empty())
-        return 0;
+        return dflt;
 
     return strtoul(sval.c_str(), 0, 0);
 }

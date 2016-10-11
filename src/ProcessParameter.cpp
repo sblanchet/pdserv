@@ -31,7 +31,7 @@ using namespace PdServ;
 //////////////////////////////////////////////////////////////////////
 ProcessParameter::ProcessParameter(
         Main* main,
-        char* const* addr,
+        const char* const* addr,
         const struct timespec* mtime,
         const std::string& path,
         unsigned int mode,
@@ -49,28 +49,23 @@ int ProcessParameter::setValue(const PdServ::Session* session,
 {
     ost::WriteLock lock(mutex);
 
-    char* addr = *valueBuf + offset;
-
-    // Save a copy of data to be changed
-    char copy[count];
-    std::copy(addr, addr + count, copy);
-
-    // Copy data to parameter area
-    std::copy(buf, buf + count, addr);
-
-    int rv = main->setParameter(this, session, offset, count);
-    if (rv)
-        std::copy(copy, copy + count, addr);
-
-    return rv;
+    return main->setValue(this, session, buf, offset, count);
 }
 
 //////////////////////////////////////////////////////////////////////
-void ProcessParameter::getValue(const PdServ::Session* /*session*/,
+int ProcessParameter::getValue(const PdServ::Session* /*session*/,
         void* buf,  struct timespec *time) const
 {
     ost::ReadLock lock(mutex);
 
+    copyValue(buf, time);
+
+    return 0;
+}
+
+//////////////////////////////////////////////////////////////////////
+void ProcessParameter::copyValue(void* buf, struct timespec* time) const
+{
     std::copy(*valueBuf, *valueBuf + memSize, reinterpret_cast<char*>(buf));
     if (time)
         *time = *mtime;

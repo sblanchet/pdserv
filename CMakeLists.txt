@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-#  Copyright 2010 - 2012  Richard Hacker (lerichi at gmx dot net)
+#  Copyright 2010 - 2016  Richard Hacker (lerichi at gmx dot net)
 #                         Florian Pose <fp@igh-essen.com>
 #
 #  This file is part of the pdserv library.
@@ -36,6 +36,8 @@
 #
 #       -DCMAKE_BUILD_TYPE=Debug|Release|RelWithDebInfo|MinSizeRel
 #       -DDEBUG=1               # prints debug messages in terminal
+#       -DTEST=1                # Compile tests (Requires
+#                               #     -DCMAKE_BUILD_TYPE=Debug)
 #
 #  option
 #
@@ -56,13 +58,13 @@ SET (CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE)
 # - make dist
 # - add tag release-x.x.x
 #
-SET (MAJOR_VERSION 1)
-SET (MINOR_VERSION 1)
-SET (PATCH_LEVEL 0)
+SET (MAJOR_VERSION 3)
+SET (MINOR_VERSION 0)
+SET (PATCH_LEVEL 99)
 SET (VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL})
 
 # library version
-SET (SOVERSION 2.0.0)
+SET (SOVERSION ${MAJOR_VERSION}.${MINOR_VERSION})
 
 LIST (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
@@ -71,14 +73,15 @@ LIST (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 IF (${CMAKE_VERSION} VERSION_LESS "2.8.5")
   LIST (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/compat/")
 ENDIF ()
+
 INCLUDE (GNUInstallDirs)
+INCLUDE (CMakeDependentOption)
+INCLUDE (InstallRequiredSystemLibraries)
 
 SET (ENABLE_BUDDY "${ENABLE_BUDDY}" CACHE BOOL
     "Build etherlab_buddy" FORCE)
 
 ENABLE_TESTING()
-
-INCLUDE (InstallRequiredSystemLibraries)
 
 SET (CPACK_PACKAGE_DESCRIPTION_SUMMARY "Process data communications library")
 SET (CPACK_PACKAGE_VENDOR "Richard Hacker")
@@ -95,7 +98,6 @@ SET (CPACK_GENERATOR "TGZ")
 SET (CPACK_GENERATOR "DEB")
 SET (CPACK_DEBIAN_PACKAGE_MAINTAINER "Richard Hacker") #required
 LIST (APPEND CPACK_SOURCE_IGNORE_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/*build.*/"
     "/\\\\.hg"
     "\\\\.sw.$"
     "~$"
@@ -104,8 +106,6 @@ LIST (APPEND CPACK_SOURCE_IGNORE_FILES
 
 INCLUDE (CPack)
 ADD_CUSTOM_TARGET (dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
-
-FIND_PACKAGE (Threads)
 
 # Search for mercurial, used to add ID information to the library
 FIND_PACKAGE (Mercurial)
@@ -118,18 +118,25 @@ FIND_PACKAGE (PkgConfig REQUIRED)
 PKG_CHECK_MODULES (LIBCCEXT2 REQUIRED libccext2)
 FIND_PACKAGE (Log4cplus REQUIRED)
 FIND_PACKAGE (Yaml REQUIRED)
+FIND_PACKAGE (BerkeleyDB REQUIRED)
+FIND_PACKAGE (CyrusSASL REQUIRED)
+FIND_PACKAGE (GnuTLS)
 
 IF (UNIX)
     ADD_CUSTOM_TARGET (tags etags -R ${CMAKE_CURRENT_SOURCE_DIR})
     ADD_CUSTOM_TARGET (etags DEPENDS tags)
 ENDIF ()
 
-ADD_DEFINITIONS ("-Wall -Wextra")
+ADD_DEFINITIONS (-Wall -Wextra)
 
-INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include")
 ADD_SUBDIRECTORY (src)
-ADD_SUBDIRECTORY (include)
-ADD_SUBDIRECTORY (test)
+
+STRING (COMPARE EQUAL "${CMAKE_BUILD_TYPE}" "Debug" ENABLE_TEST)
+CMAKE_DEPENDENT_OPTION (TEST "Compile test subdirectory" ON
+    "ENABLE_TEST" OFF)
+IF (TEST)
+  ADD_SUBDIRECTORY (test)
+ENDIF ()
 
 OPTION ( DEBUG "Debugging output" OFF )
 SET  (PDS_DEBUG ${DEBUG})
@@ -146,6 +153,15 @@ CONFIGURE_FILE (
 CONFIGURE_FILE (
     "${PROJECT_SOURCE_DIR}/pdserv.spec.in"
     "${PROJECT_BINARY_DIR}/pdserv.spec"
+    )
+
+CONFIGURE_FILE (
+    "${PROJECT_SOURCE_DIR}/include/pdserv.h.in"
+    "${PROJECT_BINARY_DIR}/include/pdserv.h"
+    )
+
+INSTALL (FILES "${PROJECT_BINARY_DIR}/include/pdserv.h"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
     )
 
 INSTALL (FILES "${CMAKE_CURRENT_SOURCE_DIR}/pdserv.conf"

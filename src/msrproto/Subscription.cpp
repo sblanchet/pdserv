@@ -35,7 +35,7 @@ using namespace MsrProto;
 
 /////////////////////////////////////////////////////////////////////////////
 Subscription::Subscription(const Channel *channel,
-        size_t decimation, size_t blocksize, bool base64, size_t precision):
+        size_t decimation, size_t blocksize, bool base64, std::streamsize precision):
     channel(channel),
     decimation(blocksize ? decimation : 1),
     blocksize(blocksize),

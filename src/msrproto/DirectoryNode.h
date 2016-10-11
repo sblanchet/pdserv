@@ -29,7 +29,6 @@
 #include <map>
 
 namespace PdServ {
-    class Variable;
     class Session;
 }
 

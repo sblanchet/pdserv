@@ -35,7 +35,6 @@ namespace MsrProto {
 
 class Session;
 class XmlElement;
-class ostream;
 
 class Parameter: public Variable {
     public:
@@ -46,7 +45,7 @@ class Parameter: public Variable {
 
         void setXmlAttributes(XmlElement&, const char *buf,
                 struct timespec const& ts, bool shortReply,
-                bool hex, size_t precision) const;
+                bool hex, std::streamsize precision) const;
 
         bool inform(Session* session, size_t begin, size_t end) const;
         void addChild(const Parameter* child);
