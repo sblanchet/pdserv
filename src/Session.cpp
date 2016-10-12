@@ -118,56 +118,84 @@ int Session::overflow(int value)
 /////////////////////////////////////////////////////////////////////////////
 std::streamsize Session::xsputn(const char * buf, std::streamsize count)
 {
-    std::streamsize rest = count;
+    const char* ptr = buf;
+
     do {
         // Put data into buffer
-        size_t n = std::min(epptr() - pptr(), rest);
-        std::copy(buf, buf + n, pptr());
+        size_t n = std::min(epptr() - pptr(), count);
+        std::copy(ptr, ptr + n, pptr());
 
         // Update pointers
         pbump(n);
-        buf += n;
-        rest -= n;
+        ptr += n;
+        count -= n;
 
-        // flush if buffer is full
-        if ((pptr() == epptr() and sync()) or p_eof)
-            return 0;
+    } while (!(pptr() == epptr() and flush(true)) and count);
 
-    } while (rest);
-
-    return count;
+    return ptr - buf;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 int Session::sync()
 {
-    size_t count = pptr() - pbase();
-    if (!count)
+    return flush(false);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// Flush output buffer.
+//
+// partial: true: do only one flush pass
+int Session::flush(bool partial)
+{
+    const char* buf = pbase();
+    size_t count = pptr() - buf;
+
+    if (p_eof)
+        return -1;
+    else if (!count)
         return 0;
 
-    ssize_t result = 0;
+    log_debug("flushing %i %zu", partial, count);
+    int result;
+    do {
 #ifdef GNUTLS_FOUND
-    switch (state) {
-        case NoTLS:
-            result = write(pbase(), count);
-            break;
+        switch (state) {
+            case NoTLS:
+                result = write(buf, count);
+                break;
 
-        case InitTLS:
-            return 0;
+            case InitTLS:
+                // Ignore partial flush request, called from Session::sync()
+                if (!partial)
+                    return 0;
 
-        case RunTLS:
-            result = gnutls_record_send(tls_session, pbase(), count);
-            break;
-    }
+                LOG4CPLUS_FATAL_STR(log,
+                        LOG4CPLUS_TEXT(
+                            "Output buffer overflow during TLS handshake"));
+                result = -ENOSPC;
+                break;
+
+            case RunTLS:
+                result = gnutls_record_send(tls_session, buf, count);
+                break;
+        }
 #else
-    result = write(pbase(), count);
+        result = write(buf, count);
 #endif
 
-    if (result > 0) {
-        std::copy(pbase() + result, pptr(), pbase());
-        pbump(-result);
-        return 0;
-    }
+        log_debug("flushing result %i", result);
+        if (result <= 0)
+            break;
+
+        buf   += result;
+        count -= result;
+
+    } while (count and !partial);
+
+    // Copy remaining data to buffer start and 
+    // update std::streambuf's current put pointer pptr()
+    std::copy(buf, const_cast<const char*>(pptr()), pbase());
+    pbump(pbase() - buf);
 
     // Calculate EOF
     if (state == NoTLS)
@@ -177,30 +205,31 @@ int Session::sync()
         p_eof = true;
 #endif
 
-    // Interpret EOF
-    if (p_eof) {
-        if (!result)
-            LOG4CPLUS_INFO_STR(log,
-                    LOG4CPLUS_TEXT("Client closed connection"));
-        else if (state == NoTLS)
-            LOG4CPLUS_ERROR(log,
-                    LOG4CPLUS_TEXT("Network error: ")
-                    << LOG4CPLUS_C_STR_TO_TSTRING(strerror(-result)));
-#ifdef GNUTLS_FOUND
-        else
-            LOG4CPLUS_ERROR(log,
-                    LOG4CPLUS_TEXT("gnutls_record_send(")
-                    << count
-                    << LOG4CPLUS_TEXT("): ")
-                    << LOG4CPLUS_C_STR_TO_TSTRING(gnutls_strerror(result))
-                    << LOG4CPLUS_TEXT(" (")
-                    << LOG4CPLUS_C_STR_TO_TSTRING(
-                        gnutls_strerror_name(result))
-                    << ')');
-#endif
-    }
+    if (!p_eof)
+        return 0;
 
-    return result;
+    // Interpret EOF
+    if (!result)
+        LOG4CPLUS_INFO_STR(log,
+                LOG4CPLUS_TEXT("Client closed connection"));
+    else if (state != RunTLS)
+        LOG4CPLUS_ERROR(log,
+                LOG4CPLUS_TEXT("Network write() error: ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(strerror(-result)));
+#ifdef GNUTLS_FOUND
+    else
+        LOG4CPLUS_ERROR(log,
+                LOG4CPLUS_TEXT("gnutls_record_send(")
+                << count
+                << LOG4CPLUS_TEXT("): ")
+                << LOG4CPLUS_C_STR_TO_TSTRING(gnutls_strerror(result))
+                << LOG4CPLUS_TEXT(" (")
+                << LOG4CPLUS_C_STR_TO_TSTRING(
+                    gnutls_strerror_name(result))
+                << ')');
+#endif
+
+    return -1;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -461,6 +490,7 @@ ssize_t Session::gnutls_push_func(
     Session* session = reinterpret_cast<Session*>(ptr);
     ssize_t result = session->write(buf, count);
 
+//    log_debug("result = %zi", result);
     if (result >= 0)
         return result;
 
@@ -476,6 +506,7 @@ ssize_t Session::gnutls_pull_func(
     Session* session = reinterpret_cast<Session*>(ptr);
     ssize_t result = session->read(buf, count);
 
+//    log_debug("result = %zi", result);
     if (result >= 0)
         return result;
 

@@ -75,6 +75,8 @@ class Session: public std::streambuf {
 
         log4cplus::Logger& log;
 
+        int flush(bool partial);
+
         // Reimplemented from std::streambuf
         int overflow(int c);
         std::streamsize xsputn(const char* s, std::streamsize n);
