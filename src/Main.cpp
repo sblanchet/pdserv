@@ -59,6 +59,7 @@
 
 #ifdef GNUTLS_FOUND
 #include "TLS.h"
+log4cplus::Logger tlsLogger;
 #endif
 
 using namespace PdServ;
@@ -609,6 +610,14 @@ int Main::setupTLS(Config tlsConf, log4cplus::Logger& logger)
     // Release mutex
     tls_mutex.post();
 
+    // GnuTLS logging facility
+    int logLevel = tlsConf["loglevel"].toUInt();
+    if (logLevel > 0) {
+        gnutls_global_set_log_level(logLevel);
+        gnutls_global_set_log_function(gnutls_log_func);
+        ::tlsLogger = logger;
+    }
+
     result = gnutls_global_init();
     if (result) {
         LOG4CPLUS_FATAL(logger,
@@ -753,9 +762,9 @@ int Main::setupTLS(Config tlsConf, log4cplus::Logger& logger)
                 LOG4CPLUS_TEXT("gnutls_certificate_set_x509_key_file(")
                 << LOG4CPLUS_TEXT("key=")
                 << LOG4CPLUS_STRING_TO_TSTRING(key)
-                << LOG4CPLUS_TEXT(" cert=")
+                << LOG4CPLUS_TEXT(", cert=")
                 << LOG4CPLUS_STRING_TO_TSTRING(cert)
-                << LOG4CPLUS_TEXT(" failed: ")
+                << LOG4CPLUS_TEXT(") failed: ")
                 << LOG4CPLUS_C_STR_TO_TSTRING(gnutls_strerror(result))
                 << LOG4CPLUS_TEXT(" (")
                 << LOG4CPLUS_C_STR_TO_TSTRING(
@@ -933,5 +942,10 @@ gnutls_datum_t Main::gnutls_db_retr_func(void *ptr, gnutls_datum_t key)
     return reinterpret_cast<TlsSessionDB*>(ptr)->retrieve(key);
 }
 
+void Main::gnutls_log_func(int /*prio*/, const char* err)
+{
+    tlsLogger.forcedLog(log4cplus::INFO_LOG_LEVEL,
+            LOG4CPLUS_C_STR_TO_TSTRING(err));
+}
 #endif
 

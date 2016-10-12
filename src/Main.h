@@ -169,6 +169,7 @@ class Main {
                 void *, gnutls_datum_t key, gnutls_datum_t data);
         static int gnutls_db_remove_func(void *, gnutls_datum_t key);
         static gnutls_datum_t gnutls_db_retr_func(void *, gnutls_datum_t key);
+        static void gnutls_log_func(int, const char*);
 #endif
 };
 
