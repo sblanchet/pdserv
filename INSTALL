@@ -2,7 +2,7 @@
 
   $Id$
 
-  Copyright 2010 Richard Hacker (lerichi at gmx dot net)
+  Copyright 2010,2016 Richard Hacker (lerichi at gmx dot net)
 
   This file is part of the pdserv library.
 
@@ -31,6 +31,9 @@ Dependencies:
 - pkg-config (optional)
 - log4cplus
 - yaml
+- Berkeley DB
+- Cyrus SASLv2
+- GnuTLS        (optional)
 
 Installation instructions:
 
