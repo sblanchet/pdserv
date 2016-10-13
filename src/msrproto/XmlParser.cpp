@@ -51,7 +51,7 @@ XmlParser::~XmlParser()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-ssize_t XmlParser::read(std::streambuf* sb)
+std::streamsize XmlParser::read(std::streambuf* sb)
 {
     if (bufEnd == inputEnd) {
         if (name > buf + 1) {
@@ -59,6 +59,10 @@ ssize_t XmlParser::read(std::streambuf* sb)
             log_debug("shift up data");
 
             moveData(buf);
+        }
+        else if (bufEnd >= buf + bufLenMax) {
+            inputEnd = 0;
+            return 0;
         }
         else {
             log_debug("allocate new buffer");
@@ -77,8 +81,7 @@ ssize_t XmlParser::read(std::streambuf* sb)
         parsePos = buf;
     }
 
-//    ssize_t count = bufEnd - inputEnd;
-    ssize_t n = sb->sgetn(inputEnd, bufEnd - inputEnd);
+    std::streamsize n = sb->sgetn(inputEnd, bufEnd - inputEnd);
     if (n > 0)
         inputEnd += n;
 
@@ -105,6 +108,12 @@ void XmlParser::moveData(char* dst)
         it->first  += diff;
         it->second += diff;
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool XmlParser::invalid() const
+{
+    return !inputEnd;
 }
 
 /////////////////////////////////////////////////////////////////////////////

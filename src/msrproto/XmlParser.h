@@ -38,8 +38,9 @@ class XmlParser {
         XmlParser(const char *begin, const char *end);
         ~XmlParser();
 
-        ssize_t read(std::streambuf*);
+        std::streamsize read(std::streambuf*);
         operator bool();
+        bool invalid() const;
 
         const char* tag() const;
         bool find(const char *name, const char **value = 0) const;

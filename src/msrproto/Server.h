@@ -85,6 +85,7 @@ class Server: public ost::Thread {
         const Parameters& getParameters() const;
         const Parameter * getParameter(size_t) const;
         const Parameter * find(const PdServ::Parameter *p) const;
+        size_t getMaxInputBufferSize() const;
 
         template <typename T>
             const T * find(const std::string& path) const;
@@ -99,6 +100,7 @@ class Server: public ost::Thread {
         DirectoryNode* insertRoot;
 
         size_t maxConnections;
+        size_t maxInputBufferSize;
 
         Channels channels;
         Parameters parameters;

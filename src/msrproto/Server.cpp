@@ -49,6 +49,7 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     mutex(1)
 {
     server = 0;
+    maxInputBufferSize = 0U;
 
     port = config["port"].toUInt();
     itemize = config["splitvectors"].toUInt();
@@ -67,6 +68,14 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
         createChannels(insertRoot, taskList.front());
 
     createParameters(insertRoot);
+
+    unsigned int bufLimit = config["parserbufferlimit"].toUInt();
+    if (bufLimit and maxInputBufferSize > bufLimit)
+        maxInputBufferSize = bufLimit;
+    LOG4CPLUS_DEBUG(log,
+            LOG4CPLUS_TEXT("Limiting XML input buffer to ")
+            << maxInputBufferSize
+            << LOG4CPLUS_TEXT("bytes"));
 
     start();
 }
@@ -139,10 +148,41 @@ void Server::createParameters(DirectoryNode* baseDir)
 
     for (; mainParam.size(); mainParam.pop_front()) {
         const PdServ::Parameter *param = mainParam.front();
+
+        // Calculate maximum dataspace requirement to change a parameter
+        // in bytes.
+        //
+        // The following table shows the requirement for selected data types:
+        // Type   | bytes | infr. |   mant |  exp |  totol
+        // -------+-------+-------+--------+------+-------
+        // double |     8 |     3 |     16 |    4 |     23
+        // int64  |     8 |     1 |     19 |      |     20
+        // single |     4 |     3 |      7 |    4 |     14
+        // int32  |     4 |     1 |     10 |      |     11
+        // int16  |     2 |     1 |      5 |      |      6
+        // int8   |     1 |     1 |      3 |      |      4
+        //
+        // where:
+        //     bytes: sizeof(type)
+        //     infr:  characters for infrastrucure (sign, exp, decimal point,
+        //            field separator)
+        //     mant:  characters for mantissa representation
+        //     exp:   characters for exponent representation
+        //
+        // Thus it is safe to caculate with 4 characters per raw byte
+        maxInputBufferSize =
+            std::max(maxInputBufferSize, param->memSize * 4UL);
+
         PdServ::DataType::Iterator<CreateParameter>(
                 param->dtype, param->dim,
                 CreateParameter(this, baseDir, param));
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+size_t Server::getMaxInputBufferSize() const
+{
+    return maxInputBufferSize;
 }
 
 /////////////////////////////////////////////////////////////////////////////

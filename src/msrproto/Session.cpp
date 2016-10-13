@@ -204,7 +204,8 @@ void Session::final()
 /////////////////////////////////////////////////////////////////////////////
 void Session::run()
 {
-    XmlParser parser;
+    XmlParser parser(
+            std::max(server->getMaxInputBufferSize() + 1024UL, 8192UL));
 
     while (*server->active) {
         if (!xmlstream.good()) {
@@ -216,9 +217,17 @@ void Session::run()
         xmlstream.flush();
 
         if (isPending(pendingInput, 40)) {
-            if (!parser.read(static_cast<PdServ::Session*>(this))
-                    and PdServ::Session::eof())
-                return;
+            if (!parser.read(static_cast<PdServ::Session*>(this))) {
+                if (PdServ::Session::eof())
+                    return;
+
+                if (parser.invalid()) {
+                    LOG4CPLUS_FATAL_STR(server->log,
+                            LOG4CPLUS_TEXT(
+                                "Input buffer overflow in XML parser"));
+                    return;
+                }
+            }
 //                LOG4CPLUS_TRACE(server->log,
 //                        LOG4CPLUS_TEXT("Rx: ")
 //                        << LOG4CPLUS_STRING_TO_TSTRING(
