@@ -47,8 +47,7 @@ Signal::Signal( Task *task,
     PdServ::Signal(path, task, decimation, dtype, ndims, dim),
     task(task),
     addr(reinterpret_cast<const char *>(addr)),
-    index(index),
-    mutex(1)
+    index(index)
 {
     read_cb = copy;
 }
@@ -56,7 +55,7 @@ Signal::Signal( Task *task,
 //////////////////////////////////////////////////////////////////////
 void Signal::subscribe(PdServ::SessionTask *s) const
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::MutexLock lock(mutex);
 
     if (sessions.empty()) {
 //        log_debug("Request signal from RT task %p", s);
@@ -73,7 +72,7 @@ void Signal::subscribe(PdServ::SessionTask *s) const
 //////////////////////////////////////////////////////////////////////
 void Signal::unsubscribe(PdServ::SessionTask *s) const
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::MutexLock lock(mutex);
 
     if (sessions.erase(s) and sessions.empty())
         task->subscribe(this, false);

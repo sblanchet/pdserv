@@ -53,8 +53,7 @@ using namespace MsrProto;
 Session::Session( Server *server, ost::TCPSocket *socket):
     TCPSession(*socket),
     PdServ::Session(server->main, server->log), server(server),
-    xmlstream(static_cast<PdServ::Session*>(this)),
-    mutex(1)
+    xmlstream(static_cast<PdServ::Session*>(this))
 {
     inBytes = 0;
     outBytes = 0;
@@ -128,7 +127,7 @@ const PdServ::TaskStatistics *Session::getTaskStatistics (
 void Session::broadcast(Session *, const struct timespec& ts,
         const std::string& action, const std::string &message)
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::MutexLock lock(mutex);
 
     if (!polite) {
         Broadcast *b = new Broadcast;
@@ -142,7 +141,7 @@ void Session::broadcast(Session *, const struct timespec& ts,
 /////////////////////////////////////////////////////////////////////////////
 void Session::setAIC(const Parameter *p)
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::MutexLock lock(mutex);
     if (!polite)
         aic.insert(p->mainParam);
 
@@ -153,7 +152,7 @@ void Session::setAIC(const Parameter *p)
 /////////////////////////////////////////////////////////////////////////////
 void Session::parameterChanged(const Parameter *p)
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::MutexLock lock(mutex);
     if (!polite)
         changedParameter.insert(p);
 }
@@ -254,7 +253,7 @@ void Session::run()
             // Create an environment for mutex lock. This lock should be kept
             // as short as possible, and especially not when writing to the
             // output stream
-            ost::SemaphoreLock lock(mutex);
+            ost::MutexLock lock(mutex);
 
             if (aicDelay)
                 --aicDelay;
@@ -607,7 +606,7 @@ void Session::remoteHost(const XmlParser* parser)
     // This is used for passive clients that do not check their streams
     // on a regular basis causing the TCP stream to congest.
     {
-        ost::SemaphoreLock lock(mutex);
+        ost::MutexLock lock(mutex);
         polite = parser->isTrue("polite");
         if (polite) {
             changedParameter.clear();

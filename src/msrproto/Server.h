@@ -109,7 +109,7 @@ class Server: public ost::Thread {
             ParameterMap;
         ParameterMap parameterMap;
 
-        mutable ost::Semaphore mutex;
+        mutable ost::Mutex mutex;
 
         ost::TCPSocket *server;
 

@@ -74,7 +74,7 @@ class Main: public PdServ::Main, public ost::Thread {
         typedef std::list<Task*> TaskList;
         TaskList task;
 
-        ost::Semaphore sdoMutex;
+        ost::Mutex sdoMutex;
         int ipcRx;
         int ipcTx;
         int terminatePipe;
@@ -93,7 +93,7 @@ class Main: public PdServ::Main, public ost::Thread {
         struct ::EventData **eventDataWp;   // Pointer to next write location
         struct ::EventData *eventDataStart; // First valid block
         struct ::EventData *eventDataEnd;   // Last valid block
-        ost::Semaphore eventMutex;
+        ost::Mutex eventMutex;
 
         char *parameterData;
 

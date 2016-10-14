@@ -52,7 +52,7 @@ struct SignalList {
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 Task::Task(Main *main, size_t index, double ts, const char * /*name*/):
-    PdServ::Task(index, ts), main(main), mutex(1)
+    PdServ::Task(index, ts), main(main)
 {
     seqNo = 0;
     signalMemSize = 0;
@@ -209,7 +209,7 @@ void Task::Persistent::newSignal(const PdServ::Signal *signal)
 void Task::getSignalList(const Signal **signalList, size_t *nelem,
         unsigned int *signalListId) const
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::MutexLock lock(mutex);
 
     for (unsigned int i = 0; i < 4; ++i)
         for (unsigned int j = 0; j < signalTypeCount[i]; ++j)
@@ -221,7 +221,7 @@ void Task::getSignalList(const Signal **signalList, size_t *nelem,
 /////////////////////////////////////////////////////////////////////////////
 void Task::subscribe(const Signal* s, bool insert) const
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::MutexLock lock(mutex);
     struct SignalList *wp = *signalListWp;
 
     if (++wp == signalListEnd)

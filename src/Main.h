@@ -147,7 +147,7 @@ class Main {
         void syslogLogging();
 
 #ifdef GNUTLS_FOUND
-        ost::Semaphore tls_mutex;
+        ost::Mutex tls_mutex;
         bool verifyClient;
         gnutls_certificate_credentials_t tls;
         gnutls_priority_t priority_cache;

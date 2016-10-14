@@ -99,8 +99,8 @@ datum_string::operator gnutls_datum_t() const
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-TlsSessionDB::TlsSessionDB(ost::Semaphore* sem, size_t max):
-    sem(sem), maxSize(max)
+TlsSessionDB::TlsSessionDB(ost::Mutex* mutex, size_t max):
+    mutex(mutex), maxSize(max)
 {
 }
 
@@ -112,7 +112,7 @@ int TlsSessionDB::store(
             or value.size > TLS_DB_MAX_ENTRY_SIZE)
         return -1;
 
-    ost::SemaphoreLock lock(*sem);
+    ost::MutexLock lock(*mutex);
 
     map_type::iterator it =
         map.insert(std::make_pair(key, value)).first;
@@ -131,7 +131,7 @@ int TlsSessionDB::store(
 /////////////////////////////////////////////////////////////////////////////
 int TlsSessionDB::erase(const gnutls_datum_t& key)
 {
-    ost::SemaphoreLock lock(*sem);
+    ost::MutexLock lock(*mutex);
 
     map_type::iterator it = map.find(key);
 
@@ -146,7 +146,7 @@ int TlsSessionDB::erase(const gnutls_datum_t& key)
 /////////////////////////////////////////////////////////////////////////////
 gnutls_datum_t TlsSessionDB::retrieve(const gnutls_datum_t& key)
 {
-    ost::SemaphoreLock lock(*sem);
+    ost::MutexLock lock(*mutex);
 
     map_type::const_iterator it = map.find(key);
     static const gnutls_datum_t res = { NULL, 0 };

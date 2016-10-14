@@ -28,6 +28,7 @@
 #include <cerrno>
 #include <cstring>      // strerror()
 #include <log4cplus/logger.h>
+#include <log4cplus/loggingmacros.h>
 
 #ifdef GNUTLS_FOUND
 #    include <gnutls/x509.h>

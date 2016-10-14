@@ -50,14 +50,14 @@ struct Blacklist: std::set<datum_string> {};
 
 class TlsSessionDB {
     public:
-        TlsSessionDB(ost::Semaphore* sem, size_t max);
+        TlsSessionDB(ost::Mutex* sem, size_t max);
 
         int store(const gnutls_datum_t& key, const gnutls_datum_t& value);
         int erase(const gnutls_datum_t& key);
         gnutls_datum_t retrieve(const gnutls_datum_t& key);
 
     private:
-        ost::Semaphore* const sem;
+        ost::Mutex* const mutex;
         const size_t maxSize;
 
         typedef std::map<datum_string, datum_string> map_type;

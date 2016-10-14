@@ -107,7 +107,7 @@ class Session:
         std::string commandId;
 
         // Protection for inter-session communication
-        ost::Semaphore mutex;
+        ost::Mutex mutex;
 
         // List of parameters that have changed
         typedef std::set<const Parameter*> ParameterSet;

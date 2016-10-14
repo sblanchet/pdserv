@@ -74,7 +74,7 @@ class Task: public PdServ::Task {
                 unsigned int *signalListId) const;
 
     private:
-        mutable ost::Semaphore mutex;
+        mutable ost::Mutex mutex;
 
         mutable size_t signalTypeCount[4];
         size_t signalMemSize;

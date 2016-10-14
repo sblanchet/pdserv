@@ -45,8 +45,7 @@ using namespace MsrProto;
 Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     main(main),
     log(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("msr"))),
-    active(&_active),
-    mutex(1)
+    active(&_active)
 {
     server = 0;
     maxInputBufferSize = 0U;
@@ -241,7 +240,7 @@ void Server::run()
         try {
             LOG4CPLUS_DEBUG_STR(log,
                     LOG4CPLUS_TEXT("New client connection"));
-            ost::SemaphoreLock lock(mutex);
+            ost::MutexLock lock(mutex);
             sessions.insert(new Session(this, server));
         }
         catch (ost::Socket *s) {
@@ -257,7 +256,7 @@ void Server::run()
 void Server::broadcast(Session *s, const struct timespec& ts,
         const std::string& action, const std::string &message)
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::MutexLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); ++it)
         (*it)->broadcast(s, ts, action, message);
@@ -266,7 +265,7 @@ void Server::broadcast(Session *s, const struct timespec& ts,
 /////////////////////////////////////////////////////////////////////////////
 void Server::sessionClosed(Session *s)
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::MutexLock lock(mutex);
     sessions.erase(s);
 }
 
@@ -274,7 +273,7 @@ void Server::sessionClosed(Session *s)
 void Server::getSessionStatistics(
         std::list<PdServ::SessionStatistics>& stats) const
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::MutexLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); ++it) {
         PdServ::SessionStatistics s;
@@ -286,7 +285,7 @@ void Server::getSessionStatistics(
 /////////////////////////////////////////////////////////////////////////////
 void Server::setAic(const Parameter *p)
 {
-    ost::SemaphoreLock lock(mutex);
+    ost::MutexLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); ++it)
         (*it)->setAIC(p);
@@ -298,7 +297,7 @@ void Server::parameterChanged(const PdServ::Parameter *mainParam,
 {
     const Parameter *p = find(mainParam);
 
-    ost::SemaphoreLock lock(mutex);
+    ost::MutexLock lock(mutex);
     for (std::set<Session*>::iterator it = sessions.begin();
             it != sessions.end(); ++it)
         p->inform(*it, offset, offset + count);

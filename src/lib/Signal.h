@@ -59,7 +59,7 @@ class Signal: public PdServ::Signal {
         void* priv_data;
 
     private:
-        mutable ost::Semaphore mutex;
+        mutable ost::Mutex mutex;
 
         typedef std::set<const PdServ::SessionTask*> SessionSet;
         mutable SessionSet sessions;

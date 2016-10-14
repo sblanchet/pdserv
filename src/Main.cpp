@@ -607,9 +607,6 @@ int Main::setupTLS(Config tlsConf, log4cplus::Logger& logger)
     tlsSessionDB = new TlsSessionDB(&tls_mutex, TLS_DB_SIZE);
     blacklist = new Blacklist;
 
-    // Release mutex
-    tls_mutex.post();
-
     // GnuTLS logging facility
     int logLevel = tlsConf["loglevel"].toUInt();
     if (logLevel > 0) {

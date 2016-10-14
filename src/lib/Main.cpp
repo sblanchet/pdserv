@@ -75,7 +75,6 @@ const double Main::bufferTime = 2.0;
 Main::Main( const char *name, const char *version,
         int (*gettime)(struct timespec*)):
     PdServ::Main(name, version),
-    sdoMutex(1), eventMutex(1),
     rttime(gettime ? gettime : &PdServ::Main::localtime)
 {
     shmem_len = 0;
@@ -356,7 +355,7 @@ Signal* Main::addSignal( Task *task, unsigned int decimation,
 void Main::setEvent(Event* event,
         size_t element, bool state, const timespec *time)
 {
-    ost::SemaphoreLock lock(eventMutex);
+    ost::MutexLock lock(eventMutex);
 
     struct ::EventData *eventData = *eventDataWp;
     eventData->event = event;
@@ -373,7 +372,7 @@ void Main::setEvent(Event* event,
 int Main::setValue(const PdServ::ProcessParameter* p,
         const char* buf, size_t offset, size_t count)
 {
-    ost::SemaphoreLock lock(sdoMutex);
+    ost::MutexLock lock(sdoMutex);
     const Parameter* param = static_cast<const Parameter*>(p);
     char* shmAddr = param->shmAddr + offset;
 
@@ -447,7 +446,7 @@ bool Main::getPersistentSignalValue(const PdServ::Signal *s,
 /////////////////////////////////////////////////////////////////////////////
 int Main::getValue(const Signal *signal, void* dest, struct timespec* time)
 {
-    ost::SemaphoreLock lock(sdoMutex);
+    ost::MutexLock lock(sdoMutex);
     struct SDO sdo;
 
     sdo.type = SDO::PollSignal;
