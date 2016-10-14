@@ -50,6 +50,7 @@ Server::Server(const PdServ::Main *main, const PdServ::Config &config):
     server = 0;
     maxInputBufferSize = 0U;
 
+    interface = config["bindhost"].toString();
     port = config["port"].toUInt();
     itemize = config["splitvectors"].toUInt();
 
@@ -208,12 +209,16 @@ void Server::final()
 void Server::run()
 {
     ost::tpport_t port = this->port ? this->port : 2345;
+    if (interface.empty())
+        interface = "0.0.0.0";
 
     do {
         try {
-            server = new ost::TCPSocket(ost::IPV4Address("0.0.0.0"), port);
+            server = new ost::TCPSocket(
+                    ost::IPV4Address(interface.c_str()), port);
             LOG4CPLUS_INFO(log,
-                    LOG4CPLUS_TEXT("Server started on port ") << port);
+                    LOG4CPLUS_TEXT("Server started on ")
+                    << interface << ':' << port);
         }
         catch (ost::Socket *s) {
             long err = s->getSystemError();

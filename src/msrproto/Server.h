@@ -92,6 +92,7 @@ class Server: public ost::Thread {
 
     private:
         std::set<Session*> sessions;
+        std::string interface;
         int port;
         bool itemize;   // Split multidimensional variables to scalars
         bool _active;
