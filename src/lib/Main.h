@@ -62,10 +62,6 @@ class Main: public PdServ::Main, public ost::Thread {
                 unsigned int mode, const PdServ::DataType& datatype,
                 void *addr, size_t n, const size_t *dim);
 
-        Signal* addSignal( Task *task, unsigned int decimation,
-                const char *path, const PdServ::DataType& datatype,
-                const void *addr, size_t n, const size_t *dim);
-
         int getValue(const Signal* s, void* dst, struct timespec* time);
 
         static const double bufferTime;

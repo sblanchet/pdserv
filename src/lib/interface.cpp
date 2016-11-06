@@ -147,8 +147,8 @@ struct pdvariable *pdserv_signal(
 {
     Task *task = reinterpret_cast<Task*>(pdtask);
 
-    Signal *s = task->main->addSignal(
-            task, decimation, path, getDataType(datatype), addr, n, dim);
+    Signal *s = task->addSignal(
+            decimation, path, getDataType(datatype), addr, n, dim);
     if (read_cb)
         s->read_cb = read_cb;
     s->priv_data = priv_data;

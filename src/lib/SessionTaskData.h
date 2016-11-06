@@ -44,11 +44,12 @@ struct Pdo;
 class SessionTaskData {
     public:
         SessionTaskData(PdServ::SessionTask *session,
-                const Task* t, const std::vector<Signal*>* signals,
+                const std::vector<Signal*>* signals,
                 struct Pdo *txMemBegin, const void *txMemEnd);
         ~SessionTaskData();
 
-        bool isBusy(const Signal*);
+        void subscribe(const Signal*);
+        void unsubscribe(const Signal*);
 
         bool rxPdo(const struct timespec **time,
                 const PdServ::TaskStatistics **stat);
@@ -57,12 +58,15 @@ class SessionTaskData {
         const struct timespec *getTaskTime() const;
 
     private:
-        const Task * const task;
         PdServ::SessionTask * const sessionTask;
+        Task* const task;
+
         const std::vector<Signal*>* const signals;
 
         typedef std::set<const Signal*> SignalSet;
-        SignalSet pdoSignals;
+        SignalSet activeSet;
+        SignalSet transferredSet;
+        SignalSet subscribedSet;
 
         struct Pdo * const txMemBegin;
         void const * const txMemEnd;

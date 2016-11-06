@@ -68,15 +68,14 @@ class Task: public PdServ::Task {
         void rt_update(const struct timespec *);
         void nrt_update();
 
-        void subscribe(const Signal* s, bool insert) const;
-
+        bool subscribe(const Signal* s, SessionTaskData*, bool insert);
         void getSignalList(const Signal ** s, size_t *n,
-                unsigned int *signalListId) const;
+                unsigned int *signalListId);
 
     private:
-        mutable ost::Mutex mutex;
+        ost::Mutex mutex;
 
-        mutable size_t signalTypeCount[4];
+        size_t signalTypeCount[4];
         size_t signalMemSize;
 
         PdServ::TaskStatistics taskStatistics;
@@ -84,15 +83,10 @@ class Task: public PdServ::Task {
         // Cache of the currently transferred signals
         const Signal **signalCopyList[4];
 
-        // Position of a signal inside the copy list. Use the signal's index
-        // to enter this array
-        // Only allocated for non-realtime task
-        unsigned int *signalPosition;
-
         std::vector<Signal*> signals;
 
         unsigned int seqNo;
-        mutable unsigned int signalListId;
+        unsigned int signalListId;
 
         // Pointer into shared memory used to communicate changes to the signal
         // copy list

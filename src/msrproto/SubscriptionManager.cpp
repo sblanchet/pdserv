@@ -45,8 +45,6 @@ SubscriptionManager::SubscriptionManager(
     taskTime = &dummyTime;
     taskStatistics = &dummyTaskStatistics;
 
-    unsubscribedCount = 0;
-
     // Call rxPdo() once so that taskTime and taskStatistics are updated
     task->rxPdo(this, &taskTime, &taskStatistics);
 }
@@ -69,8 +67,6 @@ void SubscriptionManager::subscribe (const Channel *c, size_t group,
         remove(*s, group);
 
     *s = new Subscription(c, decimation, blocksize, base64, precision);
-
-    ++unsubscribedCount;
 
     // Call subscribe on this signal. It doesn't matter if it is already
     // subscribed, but it is useful because newSignal() is called for us
@@ -134,16 +130,11 @@ void SubscriptionManager::clear()
     }
 
     signalSubscriptionMap.clear();
-
-    unsubscribedCount = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void SubscriptionManager::newSignal( const PdServ::Signal *s)
 {
-    if (!unsubscribedCount)
-        return;
-
     SignalSubscriptionMap::const_iterator sit = signalSubscriptionMap.find(s);
 
     // Find out whether this signal is used or whether sit is active already

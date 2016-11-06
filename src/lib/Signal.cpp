@@ -53,29 +53,17 @@ Signal::Signal( Task *task,
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::subscribe(PdServ::SessionTask *s) const
+void Signal::subscribe(PdServ::SessionTask *st) const
 {
-    ost::MutexLock lock(mutex);
-
-    if (sessions.empty()) {
-//        log_debug("Request signal from RT task %p", s);
-        task->subscribe(this, true);
-    }
-    else if (s->sessionTaskData->isBusy(this)) {
-//        log_debug("Signal already transferred");
-        s->newSignal(this);
-    }
-
-    sessions.insert(s);
+//    log_debug("%s", path.c_str());
+    st->sessionTaskData->subscribe(this);
 }
 
 //////////////////////////////////////////////////////////////////////
-void Signal::unsubscribe(PdServ::SessionTask *s) const
+void Signal::unsubscribe(PdServ::SessionTask *st) const
 {
-    ost::MutexLock lock(mutex);
-
-    if (sessions.erase(s) and sessions.empty())
-        task->subscribe(this, false);
+//    log_debug("%s", path.c_str());
+    st->sessionTaskData->unsubscribe(this);
 }
 
 //////////////////////////////////////////////////////////////////////

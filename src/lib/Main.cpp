@@ -344,14 +344,6 @@ Parameter* Main::addParameter( const char *path,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-Signal* Main::addSignal( Task *task, unsigned int decimation,
-        const char *path, const PdServ::DataType& datatype,
-        const void *addr, size_t n, const size_t *dim)
-{
-    return task->addSignal(decimation, path, datatype, addr, n, dim);
-}
-
-/////////////////////////////////////////////////////////////////////////////
 void Main::setEvent(Event* event,
         size_t element, bool state, const timespec *time)
 {

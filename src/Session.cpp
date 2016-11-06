@@ -156,7 +156,7 @@ int Session::flush(bool partial)
     else if (!count)
         return 0;
 
-    log_debug("flushing %i %zu", partial, count);
+//    log_debug("flushing %i %zu", partial, count);
     int result;
     do {
 #ifdef GNUTLS_FOUND
@@ -184,7 +184,7 @@ int Session::flush(bool partial)
         result = write(buf, count);
 #endif
 
-        log_debug("flushing result %i", result);
+//        log_debug("flushing result %i", result);
         if (result <= 0)
             break;
 
@@ -246,7 +246,7 @@ std::streamsize Session::xsgetn(char* s, std::streamsize n)
     ssize_t result;
 
 #ifdef GNUTLS_FOUND
-    log_debug("tlsstate = %i", state);
+//    log_debug("tlsstate = %i", state);
     switch (state) {
         case NoTLS:
             result = read(s, n);
@@ -272,7 +272,7 @@ std::streamsize Session::xsgetn(char* s, std::streamsize n)
 
         case RunTLS:
             result = gnutls_record_recv(tls_session, s, n);
-            log_debug("gnutls_record_recv = %zi", result);
+//            log_debug("gnutls_record_recv = %zi", result);
             break;
     }
 #else

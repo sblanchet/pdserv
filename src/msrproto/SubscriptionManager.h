@@ -64,8 +64,6 @@ class SubscriptionManager: public PdServ::SessionTask {
         static struct timespec dummyTime;
         static PdServ::TaskStatistics dummyTaskStatistics;
 
-        size_t unsubscribedCount;
-
         // Here is a map of all subscribed channels. Organization:
         // signalSubscriptionMap
         //                      -> [signal]
@@ -106,6 +104,8 @@ class SubscriptionManager: public PdServ::SessionTask {
         typedef std::map<size_t, BlocksizeGroup> DecimationGroup;
         typedef std::map<size_t, DecimationGroup> ActiveSignals;
         ActiveSignals activeSignals;
+
+        std::set<const PdServ::Signal*> activeSignalSet;
 
         void remove(Subscription *s, size_t group);
 

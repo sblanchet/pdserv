@@ -36,6 +36,7 @@ namespace PdServ {
 }
 
 class Task;
+class SessionTaskData;
 
 class Signal: public PdServ::Signal {
     public:
@@ -58,12 +59,13 @@ class Signal: public PdServ::Signal {
         read_signal_t read_cb;
         void* priv_data;
 
+        // Required by Task in nrt to manage subscriptions
+        typedef std::set<SessionTaskData*> SessionSet;
+        SessionSet sessions;
+        unsigned int subscriptionId;
+        size_t copyListPos;
+
     private:
-        mutable ost::Mutex mutex;
-
-        typedef std::set<const PdServ::SessionTask*> SessionSet;
-        mutable SessionSet sessions;
-
         // Reimplemented from PdServ::Signal
         void subscribe(PdServ::SessionTask *) const;
         void unsubscribe(PdServ::SessionTask *) const;

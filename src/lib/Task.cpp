@@ -56,7 +56,6 @@ Task::Task(Main *main, size_t index, double ts, const char * /*name*/):
 {
     seqNo = 0;
     signalMemSize = 0;
-    signalPosition = 0;
     signalListId = 0;
     std::fill_n(signalTypeCount, 4, 0);
     signalCopyList[0] = 0;
@@ -71,7 +70,6 @@ Task::~Task()
     delete persist;
     delete[] copyList[0];
     delete[] signalCopyList[0];
-    delete[] signalPosition;
 
     for (size_t i = 0; i < signals.size(); ++i)
         delete signals[i];
@@ -154,8 +152,6 @@ void Task::rt_init()
 /////////////////////////////////////////////////////////////////////////////
 void Task::nrt_init()
 {
-    signalPosition = new unsigned int[signals.size()];
-
     signalCopyList[0] = new const Signal*[signals.size()];
     for (size_t i = 0; i < 3; i++)
         signalCopyList[i+1] = signalCopyList[i] + signalTypeCount[i];
@@ -207,7 +203,7 @@ void Task::Persistent::newSignal(const PdServ::Signal *signal)
 // Non-real time methods
 /////////////////////////////////////////////////////////////////////////////
 void Task::getSignalList(const Signal **signalList, size_t *nelem,
-        unsigned int *signalListId) const
+        unsigned int *signalListId)
 {
     ost::MutexLock lock(mutex);
 
@@ -219,9 +215,11 @@ void Task::getSignalList(const Signal **signalList, size_t *nelem,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-void Task::subscribe(const Signal* s, bool insert) const
+bool Task::subscribe(const Signal* cs, SessionTaskData* st, bool insert)
 {
     ost::MutexLock lock(mutex);
+    Signal* signal = const_cast<Signal*>(cs);
+
     struct SignalList *wp = *signalListWp;
 
     if (++wp == signalListEnd)
@@ -230,33 +228,53 @@ void Task::subscribe(const Signal* s, bool insert) const
     while (wp == *signalListRp)
         ost::Thread::sleep(static_cast<unsigned>(sampleTime * 1000 / 2 + 1));
 
-    size_t w = s->dataTypeIndex[s->dtype.align()];
+    size_t w = cs->dataTypeIndex[cs->dtype.align()];
     const Signal **scl = signalCopyList[w];
 
-    wp->signal = s;
+    wp->signal = cs;
 
     if (insert) {
+        bool subscribe = cs->sessions.empty();
+
+        signal->sessions.insert(st);
+
+        // return true if the signal is already subscribed
+        if (!subscribe)
+            return true;
+
         wp->action = SignalList::Insert;
 
         size_t i = signalTypeCount[w]++;
-        scl[i] = s;
-        signalPosition[s->index] = i;
+        scl[i] = cs;
+        signal->copyListPos = i;
     }
     else {
-        size_t pos = signalPosition[s->index];
+        bool unsubscribe = !cs->sessions.empty();
+
+        signal->sessions.erase(st);
+
+        if (!unsubscribe or !cs->sessions.empty())
+            return true;
 
         wp->action = SignalList::Remove;
-        wp->signalPosition = pos;
+        wp->signalPosition = signal->copyListPos;
 
         // Replace s with last signal on the list
-        s = scl[--signalTypeCount[w]];
-        scl[pos] = s;
-        signalPosition[s->index] = pos;
+        cs = scl[--signalTypeCount[w]];
+        scl[signal->copyListPos] = cs;
+        signals[cs->index]->copyListPos = signal->copyListPos;
     }
 
     wp->signalListId = ++signalListId;
+    signal->subscriptionId = signalListId;
+
+#ifdef __GNUC__
+    __sync_synchronize();       // write memory barrier
+#endif
 
     *signalListWp = wp;
+
+    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -272,7 +290,7 @@ void Task::updateStatistics(
 void Task::prepare (PdServ::SessionTask *s) const
 {
     s->sessionTaskData =
-        new SessionTaskData(s, this, &signals, txMemBegin, txMemEnd);
+        new SessionTaskData(s, &signals, txMemBegin, txMemEnd);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -348,6 +366,10 @@ void Task::processSignalList()
             break;
     }
 
+#ifdef __GNUC__
+    __sync_synchronize();       // write memory barrier
+#endif
+
     *signalListRp = sp;
 }
 
@@ -369,6 +391,10 @@ void Task::calculateCopyList()
             *sp++ = cl->signal->index;
     }
     txPdo->type = Pdo::SignalList;
+
+#ifdef __GNUC__
+    __sync_synchronize();       // write memory barrier
+#endif
 
     *nextTxPdo = txPdo;
 
@@ -403,9 +429,14 @@ void Task::copyData(const struct timespec *t)
             p += cl->len;
         }
     }
-    txPdo->type = Pdo::Data;
 
+    txPdo->type = Pdo::Data;
     txPdo->count = p - txPdo->data;
+
+#ifdef __GNUC__
+    __sync_synchronize();       // write memory barrier
+#endif
+
     *nextTxPdo = txPdo;
 
     nextTxPdo = &txPdo->next;
