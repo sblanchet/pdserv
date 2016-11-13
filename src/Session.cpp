@@ -157,7 +157,7 @@ int Session::flush(bool partial)
         return 0;
 
 //    log_debug("flushing %i %zu", partial, count);
-    int result;
+    int result = 0;
     do {
 #ifdef GNUTLS_FOUND
         switch (state) {
@@ -243,7 +243,7 @@ int Session::underflow()
 /////////////////////////////////////////////////////////////////////////////
 std::streamsize Session::xsgetn(char* s, std::streamsize n)
 {
-    ssize_t result;
+    ssize_t result = 0;
 
 #ifdef GNUTLS_FOUND
 //    log_debug("tlsstate = %i", state);
