@@ -138,12 +138,12 @@ bool SessionTaskData::rxPdo (const struct timespec **time,
                 {
                     const Signal *sp[signals->size()];
 
-                    if (pdo->signal + n > txMemEnd) {
+                    if (&pdo->signalIdx + n > txMemEnd) {
                         goto out;
                     }
 
                     for (size_t i = 0; i < n; ++i) {
-                        size_t idx = pdo->signal[i];
+                        size_t idx = (&pdo->signalIdx)[i];
 
                         if (idx >= signals->size())
                             goto out;
@@ -156,14 +156,14 @@ bool SessionTaskData::rxPdo (const struct timespec **time,
                 break;
 
             case Pdo::Data:
-                if (pdo->data + pdoSize >= txMemEnd
+                if (&pdo->data + pdoSize >= txMemEnd
                         or pdo->signalListId != signalListId
                         or pdo->seqNo - seqNo != 1) {
                     log_debug("%p + %zu >= %p; %u != %u; %i != 1; %u %u %u",
-                            (void *) pdo->data, pdoSize, (void *) txMemEnd,
+                            (void *) &pdo->data, pdoSize, (void *) txMemEnd,
                             pdo->signalListId, signalListId,
                             pdo->seqNo - seqNo,
-                            pdo->data + pdoSize >= txMemEnd,
+                            &pdo->data + pdoSize >= txMemEnd,
                             pdo->signalListId != signalListId,
                             pdo->seqNo - seqNo != 1
                             );
@@ -171,7 +171,7 @@ bool SessionTaskData::rxPdo (const struct timespec **time,
                 }
 
                 seqNo = pdo->seqNo;
-                signalBuffer = pdo->data;
+                signalBuffer = &pdo->data;
                 *time = &pdo->time;
                 *statistics = &pdo->taskStatistics;
 

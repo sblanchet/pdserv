@@ -47,8 +47,8 @@ struct Pdo {
     struct PdServ::TaskStatistics taskStatistics;
     struct Pdo *next;
     union {
-        char data[];
-        size_t signal[];
+        char data;
+        size_t signalIdx;
     };
 };
 

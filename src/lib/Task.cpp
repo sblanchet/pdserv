@@ -378,14 +378,14 @@ void Task::calculateCopyList()
 {
     size_t n = std::accumulate(signalTypeCount, signalTypeCount + 4, 0);
 
-    if ((txPdo->signal + n) >= txMemEnd)
+    if ((&txPdo->signalIdx + n) >= txMemEnd)
         txPdo = txMemBegin;
 
     txPdo->next = 0;
     txPdo->type = Pdo::Empty;
     txPdo->signalListId = signalListId;
     txPdo->count = n;
-    size_t *sp = txPdo->signal;
+    size_t *sp = &txPdo->signalIdx;
     for (int i = 0; i < 4; i++) {
         for (CopyList *cl = copyList[i]; cl->src; ++cl)
             *sp++ = cl->signal->index;
@@ -405,7 +405,7 @@ void Task::calculateCopyList()
 /////////////////////////////////////////////////////////////////////////////
 void Task::copyData(const struct timespec *t)
 {
-    if ( txPdo->data + signalMemSize >= txMemEnd)
+    if ( &txPdo->data + signalMemSize >= txMemEnd)
         txPdo = txMemBegin;
 
     txPdo->next = 0;
@@ -422,7 +422,7 @@ void Task::copyData(const struct timespec *t)
 
     time = &txPdo->time;
 
-    char *p = txPdo->data;
+    char *p = &txPdo->data;
     for (int i = 0; i < 4; ++i) {
         for (CopyList *cl = copyList[i]; cl->src; ++cl) {
             std::copy(cl->src, cl->src + cl->len, p);
@@ -431,7 +431,7 @@ void Task::copyData(const struct timespec *t)
     }
 
     txPdo->type = Pdo::Data;
-    txPdo->count = p - txPdo->data;
+    txPdo->count = p - &txPdo->data;
 
 #ifdef __GNUC__
     __sync_synchronize();       // write memory barrier
