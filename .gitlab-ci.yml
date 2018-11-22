@@ -1,0 +1,59 @@
+
+# Continous Integration (CI) on GitLab
+
+build_cent6_x32:
+    # define compilation job on centos 6 x32
+    tags:
+        - centos6
+        - x32
+    script:
+        - make all
+
+
+build_cent6_x64:
+    # define compilation job on centos 6 x64
+    tags:
+        - centos6
+        - x64
+    script:
+        - make all
+
+
+
+build_cent7_x64:
+    # define compilation job on centos 7 x64
+    tags:
+        - centos7
+        - x64
+    script:
+        - make all
+
+
+
+build_deb8_x32:
+    # define compilation job on debian 8 x32
+    tags:
+        - debian8
+        - x32
+    script:
+        - make all
+
+
+
+build_deb8_x64:
+   # define compilation job on debian 8 x64
+    tags:
+        - debian8
+        - x64
+    script:
+        - make all
+
+
+
+build_deb9_x64:
+   # define compilation job on debian 9 x64
+    tags:
+        - debian9
+        - x64
+    script:
+        - make all
