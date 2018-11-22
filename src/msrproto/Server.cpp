@@ -171,7 +171,7 @@ void Server::createParameters(DirectoryNode* baseDir)
         //
         // Thus it is safe to caculate with 4 characters per raw byte
         maxInputBufferSize =
-            std::max(maxInputBufferSize, param->memSize * 4UL);
+            std::max(maxInputBufferSize, param->memSize * 4U);
 
         PdServ::DataType::Iterator<CreateParameter>(
                 param->dtype, param->dim,
